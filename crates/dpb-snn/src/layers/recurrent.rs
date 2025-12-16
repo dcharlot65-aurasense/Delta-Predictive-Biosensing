@@ -227,7 +227,7 @@ impl SpikingLSTM {
         let normal = Normal::new(0.0, std).unwrap();
         let mut rng = thread_rng();
 
-        let init_weights = |shape: (usize, usize)| {
+        let mut init_weights = |shape: (usize, usize)| {
             Array2::from_shape_fn(shape, |_| normal.sample(&mut rng))
         };
 
@@ -354,6 +354,18 @@ impl SpikingLayer for SpikingLSTM {
 
     fn zero_grad(&mut self) {
         // Simplified - no gradient storage in this implementation
+    }
+}
+
+impl Default for SpikingRNN {
+    fn default() -> Self {
+        Self::new(1, 1, false, NeuronParams::default(), 1.0, false)
+    }
+}
+
+impl Default for SpikingLSTM {
+    fn default() -> Self {
+        Self::new(1, 1, NeuronParams::default(), 1.0, false)
     }
 }
 

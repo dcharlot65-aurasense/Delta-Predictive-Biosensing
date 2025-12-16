@@ -2,7 +2,7 @@
 
 use super::{NeuronState, SpikingLayer};
 use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor};
-use ndarray::{Array1, Array2, Array3, Axis};
+use ndarray::{s, Array1, Array2, Array3, Axis};
 use rand::thread_rng;
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
@@ -209,6 +209,13 @@ impl SpikingLayer for SpikingLinear {
     fn zero_grad(&mut self) {
         self.weight_grad = None;
         self.bias_grad = None;
+    }
+}
+
+impl Default for SpikingLinear {
+    fn default() -> Self {
+        // Minimal default - creates a 1x1 layer
+        Self::new(1, 1, false, NeuronParams::default(), 1.0, false)
     }
 }
 

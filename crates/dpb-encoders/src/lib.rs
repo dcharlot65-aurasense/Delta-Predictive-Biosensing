@@ -135,7 +135,7 @@
 //!
 //! ```rust
 //! use dpb_encoders::templates::*;
-//! use dpb_core::Context;
+//! use dpb_core::{Context, PopulationTemplate};
 //!
 //! let context = create_context(
 //!     Some(30.0),      // age

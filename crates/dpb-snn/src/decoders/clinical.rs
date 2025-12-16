@@ -293,8 +293,8 @@ impl GaitScoreDecoder {
             }
             GaitFeature::Freezing => {
                 // Detect sudden drops in activity
-                let mut freeze_score = 0.0;
-                let threshold = 0.5;
+                let mut freeze_score = 0.0f32;
+                let threshold = 0.5f32;
 
                 for window in spike_rates.windows(3) {
                     let before = window[0];
@@ -302,11 +302,11 @@ impl GaitScoreDecoder {
                     let after = window[2];
 
                     if before > threshold && during < threshold * 0.3 && after > threshold {
-                        freeze_score += 1.0;
+                        freeze_score += 1.0f32;
                     }
                 }
 
-                freeze_score.min(4.0) // Cap at 4 (severe)
+                freeze_score.min(4.0f32) // Cap at 4 (severe)
             }
         }
     }

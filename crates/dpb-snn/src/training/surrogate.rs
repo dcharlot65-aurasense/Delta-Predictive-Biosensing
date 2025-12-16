@@ -128,12 +128,19 @@ impl SurrogateGradient for SuperSpikeSurrogate {
 }
 
 /// Backpropagation Through Time (BPTT) for SNNs
-#[derive(Debug, Clone)]
 pub struct BPTT {
     /// Surrogate gradient function
     pub surrogate: Box<dyn SurrogateGradient>,
     /// Number of time steps to backprop through
     pub num_steps: Option<usize>,
+}
+
+impl std::fmt::Debug for BPTT {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BPTT")
+            .field("num_steps", &self.num_steps)
+            .finish_non_exhaustive()
+    }
 }
 
 impl BPTT {
@@ -181,12 +188,19 @@ impl BPTT {
 
 /// Online Training Through Time (OTTT)
 /// More memory efficient than full BPTT
-#[derive(Debug, Clone)]
 pub struct OTTT {
     /// Surrogate gradient function
     pub surrogate: Box<dyn SurrogateGradient>,
     /// Eligibility trace decay
     pub trace_decay: f32,
+}
+
+impl std::fmt::Debug for OTTT {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OTTT")
+            .field("trace_decay", &self.trace_decay)
+            .finish_non_exhaustive()
+    }
 }
 
 impl OTTT {
@@ -204,12 +218,19 @@ impl OTTT {
 
 /// Spatial Layer-wise Training Through Time (SLTT)
 /// Train layers independently to reduce computational cost
-#[derive(Debug, Clone)]
 pub struct SLTT {
     /// Surrogate gradient function
     pub surrogate: Box<dyn SurrogateGradient>,
     /// Number of layers to train simultaneously
     pub layer_window: usize,
+}
+
+impl std::fmt::Debug for SLTT {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SLTT")
+            .field("layer_window", &self.layer_window)
+            .finish_non_exhaustive()
+    }
 }
 
 impl SLTT {

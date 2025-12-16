@@ -59,14 +59,15 @@ impl Optimizer for SGDOptimizer {
             // Add weight decay to gradient
             let mut effective_grad = (*grad).clone();
             if self.weight_decay > 0.0 {
-                effective_grad = effective_grad + &(***param * self.weight_decay);
+                let param_ref: &Array2<f32> = *param;
+                effective_grad = effective_grad + &(param_ref * self.weight_decay);
             }
 
             // Update velocity: v = momentum * v - lr * grad
             self.velocity[i] = &self.velocity[i] * self.momentum - &effective_grad * self.learning_rate;
 
             // Update parameters: param = param + velocity
-            ***param += &self.velocity[i];
+            **param += &self.velocity[i];
         }
 
         Ok(())
@@ -146,7 +147,8 @@ impl Optimizer for AdamOptimizer {
             // Add weight decay to gradient
             let mut effective_grad = (*grad).clone();
             if self.weight_decay > 0.0 {
-                effective_grad = effective_grad + &(***param * self.weight_decay);
+                let param_ref: &Array2<f32> = *param;
+                effective_grad = effective_grad + &(param_ref * self.weight_decay);
             }
 
             // Update biased first moment estimate: m = beta1 * m + (1 - beta1) * grad
@@ -164,7 +166,7 @@ impl Optimizer for AdamOptimizer {
             let update = m_hat.mapv(|m_val| m_val * self.learning_rate)
                 / v_hat.mapv(|v_val| v_val.sqrt() + self.epsilon);
 
-            ***param -= &update;
+            **param -= &update;
         }
 
         Ok(())
@@ -240,16 +242,18 @@ mod tests {
         let mut optimizer = SGDOptimizer::new(0.01, 0.9, 0.0);
 
         let mut param = Array2::from_shape_vec((2, 2), vec![1.0, 2.0, 3.0, 4.0]).unwrap();
-        let grad = Array2::from_shape_vec((2, 2), vec![0.1, 0.2, 0.3, 0.4]).unwrap();
+        let grad = Array2::from_shape_vec((2, 2), vec![0.1, 0.2, 0.3, 4.0]).unwrap();
+
+        // Capture initial value before mutable borrow
+        let initial_value = param[[0, 0]];
 
         let mut params = vec![&mut param];
         let grads = vec![&grad];
 
-        let initial_value = param[[0, 0]];
         optimizer.step(&mut params, &grads).unwrap();
 
         // Parameter should have changed
-        assert_ne!(param[[0, 0]], initial_value);
+        assert_ne!(params[0][[0, 0]], initial_value);
     }
 
     #[test]
@@ -259,13 +263,15 @@ mod tests {
         let mut param = Array2::from_shape_vec((2, 2), vec![1.0, 2.0, 3.0, 4.0]).unwrap();
         let grad = Array2::from_shape_vec((2, 2), vec![0.1, 0.2, 0.3, 0.4]).unwrap();
 
+        // Capture initial value before mutable borrow
+        let initial_value = param[[0, 0]];
+
         let mut params = vec![&mut param];
         let grads = vec![&grad];
 
-        let initial_value = param[[0, 0]];
         optimizer.step(&mut params, &grads).unwrap();
 
-        assert_ne!(param[[0, 0]], initial_value);
+        assert_ne!(params[0][[0, 0]], initial_value);
         assert_eq!(optimizer.t, 1);
     }
 
@@ -280,9 +286,9 @@ mod tests {
         let lr10 = scheduler.step(1.0, 10);
         let lr20 = scheduler.step(1.0, 20);
 
-        assert_eq!(lr0, 1.0);
-        assert_eq!(lr10, 0.1);
-        assert_eq!(lr20, 0.01);
+        assert!((lr0 - 1.0).abs() < 1e-6);
+        assert!((lr10 - 0.1).abs() < 1e-6);
+        assert!((lr20 - 0.01).abs() < 1e-6);
     }
 
     #[test]
