@@ -321,6 +321,256 @@ impl SyntheticGenerator for VoiceTremorGenerator {
     }
 }
 
+/// Voice onset time (VOT) generator
+pub struct VoiceOnsetTimeGenerator;
+
+#[derive(Debug, Clone)]
+pub struct VoiceOnsetTimeParams {
+    pub num_samples: usize,
+    pub consonant_type: ConsonantType,
+    pub variability: f64, // 0-1
+}
+
+#[derive(Debug, Clone)]
+pub enum ConsonantType {
+    VoicedStop,      // VOT: -100 to 0 ms (e.g., /b/, /d/, /g/)
+    VoicelessStop,   // VOT: 25-100 ms (e.g., /p/, /t/, /k/)
+    AspiratedStop,   // VOT: >100 ms
+}
+
+impl SyntheticGenerator for VoiceOnsetTimeGenerator {
+    type Output = Vec<f64>; // VOT values in milliseconds
+    type GroundTruth = TimeSeriesGroundTruth;
+    type Parameters = VoiceOnsetTimeParams;
+
+    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+        Self::validate_params(params)?;
+
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+
+        let (mean_vot, std_vot) = match params.consonant_type {
+            ConsonantType::VoicedStop => (-50.0, 20.0),
+            ConsonantType::VoicelessStop => (60.0, 15.0),
+            ConsonantType::AspiratedStop => (120.0, 20.0),
+        };
+
+        let std_dev = std_vot * params.variability;
+        let vot_dist = Normal::new(mean_vot, std_dev).unwrap();
+
+        let vot_values: Vec<f64> = (0..params.num_samples)
+            .map(|_| vot_dist.sample(&mut rng))
+            .collect();
+
+        let mut gt_params = HashMap::new();
+        gt_params.insert("mean_vot".to_string(), mean_vot);
+        gt_params.insert("std_vot".to_string(), std_dev);
+        gt_params.insert("actual_mean".to_string(),
+            vot_values.iter().sum::<f64>() / vot_values.len() as f64);
+
+        let ground_truth = TimeSeriesGroundTruth {
+            parameters: gt_params,
+            events: Vec::new(),
+            segments: Vec::new(),
+        };
+
+        Ok(GeneratedData::new(vot_values, ground_truth, 1000.0))
+    }
+
+    fn default_params() -> Self::Parameters {
+        VoiceOnsetTimeParams {
+            num_samples: 50,
+            consonant_type: ConsonantType::VoicelessStop,
+            variability: 1.0,
+        }
+    }
+
+    fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
+        if params.num_samples == 0 {
+            return Err(crate::GeneratorError::InvalidParameter("num_samples must be positive".to_string()));
+        }
+        if params.variability < 0.0 || params.variability > 1.0 {
+            return Err(crate::GeneratorError::InvalidParameter("variability must be 0-1".to_string()));
+        }
+        Ok(())
+    }
+}
+
+/// Vocal fry (creaky voice) generator
+pub struct VocalFryGenerator;
+
+#[derive(Debug, Clone)]
+pub struct VocalFryParams {
+    pub duration: f64,
+    pub sampling_rate: f64,
+    pub baseline_f0: f64,
+    pub fry_f0: f64,           // Hz (typically 20-60 Hz)
+    pub fry_irregularity: f64, // 0-1 (period-to-period variation)
+}
+
+impl SyntheticGenerator for VocalFryGenerator {
+    type Output = Array1<f64>; // audio signal with vocal fry
+    type GroundTruth = TimeSeriesGroundTruth;
+    type Parameters = VocalFryParams;
+
+    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+        Self::validate_params(params)?;
+
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let n_samples = (params.duration * params.sampling_rate) as usize;
+        let dt = 1.0 / params.sampling_rate;
+
+        let irregularity_dist = Normal::new(0.0, params.fry_irregularity).unwrap();
+
+        let mut signal = Vec::with_capacity(n_samples);
+        let mut phase = 0.0;
+
+        for i in 0..n_samples {
+            let t = i as f64 * dt;
+
+            // Vocal fry has irregular pulses
+            let period_jitter = irregularity_dist.sample(&mut rng);
+            let instantaneous_f0 = params.fry_f0 * (1.0 + period_jitter);
+
+            phase += 2.0 * PI * instantaneous_f0 * dt;
+            if phase > 2.0 * PI {
+                phase -= 2.0 * PI;
+            }
+
+            // Create asymmetric pulse characteristic of vocal fry
+            let pulse = if phase < PI {
+                (phase / PI).powi(3)
+            } else {
+                -((2.0 * PI - phase) / PI).powi(3)
+            };
+
+            signal.push(pulse);
+        }
+
+        let signal = Array1::from_vec(signal);
+
+        let mut gt_params = HashMap::new();
+        gt_params.insert("baseline_f0".to_string(), params.baseline_f0);
+        gt_params.insert("fry_f0".to_string(), params.fry_f0);
+        gt_params.insert("fry_irregularity".to_string(), params.fry_irregularity);
+
+        let ground_truth = TimeSeriesGroundTruth {
+            parameters: gt_params,
+            events: Vec::new(),
+            segments: Vec::new(),
+        };
+
+        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+    }
+
+    fn default_params() -> Self::Parameters {
+        VocalFryParams {
+            duration: 2.0,
+            sampling_rate: 16000.0,
+            baseline_f0: 120.0,
+            fry_f0: 40.0,
+            fry_irregularity: 0.3,
+        }
+    }
+
+    fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
+        if params.duration <= 0.0 {
+            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+        }
+        if params.fry_f0 <= 0.0 {
+            return Err(crate::GeneratorError::InvalidParameter("fry_f0 must be positive".to_string()));
+        }
+        if params.fry_irregularity < 0.0 || params.fry_irregularity > 1.0 {
+            return Err(crate::GeneratorError::InvalidParameter("fry_irregularity must be 0-1".to_string()));
+        }
+        Ok(())
+    }
+}
+
+/// Breathiness (aspiration noise) generator
+pub struct BreathinessGenerator;
+
+#[derive(Debug, Clone)]
+pub struct BreathinessParams {
+    pub duration: f64,
+    pub sampling_rate: f64,
+    pub harmonic_amplitude: f64,    // amplitude of harmonic component
+    pub noise_amplitude: f64,       // amplitude of noise component
+    pub fundamental_frequency: f64,
+}
+
+impl SyntheticGenerator for BreathinessGenerator {
+    type Output = Array1<f64>; // audio signal with breathiness
+    type GroundTruth = TimeSeriesGroundTruth;
+    type Parameters = BreathinessParams;
+
+    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+        Self::validate_params(params)?;
+
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let n_samples = (params.duration * params.sampling_rate) as usize;
+        let dt = 1.0 / params.sampling_rate;
+
+        let noise_dist = Normal::new(0.0, 1.0).unwrap();
+
+        let mut signal = Vec::with_capacity(n_samples);
+
+        for i in 0..n_samples {
+            let t = i as f64 * dt;
+
+            // Harmonic component (voiced)
+            let harmonic = params.harmonic_amplitude * (2.0 * PI * params.fundamental_frequency * t).sin();
+
+            // Noise component (aspiration)
+            let noise = params.noise_amplitude * noise_dist.sample(&mut rng);
+
+            // Breathy voice is a mix of harmonic and noise
+            signal.push(harmonic + noise);
+        }
+
+        let signal = Array1::from_vec(signal);
+
+        // Calculate harmonic-to-noise ratio (HNR)
+        let hnr_db = 20.0 * (params.harmonic_amplitude / params.noise_amplitude).log10();
+
+        let mut gt_params = HashMap::new();
+        gt_params.insert("f0".to_string(), params.fundamental_frequency);
+        gt_params.insert("harmonic_amplitude".to_string(), params.harmonic_amplitude);
+        gt_params.insert("noise_amplitude".to_string(), params.noise_amplitude);
+        gt_params.insert("hnr_db".to_string(), hnr_db);
+
+        let ground_truth = TimeSeriesGroundTruth {
+            parameters: gt_params,
+            events: Vec::new(),
+            segments: Vec::new(),
+        };
+
+        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+    }
+
+    fn default_params() -> Self::Parameters {
+        BreathinessParams {
+            duration: 2.0,
+            sampling_rate: 16000.0,
+            harmonic_amplitude: 0.7,
+            noise_amplitude: 0.3,
+            fundamental_frequency: 120.0,
+        }
+    }
+
+    fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
+        if params.duration <= 0.0 {
+            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+        }
+        if params.sampling_rate < 8000.0 {
+            return Err(crate::GeneratorError::InvalidParameter("sampling_rate should be >= 8000 Hz".to_string()));
+        }
+        if params.fundamental_frequency <= 0.0 {
+            return Err(crate::GeneratorError::InvalidParameter("fundamental_frequency must be positive".to_string()));
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -345,6 +595,30 @@ mod tests {
     fn test_voice_tremor() {
         let generator = VoiceTremorGenerator;
         let params = VoiceTremorGenerator::default_params();
+        let result = generator.generate(&params, 42).unwrap();
+        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+    }
+
+    #[test]
+    fn test_vot_generation() {
+        let generator = VoiceOnsetTimeGenerator;
+        let params = VoiceOnsetTimeGenerator::default_params();
+        let result = generator.generate(&params, 42).unwrap();
+        assert_eq!(result.signal.len(), params.num_samples);
+    }
+
+    #[test]
+    fn test_vocal_fry_generation() {
+        let generator = VocalFryGenerator;
+        let params = VocalFryGenerator::default_params();
+        let result = generator.generate(&params, 42).unwrap();
+        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+    }
+
+    #[test]
+    fn test_breathiness_generation() {
+        let generator = BreathinessGenerator;
+        let params = BreathinessGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
         assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
     }

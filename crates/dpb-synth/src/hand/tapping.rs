@@ -355,6 +355,224 @@ impl SyntheticGenerator for FrequencyDecrementGenerator {
     }
 }
 
+/// Hesitation/arrest generator (freezing episodes)
+pub struct HesitationArrestGenerator;
+
+#[derive(Debug, Clone)]
+pub struct HesitationArrestParams {
+    pub duration: f64,
+    pub frame_rate: f64,
+    pub frequency: f64,
+    pub amplitude: f64,
+    pub arrest_probability: f64,  // Probability per tap of arrest
+    pub arrest_duration_mean: f64, // Mean duration of arrest (seconds)
+    pub arrest_duration_std: f64,  // Std deviation of arrest duration
+}
+
+impl SyntheticGenerator for HesitationArrestGenerator {
+    type Output = Vec<f64>;
+    type GroundTruth = SpatialGroundTruth;
+    type Parameters = HesitationArrestParams;
+
+    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+        Self::validate_params(params)?;
+
+        let n_frames = (params.duration * params.frame_rate) as usize;
+        let dt = 1.0 / params.frame_rate;
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+
+        let mut separation = Vec::with_capacity(n_frames);
+        let mut phase = 0.0;
+        let mut arrest_remaining = 0.0;
+        let mut events = Vec::new();
+
+        for i in 0..n_frames {
+            let t = i as f64 * dt;
+
+            // Check if in arrest state
+            if arrest_remaining > 0.0 {
+                // During arrest, movement is frozen
+                if let Some(&last_val) = separation.last() {
+                    separation.push(last_val);
+                } else {
+                    separation.push(0.0);
+                }
+                arrest_remaining -= dt;
+            } else {
+                // Normal tapping
+                phase += 2.0 * PI * params.frequency * dt;
+
+                let distance = if phase.rem_euclid(2.0 * PI) < PI {
+                    params.amplitude * (phase.rem_euclid(PI) / PI)
+                } else {
+                    params.amplitude * (1.0 - (phase.rem_euclid(2.0 * PI) - PI) / PI)
+                };
+
+                separation.push(distance);
+
+                // Check for arrest at tap completion
+                if distance < 0.1 && i > 0 && separation[i - 1] >= 0.1 {
+                    if rng.r#gen::<f64>() < params.arrest_probability {
+                        let duration_dist = Normal::new(params.arrest_duration_mean, params.arrest_duration_std).unwrap();
+                        arrest_remaining = duration_dist.sample(&mut rng).max(0.1);
+
+                        events.push(Event {
+                            time: t,
+                            event_type: "arrest".to_string(),
+                            amplitude: Some(arrest_remaining),
+                            attributes: HashMap::new(),
+                        });
+                    }
+                }
+            }
+        }
+
+        let mut joint_angles = HashMap::new();
+        joint_angles.insert("finger_flexion".to_string(), separation.clone());
+
+        let ground_truth = SpatialGroundTruth {
+            keypoints: Vec::new(),
+            joint_angles,
+            gait_phases: Vec::new(),
+        };
+
+        Ok(GeneratedData::new(separation, ground_truth, params.frame_rate)
+            .with_metadata("arrest_count".to_string(), events.len().to_string()))
+    }
+
+    fn default_params() -> Self::Parameters {
+        HesitationArrestParams {
+            duration: 10.0,
+            frame_rate: 60.0,
+            frequency: 4.0,
+            amplitude: 5.0,
+            arrest_probability: 0.15,
+            arrest_duration_mean: 1.0,
+            arrest_duration_std: 0.3,
+        }
+    }
+
+    fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
+        if params.duration <= 0.0 {
+            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+        }
+        if params.arrest_probability < 0.0 || params.arrest_probability > 1.0 {
+            return Err(crate::GeneratorError::InvalidParameter("arrest_probability must be 0-1".to_string()));
+        }
+        if params.arrest_duration_std < 0.0 {
+            return Err(crate::GeneratorError::InvalidParameter("arrest_duration_std must be non-negative".to_string()));
+        }
+        Ok(())
+    }
+}
+
+/// Tapping fatigue generator (progressive exhaustion)
+pub struct TappingFatigueGenerator;
+
+#[derive(Debug, Clone)]
+pub struct TappingFatigueParams {
+    pub duration: f64,
+    pub frame_rate: f64,
+    pub initial_frequency: f64,
+    pub initial_amplitude: f64,
+    pub fatigue_time_constant: f64,  // Time constant for exponential fatigue
+    pub rest_periods: Vec<(f64, f64)>, // Optional rest periods (start, duration)
+    pub recovery_rate: f64,            // Recovery during rest (0-1)
+}
+
+impl SyntheticGenerator for TappingFatigueGenerator {
+    type Output = Vec<f64>;
+    type GroundTruth = SpatialGroundTruth;
+    type Parameters = TappingFatigueParams;
+
+    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+        Self::validate_params(params)?;
+
+        let n_frames = (params.duration * params.frame_rate) as usize;
+        let dt = 1.0 / params.frame_rate;
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+
+        let mut separation = Vec::with_capacity(n_frames);
+        let mut phase = 0.0;
+        let mut fatigue_level = 0.0; // 0 = no fatigue, 1 = complete fatigue
+
+        for i in 0..n_frames {
+            let t = i as f64 * dt;
+
+            // Check if in rest period
+            let in_rest = params.rest_periods.iter().any(|(start, duration)| {
+                t >= *start && t < *start + *duration
+            });
+
+            if in_rest {
+                // Recovery during rest
+                fatigue_level = (fatigue_level - params.recovery_rate * dt).max(0.0);
+                // Maintain current position during rest
+                if let Some(&last_val) = separation.last() {
+                    separation.push(last_val);
+                } else {
+                    separation.push(0.0);
+                }
+            } else {
+                // Accumulate fatigue
+                fatigue_level = (fatigue_level + dt / params.fatigue_time_constant).min(1.0);
+
+                // Fatigue reduces both frequency and amplitude
+                let current_frequency = params.initial_frequency * (1.0 - 0.5 * fatigue_level);
+                let current_amplitude = params.initial_amplitude * (1.0 - 0.7 * fatigue_level);
+
+                phase += 2.0 * PI * current_frequency * dt;
+
+                let distance = if phase.rem_euclid(2.0 * PI) < PI {
+                    current_amplitude * (phase.rem_euclid(PI) / PI)
+                } else {
+                    current_amplitude * (1.0 - (phase.rem_euclid(2.0 * PI) - PI) / PI)
+                };
+
+                separation.push(distance);
+            }
+        }
+
+        let mut joint_angles = HashMap::new();
+        joint_angles.insert("finger_flexion".to_string(), separation.clone());
+        joint_angles.insert("fatigue_level".to_string(), vec![fatigue_level]);
+
+        let ground_truth = SpatialGroundTruth {
+            keypoints: Vec::new(),
+            joint_angles,
+            gait_phases: Vec::new(),
+        };
+
+        Ok(GeneratedData::new(separation, ground_truth, params.frame_rate)
+            .with_metadata("final_fatigue".to_string(), fatigue_level.to_string()))
+    }
+
+    fn default_params() -> Self::Parameters {
+        TappingFatigueParams {
+            duration: 30.0,
+            frame_rate: 60.0,
+            initial_frequency: 4.0,
+            initial_amplitude: 5.0,
+            fatigue_time_constant: 15.0,
+            rest_periods: vec![],
+            recovery_rate: 0.1,
+        }
+    }
+
+    fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
+        if params.duration <= 0.0 {
+            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+        }
+        if params.fatigue_time_constant <= 0.0 {
+            return Err(crate::GeneratorError::InvalidParameter("fatigue_time_constant must be positive".to_string()));
+        }
+        if params.recovery_rate < 0.0 || params.recovery_rate > 1.0 {
+            return Err(crate::GeneratorError::InvalidParameter("recovery_rate must be 0-1".to_string()));
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -389,5 +607,26 @@ mod tests {
         let last_max = last_quarter.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
 
         assert!(first_max > last_max, "Amplitude should decrease over time");
+    }
+
+    #[test]
+    fn test_hesitation_arrest() {
+        let generator = HesitationArrestGenerator;
+        let params = HesitationArrestGenerator::default_params();
+        let result = generator.generate(&params, 42).unwrap();
+        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+    }
+
+    #[test]
+    fn test_tapping_fatigue() {
+        let generator = TappingFatigueGenerator;
+        let params = TappingFatigueGenerator::default_params();
+        let result = generator.generate(&params, 42).unwrap();
+        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+
+        // Check that fatigue increases over time
+        let first_half_avg: f64 = result.signal[0..result.signal.len()/2].iter().sum::<f64>() / (result.signal.len()/2) as f64;
+        let second_half_avg: f64 = result.signal[result.signal.len()/2..].iter().sum::<f64>() / (result.signal.len()/2) as f64;
+        assert!(first_half_avg > second_half_avg, "Tapping should show fatigue over time");
     }
 }

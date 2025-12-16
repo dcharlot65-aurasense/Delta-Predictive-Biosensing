@@ -423,6 +423,145 @@ impl SyntheticGenerator for TremorModulationGenerator {
     }
 }
 
+/// Multi-axis tremor generator with correlation and phase relationships
+pub struct MultiAxisTremorGenerator;
+
+#[derive(Debug, Clone)]
+pub struct MultiAxisTremorParams {
+    pub duration: f64,
+    pub sampling_rate: f64,
+    pub frequency: f64,           // Hz (tremor frequency)
+    pub amplitude_x: f64,         // X-axis amplitude
+    pub amplitude_y: f64,         // Y-axis amplitude
+    pub amplitude_z: f64,         // Z-axis amplitude
+    pub xy_correlation: f64,      // -1 to 1 (correlation between X and Y)
+    pub xz_correlation: f64,      // -1 to 1 (correlation between X and Z)
+    pub yz_correlation: f64,      // -1 to 1 (correlation between Y and Z)
+    pub phase_x: f64,             // radians
+    pub phase_y: f64,             // radians
+    pub phase_z: f64,             // radians
+}
+
+impl SyntheticGenerator for MultiAxisTremorGenerator {
+    type Output = (Array1<f64>, Array1<f64>, Array1<f64>); // (X, Y, Z) axes
+    type GroundTruth = TimeSeriesGroundTruth;
+    type Parameters = MultiAxisTremorParams;
+
+    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+        Self::validate_params(params)?;
+
+        let n_samples = (params.duration * params.sampling_rate) as usize;
+        let dt = 1.0 / params.sampling_rate;
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+
+        // Create correlated noise components
+        let noise_std = Normal::new(0.0, 0.1).unwrap();
+        let mut independent_noise_x = Vec::with_capacity(n_samples);
+        let mut independent_noise_y = Vec::with_capacity(n_samples);
+        let mut independent_noise_z = Vec::with_capacity(n_samples);
+
+        for _ in 0..n_samples {
+            independent_noise_x.push(noise_std.sample(&mut rng));
+            independent_noise_y.push(noise_std.sample(&mut rng));
+            independent_noise_z.push(noise_std.sample(&mut rng));
+        }
+
+        // Generate correlated signals
+        let mut signal_x = Vec::with_capacity(n_samples);
+        let mut signal_y = Vec::with_capacity(n_samples);
+        let mut signal_z = Vec::with_capacity(n_samples);
+
+        for i in 0..n_samples {
+            let t = i as f64 * dt;
+
+            // Base sinusoidal components with phase relationships
+            let base_x = (2.0 * PI * params.frequency * t + params.phase_x).sin();
+            let base_y = (2.0 * PI * params.frequency * t + params.phase_y).sin();
+            let base_z = (2.0 * PI * params.frequency * t + params.phase_z).sin();
+
+            // Apply correlation structure using Cholesky-like decomposition
+            let x = params.amplitude_x * base_x + independent_noise_x[i];
+
+            let y = params.amplitude_y * base_y +
+                    params.xy_correlation * (params.amplitude_y / params.amplitude_x) * (x - independent_noise_x[i]) +
+                    (1.0 - params.xy_correlation.powi(2)).sqrt() * independent_noise_y[i];
+
+            let z_shared_x = params.xz_correlation * (params.amplitude_z / params.amplitude_x) * (x - independent_noise_x[i]);
+            let z_shared_y = params.yz_correlation * (params.amplitude_z / params.amplitude_y) *
+                            ((y - independent_noise_y[i]) - params.xy_correlation * (params.amplitude_y / params.amplitude_x) * (x - independent_noise_x[i])) /
+                            (1.0 - params.xy_correlation.powi(2)).sqrt();
+
+            let z_independent_var = 1.0 - params.xz_correlation.powi(2) - params.yz_correlation.powi(2);
+            let z = params.amplitude_z * base_z + z_shared_x + z_shared_y +
+                    z_independent_var.max(0.0).sqrt() * independent_noise_z[i];
+
+            signal_x.push(x);
+            signal_y.push(y);
+            signal_z.push(z);
+        }
+
+        let signal_x = Array1::from_vec(signal_x);
+        let signal_y = Array1::from_vec(signal_y);
+        let signal_z = Array1::from_vec(signal_z);
+
+        let mut gt_params = HashMap::new();
+        gt_params.insert("frequency".to_string(), params.frequency);
+        gt_params.insert("amplitude_x".to_string(), params.amplitude_x);
+        gt_params.insert("amplitude_y".to_string(), params.amplitude_y);
+        gt_params.insert("amplitude_z".to_string(), params.amplitude_z);
+        gt_params.insert("xy_correlation".to_string(), params.xy_correlation);
+        gt_params.insert("xz_correlation".to_string(), params.xz_correlation);
+        gt_params.insert("yz_correlation".to_string(), params.yz_correlation);
+        gt_params.insert("phase_x".to_string(), params.phase_x);
+        gt_params.insert("phase_y".to_string(), params.phase_y);
+        gt_params.insert("phase_z".to_string(), params.phase_z);
+
+        let ground_truth = TimeSeriesGroundTruth {
+            parameters: gt_params,
+            events: Vec::new(),
+            segments: Vec::new(),
+        };
+
+        Ok(GeneratedData::new((signal_x, signal_y, signal_z), ground_truth, params.sampling_rate))
+    }
+
+    fn default_params() -> Self::Parameters {
+        MultiAxisTremorParams {
+            duration: 10.0,
+            sampling_rate: 100.0,
+            frequency: 5.0,
+            amplitude_x: 2.0,
+            amplitude_y: 1.5,
+            amplitude_z: 1.0,
+            xy_correlation: 0.7,   // Strong X-Y correlation (typical)
+            xz_correlation: 0.3,   // Moderate X-Z correlation
+            yz_correlation: 0.4,   // Moderate Y-Z correlation
+            phase_x: 0.0,
+            phase_y: PI / 4.0,     // 45° phase shift
+            phase_z: PI / 2.0,     // 90° phase shift
+        }
+    }
+
+    fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
+        if params.duration <= 0.0 {
+            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+        }
+        if params.sampling_rate <= 0.0 {
+            return Err(crate::GeneratorError::InvalidParameter("sampling_rate must be positive".to_string()));
+        }
+        if params.xy_correlation.abs() > 1.0 || params.xz_correlation.abs() > 1.0 || params.yz_correlation.abs() > 1.0 {
+            return Err(crate::GeneratorError::InvalidParameter("correlations must be in [-1, 1]".to_string()));
+        }
+        // Check if correlation matrix is valid (positive semi-definite)
+        let det = 1.0 + 2.0 * params.xy_correlation * params.xz_correlation * params.yz_correlation
+                  - params.xy_correlation.powi(2) - params.xz_correlation.powi(2) - params.yz_correlation.powi(2);
+        if det < -1e-10 {
+            return Err(crate::GeneratorError::InvalidParameter("correlation matrix is not valid (not positive semi-definite)".to_string()));
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -449,5 +588,18 @@ mod tests {
         let params = CerebellarTremorGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
         assert!(!result.ground_truth.segments.is_empty());
+    }
+
+    #[test]
+    fn test_multi_axis_tremor() {
+        let generator = MultiAxisTremorGenerator;
+        let params = MultiAxisTremorGenerator::default_params();
+        let result = generator.generate(&params, 42).unwrap();
+
+        let (x, y, z) = result.signal;
+        let expected_len = (params.duration * params.sampling_rate) as usize;
+        assert_eq!(x.len(), expected_len);
+        assert_eq!(y.len(), expected_len);
+        assert_eq!(z.len(), expected_len);
     }
 }
