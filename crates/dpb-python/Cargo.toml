@@ -1,0 +1,25 @@
+[package]
+name = "dpb-python"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Python bindings for DPB Framework"
+
+[lib]
+name = "dpb"
+crate-type = ["cdylib"]
+
+[dependencies]
+dpb-core.workspace = true
+dpb-encoders.workspace = true
+dpb-neurons.workspace = true
+dpb-snn.workspace = true
+dpb-synth.workspace = true
+pyo3.workspace = true
+numpy.workspace = true
+ndarray.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+pyo3 = { workspace = true, features = ["auto-initialize"] }

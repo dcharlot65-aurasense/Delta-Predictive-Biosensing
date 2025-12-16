@@ -1,0 +1,26 @@
+[package]
+name = "dpb-snn"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Spiking neural network architectures and training"
+
+[dependencies]
+dpb-core.workspace = true
+dpb-neurons.workspace = true
+dpb-encoders.workspace = true
+ndarray.workspace = true
+nalgebra.workspace = true
+wgpu.workspace = true
+bytemuck.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+rayon.workspace = true
+rand.workspace = true
+rand_distr.workspace = true
+
+[dev-dependencies]
+approx.workspace = true
+criterion.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
