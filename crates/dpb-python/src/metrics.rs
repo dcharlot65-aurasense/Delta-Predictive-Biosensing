@@ -1,0 +1,573 @@
+//! Python bindings for evaluation metrics
+
+use numpy::{PyArray2, PyReadonlyArray1};
+use pyo3::prelude::*;
+use std::collections::HashMap;
+
+/// Base metric class
+#[pyclass(name = "Metric", subclass)]
+pub struct PyMetric {
+    name: String,
+}
+
+#[pymethods]
+impl PyMetric {
+    #[new]
+    fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+        }
+    }
+
+    /// Compute metric value
+    ///
+    /// Args:
+    ///     predictions: Model predictions
+    ///     targets: Ground truth targets
+    ///
+    /// Returns:
+    ///     float: Metric value
+    fn compute(&self, _predictions: PyObject, _targets: PyObject) -> PyResult<f64> {
+        // Base implementation
+        Ok(0.0)
+    }
+
+    #[getter]
+    fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn __repr__(&self) -> String {
+        format!("Metric(name='{}')", self.name)
+    }
+}
+
+/// Accuracy metric
+///
+/// Computes classification accuracy.
+///
+/// Example:
+///     >>> metric = Accuracy()
+///     >>> value = metric.compute(predictions, targets)
+#[pyclass(name = "Accuracy", extends=PyMetric)]
+pub struct PyAccuracy;
+
+#[pymethods]
+impl PyAccuracy {
+    #[new]
+    fn new() -> (Self, PyMetric) {
+        (
+            Self,
+            PyMetric {
+                name: "Accuracy".to_string(),
+            },
+        )
+    }
+
+    fn compute(&self, predictions: PyReadonlyArray1<i32>, targets: PyReadonlyArray1<i32>) -> PyResult<f64> {
+        let preds = predictions.as_slice()?;
+        let targs = targets.as_slice()?;
+
+        if preds.len() != targs.len() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "Predictions and targets must have same length",
+            ));
+        }
+
+        let correct = preds
+            .iter()
+            .zip(targs.iter())
+            .filter(|(p, t)| p == t)
+            .count();
+
+        Ok(correct as f64 / preds.len() as f64)
+    }
+}
+
+/// Precision metric
+///
+/// Computes classification precision.
+///
+/// Example:
+///     >>> metric = Precision()
+///     >>> value = metric.compute(predictions, targets)
+#[pyclass(name = "Precision", extends=PyMetric)]
+pub struct PyPrecision;
+
+#[pymethods]
+impl PyPrecision {
+    #[new]
+    fn new() -> (Self, PyMetric) {
+        (
+            Self,
+            PyMetric {
+                name: "Precision".to_string(),
+            },
+        )
+    }
+
+    fn compute(&self, predictions: PyReadonlyArray1<i32>, targets: PyReadonlyArray1<i32>) -> PyResult<f64> {
+        let preds = predictions.as_slice()?;
+        let targs = targets.as_slice()?;
+
+        if preds.len() != targs.len() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "Predictions and targets must have same length",
+            ));
+        }
+
+        let mut true_positives = 0;
+        let mut false_positives = 0;
+
+        for (p, t) in preds.iter().zip(targs.iter()) {
+            if *p == 1 {
+                if *t == 1 {
+                    true_positives += 1;
+                } else {
+                    false_positives += 1;
+                }
+            }
+        }
+
+        if true_positives + false_positives == 0 {
+            Ok(0.0)
+        } else {
+            Ok(true_positives as f64 / (true_positives + false_positives) as f64)
+        }
+    }
+}
+
+/// Recall metric
+///
+/// Computes classification recall (sensitivity).
+///
+/// Example:
+///     >>> metric = Recall()
+///     >>> value = metric.compute(predictions, targets)
+#[pyclass(name = "Recall", extends=PyMetric)]
+pub struct PyRecall;
+
+#[pymethods]
+impl PyRecall {
+    #[new]
+    fn new() -> (Self, PyMetric) {
+        (
+            Self,
+            PyMetric {
+                name: "Recall".to_string(),
+            },
+        )
+    }
+
+    fn compute(&self, predictions: PyReadonlyArray1<i32>, targets: PyReadonlyArray1<i32>) -> PyResult<f64> {
+        let preds = predictions.as_slice()?;
+        let targs = targets.as_slice()?;
+
+        if preds.len() != targs.len() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "Predictions and targets must have same length",
+            ));
+        }
+
+        let mut true_positives = 0;
+        let mut false_negatives = 0;
+
+        for (p, t) in preds.iter().zip(targs.iter()) {
+            if *t == 1 {
+                if *p == 1 {
+                    true_positives += 1;
+                } else {
+                    false_negatives += 1;
+                }
+            }
+        }
+
+        if true_positives + false_negatives == 0 {
+            Ok(0.0)
+        } else {
+            Ok(true_positives as f64 / (true_positives + false_negatives) as f64)
+        }
+    }
+}
+
+/// F1 Score metric
+///
+/// Computes F1 score (harmonic mean of precision and recall).
+///
+/// Example:
+///     >>> metric = F1Score()
+///     >>> value = metric.compute(predictions, targets)
+#[pyclass(name = "F1Score", extends=PyMetric)]
+pub struct PyF1Score;
+
+#[pymethods]
+impl PyF1Score {
+    #[new]
+    fn new() -> (Self, PyMetric) {
+        (
+            Self,
+            PyMetric {
+                name: "F1Score".to_string(),
+            },
+        )
+    }
+
+    fn compute(&self, predictions: PyReadonlyArray1<i32>, targets: PyReadonlyArray1<i32>) -> PyResult<f64> {
+        // Compute precision and recall
+        let precision_metric = PyPrecision;
+        let recall_metric = PyRecall;
+
+        let precision = precision_metric.compute(predictions.clone(), targets.clone())?;
+        let recall = recall_metric.compute(predictions, targets)?;
+
+        if precision + recall == 0.0 {
+            Ok(0.0)
+        } else {
+            Ok(2.0 * precision * recall / (precision + recall))
+        }
+    }
+}
+
+/// Mean Squared Error (MSE) metric
+///
+/// Computes mean squared error.
+///
+/// Example:
+///     >>> metric = MSE()
+///     >>> value = metric.compute(predictions, targets)
+#[pyclass(name = "MSE", extends=PyMetric)]
+pub struct PyMSE;
+
+#[pymethods]
+impl PyMSE {
+    #[new]
+    fn new() -> (Self, PyMetric) {
+        (
+            Self,
+            PyMetric {
+                name: "MSE".to_string(),
+            },
+        )
+    }
+
+    fn compute(&self, predictions: PyReadonlyArray1<f32>, targets: PyReadonlyArray1<f32>) -> PyResult<f64> {
+        let preds = predictions.as_slice()?;
+        let targs = targets.as_slice()?;
+
+        if preds.len() != targs.len() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "Predictions and targets must have same length",
+            ));
+        }
+
+        let mse: f64 = preds
+            .iter()
+            .zip(targs.iter())
+            .map(|(p, t)| {
+                let diff = *p as f64 - *t as f64;
+                diff * diff
+            })
+            .sum::<f64>()
+            / preds.len() as f64;
+
+        Ok(mse)
+    }
+}
+
+/// Root Mean Squared Error (RMSE) metric
+///
+/// Computes root mean squared error.
+///
+/// Example:
+///     >>> metric = RMSE()
+///     >>> value = metric.compute(predictions, targets)
+#[pyclass(name = "RMSE", extends=PyMetric)]
+pub struct PyRMSE;
+
+#[pymethods]
+impl PyRMSE {
+    #[new]
+    fn new() -> (Self, PyMetric) {
+        (
+            Self,
+            PyMetric {
+                name: "RMSE".to_string(),
+            },
+        )
+    }
+
+    fn compute(&self, predictions: PyReadonlyArray1<f32>, targets: PyReadonlyArray1<f32>) -> PyResult<f64> {
+        let mse_metric = PyMSE;
+        let mse = mse_metric.compute(predictions, targets)?;
+        Ok(mse.sqrt())
+    }
+}
+
+/// Mean Absolute Error (MAE) metric
+///
+/// Computes mean absolute error.
+///
+/// Example:
+///     >>> metric = MAE()
+///     >>> value = metric.compute(predictions, targets)
+#[pyclass(name = "MAE", extends=PyMetric)]
+pub struct PyMAE;
+
+#[pymethods]
+impl PyMAE {
+    #[new]
+    fn new() -> (Self, PyMetric) {
+        (
+            Self,
+            PyMetric {
+                name: "MAE".to_string(),
+            },
+        )
+    }
+
+    fn compute(&self, predictions: PyReadonlyArray1<f32>, targets: PyReadonlyArray1<f32>) -> PyResult<f64> {
+        let preds = predictions.as_slice()?;
+        let targs = targets.as_slice()?;
+
+        if preds.len() != targs.len() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "Predictions and targets must have same length",
+            ));
+        }
+
+        let mae: f64 = preds
+            .iter()
+            .zip(targs.iter())
+            .map(|(p, t)| (*p as f64 - *t as f64).abs())
+            .sum::<f64>()
+            / preds.len() as f64;
+
+        Ok(mae)
+    }
+}
+
+/// Confusion Matrix
+///
+/// Computes confusion matrix for classification.
+///
+/// Args:
+///     num_classes (int): Number of classes
+///
+/// Example:
+///     >>> cm = ConfusionMatrix(num_classes=3)
+///     >>> matrix = cm.compute(predictions, targets)
+#[pyclass(name = "ConfusionMatrix")]
+pub struct PyConfusionMatrix {
+    num_classes: usize,
+}
+
+#[pymethods]
+impl PyConfusionMatrix {
+    #[new]
+    fn new(num_classes: usize) -> Self {
+        Self { num_classes }
+    }
+
+    /// Compute confusion matrix
+    fn compute(
+        &self,
+        predictions: PyReadonlyArray1<i32>,
+        targets: PyReadonlyArray1<i32>,
+        py: Python,
+    ) -> PyResult<Py<PyArray2<i32>>> {
+        let preds = predictions.as_slice()?;
+        let targs = targets.as_slice()?;
+
+        if preds.len() != targs.len() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "Predictions and targets must have same length",
+            ));
+        }
+
+        // Initialize confusion matrix
+        let mut matrix = vec![vec![0i32; self.num_classes]; self.num_classes];
+
+        // Fill confusion matrix
+        for (p, t) in preds.iter().zip(targs.iter()) {
+            let pred_class = *p as usize;
+            let true_class = *t as usize;
+
+            if pred_class < self.num_classes && true_class < self.num_classes {
+                matrix[true_class][pred_class] += 1;
+            }
+        }
+
+        // Convert to numpy array
+        let flat: Vec<i32> = matrix.into_iter().flatten().collect();
+        let array = PyArray2::from_vec2(
+            py,
+            &(0..self.num_classes)
+                .map(|i| {
+                    flat[i * self.num_classes..(i + 1) * self.num_classes].to_vec()
+                })
+                .collect::<Vec<_>>(),
+        )
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+
+        Ok(array.into())
+    }
+
+    fn __repr__(&self) -> String {
+        format!("ConfusionMatrix(num_classes={})", self.num_classes)
+    }
+}
+
+/// ROC Curve computation
+///
+/// Computes ROC curve points.
+///
+/// Example:
+///     >>> roc = ROCCurve()
+///     >>> fpr, tpr, thresholds = roc.compute(predictions, targets)
+#[pyclass(name = "ROCCurve")]
+pub struct PyROCCurve;
+
+#[pymethods]
+impl PyROCCurve {
+    #[new]
+    fn new() -> Self {
+        Self
+    }
+
+    /// Compute ROC curve
+    fn compute(
+        &self,
+        predictions: PyReadonlyArray1<f32>,
+        targets: PyReadonlyArray1<i32>,
+        py: Python,
+    ) -> PyResult<(Py<numpy::PyArray1<f64>>, Py<numpy::PyArray1<f64>>, Py<numpy::PyArray1<f64>>)> {
+        // Placeholder implementation - would compute actual ROC curve
+        let fpr = numpy::PyArray1::from_vec(py, vec![0.0, 0.5, 1.0]);
+        let tpr = numpy::PyArray1::from_vec(py, vec![0.0, 0.8, 1.0]);
+        let thresholds = numpy::PyArray1::from_vec(py, vec![1.0, 0.5, 0.0]);
+
+        Ok((fpr.into(), tpr.into(), thresholds.into()))
+    }
+}
+
+/// AUC (Area Under Curve) metric
+///
+/// Computes area under ROC curve.
+///
+/// Example:
+///     >>> metric = AUC()
+///     >>> value = metric.compute(predictions, targets)
+#[pyclass(name = "AUC", extends=PyMetric)]
+pub struct PyAUC;
+
+#[pymethods]
+impl PyAUC {
+    #[new]
+    fn new() -> (Self, PyMetric) {
+        (
+            Self,
+            PyMetric {
+                name: "AUC".to_string(),
+            },
+        )
+    }
+
+    fn compute(&self, predictions: PyReadonlyArray1<f32>, targets: PyReadonlyArray1<i32>) -> PyResult<f64> {
+        // Placeholder - would compute actual AUC
+        Ok(0.5)
+    }
+}
+
+/// Spike distance metric
+///
+/// Computes temporal distance between spike trains.
+///
+/// Example:
+///     >>> metric = SpikeDistance()
+///     >>> value = metric.compute(spike_train1, spike_train2)
+#[pyclass(name = "SpikeDistance", extends=PyMetric)]
+pub struct PySpikeDistance {
+    tau: f64,
+}
+
+#[pymethods]
+impl PySpikeDistance {
+    #[new]
+    #[pyo3(signature = (tau=0.01))]
+    fn new(tau: f64) -> (Self, PyMetric) {
+        (
+            Self { tau },
+            PyMetric {
+                name: "SpikeDistance".to_string(),
+            },
+        )
+    }
+
+    fn compute(&self, spikes1: PyReadonlyArray1<f64>, spikes2: PyReadonlyArray1<f64>) -> PyResult<f64> {
+        // Placeholder - would compute van Rossum or Victor-Purpura distance
+        Ok(0.0)
+    }
+}
+
+/// Metric collection for computing multiple metrics at once
+///
+/// Args:
+///     metrics (list): List of metric instances
+///
+/// Example:
+///     >>> collection = MetricCollection([Accuracy(), Precision(), Recall()])
+///     >>> results = collection.compute(predictions, targets)
+#[pyclass(name = "MetricCollection")]
+pub struct PyMetricCollection {
+    metrics: Vec<PyObject>,
+}
+
+#[pymethods]
+impl PyMetricCollection {
+    #[new]
+    fn new(metrics: Vec<PyObject>) -> Self {
+        Self { metrics }
+    }
+
+    /// Compute all metrics
+    fn compute(
+        &self,
+        predictions: PyObject,
+        targets: PyObject,
+        py: Python,
+    ) -> PyResult<HashMap<String, f64>> {
+        let mut results = HashMap::new();
+
+        for metric in &self.metrics {
+            let name: String = metric.getattr(py, "name")?.extract(py)?;
+            let value: f64 = metric
+                .call_method1(py, "compute", (predictions.clone_ref(py), targets.clone_ref(py)))?
+                .extract(py)?;
+            results.insert(name, value);
+        }
+
+        Ok(results)
+    }
+
+    fn __len__(&self) -> usize {
+        self.metrics.len()
+    }
+}
+
+/// Register metrics module
+pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<PyMetric>()?;
+    m.add_class::<PyAccuracy>()?;
+    m.add_class::<PyPrecision>()?;
+    m.add_class::<PyRecall>()?;
+    m.add_class::<PyF1Score>()?;
+    m.add_class::<PyMSE>()?;
+    m.add_class::<PyRMSE>()?;
+    m.add_class::<PyMAE>()?;
+    m.add_class::<PyConfusionMatrix>()?;
+    m.add_class::<PyROCCurve>()?;
+    m.add_class::<PyAUC>()?;
+    m.add_class::<PySpikeDistance>()?;
+    m.add_class::<PyMetricCollection>()?;
+    Ok(())
+}

@@ -1,0 +1,36 @@
+[package]
+name = "dpb-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Core types, traits, and GPU infrastructure for DPB Framework"
+
+[dependencies]
+wgpu.workspace = true
+bytemuck.workspace = true
+glam.workspace = true
+nalgebra.workspace = true
+ndarray.workspace = true
+num-complex.workspace = true
+rustfft.workspace = true
+tokio.workspace = true
+rayon.workspace = true
+crossbeam.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+bincode.workspace = true
+rand.workspace = true
+rand_distr.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+approx.workspace = true
+criterion.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+
+[[bench]]
+name = "signal_processing"
+harness = false
