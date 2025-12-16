@@ -487,9 +487,10 @@ impl QuantizedLifNeuron {
 
     /// Quantize value to configured bit width.
     fn quantize(&self, value: i16) -> i16 {
-        let max_val = (1 << (self.config.bit_width - 1)) - 1;
-        let min_val = -(1 << (self.config.bit_width - 1));
-        value.clamp(min_val, max_val)
+        // Use i32 to avoid overflow for 16-bit width
+        let max_val: i32 = (1_i32 << (self.config.bit_width - 1)) - 1;
+        let min_val: i32 = -(1_i32 << (self.config.bit_width - 1));
+        (value as i32).clamp(min_val, max_val) as i16
     }
 
     /// Get memory footprint in bytes.
@@ -596,8 +597,10 @@ mod tests {
         let mut neuron = PulsarLifNeuron::new(PulsarLifConfig::default());
         assert_eq!(neuron.state.v, 0);
 
-        neuron.update(100.0, 1.0);
-        assert!(neuron.state.v > 0);
+        // Use smaller input that doesn't trigger spike (threshold is 1000)
+        // input_int = (50.0 * 10.0) = 500
+        neuron.update(50.0, 1.0);
+        assert!(neuron.state.v > 0, "Voltage should increase with sub-threshold input");
     }
 
     #[test]
@@ -615,7 +618,8 @@ mod tests {
 
     #[test]
     fn test_quantized_lif() {
-        let mut neuron = QuantizedLifNeuron::new(QuantizedLifConfig::default());
+        // Use 16-bit config to properly test Q8.8 conversion
+        let mut neuron = QuantizedLifNeuron::new(QuantizedLifConfig::bit16());
 
         // Test Q8.8 conversion
         neuron.set_membrane_potential(1.5);

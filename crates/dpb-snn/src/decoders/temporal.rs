@@ -214,7 +214,7 @@ impl ISIDecoder {
         let spike_times: Vec<usize> = spike_train
             .iter()
             .enumerate()
-            .filter(|(_, &s)| s > 0.5)
+            .filter(|(_, s)| **s > 0.5)
             .map(|(t, _)| t)
             .collect();
 
@@ -288,7 +288,7 @@ impl BurstDecoder {
         let spike_times: Vec<usize> = spike_train
             .iter()
             .enumerate()
-            .filter(|(_, &s)| s > 0.5)
+            .filter(|(_, s)| **s > 0.5)
             .map(|(t, _)| t)
             .collect();
 

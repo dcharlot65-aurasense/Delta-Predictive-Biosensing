@@ -263,7 +263,7 @@ impl LossFunction for TemporalCrossEntropy {
         );
 
         // Compute temporally-weighted spike rates
-        let mut weighted_rates = Array2::zeros((batch_size, num_neurons));
+        let mut weighted_rates: Array2<f32> = Array2::zeros((batch_size, num_neurons));
         for b in 0..batch_size {
             for n in 0..num_neurons {
                 for t in 0..num_steps.min(self.temporal_kernel.len()) {

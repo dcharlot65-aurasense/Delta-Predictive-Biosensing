@@ -18,7 +18,7 @@
 //!
 //! fn example() -> Result<()> {
 //!     // Create a spike event
-//!     let event = SpikeEvent::new(0.001, 5, 1, 1.0)?;
+//!     let event = SpikeEvent::new(0.001, 5, 1, 1.0);
 //!
 //!     // Build a spike train
 //!     let mut train = SpikeTrain::new(10);
@@ -61,7 +61,7 @@ pub use error::{DpbError, Result};
 
 // Re-export core types at crate root for convenience
 pub use types::{
-    Context, GroundTruth, Modality, SignalQuality, SpikeEvent, SpikeTrain, TimeSeries,
+    Context, GroundTruth, Modality, SignalBuffer, SignalQuality, SpikeEvent, SpikeTrain, TimeSeries,
 };
 
 // Re-export core traits at crate root
@@ -75,8 +75,20 @@ pub use traits::{
 // Re-export tensor types
 pub use tensor::SpikeTensor;
 
-// Type alias for signal buffer (Vec of samples)
-pub type SignalBuffer = Vec<f32>;
+// Implement Signal trait for SignalBuffer
+impl traits::Signal for types::SignalBuffer {
+    fn samples(&self) -> &[f32] {
+        &self.data
+    }
+
+    fn sample_rate(&self) -> f64 {
+        self.sample_rate
+    }
+
+    fn channels(&self) -> usize {
+        self.num_channels
+    }
+}
 
 /// Prelude module for convenient imports.
 pub mod prelude {

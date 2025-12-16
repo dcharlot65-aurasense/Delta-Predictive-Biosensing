@@ -302,7 +302,7 @@ impl BodySwayEncoder {
         let mean_x = positions.iter().map(|p| p.0).sum::<f32>() / positions.len() as f32;
         let mean_y = positions.iter().map(|p| p.1).sum::<f32>() / positions.len() as f32;
 
-        let mut max_dist = 0.0;
+        let mut max_dist = 0.0f32;
         for pos in positions {
             let dx = pos.0 - mean_x;
             let dy = pos.1 - mean_y;

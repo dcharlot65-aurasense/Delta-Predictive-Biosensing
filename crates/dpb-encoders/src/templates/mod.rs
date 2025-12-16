@@ -124,17 +124,20 @@ impl Default for TemplateRegistry {
 
 /// Helper function to create a context from demographic data
 pub fn create_context(
-    age: Option<f32>,
+    age: Option<f64>,
     sex: Option<&str>,
-    height_cm: Option<f32>,
-    weight_kg: Option<f32>,
+    height_cm: Option<f64>,
+    weight_kg: Option<f64>,
 ) -> Context {
     Context {
         age,
         sex: sex.map(|s| s.to_string()),
         height_cm,
         weight_kg,
-        metadata: std::collections::HashMap::new(),
+        medications: Vec::new(),
+        environment: std::collections::HashMap::new(),
+        device: std::collections::HashMap::new(),
+        custom: std::collections::HashMap::new(),
     }
 }
 

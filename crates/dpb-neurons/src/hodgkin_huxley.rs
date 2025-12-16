@@ -631,8 +631,9 @@ mod tests {
         let mut neuron = MorrisLecarNeuron::new(MorrisLecarConfig::default());
         let mut spike_count = 0;
 
+        // Morris-Lecar needs sufficient current to overcome K+ conductance
         for _ in 0..2000 {
-            if neuron.update(50.0, 0.1) {
+            if neuron.update(100.0, 0.1) {
                 spike_count += 1;
             }
         }

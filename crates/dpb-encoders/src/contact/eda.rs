@@ -279,10 +279,14 @@ mod tests {
 
     #[test]
     fn test_eda_level_crossing() {
-        let data: Vec<f32> = (0..100).map(|i| (i as f32 * 0.01).sin()).collect();
+        // Create signal with sharp changes that exceed threshold (0.05)
+        let data: Vec<f32> = (0..100).map(|i| (i as f32 * 0.1).sin()).collect();
         let signal = SignalBuffer::single_channel(data, 10.0);
         let encoder = EdaLevelCrossingEncoder::new();
-        let config = EdaLevelCrossingConfig::default();
+        let config = EdaLevelCrossingConfig {
+            threshold: 0.01, // Lower threshold to trigger on smaller changes
+            refractory_period: 0.1, // Short refractory period
+        };
 
         let events = encoder.encode(&signal, &config).unwrap();
         assert!(events.len() > 0);

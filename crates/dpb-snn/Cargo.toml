@@ -10,11 +10,12 @@ description = "Spiking neural network architectures and training"
 dpb-core.workspace = true
 dpb-neurons.workspace = true
 dpb-encoders.workspace = true
-ndarray.workspace = true
+ndarray = { version = "0.16", features = ["serde"] }
 nalgebra.workspace = true
 wgpu.workspace = true
 bytemuck.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 rayon.workspace = true
 rand.workspace = true

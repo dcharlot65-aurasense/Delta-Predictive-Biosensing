@@ -1,8 +1,8 @@
 //! ANN-to-SNN conversion utilities
 
 use crate::{
-    architectures::FeedforwardSNN,
-    layers::SpikingLinear,
+    architectures::{FeedforwardSNN, SNNArchitecture},
+    layers::{SpikingLayer, SpikingLinear},
     SNNConfig, SNNError, SNNResult, SpikeTensor,
 };
 use ndarray::{Array1, Array2, Array3};
@@ -194,16 +194,16 @@ impl ThresholdBalancing {
             }
             ThresholdBalancing::LayerWise => {
                 // Scale based on maximum weight per output neuron
-                let mut max_incoming = 0.0;
+                let mut max_incoming = 0.0f32;
                 for i in 0..weights.shape()[0] {
                     let row_sum: f32 = weights.row(i).iter().map(|x| x.abs()).sum();
                     max_incoming = max_incoming.max(row_sum);
                 }
 
-                if max_incoming > 0.0 {
-                    1.0 / max_incoming
+                if max_incoming > 0.0f32 {
+                    1.0f32 / max_incoming
                 } else {
-                    1.0
+                    1.0f32
                 }
             }
         }

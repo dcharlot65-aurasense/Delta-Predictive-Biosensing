@@ -120,8 +120,10 @@ impl SrmNeuron {
             // Limit case when time constants are equal
             (t / tau_syn) * (-t / tau_syn).exp()
         } else {
-            let norm = 1.0 / (tau_syn - tau_mem);
-            norm * ((-t / tau_mem).exp() - (-t / tau_syn).exp())
+            // Standard SRM epsilon kernel formula
+            // Ensure positive response for t > 0
+            let norm = tau_mem * tau_syn / (tau_mem - tau_syn);
+            ((-t / tau_mem).exp() - (-t / tau_syn).exp()) * norm / tau_mem
         }
     }
 
@@ -195,14 +197,16 @@ impl NeuronModel for SrmNeuron {
     type Config = SrmConfig;
 
     fn update(&mut self, input_current: f32, dt: f32) -> bool {
-        self.state.current_time += dt;
-
         // Convert input current to spike-like input (simple approximation)
+        // Add spike at current time BEFORE incrementing
         if input_current > 0.0 {
             self.add_input_spike(input_current * dt);
         }
 
-        // Compute potential from kernels
+        // Increment time after adding spikes
+        self.state.current_time += dt;
+
+        // Compute potential from kernels (now spikes have dt > 0)
         self.state.v = self.compute_potential();
 
         // Prune old spikes periodically

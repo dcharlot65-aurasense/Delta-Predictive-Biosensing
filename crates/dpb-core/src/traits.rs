@@ -1,7 +1,7 @@
 //! Core traits for the DPB framework.
 
 use crate::error::Result;
-use crate::types::{GroundTruth, SpikeTrain, TimeSeries};
+use crate::types::{Context, GroundTruth, SpikeEvent, SpikeTrain, TimeSeries};
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
@@ -9,20 +9,36 @@ use std::collections::HashMap;
 
 /// Trait for signal data types.
 pub trait Signal: Send + Sync {
-    /// Returns the signal samples.
-    fn samples(&self) -> ArrayView2<f64>;
+    /// Returns the signal samples as a slice.
+    fn samples(&self) -> &[f32];
 
     /// Returns the sample rate in Hz.
     fn sample_rate(&self) -> f64;
 
     /// Returns the duration in seconds.
     fn duration(&self) -> f64 {
-        self.samples().shape()[1] as f64 / self.sample_rate()
+        self.samples().len() as f64 / self.sample_rate()
     }
 
     /// Returns the number of channels.
     fn channels(&self) -> usize {
-        self.samples().shape()[0]
+        1 // Default single channel
+    }
+
+    /// Returns the number of channels (alias for channels()).
+    fn channel_count(&self) -> usize {
+        self.channels()
+    }
+
+    /// Returns samples for a specific channel.
+    /// For single-channel signals, channel 0 returns all samples, others return None.
+    /// For multi-channel signals, this should be overridden.
+    fn channel(&self, channel_idx: usize) -> Option<&[f32]> {
+        if channel_idx == 0 {
+            Some(self.samples())
+        } else {
+            None
+        }
     }
 }
 
@@ -34,8 +50,8 @@ pub trait EventEncoder: Send + Sync {
     /// Returns the name of this encoder.
     fn name(&self) -> &str;
 
-    /// Encodes a signal to a spike train.
-    fn encode(&self, signal: &dyn Signal) -> Result<SpikeTrain>;
+    /// Encodes a signal to spike events using the provided configuration.
+    fn encode(&self, signal: &dyn Signal, config: &Self::Config) -> Result<Vec<SpikeEvent>>;
 
     /// Returns the ground truth for encoded data (if applicable).
     fn ground_truth(&self) -> Option<&GroundTruth> {
@@ -44,23 +60,28 @@ pub trait EventEncoder: Send + Sync {
 }
 
 /// Trait for population-based encoding templates.
+///
+/// Population templates provide clinical reference values based on demographic context
+/// (age, sex, etc.) for biosignal analysis.
 pub trait PopulationTemplate: Send + Sync {
     /// Returns the name of this template.
     fn name(&self) -> &str;
 
-    /// Returns the expected value at a given input.
-    fn expected_value(&self, input: f64) -> f64;
+    /// Returns the expected value based on demographic context.
+    fn expected_value(&self, context: &Context) -> f64;
 
-    /// Returns the variance at a given input.
-    fn variance(&self, input: f64) -> f64;
+    /// Returns the variance based on demographic context.
+    fn variance(&self, context: &Context) -> f64;
 
-    /// Returns the standard deviation at a given input.
-    fn deviation(&self, input: f64) -> f64 {
-        self.variance(input).sqrt()
+    /// Returns the standard deviation based on demographic context.
+    fn deviation(&self, context: &Context) -> f64 {
+        self.variance(context).sqrt()
     }
 
-    /// Returns the number of neurons in the population.
-    fn population_size(&self) -> usize;
+    /// Returns the number of neurons in the population (default: 1).
+    fn population_size(&self) -> usize {
+        1
+    }
 }
 
 /// Trait for membrane dynamics models.
@@ -312,29 +333,35 @@ mod tests {
 
     // Mock implementations for testing
     struct MockSignal {
-        data: Array2<f64>,
-        sample_rate: f64,
+        data: Vec<f32>,
+        rate: f64,
+        num_channels: usize,
     }
 
     impl Signal for MockSignal {
-        fn samples(&self) -> ArrayView2<f64> {
-            self.data.view()
+        fn samples(&self) -> &[f32] {
+            &self.data
         }
 
         fn sample_rate(&self) -> f64 {
-            self.sample_rate
+            self.rate
+        }
+
+        fn channels(&self) -> usize {
+            self.num_channels
         }
     }
 
     #[test]
     fn test_signal_trait() {
-        let data = Array2::zeros((3, 1000));
+        let data = vec![0.0_f32; 1000];
         let signal = MockSignal {
             data,
-            sample_rate: 100.0,
+            rate: 100.0,
+            num_channels: 1,
         };
 
-        assert_eq!(signal.channels(), 3);
+        assert_eq!(signal.channels(), 1);
         assert_eq!(signal.duration(), 10.0);
     }
 

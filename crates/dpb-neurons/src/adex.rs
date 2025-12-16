@@ -314,9 +314,9 @@ mod tests {
         let mut neuron = AdExNeuron::new(AdExConfig::default());
         let mut spike_count = 0;
 
-        // Apply strong current
-        for _ in 0..500 {
-            if neuron.update(500.0, 0.1) {
+        // Apply strong current (needs to exceed rheobase ~600 pA for default params)
+        for _ in 0..1000 {
+            if neuron.update(800.0, 0.1) {
                 spike_count += 1;
             }
         }
@@ -329,9 +329,9 @@ mod tests {
         let mut neuron = AdExNeuron::new(AdExConfig::default());
         let w_initial = neuron.adaptation();
 
-        // Trigger spike
-        for _ in 0..500 {
-            neuron.update(500.0, 0.1);
+        // Trigger spike (needs to exceed rheobase ~600 pA)
+        for _ in 0..1000 {
+            neuron.update(800.0, 0.1);
         }
 
         // Adaptation should have increased

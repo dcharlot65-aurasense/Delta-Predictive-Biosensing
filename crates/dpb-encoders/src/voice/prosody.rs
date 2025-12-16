@@ -262,14 +262,14 @@ impl EventEncoder for IntonationEncoder {
 
         // Simplified: track rapid F0 changes
         let mut events = Vec::new();
-        let mut prev_f0 = 0.0;
+        let mut prev_f0 = 0.0f32;
 
         for i in (config.window_size..samples.len()).step_by(config.window_size) {
             // Simplified F0 estimation
             let window = &samples[i - config.window_size..i];
-            let f0 = 100.0; // Placeholder
+            let f0 = 100.0f32; // Placeholder
 
-            if prev_f0 > 0.0 {
+            if prev_f0 > 0.0f32 {
                 let f0_change_rate = (f0 - prev_f0).abs() / (config.window_size as f32 * dt as f32);
 
                 if f0_change_rate > config.threshold {

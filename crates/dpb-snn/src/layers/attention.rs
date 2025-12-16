@@ -63,7 +63,7 @@ impl SpikingAttention {
         let normal = Normal::new(0.0, std).unwrap();
         let mut rng = thread_rng();
 
-        let init_weights = |shape: (usize, usize)| {
+        let mut init_weights = |shape: (usize, usize)| {
             Array2::from_shape_fn(shape, |_| normal.sample(&mut rng))
         };
 
@@ -311,6 +311,18 @@ impl SpikingLayer for MultiHeadSpikingAttention {
         for head in &mut self.heads {
             head.zero_grad();
         }
+    }
+}
+
+impl Default for SpikingAttention {
+    fn default() -> Self {
+        Self::new(64, 4, NeuronParams::default(), 1.0, false)
+    }
+}
+
+impl Default for MultiHeadSpikingAttention {
+    fn default() -> Self {
+        Self::new(64, 4, NeuronParams::default(), 1.0, false)
     }
 }
 

@@ -19,7 +19,19 @@ pub struct SpikeEvent {
 
 impl SpikeEvent {
     /// Creates a new spike event.
-    pub fn new(timestamp: f64, channel: u32, polarity: i8, magnitude: f32) -> Result<Self> {
+    ///
+    /// Polarity should be -1 or +1 but other values are allowed for flexibility.
+    pub fn new(timestamp: f64, channel: u32, polarity: i8, magnitude: f32) -> Self {
+        Self {
+            timestamp,
+            channel,
+            polarity,
+            magnitude,
+        }
+    }
+
+    /// Creates a new spike event with validation.
+    pub fn new_validated(timestamp: f64, channel: u32, polarity: i8, magnitude: f32) -> Result<Self> {
         if polarity != -1 && polarity != 1 {
             return Err(DpbError::InvalidParameter(
                 "Polarity must be -1 or +1".to_string(),
@@ -257,10 +269,14 @@ impl GroundTruth {
 /// Runtime context information for biosensor data.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Context {
-    /// Subject age
-    pub age: Option<u32>,
+    /// Subject age in years (can be fractional for infants)
+    pub age: Option<f64>,
     /// Subject sex
     pub sex: Option<String>,
+    /// Subject height in centimeters
+    pub height_cm: Option<f64>,
+    /// Subject weight in kilograms
+    pub weight_kg: Option<f64>,
     /// Medications
     pub medications: Vec<String>,
     /// Environmental conditions
@@ -278,7 +294,7 @@ impl Context {
     }
 
     /// Sets age.
-    pub fn with_age(mut self, age: u32) -> Self {
+    pub fn with_age(mut self, age: f64) -> Self {
         self.age = Some(age);
         self
     }
@@ -399,13 +415,55 @@ impl SignalQuality {
     }
 }
 
+/// A buffer of signal samples that implements the Signal trait.
+///
+/// This is a simple container for single-channel signal data.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignalBuffer {
+    /// Signal samples
+    pub data: Vec<f32>,
+    /// Sample rate in Hz
+    pub sample_rate: f64,
+    /// Number of channels
+    pub num_channels: usize,
+}
+
+impl SignalBuffer {
+    /// Creates a new signal buffer.
+    pub fn new(data: Vec<f32>, sample_rate: f64) -> Self {
+        Self {
+            data,
+            sample_rate,
+            num_channels: 1,
+        }
+    }
+
+    /// Creates a single-channel signal buffer.
+    pub fn single_channel(data: Vec<f32>, sample_rate: f64) -> Self {
+        Self {
+            data,
+            sample_rate,
+            num_channels: 1,
+        }
+    }
+
+    /// Creates a multi-channel signal buffer.
+    pub fn multi_channel(data: Vec<f32>, sample_rate: f64, num_channels: usize) -> Self {
+        Self {
+            data,
+            sample_rate,
+            num_channels,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_spike_event_creation() {
-        let event = SpikeEvent::new(1.0, 5, 1, 0.5).unwrap();
+        let event = SpikeEvent::new(1.0, 5, 1, 0.5);
         assert_eq!(event.timestamp, 1.0);
         assert_eq!(event.channel, 5);
         assert_eq!(event.polarity, 1);
@@ -414,16 +472,16 @@ mod tests {
 
     #[test]
     fn test_spike_event_invalid_polarity() {
-        let result = SpikeEvent::new(1.0, 5, 2, 0.5);
+        let result = SpikeEvent::new_validated(1.0, 5, 2, 0.5);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_spike_train() {
         let mut train = SpikeTrain::new(10);
-        train.add_event(SpikeEvent::new(0.5, 1, 1, 1.0).unwrap());
-        train.add_event(SpikeEvent::new(1.0, 2, -1, 0.8).unwrap());
-        train.add_event(SpikeEvent::new(1.5, 1, 1, 0.9).unwrap());
+        train.add_event(SpikeEvent::new(0.5, 1, 1, 1.0));
+        train.add_event(SpikeEvent::new(1.0, 2, -1, 0.8));
+        train.add_event(SpikeEvent::new(1.5, 1, 1, 0.9));
 
         assert_eq!(train.len(), 3);
         assert_eq!(train.duration(), 1.5);
@@ -455,12 +513,12 @@ mod tests {
     #[test]
     fn test_context() {
         let mut ctx = Context::new()
-            .with_age(30)
+            .with_age(30.0)
             .with_sex("M".to_string());
         ctx.add_medication("aspirin".to_string());
         ctx.set_environment("temperature".to_string(), 22.5);
 
-        assert_eq!(ctx.age, Some(30));
+        assert_eq!(ctx.age, Some(30.0));
         assert_eq!(ctx.medications.len(), 1);
     }
 
@@ -477,5 +535,14 @@ mod tests {
     fn test_modality() {
         assert_eq!(Modality::Contact.as_str(), "contact");
         assert_eq!(Modality::Eye.as_str(), "eye");
+    }
+
+    #[test]
+    fn test_signal_buffer() {
+        let data = vec![0.0, 0.5, 1.0, 0.5, 0.0];
+        let signal = SignalBuffer::single_channel(data.clone(), 100.0);
+        assert_eq!(signal.data.len(), 5);
+        assert_eq!(signal.sample_rate, 100.0);
+        assert_eq!(signal.num_channels, 1);
     }
 }

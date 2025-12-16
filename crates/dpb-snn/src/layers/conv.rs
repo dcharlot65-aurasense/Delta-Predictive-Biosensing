@@ -2,7 +2,7 @@
 
 use super::{NeuronState, SpikingLayer};
 use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor};
-use ndarray::{Array1, Array2, Array3, Array4, Array5, Axis};
+use ndarray::{s, Array1, Array2, Array3, Array4, Array5, Axis};
 use rand::thread_rng;
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
@@ -173,11 +173,12 @@ impl SpikingLayer for SpikingConv2d {
             for b in 0..batch_size {
                 let input_t = input_dense.slice(s![b, t, ..]);
 
-                // Simplified: just apply linear transformation
-                let synaptic = self.kernel.slice(s![.., 0, 0, 0]).dot(&input_t);
-
-                // This is a placeholder - full 2D convolution would be more complex
-                output.slice_mut(s![b, t, ..]).assign(&synaptic);
+                // Simplified: just apply linear transformation for each output channel
+                for oc in 0..output_size {
+                    let kernel_slice: ndarray::ArrayView1<f32> = self.kernel.slice(s![oc, .., 0, 0]);
+                    let synaptic: f32 = kernel_slice.dot(&input_t);
+                    output[[b, t, oc]] = synaptic;
+                }
             }
         }
 
@@ -347,6 +348,18 @@ impl SpikingLayer for SpikingConv1d {
     fn zero_grad(&mut self) {
         self.kernel_grad = None;
         self.bias_grad = None;
+    }
+}
+
+impl Default for SpikingConv2d {
+    fn default() -> Self {
+        Self::new(1, 1, (3, 3), (1, 1), (0, 0), false, NeuronParams::default(), 1.0, false)
+    }
+}
+
+impl Default for SpikingConv1d {
+    fn default() -> Self {
+        Self::new(1, 1, 3, 1, 0, false, NeuronParams::default(), 1.0, false)
     }
 }
 

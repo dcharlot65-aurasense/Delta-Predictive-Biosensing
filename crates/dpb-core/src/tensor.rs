@@ -143,9 +143,8 @@ impl SpikeTensor {
                     if value.abs() >= threshold {
                         let timestamp = time_idx as f64 * self.dt;
                         let polarity = if value > 0.0 { 1 } else { -1 };
-                        if let Ok(event) = SpikeEvent::new(timestamp, channel as u32, polarity, value.abs()) {
-                            train.add_event(event);
-                        }
+                        let event = SpikeEvent::new(timestamp, channel as u32, polarity, value.abs());
+                        train.add_event(event);
                     }
                 }
             }
@@ -279,11 +278,11 @@ mod tests {
     #[test]
     fn test_from_spike_trains() {
         let mut train1 = SpikeTrain::new(5);
-        train1.add_event(SpikeEvent::new(0.001, 0, 1, 1.0).unwrap());
-        train1.add_event(SpikeEvent::new(0.002, 1, 1, 0.8).unwrap());
+        train1.add_event(SpikeEvent::new(0.001, 0, 1, 1.0));
+        train1.add_event(SpikeEvent::new(0.002, 1, 1, 0.8));
 
         let mut train2 = SpikeTrain::new(5);
-        train2.add_event(SpikeEvent::new(0.003, 2, -1, 0.9).unwrap());
+        train2.add_event(SpikeEvent::new(0.003, 2, -1, 0.9));
 
         let tensor = SpikeTensor::from_spike_trains(&[train1, train2], 10, 0.001).unwrap();
         assert_eq!(tensor.batch_size(), 2);
