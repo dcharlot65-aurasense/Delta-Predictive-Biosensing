@@ -371,7 +371,7 @@ impl PySequential {
     fn __getitem__(&self, idx: usize, py: Python) -> PyResult<PyObject> {
         self.layers
             .get(idx)
-            .cloned()
+            .map(|obj| obj.clone_ref(py))
             .ok_or_else(|| pyo3::exceptions::PyIndexError::new_err("Index out of range"))
     }
 
@@ -461,7 +461,8 @@ impl PySNNBuilder {
 
     /// Build the sequential model
     fn build(&self, py: Python) -> PyResult<PySequential> {
-        Ok(PySequential::new(self.layers.clone()))
+        let layers: Vec<PyObject> = self.layers.iter().map(|obj| obj.clone_ref(py)).collect();
+        Ok(PySequential::new(layers))
     }
 
     /// Get number of layers

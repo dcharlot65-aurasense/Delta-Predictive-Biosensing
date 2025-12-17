@@ -7,6 +7,7 @@ members = [
     "crates/dpb-snn",
     "crates/dpb-synth",
     "crates/dpb-python",
+    "crates/dpb-ffi",
 ]
 
 [workspace.package]

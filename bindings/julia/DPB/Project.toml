@@ -1,0 +1,9 @@
+name = "DPB"
+uuid = "4d8f3a2c-5e1b-4f9a-8c3d-7a2b1e4f6c8d"
+version = "0.1.0"
+
+[deps]
+# No dependencies needed - uses ccall directly
+
+[compat]
+julia = "1.6"
