@@ -538,6 +538,11 @@ impl MediaPipeline {
             MotionBackend::Procedural => {
                 self.simulate_procedural_motion(scenario)
             }
+            MotionBackend::PyBullet | MotionBackend::SMPLX => {
+                // Fall back to procedural for now - PyBullet and SMPL-X
+                // integration is available via their direct modules
+                self.simulate_procedural_motion(scenario)
+            }
         }
     }
 

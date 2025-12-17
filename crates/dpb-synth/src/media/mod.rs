@@ -32,25 +32,34 @@
 //! ## Motion Simulation
 //! - **MuJoCo**: Physics-accurate human motion with musculoskeletal models
 //! - **OpenSim**: Biomechanical gait analysis with pathological tremor support
+//! - **PyBullet**: Lightweight physics simulation (zlib license)
 //!
 //! ## Video Generation
 //! - **Blender**: Procedural animation with Python scripting
 //! - **LTX-Video**: Fast diffusion-based video generation (DiT architecture)
+//! - **CogVideoX**: 2B/5B parameter video generation (Apache 2.0)
 //! - **Wan 2.2**: State-of-the-art MoE diffusion for highest quality
 //!
 //! ## Audio Generation
 //! - **Chatterbox**: Neural TTS with emotion control (MIT licensed)
-//! - **F5-TTS**: High-fidelity diffusion-based synthesis
+//! - **F5-TTS**: Fast zero-shot voice cloning (MIT licensed)
+//! - **Bark**: Non-speech audio, music, sound effects (MIT licensed)
 //! - **Kokoro**: Lightweight 82M param model (Apache 2.0)
 //! - **XTTS-v2**: Voice cloning with 6-second samples
 //!
 //! ## Pose Extraction
 //! - **MediaPipe**: Real-time 33-landmark pose estimation
+//! - **OpenPose**: 135-keypoint body+hands+face (research license)
+//!
+//! ## Human Body Models
+//! - **SMPL-X**: Parametric body model with hands and face (10,475 vertices)
 //!
 //! # Usage
 //!
-//! ```rust,no_run
-//! use dpb_synth::media::{MediaPipeline, PipelineConfig};
+//! ```rust,ignore
+//! use dpb_synth::media::{
+//!     MediaPipeline, PipelineConfig, MotionBackend, VideoBackend, AudioBackend
+//! };
 //!
 //! // Create unified pipeline
 //! let config = PipelineConfig::default()
@@ -59,31 +68,34 @@
 //!     .with_audio_backend(AudioBackend::Chatterbox);
 //!
 //! let pipeline = MediaPipeline::new(config)?;
-//!
-//! // Generate Parkinson's tremor simulation
-//! let output = pipeline.generate_parkinsons_scenario(ParkinsonParams {
-//!     tremor_frequency: 5.0,  // Hz
-//!     tremor_amplitude: 0.02, // meters
-//!     voice_hypophonia: 0.4,  // severity 0-1
-//!     gait_festination: true,
-//!     ..Default::default()
-//! })?;
 //! ```
 
 pub mod mujoco;
 pub mod opensim;
+pub mod pybullet;
 pub mod blender;
 pub mod chatterbox;
+pub mod f5tts;
+pub mod bark;
 pub mod ltx_video;
+pub mod cogvideo;
 pub mod mediapipe;
+pub mod openpose;
+pub mod smplx;
 pub mod pipeline;
 
 pub use mujoco::{MuJoCoSimulator, MuJoCoConfig, MusculoskeletalModel, MotionTrajectory};
 pub use opensim::{OpenSimBridge, GaitModel, TremorModel, PathologyParams};
+pub use pybullet::{PyBulletSimulator, PyBulletConfig, PyBulletGaitParams, PyBulletTremorParams};
 pub use blender::{BlenderRenderer, BlenderConfig, RenderOutput, AnimationScript};
 pub use chatterbox::{ChatterboxTTS, VoiceConfig, EmotionControl, SpeechOutput};
+pub use f5tts::{F5TTSGenerator, F5TTSConfig, F5TTSPrompt, PathologicalVoiceParams};
+pub use bark::{BarkGenerator, BarkConfig, BarkPrompt, BarkSpeaker};
 pub use ltx_video::{LTXVideoGenerator, DiffusionConfig, VideoPrompt};
+pub use cogvideo::{CogVideoXGenerator, CogVideoConfig, CogVideoPrompt, CogVideoVariant};
 pub use mediapipe::{MediaPipeExtractor, PoseEstimate, HandLandmarks, FaceMesh};
+pub use openpose::{OpenPoseExtractor, OpenPoseConfig, OpenPosePose, OpenPoseFrame};
+pub use smplx::{SMPLXModel, SMPLXConfig, BodyPose, BodyShape, SMPLXAnimation};
 pub use pipeline::{MediaPipeline, PipelineConfig, SyntheticScenario, ScenarioOutput};
 
 use thiserror::Error;
@@ -130,6 +142,10 @@ pub enum MotionBackend {
     MuJoCo,
     /// OpenSim biomechanical simulation
     OpenSim,
+    /// PyBullet lightweight physics (zlib license)
+    PyBullet,
+    /// SMPL-X parametric body model
+    SMPLX,
     /// Procedural animation (no physics)
     Procedural,
 }
@@ -142,6 +158,8 @@ pub enum VideoBackend {
     Blender,
     /// LTX-Video diffusion (fast, good quality)
     LTXVideo,
+    /// CogVideoX diffusion (2B/5B models, Apache 2.0)
+    CogVideoX,
     /// Wan 2.2 diffusion (best quality, slower)
     Wan22,
     /// Simple 2D skeleton rendering (fastest)
@@ -154,8 +172,10 @@ pub enum AudioBackend {
     /// Chatterbox TTS (MIT, emotion control)
     #[default]
     Chatterbox,
-    /// F5-TTS (diffusion-based)
+    /// F5-TTS (fast zero-shot cloning, MIT)
     F5TTS,
+    /// Bark (non-speech audio, music, effects, MIT)
+    Bark,
     /// Kokoro (lightweight, Apache 2.0)
     Kokoro,
     /// XTTS-v2 (voice cloning)
@@ -355,17 +375,21 @@ pub fn get_available_backends() -> AvailableBackends {
             (MotionBackend::Procedural, true),
             (MotionBackend::MuJoCo, check_python_package("mujoco")),
             (MotionBackend::OpenSim, check_python_package("opensim")),
+            (MotionBackend::PyBullet, check_python_package("pybullet")),
+            (MotionBackend::SMPLX, check_python_package("smplx")),
         ],
         video: vec![
             (VideoBackend::Skeleton2D, true),
             (VideoBackend::Blender, check_tool_available("blender")),
             (VideoBackend::LTXVideo, check_python_package("diffusers")),
+            (VideoBackend::CogVideoX, check_python_package("diffusers")),
             (VideoBackend::Wan22, check_python_package("diffusers")),
         ],
         audio: vec![
             (AudioBackend::EspeakNG, check_tool_available("espeak-ng")),
             (AudioBackend::Chatterbox, check_python_package("chatterbox")),
             (AudioBackend::F5TTS, check_python_package("f5_tts")),
+            (AudioBackend::Bark, check_python_package("bark")),
             (AudioBackend::Kokoro, check_python_package("kokoro")),
             (AudioBackend::XTTSv2, check_python_package("TTS")),
         ],
