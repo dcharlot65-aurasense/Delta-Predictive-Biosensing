@@ -133,20 +133,56 @@ pub trait FusionNetwork: Send + Sync {
 /// Spike train type alias for cleaner code
 pub type SpikeTrain = SpikeTensor;
 
+/// Helper: Determine if a tensor should use sparse representation
+///
+/// Returns true if the tensor has < 10% sparsity (i.e., < 10% non-zero values)
+/// and the values are binary (suitable for sparse spike representation)
+fn should_use_sparse(tensor: &SpikeTensor) -> bool {
+    match &tensor.data {
+        crate::SpikeRepresentation::Dense(arr) => {
+            let total_elements = arr.len();
+
+            // Count non-zero values and check if they're binary
+            let mut non_zero_count = 0;
+            let mut is_binary = true;
+            for &val in arr.iter() {
+                if val.abs() > 1e-6 {
+                    non_zero_count += 1;
+                    // Check if value is close to 0 or 1 (binary spike)
+                    if (val - 1.0).abs() > 1e-6 && val.abs() > 1e-6 {
+                        is_binary = false;
+                    }
+                }
+            }
+
+            let sparsity = non_zero_count as f32 / total_elements as f32;
+            sparsity < 0.1 && is_binary
+        }
+        crate::SpikeRepresentation::Sparse(sparse) => {
+            let total_elements = sparse.batch_size * sparse.num_steps * sparse.num_neurons;
+            let sparsity = sparse.num_spikes() as f32 / total_elements as f32;
+            sparsity < 0.1
+        }
+    }
+}
+
 /// Utility: Concatenate spike tensors along feature dimension
+///
+/// Supports both dense and sparse tensors. If any input is sparse, it will be
+/// converted to dense for concatenation. The output will be sparse if the
+/// result is sufficiently sparse (< 10% sparsity).
 pub fn concatenate_spikes(tensors: &[&SpikeTensor]) -> SNNResult<SpikeTensor> {
     if tensors.is_empty() {
         return Err(SNNError::InvalidConfig("Cannot concatenate empty tensor list".to_string()));
     }
 
-    let arrays: Vec<&Array3<f32>> = tensors
+    // Track if any input was sparse
+    let has_sparse = tensors.iter().any(|t| matches!(&t.data, crate::SpikeRepresentation::Sparse(_)));
+
+    // Convert all tensors to dense arrays for concatenation
+    let arrays: Vec<Array3<f32>> = tensors
         .iter()
-        .map(|t| match &t.data {
-            crate::SpikeRepresentation::Dense(arr) => arr,
-            crate::SpikeRepresentation::Sparse(_) => {
-                panic!("Sparse spike tensors not yet supported in fusion")
-            }
-        })
+        .map(|t| t.to_dense())
         .collect();
 
     // Get dimensions: (batch, time, features)
@@ -171,44 +207,53 @@ pub fn concatenate_spikes(tensors: &[&SpikeTensor]) -> SNNResult<SpikeTensor> {
 
     // Concatenate along feature dimension
     let mut offset = 0;
-    for arr in arrays {
+    for arr in &arrays {
         let features = arr.dim().2;
         output.slice_mut(ndarray::s![.., .., offset..offset + features])
             .assign(arr);
         offset += features;
     }
 
-    Ok(SpikeTensor::from_dense(output, tensors[0].requires_grad))
+    // If input had sparse tensors, convert output back to sparse if beneficial
+    let result_tensor = SpikeTensor::from_dense(output, tensors[0].requires_grad);
+
+    if has_sparse && should_use_sparse(&result_tensor) {
+        Ok(SpikeTensor::from_sparse(result_tensor.to_sparse(), tensors[0].requires_grad))
+    } else {
+        Ok(result_tensor)
+    }
 }
 
 /// Utility: Average spike tensors
+///
+/// Supports both dense and sparse tensors. If any input is sparse, it will be
+/// converted to dense for averaging. The output will be sparse if the result
+/// is sufficiently sparse (< 10% sparsity) and any input was sparse.
 pub fn average_spikes(tensors: &[&SpikeTensor]) -> SNNResult<SpikeTensor> {
     if tensors.is_empty() {
         return Err(SNNError::InvalidConfig("Cannot average empty tensor list".to_string()));
     }
 
-    let first = match &tensors[0].data {
-        crate::SpikeRepresentation::Dense(arr) => arr,
-        crate::SpikeRepresentation::Sparse(_) => {
-            return Err(SNNError::InvalidConfig("Sparse tensors not supported".to_string()));
-        }
-    };
+    // Track if any input was sparse
+    let has_sparse = tensors.iter().any(|t| matches!(&t.data, crate::SpikeRepresentation::Sparse(_)));
 
-    let mut sum = first.clone();
+    // Convert first tensor to dense
+    let mut sum = tensors[0].to_dense();
 
+    // Add remaining tensors
     for tensor in &tensors[1..] {
-        match &tensor.data {
-            crate::SpikeRepresentation::Dense(arr) => {
-                sum = sum + arr;
-            }
-            crate::SpikeRepresentation::Sparse(_) => {
-                return Err(SNNError::InvalidConfig("Sparse tensors not supported".to_string()));
-            }
-        }
+        sum = sum + &tensor.to_dense();
     }
 
     let avg = sum / (tensors.len() as f32);
-    Ok(SpikeTensor::from_dense(avg, tensors[0].requires_grad))
+    let result_tensor = SpikeTensor::from_dense(avg, tensors[0].requires_grad);
+
+    // If input had sparse tensors, convert output back to sparse if beneficial
+    if has_sparse && should_use_sparse(&result_tensor) {
+        Ok(SpikeTensor::from_sparse(result_tensor.to_sparse(), tensors[0].requires_grad))
+    } else {
+        Ok(result_tensor)
+    }
 }
 
 #[cfg(test)]
@@ -270,5 +315,105 @@ mod tests {
         assert_eq!(config.modalities.len(), 5);
         assert_eq!(config.hidden_size, 256);
         assert_eq!(config.num_layers, 3);
+    }
+
+    #[test]
+    fn test_concatenate_sparse_spikes() {
+        // Create sparse tensors with low sparsity
+        let mut sparse1 = crate::tensor::SparseSpikes::new(2, 10, 32);
+        sparse1.add_spike(0, 1, 5).unwrap();
+        sparse1.add_spike(0, 2, 10).unwrap();
+        sparse1.add_spike(1, 3, 15).unwrap();
+
+        let mut sparse2 = crate::tensor::SparseSpikes::new(2, 10, 64);
+        sparse2.add_spike(0, 1, 20).unwrap();
+        sparse2.add_spike(1, 5, 30).unwrap();
+
+        let spike1 = SpikeTensor::from_sparse(sparse1, false);
+        let spike2 = SpikeTensor::from_sparse(sparse2, false);
+
+        let result = concatenate_spikes(&[&spike1, &spike2]).unwrap();
+
+        // Result should be sparse (low sparsity maintained)
+        match &result.data {
+            crate::SpikeRepresentation::Sparse(sparse) => {
+                assert_eq!(sparse.batch_size, 2);
+                assert_eq!(sparse.num_steps, 10);
+                assert_eq!(sparse.num_neurons, 96); // 32 + 64
+                assert_eq!(sparse.num_spikes(), 5); // Total spikes preserved
+            }
+            _ => panic!("Expected sparse representation"),
+        }
+    }
+
+    #[test]
+    fn test_concatenate_mixed_spikes() {
+        // Mix dense and sparse tensors
+        let dense = SpikeTensor::from_dense(Array3::<f32>::zeros((2, 10, 32)), false);
+
+        let mut sparse_data = crate::tensor::SparseSpikes::new(2, 10, 64);
+        sparse_data.add_spike(0, 1, 20).unwrap();
+        let sparse = SpikeTensor::from_sparse(sparse_data, false);
+
+        let result = concatenate_spikes(&[&dense, &sparse]).unwrap();
+
+        // Verify shape
+        let (batch, time, features) = result.shape();
+        assert_eq!((batch, time, features), (2, 10, 96));
+    }
+
+    #[test]
+    fn test_average_sparse_spikes() {
+        // Create two sparse tensors
+        let mut sparse1 = crate::tensor::SparseSpikes::new(2, 10, 32);
+        sparse1.add_spike(0, 1, 5).unwrap();
+        sparse1.add_spike(0, 2, 10).unwrap();
+
+        let mut sparse2 = crate::tensor::SparseSpikes::new(2, 10, 32);
+        sparse2.add_spike(0, 1, 5).unwrap();  // Same spike
+        sparse2.add_spike(1, 3, 15).unwrap(); // Different spike
+
+        let spike1 = SpikeTensor::from_sparse(sparse1, false);
+        let spike2 = SpikeTensor::from_sparse(sparse2, false);
+
+        let result = average_spikes(&[&spike1, &spike2]).unwrap();
+
+        // Result should maintain correct dimensions
+        let (batch, time, features) = result.shape();
+        assert_eq!((batch, time, features), (2, 10, 32));
+
+        // Verify averaging works correctly
+        let dense = result.to_dense();
+        assert!((dense[[0, 1, 5]] - 1.0).abs() < 1e-5); // (1 + 1) / 2 = 1.0
+        assert!((dense[[0, 2, 10]] - 0.5).abs() < 1e-5); // (1 + 0) / 2 = 0.5
+        assert!((dense[[1, 3, 15]] - 0.5).abs() < 1e-5); // (0 + 1) / 2 = 0.5
+    }
+
+    #[test]
+    fn test_sparse_dense_dimensions_match() {
+        // Ensure sparse and dense with same dimensions can be concatenated
+        let dense = SpikeTensor::from_dense(Array3::<f32>::ones((1, 5, 10)), false);
+
+        let mut sparse_data = crate::tensor::SparseSpikes::new(1, 5, 20);
+        sparse_data.add_spike(0, 2, 5).unwrap();
+        let sparse = SpikeTensor::from_sparse(sparse_data, false);
+
+        let result = concatenate_spikes(&[&dense, &sparse]).unwrap();
+        assert_eq!(result.shape(), (1, 5, 30));
+    }
+
+    #[test]
+    fn test_should_use_sparse_helper() {
+        // Very sparse tensor (< 10% sparsity)
+        let mut sparse_data = crate::tensor::SparseSpikes::new(1, 100, 100);
+        for i in 0..50 {
+            sparse_data.add_spike(0, i, i).unwrap(); // 50 spikes in 10000 elements = 0.5%
+        }
+        let sparse_tensor = SpikeTensor::from_sparse(sparse_data, false);
+        assert!(should_use_sparse(&sparse_tensor));
+
+        // Dense tensor (100% sparsity)
+        let dense_tensor = SpikeTensor::from_dense(Array3::<f32>::ones((1, 10, 10)), false);
+        assert!(!should_use_sparse(&dense_tensor));
     }
 }

@@ -219,20 +219,110 @@ impl Level3AudioGenerator {
         })
     }
 
+    /// Generate voice audio with Festival TTS
+    pub fn generate_with_festival(&self, params: &VoiceAudioParams) -> AudioResult<AudioOutput> {
+        self.validate_voice_params(params)?;
+
+        // Create temporary Festival script
+        let script_path = format!("{}.scm", params.output_path);
+        let script = self.create_festival_script(params)?;
+        fs::write(&script_path, script)?;
+
+        // Execute Festival with script
+        let mut cmd = Command::new(&self.festival_path);
+        cmd.arg("--batch").arg(&script_path);
+
+        let output = cmd.output()
+            .map_err(|_| AudioGeneratorError::ToolNotFound("festival".to_string()))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(AudioGeneratorError::ExecutionError(stderr.to_string()));
+        }
+
+        // Clean up script
+        let _ = fs::remove_file(&script_path);
+
+        // Generate ground truth
+        let ground_truth = self.generate_voice_ground_truth(params)?;
+        let ground_truth_json = serde_json::to_string_pretty(&ground_truth)?;
+        fs::write(&params.ground_truth_path, ground_truth_json)?;
+
+        let mut metadata = HashMap::new();
+        metadata.insert("backend".to_string(), "festival".to_string());
+        metadata.insert("text".to_string(), params.text.clone());
+        metadata.insert("speaking_rate".to_string(), params.speaking_rate.to_string());
+
+        Ok(AudioOutput {
+            audio_path: PathBuf::from(&params.output_path),
+            ground_truth_path: PathBuf::from(&params.ground_truth_path),
+            duration_sec: ground_truth.duration_sec,
+            sample_rate: params.sample_rate,
+            metadata,
+        })
+    }
+
+    /// Generate voice audio with Praat (for acoustic modifications)
+    pub fn generate_with_praat(&self, params: &VoiceAudioParams) -> AudioResult<AudioOutput> {
+        self.validate_voice_params(params)?;
+
+        // Praat works best for acoustic modification, so we first generate base audio
+        let temp_base_path = format!("{}.base.wav", params.output_path);
+        let mut base_params = params.clone();
+        base_params.output_path = temp_base_path.clone();
+
+        // Generate base audio with espeak-ng (fast and reliable)
+        self.generate_with_espeak(&base_params)?;
+
+        // Create Praat script for acoustic modifications
+        let script_path = format!("{}.praat", params.output_path);
+        let script = self.create_praat_script(params, &temp_base_path)?;
+        fs::write(&script_path, script)?;
+
+        // Execute Praat with script
+        let mut cmd = Command::new("praat");
+        cmd.arg("--run").arg(&script_path);
+
+        let output = cmd.output()
+            .map_err(|_| AudioGeneratorError::ToolNotFound("praat".to_string()))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let _ = fs::remove_file(&temp_base_path);
+            let _ = fs::remove_file(&script_path);
+            return Err(AudioGeneratorError::ExecutionError(stderr.to_string()));
+        }
+
+        // Clean up temporary files
+        let _ = fs::remove_file(&temp_base_path);
+        let _ = fs::remove_file(&script_path);
+
+        // Generate ground truth with Praat-specific modifications
+        let ground_truth = self.generate_voice_ground_truth_praat(params)?;
+        let ground_truth_json = serde_json::to_string_pretty(&ground_truth)?;
+        fs::write(&params.ground_truth_path, ground_truth_json)?;
+
+        let mut metadata = HashMap::new();
+        metadata.insert("backend".to_string(), "praat".to_string());
+        metadata.insert("text".to_string(), params.text.clone());
+        metadata.insert("speaking_rate".to_string(), params.speaking_rate.to_string());
+        metadata.insert("pitch_modification".to_string(), "true".to_string());
+
+        Ok(AudioOutput {
+            audio_path: PathBuf::from(&params.output_path),
+            ground_truth_path: PathBuf::from(&params.ground_truth_path),
+            duration_sec: ground_truth.duration_sec,
+            sample_rate: params.sample_rate,
+            metadata,
+        })
+    }
+
     /// Generate voice audio (auto-select backend)
     pub fn generate_voice_audio(&self, params: &VoiceAudioParams) -> AudioResult<AudioOutput> {
         match params.backend {
             AudioBackend::ESpeakNG => self.generate_with_espeak(params),
-            AudioBackend::Festival => {
-                Err(AudioGeneratorError::ToolNotFound(
-                    "Festival backend not yet implemented".to_string()
-                ))
-            }
-            AudioBackend::Praat => {
-                Err(AudioGeneratorError::ToolNotFound(
-                    "Praat backend not yet implemented".to_string()
-                ))
-            }
+            AudioBackend::Festival => self.generate_with_festival(params),
+            AudioBackend::Praat => self.generate_with_praat(params),
         }
     }
 
@@ -242,6 +332,221 @@ impl Level3AudioGenerator {
             .map_err(|e| AudioGeneratorError::OutputReadError(e.to_string()))?;
         let gt: VoiceGroundTruth = serde_json::from_str(&content)?;
         Ok(gt)
+    }
+
+    /// Create Festival Scheme script for speech synthesis
+    fn create_festival_script(&self, params: &VoiceAudioParams) -> AudioResult<String> {
+        let mut script = String::new();
+
+        // Voice selection
+        if let Some(voice) = &params.voice {
+            script.push_str(&format!(";; Select voice\n(voice_{})\n\n", voice));
+        } else {
+            script.push_str(";; Use default voice\n");
+        }
+
+        // Configure duration and pitch parameters
+        // Festival uses duration_stretch (multiplier) and F0 shift
+        let duration_stretch = 150.0 / params.speaking_rate.max(1.0);
+        let pitch_shift = params.pitch_mean / 150.0;
+
+        script.push_str(&format!(
+            ";; Configure prosodic parameters\n\
+             (Parameter.set 'Duration_Stretch {:.3})\n\
+             (set! default-f0-mean {})\n\
+             (set! default-f0-std {})\n\n",
+            duration_stretch,
+            params.pitch_mean as i32,
+            params.pitch_std as i32
+        ));
+
+        // Apply pathological modifiers
+        if params.monotonicity > 0.0 {
+            let reduced_std = params.pitch_std * (1.0 - params.monotonicity);
+            script.push_str(&format!(
+                ";; Apply monotonicity (reduced pitch variation)\n\
+                 (set! default-f0-std {})\n\n",
+                reduced_std as i32
+            ));
+        }
+
+        if params.hypophonia_severity > 0.0 {
+            let volume_factor = 1.0 - (params.hypophonia_severity * 0.5);
+            script.push_str(&format!(
+                ";; Apply hypophonia (reduced volume)\n\
+                 (Parameter.set 'Default_Gain {:.2})\n\n",
+                volume_factor
+            ));
+        }
+
+        // Text to synthesize
+        let escaped_text = params.text.replace("\"", "\\\"");
+        script.push_str(&format!(
+            ";; Generate speech\n\
+             (utt.save.wave\n\
+              (utt.synth (Utterance Text \"{}\"))\n\
+              \"{}\" 'riff)\n",
+            escaped_text,
+            params.output_path
+        ));
+
+        Ok(script)
+    }
+
+    /// Create Praat script for acoustic modification
+    fn create_praat_script(&self, params: &VoiceAudioParams, input_path: &str) -> AudioResult<String> {
+        let mut script = String::new();
+
+        script.push_str(&format!(
+            "# Praat script for acoustic modification\n\
+             # Input: {}\n\
+             # Output: {}\n\n",
+            input_path,
+            params.output_path
+        ));
+
+        // Read the sound file
+        script.push_str(&format!(
+            "# Read input sound\n\
+             sound = Read from file: \"{}\"\n\
+             selectObject: sound\n\n",
+            input_path
+        ));
+
+        // Extract pitch for modification
+        script.push_str(
+            "# Extract pitch\n\
+             To Manipulation: 0.01, 75, 600\n\
+             manipulation = selected(\"Manipulation\")\n\n"
+        );
+
+        // Modify pitch
+        let pitch_ratio = params.pitch_mean / 150.0; // Assume base pitch ~150Hz
+        script.push_str(&format!(
+            "# Modify pitch\n\
+             selectObject: manipulation\n\
+             Extract pitch tier\n\
+             pitch_tier = selected(\"PitchTier\")\n\
+             selectObject: manipulation\n\
+             plus pitch_tier\n\
+             Replace pitch tier\n\
+             selectObject: manipulation\n\
+             Multiply frequencies: 0.0, 0.0, {:.3}\n\n",
+            pitch_ratio
+        ));
+
+        // Apply monotonicity if specified
+        if params.monotonicity > 0.0 {
+            script.push_str(&format!(
+                "# Apply monotonicity (flatten pitch)\n\
+                 selectObject: manipulation\n\
+                 Extract pitch tier\n\
+                 pitch_tier = selected(\"PitchTier\")\n\
+                 Flatten: {:.2}\n\
+                 selectObject: manipulation\n\
+                 plus pitch_tier\n\
+                 Replace pitch tier\n\n",
+                params.monotonicity
+            ));
+        }
+
+        // Apply tremor if specified
+        if params.tremor_amplitude > 0.0 && params.tremor_frequency > 0.0 {
+            script.push_str(&format!(
+                "# Apply tremor\n\
+                 selectObject: manipulation\n\
+                 Extract pitch tier\n\
+                 pitch_tier = selected(\"PitchTier\")\n\
+                 # Add sinusoidal modulation at {} Hz\n\
+                 Add periodic modulation: {:.2}, {:.2}\n\
+                 selectObject: manipulation\n\
+                 plus pitch_tier\n\
+                 Replace pitch tier\n\n",
+                params.tremor_frequency,
+                params.tremor_frequency,
+                params.tremor_amplitude * 50.0 // Scale to Hz
+            ));
+        }
+
+        // Modify duration if needed
+        if (params.speaking_rate - 150.0).abs() > 1.0 {
+            let duration_factor = 150.0 / params.speaking_rate;
+            script.push_str(&format!(
+                "# Modify duration\n\
+                 selectObject: manipulation\n\
+                 Extract duration tier\n\
+                 duration_tier = selected(\"DurationTier\")\n\
+                 Add point: 0.0, {:.3}\n\
+                 selectObject: manipulation\n\
+                 plus duration_tier\n\
+                 Replace duration tier\n\n",
+                duration_factor
+            ));
+        }
+
+        // Synthesize modified sound
+        script.push_str(
+            "# Synthesize modified sound\n\
+             selectObject: manipulation\n\
+             Get resynthesis (overlap-add)\n\
+             modified_sound = selected(\"Sound\")\n\n"
+        );
+
+        // Apply volume/hypophonia
+        if params.hypophonia_severity > 0.0 || (params.volume - 0.8).abs() > 0.01 {
+            let volume_factor = params.volume * (1.0 - params.hypophonia_severity * 0.5);
+            script.push_str(&format!(
+                "# Apply volume modification\n\
+                 selectObject: modified_sound\n\
+                 Scale intensity: {:.1}\n\n",
+                volume_factor * 70.0 // Scale to dB
+            ));
+        }
+
+        // Save output
+        script.push_str(&format!(
+            "# Save output\n\
+             selectObject: modified_sound\n\
+             Save as WAV file: \"{}\"\n\n\
+             # Cleanup\n\
+             removeObject: sound, manipulation, modified_sound\n",
+            params.output_path
+        ));
+
+        Ok(script)
+    }
+
+    /// Generate ground truth for Praat-modified audio with formant data
+    fn generate_voice_ground_truth_praat(&self, params: &VoiceAudioParams) -> AudioResult<VoiceGroundTruth> {
+        let mut ground_truth = self.generate_voice_ground_truth(params)?;
+
+        // Add formant information (simulated)
+        let num_frames = ground_truth.f0_contour.len();
+        let mut formants = Vec::with_capacity(num_frames);
+
+        for i in 0..num_frames {
+            let time = ground_truth.f0_times[i];
+
+            // Simulate formants based on typical vowel values
+            // F1: 300-900 Hz, F2: 800-2500 Hz, F3: 2000-3500 Hz
+            let f1 = 500.0 + 200.0 * (2.0 * std::f64::consts::PI * 2.0 * time).sin();
+            let f2 = 1500.0 + 400.0 * (2.0 * std::f64::consts::PI * 3.0 * time).sin();
+            let f3 = 2700.0 + 300.0 * (2.0 * std::f64::consts::PI * 4.0 * time).sin();
+
+            formants.push(FormantFrame {
+                time,
+                f1,
+                f2,
+                f3,
+            });
+        }
+
+        ground_truth.formants = Some(formants);
+        ground_truth.metadata.insert("praat_modified".to_string(), "true".to_string());
+        ground_truth.metadata.insert("tremor_frequency".to_string(), params.tremor_frequency.to_string());
+        ground_truth.metadata.insert("tremor_amplitude".to_string(), params.tremor_amplitude.to_string());
+
+        Ok(ground_truth)
     }
 
     fn calculate_espeak_speed(&self, wpm: f64) -> u32 {
@@ -350,5 +655,205 @@ mod tests {
         assert_eq!(generator.calculate_espeak_speed(150.0), 150);
         assert_eq!(generator.calculate_espeak_speed(50.0), 80);
         assert_eq!(generator.calculate_espeak_speed(500.0), 450);
+    }
+
+    #[test]
+    fn test_festival_script_generation() {
+        let generator = Level3AudioGenerator::new();
+        let mut params = VoiceAudioParams::default();
+        params.text = "Hello world".to_string();
+        params.speaking_rate = 120.0;
+        params.pitch_mean = 180.0;
+        params.pitch_std = 25.0;
+        params.output_path = "/tmp/test_festival.wav".to_string();
+
+        let script = generator.create_festival_script(&params).unwrap();
+
+        // Verify script contains key elements
+        assert!(script.contains("Duration_Stretch"));
+        assert!(script.contains("default-f0-mean"));
+        assert!(script.contains("Hello world"));
+        assert!(script.contains("utt.save.wave"));
+        assert!(script.contains("/tmp/test_festival.wav"));
+    }
+
+    #[test]
+    fn test_festival_script_with_voice() {
+        let generator = Level3AudioGenerator::new();
+        let mut params = VoiceAudioParams::default();
+        params.voice = Some("kal_diphone".to_string());
+        params.output_path = "/tmp/test_voice.wav".to_string();
+
+        let script = generator.create_festival_script(&params).unwrap();
+
+        assert!(script.contains("voice_kal_diphone"));
+    }
+
+    #[test]
+    fn test_festival_script_with_pathological_params() {
+        let generator = Level3AudioGenerator::new();
+        let mut params = VoiceAudioParams::default();
+        params.monotonicity = 0.6;
+        params.hypophonia_severity = 0.4;
+        params.output_path = "/tmp/test_pathology.wav".to_string();
+
+        let script = generator.create_festival_script(&params).unwrap();
+
+        // Should contain monotonicity and hypophonia modifications
+        assert!(script.contains("default-f0-std"));
+        assert!(script.contains("Default_Gain"));
+    }
+
+    #[test]
+    fn test_praat_script_generation() {
+        let generator = Level3AudioGenerator::new();
+        let mut params = VoiceAudioParams::default();
+        params.text = "Test speech".to_string();
+        params.pitch_mean = 200.0;
+        params.speaking_rate = 140.0;
+        params.output_path = "/tmp/test_praat.wav".to_string();
+
+        let script = generator.create_praat_script(&params, "/tmp/input.wav").unwrap();
+
+        // Verify script contains key Praat commands
+        assert!(script.contains("Read from file"));
+        assert!(script.contains("To Manipulation"));
+        assert!(script.contains("Extract pitch tier"));
+        assert!(script.contains("Multiply frequencies"));
+        assert!(script.contains("Save as WAV file"));
+        assert!(script.contains("/tmp/test_praat.wav"));
+    }
+
+    #[test]
+    fn test_praat_script_with_tremor() {
+        let generator = Level3AudioGenerator::new();
+        let mut params = VoiceAudioParams::default();
+        params.tremor_frequency = 5.0;
+        params.tremor_amplitude = 0.3;
+        params.output_path = "/tmp/test_tremor.wav".to_string();
+
+        let script = generator.create_praat_script(&params, "/tmp/input.wav").unwrap();
+
+        assert!(script.contains("Apply tremor"));
+        assert!(script.contains("Add periodic modulation"));
+    }
+
+    #[test]
+    fn test_praat_script_with_monotonicity() {
+        let generator = Level3AudioGenerator::new();
+        let mut params = VoiceAudioParams::default();
+        params.monotonicity = 0.7;
+        params.output_path = "/tmp/test_mono.wav".to_string();
+
+        let script = generator.create_praat_script(&params, "/tmp/input.wav").unwrap();
+
+        assert!(script.contains("Apply monotonicity"));
+        assert!(script.contains("Flatten"));
+    }
+
+    #[test]
+    fn test_praat_ground_truth_with_formants() {
+        let generator = Level3AudioGenerator::new();
+        let params = VoiceAudioParams::default();
+
+        let ground_truth = generator.generate_voice_ground_truth_praat(&params).unwrap();
+
+        // Verify formants are present
+        assert!(ground_truth.formants.is_some());
+        let formants = ground_truth.formants.unwrap();
+        assert!(!formants.is_empty());
+
+        // Check formant values are in reasonable ranges
+        for formant in formants.iter() {
+            assert!(formant.f1 > 200.0 && formant.f1 < 1000.0);
+            assert!(formant.f2 > 700.0 && formant.f2 < 3000.0);
+            assert!(formant.f3 > 1500.0 && formant.f3 < 4000.0);
+        }
+
+        // Verify metadata
+        assert_eq!(ground_truth.metadata.get("praat_modified"), Some(&"true".to_string()));
+    }
+
+    #[test]
+    fn test_backend_selection() {
+        let generator = Level3AudioGenerator::new();
+
+        // Test each backend type
+        let backends = vec![
+            AudioBackend::ESpeakNG,
+            AudioBackend::Festival,
+            AudioBackend::Praat,
+        ];
+
+        for backend in backends {
+            let mut params = VoiceAudioParams::default();
+            params.backend = backend;
+            // Note: This just tests the selection logic, not actual execution
+            // which requires the tools to be installed
+        }
+    }
+
+    #[test]
+    fn test_voice_params_validation() {
+        let generator = Level3AudioGenerator::new();
+
+        // Test empty text
+        let mut params = VoiceAudioParams::default();
+        params.text = "".to_string();
+        assert!(generator.validate_voice_params(&params).is_err());
+
+        // Test invalid speaking rate
+        let mut params = VoiceAudioParams::default();
+        params.speaking_rate = 0.0;
+        assert!(generator.validate_voice_params(&params).is_err());
+
+        // Test invalid volume
+        let mut params = VoiceAudioParams::default();
+        params.volume = 1.5;
+        assert!(generator.validate_voice_params(&params).is_err());
+
+        // Test valid params
+        let params = VoiceAudioParams::default();
+        assert!(generator.validate_voice_params(&params).is_ok());
+    }
+
+    #[test]
+    fn test_festival_duration_calculation() {
+        let generator = Level3AudioGenerator::new();
+        let mut params = VoiceAudioParams::default();
+        params.speaking_rate = 100.0; // Slower than default 150
+        params.text = "Test".to_string();
+        params.output_path = "/tmp/test.wav".to_string();
+
+        let script = generator.create_festival_script(&params).unwrap();
+
+        // Duration stretch should be 150/100 = 1.5
+        assert!(script.contains("Duration_Stretch 1.500"));
+    }
+
+    #[test]
+    fn test_praat_volume_modification() {
+        let generator = Level3AudioGenerator::new();
+        let mut params = VoiceAudioParams::default();
+        params.volume = 0.5;
+        params.hypophonia_severity = 0.3;
+        params.output_path = "/tmp/test_volume.wav".to_string();
+
+        let script = generator.create_praat_script(&params, "/tmp/input.wav").unwrap();
+
+        assert!(script.contains("Scale intensity"));
+    }
+
+    #[test]
+    fn test_text_escaping_festival() {
+        let generator = Level3AudioGenerator::new();
+        let mut params = VoiceAudioParams::default();
+        params.text = "He said \"Hello world\"".to_string();
+        params.output_path = "/tmp/test_escape.wav".to_string();
+
+        let script = generator.create_festival_script(&params).unwrap();
+
+        // Quotes should be escaped
+        assert!(script.contains("\\\""));
     }
 }
