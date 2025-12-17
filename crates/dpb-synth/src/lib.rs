@@ -23,12 +23,19 @@ pub use streaming::{
     StreamingGenerator, FrameStreamingGenerator,
     RingBuffer, AtomicRingBuffer, MultiChannelBuffer,
     StreamingConfig, StreamingStats,
-    // Streaming generators
+    // Contact biosignal streaming
     StreamingEcg, StreamingEcgState, StreamingEcgParams,
     StreamingTremor, StreamingTremorState, StreamingTremorParams,
     StreamingPpg, StreamingPpgState, StreamingPpgParams,
     StreamingEmg, StreamingEmgState, StreamingEmgParams,
     StreamingEda, StreamingEdaState, StreamingEdaParams,
+    StreamingRespiratory, StreamingRespiratoryState, StreamingRespiratoryParams,
+    StreamingThermal, StreamingThermalState, StreamingThermalParams,
+    // Eye tracking streaming
+    StreamingGaze, StreamingGazeState, StreamingGazeParams, GazeSample,
+    // Frame-based streaming (pose, hand)
+    StreamingPose, StreamingPoseState, StreamingPoseParams, PoseFrame,
+    StreamingHand, StreamingHandState, StreamingHandParams, HandFrame, HandMotionType,
     // Multi-modal streaming
     MultiModalStreaming, MultiModalState, MultiModalParams, MultiModalSample,
 };

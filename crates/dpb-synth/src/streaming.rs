@@ -1398,6 +1398,876 @@ impl StreamingConfig {
             max_latency: 0.1,
         }
     }
+
+    /// Create config for respiratory streaming (50 Hz)
+    pub fn respiratory() -> Self {
+        Self {
+            buffer_size: 500, // 10 seconds
+            sample_rate: 50.0,
+            batch_size: 25,
+            realtime_pacing: true,
+            max_latency: 0.1,
+        }
+    }
+
+    /// Create config for thermal streaming (1 Hz)
+    pub fn thermal() -> Self {
+        Self {
+            buffer_size: 600, // 10 minutes
+            sample_rate: 1.0,
+            batch_size: 1,
+            realtime_pacing: true,
+            max_latency: 1.0,
+        }
+    }
+}
+
+// ============================================================================
+// StreamingRespiratory - Breathing patterns
+// ============================================================================
+
+/// Streaming respiratory waveform generator
+///
+/// Generates breathing signal with asymmetric inspiration/expiration phases.
+/// Inspiration is typically faster than expiration (I:E ratio).
+pub struct StreamingRespiratory;
+
+/// State for streaming respiratory generation
+#[derive(Debug, Clone)]
+pub struct StreamingRespiratoryState {
+    /// Current sample index
+    pub sample_idx: usize,
+    /// Time step
+    pub dt: f64,
+    /// Breath cycle duration in seconds
+    pub breath_duration: f64,
+    /// Inspiration ratio (0-1)
+    pub inspiration_ratio: f64,
+    /// Amplitude
+    pub amplitude: f64,
+    /// RNG state
+    pub rng: rand::rngs::StdRng,
+}
+
+/// Parameters for streaming respiratory
+#[derive(Debug, Clone)]
+pub struct StreamingRespiratoryParams {
+    /// Sampling rate in Hz (typically 25-100 Hz)
+    pub sampling_rate: f64,
+    /// Respiratory rate in breaths per minute (typically 12-20)
+    pub respiratory_rate: f64,
+    /// Signal amplitude (normalized)
+    pub amplitude: f64,
+    /// Inspiration ratio: inspiration/(inspiration+expiration), typically 0.3-0.4
+    pub inspiration_ratio: f64,
+    /// Breath-to-breath variability (0-1)
+    pub variability: f64,
+    /// Optional duration limit
+    pub duration: Option<f64>,
+}
+
+impl Default for StreamingRespiratoryParams {
+    fn default() -> Self {
+        Self {
+            sampling_rate: 50.0,
+            respiratory_rate: 15.0, // 15 breaths/minute
+            amplitude: 1.0,
+            inspiration_ratio: 0.4, // I:E = 1:1.5
+            variability: 0.1,
+            duration: None,
+        }
+    }
+}
+
+impl StreamingGenerator for StreamingRespiratory {
+    type State = StreamingRespiratoryState;
+    type Parameters = StreamingRespiratoryParams;
+    type Sample = f64;
+
+    fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
+        use rand::SeedableRng;
+
+        StreamingRespiratoryState {
+            sample_idx: 0,
+            dt: 1.0 / params.sampling_rate,
+            breath_duration: 60.0 / params.respiratory_rate,
+            inspiration_ratio: params.inspiration_ratio,
+            amplitude: params.amplitude,
+            rng: rand::rngs::StdRng::seed_from_u64(seed),
+        }
+    }
+
+    fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
+        use rand::Rng;
+        use std::f64::consts::PI;
+
+        let t = state.sample_idx as f64 * state.dt;
+        let phase = (t % state.breath_duration) / state.breath_duration;
+
+        // Asymmetric breath cycle
+        let sample = if phase < state.inspiration_ratio {
+            // Inspiration (faster rise)
+            let insp_phase = phase / state.inspiration_ratio;
+            state.amplitude * (PI * insp_phase).sin()
+        } else {
+            // Expiration (slower decay)
+            let exp_phase = (phase - state.inspiration_ratio) / (1.0 - state.inspiration_ratio);
+            state.amplitude * (PI * (1.0 - exp_phase)).sin()
+        };
+
+        // Add small noise
+        let noise = state.rng.gen_range(-0.02..0.02);
+
+        state.sample_idx += 1;
+
+        sample + noise
+    }
+
+    fn current_time(&self, state: &Self::State) -> f64 {
+        state.sample_idx as f64 * state.dt
+    }
+
+    fn sampling_rate(&self, params: &Self::Parameters) -> f64 {
+        params.sampling_rate
+    }
+
+    fn reset_state(&self, state: &mut Self::State, params: &Self::Parameters, seed: u64) {
+        *state = self.init_state(params, seed);
+    }
+
+    fn is_finite(&self, params: &Self::Parameters) -> bool {
+        params.duration.is_some()
+    }
+
+    fn is_complete(&self, state: &Self::State, params: &Self::Parameters) -> bool {
+        if let Some(duration) = params.duration {
+            self.current_time(state) >= duration
+        } else {
+            false
+        }
+    }
+}
+
+// ============================================================================
+// StreamingThermal - Skin temperature
+// ============================================================================
+
+/// Streaming skin temperature generator
+///
+/// Generates temperature signal with baseline, vasomotor oscillations,
+/// and measurement noise. Temperature changes are slow (thermal inertia).
+pub struct StreamingThermal;
+
+/// State for streaming thermal generation
+#[derive(Debug, Clone)]
+pub struct StreamingThermalState {
+    /// Current sample index
+    pub sample_idx: usize,
+    /// Time step
+    pub dt: f64,
+    /// Baseline temperature (°C)
+    pub baseline_temp: f64,
+    /// Vasomotor phase
+    pub vasomotor_phase: f64,
+    /// Vasomotor frequency (Hz)
+    pub vasomotor_frequency: f64,
+    /// Vasomotor amplitude (°C)
+    pub vasomotor_amplitude: f64,
+    /// RNG state
+    pub rng: rand::rngs::StdRng,
+}
+
+/// Parameters for streaming thermal
+#[derive(Debug, Clone)]
+pub struct StreamingThermalParams {
+    /// Sampling rate in Hz (typically 0.1-1 Hz for thermal)
+    pub sampling_rate: f64,
+    /// Baseline skin temperature (°C, typically 32-34)
+    pub baseline_temp: f64,
+    /// Vasomotor oscillation amplitude (°C)
+    pub vasomotor_amplitude: f64,
+    /// Vasomotor oscillation frequency (Hz, typically 0.01-0.1)
+    pub vasomotor_frequency: f64,
+    /// Measurement noise (°C)
+    pub noise_amplitude: f64,
+    /// Optional duration limit
+    pub duration: Option<f64>,
+}
+
+impl Default for StreamingThermalParams {
+    fn default() -> Self {
+        Self {
+            sampling_rate: 1.0,     // 1 Hz
+            baseline_temp: 33.0,    // °C
+            vasomotor_amplitude: 0.2,
+            vasomotor_frequency: 0.05, // 20 second period
+            noise_amplitude: 0.05,
+            duration: None,
+        }
+    }
+}
+
+impl StreamingGenerator for StreamingThermal {
+    type State = StreamingThermalState;
+    type Parameters = StreamingThermalParams;
+    type Sample = f64;
+
+    fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
+        use rand::SeedableRng;
+        use rand::Rng;
+
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let vasomotor_phase = rng.gen_range(0.0..2.0 * std::f64::consts::PI);
+
+        StreamingThermalState {
+            sample_idx: 0,
+            dt: 1.0 / params.sampling_rate,
+            baseline_temp: params.baseline_temp,
+            vasomotor_phase,
+            vasomotor_frequency: params.vasomotor_frequency,
+            vasomotor_amplitude: params.vasomotor_amplitude,
+            rng,
+        }
+    }
+
+    fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
+        use rand_distr::{Distribution, Normal};
+        use std::f64::consts::PI;
+
+        let t = state.sample_idx as f64 * state.dt;
+
+        // Vasomotor oscillations (blood flow regulation)
+        let vasomotor = state.vasomotor_amplitude *
+            (2.0 * PI * state.vasomotor_frequency * t + state.vasomotor_phase).sin();
+
+        // Measurement noise
+        let noise_dist = Normal::new(0.0, 0.05).unwrap();
+        let noise = noise_dist.sample(&mut state.rng);
+
+        state.sample_idx += 1;
+
+        state.baseline_temp + vasomotor + noise
+    }
+
+    fn current_time(&self, state: &Self::State) -> f64 {
+        state.sample_idx as f64 * state.dt
+    }
+
+    fn sampling_rate(&self, params: &Self::Parameters) -> f64 {
+        params.sampling_rate
+    }
+
+    fn reset_state(&self, state: &mut Self::State, params: &Self::Parameters, seed: u64) {
+        *state = self.init_state(params, seed);
+    }
+
+    fn is_finite(&self, params: &Self::Parameters) -> bool {
+        params.duration.is_some()
+    }
+
+    fn is_complete(&self, state: &Self::State, params: &Self::Parameters) -> bool {
+        if let Some(duration) = params.duration {
+            self.current_time(state) >= duration
+        } else {
+            false
+        }
+    }
+}
+
+// ============================================================================
+// StreamingGaze - Eye tracking
+// ============================================================================
+
+/// Streaming gaze/eye tracking generator
+///
+/// Generates 2D gaze position with saccades, fixations, and smooth pursuit.
+pub struct StreamingGaze;
+
+/// State for streaming gaze generation
+#[derive(Debug, Clone)]
+pub struct StreamingGazeState {
+    /// Current frame index
+    pub frame_idx: usize,
+    /// Frame interval
+    pub dt: f64,
+    /// Current gaze position [x, y] in normalized coordinates (-1 to 1)
+    pub gaze_position: [f64; 2],
+    /// Target position for current fixation
+    pub target_position: [f64; 2],
+    /// Time at current fixation
+    pub fixation_time: f64,
+    /// Duration of current fixation
+    pub fixation_duration: f64,
+    /// In saccade mode
+    pub in_saccade: bool,
+    /// Saccade progress (0-1)
+    pub saccade_progress: f64,
+    /// RNG state
+    pub rng: rand::rngs::StdRng,
+}
+
+/// Parameters for streaming gaze
+#[derive(Debug, Clone)]
+pub struct StreamingGazeParams {
+    /// Frame rate in Hz (typically 30-120 Hz for eye trackers)
+    pub frame_rate: f64,
+    /// Mean fixation duration (seconds)
+    pub fixation_duration_mean: f64,
+    /// Fixation duration std (seconds)
+    pub fixation_duration_std: f64,
+    /// Saccade duration (seconds, typically 0.02-0.05)
+    pub saccade_duration: f64,
+    /// Gaze noise (jitter during fixations)
+    pub noise_amplitude: f64,
+    /// Optional duration limit
+    pub duration: Option<f64>,
+}
+
+impl Default for StreamingGazeParams {
+    fn default() -> Self {
+        Self {
+            frame_rate: 60.0,        // 60 Hz
+            fixation_duration_mean: 0.3,
+            fixation_duration_std: 0.1,
+            saccade_duration: 0.03,
+            noise_amplitude: 0.01,
+            duration: None,
+        }
+    }
+}
+
+/// Gaze sample with position and pupil size
+#[derive(Debug, Clone)]
+pub struct GazeSample {
+    /// X position (-1 to 1, normalized screen coordinates)
+    pub x: f64,
+    /// Y position (-1 to 1, normalized screen coordinates)
+    pub y: f64,
+    /// Pupil diameter (mm)
+    pub pupil_diameter: f64,
+}
+
+impl StreamingGenerator for StreamingGaze {
+    type State = StreamingGazeState;
+    type Parameters = StreamingGazeParams;
+    type Sample = GazeSample;
+
+    fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
+        use rand::SeedableRng;
+        use rand::Rng;
+
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+
+        // Start with random fixation target
+        let target = [
+            rng.gen_range(-0.8..0.8),
+            rng.gen_range(-0.8..0.8),
+        ];
+
+        let fixation_duration = rng.gen_range(
+            (params.fixation_duration_mean - params.fixation_duration_std)
+                ..(params.fixation_duration_mean + params.fixation_duration_std)
+        ).max(0.1);
+
+        StreamingGazeState {
+            frame_idx: 0,
+            dt: 1.0 / params.frame_rate,
+            gaze_position: target,
+            target_position: target,
+            fixation_time: 0.0,
+            fixation_duration,
+            in_saccade: false,
+            saccade_progress: 0.0,
+            rng,
+        }
+    }
+
+    fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
+        use rand::Rng;
+        use rand_distr::{Distribution, Normal};
+
+        let noise_dist = Normal::new(0.0, 0.01).unwrap();
+
+        // Check if fixation has ended
+        if !state.in_saccade && state.fixation_time >= state.fixation_duration {
+            // Start saccade to new target
+            state.in_saccade = true;
+            state.saccade_progress = 0.0;
+            state.target_position = [
+                state.rng.gen_range(-0.8..0.8),
+                state.rng.gen_range(-0.8..0.8),
+            ];
+        }
+
+        if state.in_saccade {
+            // Saccade - rapid movement to new target
+            state.saccade_progress += state.dt / 0.03; // ~30ms saccade
+
+            if state.saccade_progress >= 1.0 {
+                // Saccade complete
+                state.in_saccade = false;
+                state.gaze_position = state.target_position;
+                state.fixation_time = 0.0;
+                state.fixation_duration = state.rng.gen_range(0.2..0.5);
+            } else {
+                // Smooth interpolation during saccade (sigmoid-like)
+                let t = state.saccade_progress;
+                let smooth_t = t * t * (3.0 - 2.0 * t); // smoothstep
+
+                state.gaze_position[0] = state.gaze_position[0] +
+                    (state.target_position[0] - state.gaze_position[0]) * smooth_t;
+                state.gaze_position[1] = state.gaze_position[1] +
+                    (state.target_position[1] - state.gaze_position[1]) * smooth_t;
+            }
+        } else {
+            // Fixation - small jitter around target
+            state.fixation_time += state.dt;
+        }
+
+        // Add noise/jitter
+        let x = state.gaze_position[0] + noise_dist.sample(&mut state.rng);
+        let y = state.gaze_position[1] + noise_dist.sample(&mut state.rng);
+
+        // Pupil diameter varies slightly (3-5mm typical)
+        let pupil = 4.0 + state.rng.gen_range(-0.2..0.2);
+
+        state.frame_idx += 1;
+
+        GazeSample {
+            x,
+            y,
+            pupil_diameter: pupil,
+        }
+    }
+
+    fn current_time(&self, state: &Self::State) -> f64 {
+        state.frame_idx as f64 * state.dt
+    }
+
+    fn sampling_rate(&self, params: &Self::Parameters) -> f64 {
+        params.frame_rate
+    }
+
+    fn reset_state(&self, state: &mut Self::State, params: &Self::Parameters, seed: u64) {
+        *state = self.init_state(params, seed);
+    }
+
+    fn is_finite(&self, params: &Self::Parameters) -> bool {
+        params.duration.is_some()
+    }
+
+    fn is_complete(&self, state: &Self::State, params: &Self::Parameters) -> bool {
+        if let Some(duration) = params.duration {
+            self.current_time(state) >= duration
+        } else {
+            false
+        }
+    }
+}
+
+// ============================================================================
+// StreamingPose - Body pose keypoints (uses FrameStreamingGenerator)
+// ============================================================================
+
+/// Streaming pose/gait generator
+///
+/// Generates body keypoint positions frame-by-frame based on gait cycle model.
+pub struct StreamingPose;
+
+/// State for streaming pose generation
+#[derive(Debug, Clone)]
+pub struct StreamingPoseState {
+    /// Current frame index
+    pub frame_idx: usize,
+    /// Frame interval
+    pub dt: f64,
+    /// Gait cycle duration
+    pub cycle_duration: f64,
+    /// Subject height (meters)
+    pub height: f64,
+    /// Stride length
+    pub stride_length: f64,
+    /// Step width
+    pub step_width: f64,
+    /// RNG state
+    pub rng: rand::rngs::StdRng,
+}
+
+/// Parameters for streaming pose
+#[derive(Debug, Clone)]
+pub struct StreamingPoseParams {
+    /// Frame rate (FPS)
+    pub frame_rate: f64,
+    /// Walking cadence (steps per minute)
+    pub cadence: f64,
+    /// Stride length (meters)
+    pub stride_length: f64,
+    /// Step width (meters)
+    pub step_width: f64,
+    /// Subject height (meters)
+    pub height: f64,
+    /// Motion noise/variability
+    pub noise: f64,
+    /// Optional duration limit
+    pub duration: Option<f64>,
+}
+
+impl Default for StreamingPoseParams {
+    fn default() -> Self {
+        Self {
+            frame_rate: 30.0,
+            cadence: 110.0,       // steps/minute
+            stride_length: 1.4,   // meters
+            step_width: 0.15,     // meters
+            height: 1.75,         // meters
+            noise: 0.01,
+            duration: None,
+        }
+    }
+}
+
+/// Pose frame with 33 MediaPipe keypoints
+#[derive(Debug, Clone)]
+pub struct PoseFrame {
+    /// 33 keypoints, each [x, y, z] in meters
+    pub keypoints: Vec<[f64; 3]>,
+    /// Gait phase (0-1)
+    pub gait_phase: f64,
+    /// Current phase name
+    pub phase_name: String,
+}
+
+impl FrameStreamingGenerator for StreamingPose {
+    type State = StreamingPoseState;
+    type Parameters = StreamingPoseParams;
+    type Frame = PoseFrame;
+
+    fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
+        use rand::SeedableRng;
+
+        StreamingPoseState {
+            frame_idx: 0,
+            dt: 1.0 / params.frame_rate,
+            cycle_duration: 60.0 / params.cadence,
+            height: params.height,
+            stride_length: params.stride_length,
+            step_width: params.step_width,
+            rng: rand::rngs::StdRng::seed_from_u64(seed),
+        }
+    }
+
+    fn next_frame(&self, state: &mut Self::State) -> Self::Frame {
+        use rand::Rng;
+        use std::f64::consts::PI;
+
+        let t = state.frame_idx as f64 * state.dt;
+        let gait_phase = (t % state.cycle_duration) / state.cycle_duration;
+
+        let phase_name = if gait_phase < 0.6 { "stance" } else { "swing" }.to_string();
+
+        // Generate 33 MediaPipe keypoints
+        let mut keypoints = vec![[0.0; 3]; 33];
+
+        // Pelvis center (forward progression)
+        let pelvis_y = state.height * 0.55;
+        let pelvis_z = t * state.stride_length / state.cycle_duration;
+        keypoints[0] = [0.0, pelvis_y, pelvis_z];
+
+        // Hips
+        keypoints[23] = [-state.step_width / 2.0, pelvis_y, pelvis_z]; // Left hip
+        keypoints[24] = [state.step_width / 2.0, pelvis_y, pelvis_z];  // Right hip
+
+        // Knees (simplified Winter's model)
+        let thigh_length = state.height * 0.245;
+        let shank_length = state.height * 0.246;
+
+        // Right leg
+        let right_phase = gait_phase;
+        let right_knee_angle = Self::knee_angle(right_phase);
+        let right_knee_x = state.step_width / 2.0;
+        let right_knee_y = pelvis_y - thigh_length * right_knee_angle.to_radians().cos();
+        keypoints[26] = [right_knee_x, right_knee_y, pelvis_z];
+
+        // Left leg (opposite phase)
+        let left_phase = (gait_phase + 0.5) % 1.0;
+        let left_knee_angle = Self::knee_angle(left_phase);
+        let left_knee_x = -state.step_width / 2.0;
+        let left_knee_y = pelvis_y - thigh_length * left_knee_angle.to_radians().cos();
+        keypoints[25] = [left_knee_x, left_knee_y, pelvis_z];
+
+        // Ankles
+        keypoints[28] = [right_knee_x, right_knee_y - shank_length, pelvis_z]; // Right
+        keypoints[27] = [left_knee_x, left_knee_y - shank_length, pelvis_z];   // Left
+
+        // Upper body (simplified - roughly stationary relative to pelvis)
+        let torso_height = state.height * 0.3;
+        for i in 11..23 {
+            keypoints[i] = [0.0, pelvis_y + torso_height * 0.5, pelvis_z];
+        }
+
+        // Head
+        keypoints[0] = [0.0, state.height * 0.95, pelvis_z];
+
+        // Shoulders
+        keypoints[11] = [-0.2, state.height * 0.82, pelvis_z]; // Left
+        keypoints[12] = [0.2, state.height * 0.82, pelvis_z];  // Right
+
+        // Add noise
+        for kp in keypoints.iter_mut() {
+            kp[0] += state.rng.gen_range(-0.01..0.01);
+            kp[1] += state.rng.gen_range(-0.01..0.01);
+            kp[2] += state.rng.gen_range(-0.01..0.01);
+        }
+
+        state.frame_idx += 1;
+
+        PoseFrame {
+            keypoints,
+            gait_phase,
+            phase_name,
+        }
+    }
+
+    fn current_frame(&self, state: &Self::State) -> usize {
+        state.frame_idx
+    }
+
+    fn frame_rate(&self, params: &Self::Parameters) -> f64 {
+        params.frame_rate
+    }
+
+    fn reset_state(&self, state: &mut Self::State, params: &Self::Parameters, seed: u64) {
+        *state = self.init_state(params, seed);
+    }
+}
+
+impl StreamingPose {
+    /// Simplified knee angle profile based on gait phase
+    fn knee_angle(phase: f64) -> f64 {
+        use std::f64::consts::PI;
+
+        // Stance phase: ~5-15 degrees flexion
+        // Swing phase: ~60 degrees peak flexion
+        if phase < 0.6 {
+            // Stance
+            10.0 + 5.0 * (PI * phase / 0.6).sin()
+        } else {
+            // Swing
+            let swing_phase = (phase - 0.6) / 0.4;
+            10.0 + 50.0 * (PI * swing_phase).sin()
+        }
+    }
+}
+
+// ============================================================================
+// StreamingHand - Hand keypoint positions
+// ============================================================================
+
+/// Streaming hand tracking generator
+///
+/// Generates 21 hand landmark positions for finger tapping or tremor motions.
+pub struct StreamingHand;
+
+/// State for streaming hand generation
+#[derive(Debug, Clone)]
+pub struct StreamingHandState {
+    /// Current frame index
+    pub frame_idx: usize,
+    /// Frame interval
+    pub dt: f64,
+    /// Current hand position [x, y, z]
+    pub wrist_position: [f64; 3],
+    /// Finger extension state (0-1 for each finger)
+    pub finger_states: [f64; 5],
+    /// Tapping frequency (if tapping motion)
+    pub tap_frequency: f64,
+    /// Tremor amplitude
+    pub tremor_amplitude: f64,
+    /// RNG state
+    pub rng: rand::rngs::StdRng,
+}
+
+/// Parameters for streaming hand
+#[derive(Debug, Clone)]
+pub struct StreamingHandParams {
+    /// Frame rate (FPS)
+    pub frame_rate: f64,
+    /// Motion type
+    pub motion_type: HandMotionType,
+    /// Tap frequency (Hz, for tapping)
+    pub tap_frequency: f64,
+    /// Tremor amplitude (meters)
+    pub tremor_amplitude: f64,
+    /// Tremor frequency (Hz)
+    pub tremor_frequency: f64,
+    /// Optional duration limit
+    pub duration: Option<f64>,
+}
+
+/// Type of hand motion
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum HandMotionType {
+    /// Stationary with tremor
+    Stationary,
+    /// Finger tapping (index finger)
+    FingerTapping,
+    /// Full hand opening/closing
+    OpenClose,
+}
+
+impl Default for StreamingHandParams {
+    fn default() -> Self {
+        Self {
+            frame_rate: 30.0,
+            motion_type: HandMotionType::FingerTapping,
+            tap_frequency: 2.0,      // 2 Hz tapping
+            tremor_amplitude: 0.002, // 2mm tremor
+            tremor_frequency: 5.0,   // 5 Hz (Parkinson's typical)
+            duration: None,
+        }
+    }
+}
+
+/// Hand frame with 21 landmarks
+#[derive(Debug, Clone)]
+pub struct HandFrame {
+    /// 21 hand landmarks [x, y, z] in meters (relative to wrist)
+    pub landmarks: Vec<[f64; 3]>,
+    /// Which fingers are extended (thumb to pinky)
+    pub fingers_extended: [bool; 5],
+}
+
+impl FrameStreamingGenerator for StreamingHand {
+    type State = StreamingHandState;
+    type Parameters = StreamingHandParams;
+    type Frame = HandFrame;
+
+    fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
+        use rand::SeedableRng;
+
+        StreamingHandState {
+            frame_idx: 0,
+            dt: 1.0 / params.frame_rate,
+            wrist_position: [0.0, 0.0, 0.0],
+            finger_states: [1.0; 5], // All extended
+            tap_frequency: params.tap_frequency,
+            tremor_amplitude: params.tremor_amplitude,
+            rng: rand::rngs::StdRng::seed_from_u64(seed),
+        }
+    }
+
+    fn next_frame(&self, state: &mut Self::State) -> Self::Frame {
+        use rand::Rng;
+        use std::f64::consts::PI;
+
+        let t = state.frame_idx as f64 * state.dt;
+
+        // Generate base hand pose (palm facing down)
+        let mut landmarks = vec![[0.0; 3]; 21];
+
+        // Wrist (landmark 0)
+        landmarks[0] = state.wrist_position;
+
+        // Finger lengths (approximate, in meters)
+        let finger_bases = [
+            [0.04, 0.0, 0.0],    // Thumb base
+            [0.03, 0.02, 0.0],   // Index MCP
+            [0.03, 0.0, 0.0],    // Middle MCP
+            [0.03, -0.02, 0.0],  // Ring MCP
+            [0.03, -0.04, 0.0],  // Pinky MCP
+        ];
+
+        let finger_lengths = [
+            [0.03, 0.02, 0.015],  // Thumb: metacarpal, proximal, distal
+            [0.04, 0.025, 0.02],  // Index
+            [0.045, 0.03, 0.02],  // Middle
+            [0.04, 0.025, 0.02],  // Ring
+            [0.03, 0.02, 0.015],  // Pinky
+        ];
+
+        // Update finger states based on motion type
+        match HandMotionType::FingerTapping {
+            HandMotionType::FingerTapping => {
+                // Index finger taps
+                let tap_phase = (2.0 * PI * state.tap_frequency * t).sin();
+                state.finger_states[1] = 0.5 + 0.5 * tap_phase; // Index oscillates
+            }
+            HandMotionType::OpenClose => {
+                // All fingers open/close together
+                let phase = (2.0 * PI * 0.5 * t).sin();
+                for i in 0..5 {
+                    state.finger_states[i] = 0.5 + 0.5 * phase;
+                }
+            }
+            HandMotionType::Stationary => {}
+        }
+
+        // Generate finger landmarks
+        let mut idx = 1;
+        for finger in 0..5 {
+            let extension = state.finger_states[finger];
+            let base = finger_bases[finger];
+            let lengths = finger_lengths[finger];
+
+            // Calculate finger joint positions based on extension
+            let curl_angle = (1.0 - extension) * PI * 0.5; // 0 = extended, PI/2 = curled
+
+            let mut pos = [
+                landmarks[0][0] + base[0],
+                landmarks[0][1] + base[1],
+                landmarks[0][2] + base[2],
+            ];
+
+            for (joint, &length) in lengths.iter().enumerate() {
+                pos[0] += length * curl_angle.cos();
+                pos[2] -= length * curl_angle.sin();
+                landmarks[idx] = pos;
+                idx += 1;
+            }
+
+            // Add 4th landmark for fingertip
+            if finger > 0 {
+                landmarks[idx] = pos;
+                idx += 1;
+            }
+        }
+
+        // Add tremor
+        let tremor_x = state.tremor_amplitude * (2.0 * PI * 5.0 * t).sin();
+        let tremor_y = state.tremor_amplitude * (2.0 * PI * 5.0 * t + PI / 4.0).sin();
+
+        for landmark in landmarks.iter_mut() {
+            landmark[0] += tremor_x + state.rng.gen_range(-0.001..0.001);
+            landmark[1] += tremor_y + state.rng.gen_range(-0.001..0.001);
+        }
+
+        let fingers_extended = [
+            state.finger_states[0] > 0.5,
+            state.finger_states[1] > 0.5,
+            state.finger_states[2] > 0.5,
+            state.finger_states[3] > 0.5,
+            state.finger_states[4] > 0.5,
+        ];
+
+        state.frame_idx += 1;
+
+        HandFrame {
+            landmarks,
+            fingers_extended,
+        }
+    }
+
+    fn current_frame(&self, state: &Self::State) -> usize {
+        state.frame_idx
+    }
+
+    fn frame_rate(&self, params: &Self::Parameters) -> f64 {
+        params.frame_rate
+    }
+
+    fn reset_state(&self, state: &mut Self::State, params: &Self::Parameters, seed: u64) {
+        *state = self.init_state(params, seed);
+    }
 }
 
 #[cfg(test)]
@@ -2134,5 +3004,336 @@ mod tests {
         for channel_data in &batch {
             assert_eq!(channel_data.len(), 25);
         }
+    }
+
+    // ========== StreamingRespiratory Tests ==========
+
+    #[test]
+    fn test_streaming_respiratory_basic() {
+        let generator = StreamingRespiratory;
+        let params = StreamingRespiratoryParams::default();
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 500 samples (10 seconds at 50 Hz)
+        let samples: Vec<f64> = (0..500)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        assert_eq!(samples.len(), 500);
+        assert!((generator.current_time(&state) - 10.0).abs() < 0.01);
+
+        // Respiratory signal is always positive (0 to amplitude), mean ~0.5-0.7
+        let mean: f64 = samples.iter().sum::<f64>() / samples.len() as f64;
+        assert!(mean > 0.3 && mean < 0.9,
+            "Respiratory mean should be ~0.6, got {}", mean);
+
+        // Should have variance (oscillation)
+        let variance: f64 = samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / samples.len() as f64;
+        assert!(variance > 0.05, "Should have respiratory variation");
+    }
+
+    #[test]
+    fn test_streaming_respiratory_breath_cycle() {
+        let generator = StreamingRespiratory;
+        let params = StreamingRespiratoryParams {
+            respiratory_rate: 15.0, // 15 breaths/minute = 4 second cycle
+            ..StreamingRespiratoryParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 400 samples (8 seconds = ~2 breath cycles at 15 bpm)
+        let samples: Vec<f64> = (0..400)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        // Find minima (breath troughs near 0) - count complete breath cycles
+        let mut trough_count = 0;
+        for i in 1..samples.len() - 1 {
+            if samples[i] < samples[i - 1] && samples[i] < samples[i + 1] && samples[i] < 0.1 {
+                trough_count += 1;
+            }
+        }
+
+        // At 15 bpm over 8 seconds, expect ~2 breath cycles = ~2 troughs
+        assert!(trough_count >= 1 && trough_count <= 4,
+            "Expected ~2 breath troughs, got {}", trough_count);
+    }
+
+    #[test]
+    fn test_streaming_respiratory_config() {
+        let config = StreamingConfig::respiratory();
+        assert_eq!(config.sample_rate, 50.0);
+        assert!(config.realtime_pacing);
+    }
+
+    // ========== StreamingThermal Tests ==========
+
+    #[test]
+    fn test_streaming_thermal_basic() {
+        let generator = StreamingThermal;
+        let params = StreamingThermalParams::default();
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 60 samples (60 seconds at 1 Hz)
+        let samples: Vec<f64> = (0..60)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        assert_eq!(samples.len(), 60);
+        assert!((generator.current_time(&state) - 60.0).abs() < 0.1);
+
+        // Temperature should be around baseline
+        let mean: f64 = samples.iter().sum::<f64>() / samples.len() as f64;
+        assert!((mean - 33.0).abs() < 1.0,
+            "Mean temp should be near baseline 33°C, got {}", mean);
+    }
+
+    #[test]
+    fn test_streaming_thermal_range() {
+        let generator = StreamingThermal;
+        let params = StreamingThermalParams::default();
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 100 samples
+        let samples: Vec<f64> = (0..100)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        // All temps should be physiologically reasonable (30-36°C)
+        for sample in &samples {
+            assert!(*sample > 30.0 && *sample < 36.0,
+                "Temperature {} outside reasonable range", sample);
+        }
+    }
+
+    #[test]
+    fn test_streaming_thermal_config() {
+        let config = StreamingConfig::thermal();
+        assert_eq!(config.sample_rate, 1.0);
+        assert!(config.realtime_pacing);
+    }
+
+    // ========== StreamingGaze Tests ==========
+
+    #[test]
+    fn test_streaming_gaze_basic() {
+        let generator = StreamingGaze;
+        let params = StreamingGazeParams::default();
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 60 samples (1 second at 60 Hz)
+        let samples: Vec<GazeSample> = (0..60)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        assert_eq!(samples.len(), 60);
+        assert!((generator.current_time(&state) - 1.0).abs() < 0.02);
+
+        // Gaze positions should be within screen bounds
+        for sample in &samples {
+            assert!(sample.x >= -1.1 && sample.x <= 1.1, "X out of bounds: {}", sample.x);
+            assert!(sample.y >= -1.1 && sample.y <= 1.1, "Y out of bounds: {}", sample.y);
+            assert!(sample.pupil_diameter > 2.0 && sample.pupil_diameter < 6.0,
+                "Pupil diameter {} out of range", sample.pupil_diameter);
+        }
+    }
+
+    #[test]
+    fn test_streaming_gaze_has_saccades() {
+        let generator = StreamingGaze;
+        let params = StreamingGazeParams::default();
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 300 samples (5 seconds)
+        let samples: Vec<GazeSample> = (0..300)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        // Calculate gaze velocity to detect saccades
+        let mut large_movements = 0;
+        for i in 1..samples.len() {
+            let dx = samples[i].x - samples[i-1].x;
+            let dy = samples[i].y - samples[i-1].y;
+            let distance = (dx*dx + dy*dy).sqrt();
+            if distance > 0.1 { // Threshold for saccade
+                large_movements += 1;
+            }
+        }
+
+        // Over 5 seconds with ~300ms fixations, expect several saccades
+        assert!(large_movements > 5, "Should have saccades, got {} large movements", large_movements);
+    }
+
+    // ========== StreamingPose Tests ==========
+
+    #[test]
+    fn test_streaming_pose_basic() {
+        let generator = StreamingPose;
+        let params = StreamingPoseParams::default();
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 30 frames (1 second at 30 fps)
+        let frames: Vec<PoseFrame> = (0..30)
+            .map(|_| generator.next_frame(&mut state))
+            .collect();
+
+        assert_eq!(frames.len(), 30);
+        assert_eq!(generator.current_frame(&state), 30);
+
+        // Check keypoints structure
+        for frame in &frames {
+            assert_eq!(frame.keypoints.len(), 33, "Should have 33 MediaPipe keypoints");
+            assert!(frame.gait_phase >= 0.0 && frame.gait_phase <= 1.0);
+            assert!(frame.phase_name == "stance" || frame.phase_name == "swing");
+        }
+    }
+
+    #[test]
+    fn test_streaming_pose_gait_phases() {
+        let generator = StreamingPose;
+        let params = StreamingPoseParams {
+            cadence: 60.0, // 60 steps/min = 1 second cycle
+            ..StreamingPoseParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 60 frames (2 seconds = 2 gait cycles)
+        let frames: Vec<PoseFrame> = (0..60)
+            .map(|_| generator.next_frame(&mut state))
+            .collect();
+
+        // Should see both stance and swing phases
+        let stance_count = frames.iter().filter(|f| f.phase_name == "stance").count();
+        let swing_count = frames.iter().filter(|f| f.phase_name == "swing").count();
+
+        assert!(stance_count > 0, "Should have stance phases");
+        assert!(swing_count > 0, "Should have swing phases");
+    }
+
+    #[test]
+    fn test_streaming_pose_forward_progression() {
+        let generator = StreamingPose;
+        let params = StreamingPoseParams::default();
+        let mut state = generator.init_state(&params, 42);
+
+        let frame1 = generator.next_frame(&mut state);
+        for _ in 0..29 {
+            generator.next_frame(&mut state);
+        }
+        let frame30 = generator.next_frame(&mut state);
+
+        // Pelvis Z should increase (forward walking)
+        let z1 = frame1.keypoints[0][2];
+        let z30 = frame30.keypoints[24][2]; // Right hip Z
+        assert!(z30 > z1, "Should be walking forward: z1={}, z30={}", z1, z30);
+    }
+
+    // ========== StreamingHand Tests ==========
+
+    #[test]
+    fn test_streaming_hand_basic() {
+        let generator = StreamingHand;
+        let params = StreamingHandParams::default();
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 30 frames (1 second at 30 fps)
+        let frames: Vec<HandFrame> = (0..30)
+            .map(|_| generator.next_frame(&mut state))
+            .collect();
+
+        assert_eq!(frames.len(), 30);
+        assert_eq!(generator.current_frame(&state), 30);
+
+        // Check landmark structure
+        for frame in &frames {
+            assert_eq!(frame.landmarks.len(), 21, "Should have 21 hand landmarks");
+            assert_eq!(frame.fingers_extended.len(), 5);
+        }
+    }
+
+    #[test]
+    fn test_streaming_hand_tapping() {
+        let generator = StreamingHand;
+        let params = StreamingHandParams {
+            motion_type: HandMotionType::FingerTapping,
+            tap_frequency: 2.0, // 2 Hz
+            ..StreamingHandParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 60 frames (2 seconds at 30 fps)
+        let frames: Vec<HandFrame> = (0..60)
+            .map(|_| generator.next_frame(&mut state))
+            .collect();
+
+        // Index finger (finger 1) should change extension state
+        let index_states: Vec<bool> = frames.iter()
+            .map(|f| f.fingers_extended[1])
+            .collect();
+
+        // Count state changes
+        let changes: usize = index_states.windows(2)
+            .filter(|w| w[0] != w[1])
+            .count();
+
+        // At 2 Hz over 2 seconds, expect ~4 taps = ~8 state changes
+        assert!(changes >= 2, "Should have tapping motion, got {} changes", changes);
+    }
+
+    #[test]
+    fn test_streaming_hand_has_tremor() {
+        let generator = StreamingHand;
+        let params = StreamingHandParams {
+            motion_type: HandMotionType::Stationary,
+            tremor_amplitude: 0.005, // 5mm tremor
+            ..StreamingHandParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 30 frames
+        let frames: Vec<HandFrame> = (0..30)
+            .map(|_| generator.next_frame(&mut state))
+            .collect();
+
+        // Wrist position should vary due to tremor
+        let wrist_x: Vec<f64> = frames.iter().map(|f| f.landmarks[0][0]).collect();
+
+        let mean_x = wrist_x.iter().sum::<f64>() / wrist_x.len() as f64;
+        let variance = wrist_x.iter().map(|x| (x - mean_x).powi(2)).sum::<f64>() / wrist_x.len() as f64;
+
+        assert!(variance > 0.0, "Should have tremor-induced variance");
+    }
+
+    // ========== All New Generators Together ==========
+
+    #[test]
+    fn test_all_new_streaming_generators() {
+        let resp_gen = StreamingRespiratory;
+        let therm_gen = StreamingThermal;
+        let gaze_gen = StreamingGaze;
+        let pose_gen = StreamingPose;
+        let hand_gen = StreamingHand;
+
+        let mut resp_state = resp_gen.init_state(&StreamingRespiratoryParams::default(), 1);
+        let mut therm_state = therm_gen.init_state(&StreamingThermalParams::default(), 2);
+        let mut gaze_state = gaze_gen.init_state(&StreamingGazeParams::default(), 3);
+        let mut pose_state = pose_gen.init_state(&StreamingPoseParams::default(), 4);
+        let mut hand_state = hand_gen.init_state(&StreamingHandParams::default(), 5);
+
+        // Generate samples from all generators
+        for _ in 0..30 {
+            let _resp = resp_gen.next_sample(&mut resp_state);
+            let _therm = therm_gen.next_sample(&mut therm_state);
+            let _gaze = gaze_gen.next_sample(&mut gaze_state);
+            let _pose = pose_gen.next_frame(&mut pose_state);
+            let _hand = hand_gen.next_frame(&mut hand_state);
+        }
+
+        // Verify all generators are working
+        assert!(resp_gen.current_time(&resp_state) > 0.0);
+        assert!(therm_gen.current_time(&therm_state) > 0.0);
+        assert!(gaze_gen.current_time(&gaze_state) > 0.0);
+        assert!(pose_gen.current_frame(&pose_state) == 30);
+        assert!(hand_gen.current_frame(&hand_state) == 30);
     }
 }
