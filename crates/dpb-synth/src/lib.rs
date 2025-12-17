@@ -8,6 +8,7 @@
 //! - Clinical validity
 
 pub mod traits;
+pub mod streaming;
 pub mod contact;
 pub mod pose;
 pub mod hand;
@@ -18,6 +19,15 @@ pub mod level3;
 pub mod media;
 
 pub use traits::{SyntheticGenerator, GroundTruth, ParameterSpace};
+pub use streaming::{
+    StreamingGenerator, FrameStreamingGenerator,
+    RingBuffer, AtomicRingBuffer, MultiChannelBuffer,
+    StreamingConfig, StreamingStats,
+    // Example streaming generators
+    StreamingEcg, StreamingEcgState, StreamingEcgParams,
+    StreamingTremor, StreamingTremorState, StreamingTremorParams,
+    MultiModalStreaming, MultiModalState, MultiModalParams, MultiModalSample,
+};
 
 /// Common result type for generators
 pub type Result<T> = std::result::Result<T, GeneratorError>;
