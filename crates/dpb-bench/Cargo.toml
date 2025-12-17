@@ -1,0 +1,69 @@
+[package]
+name = "dpb-bench"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Comprehensive benchmark suite for Delta-Predictive Biosensing Framework"
+
+[dependencies]
+dpb-core.workspace = true
+dpb-encoders.workspace = true
+dpb-neurons.workspace = true
+dpb-snn.workspace = true
+dpb-synth.workspace = true
+
+# Benchmarking
+criterion = { version = "0.5", features = ["html_reports"] }
+
+# Data structures
+ndarray.workspace = true
+nalgebra.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Time handling
+chrono = "0.4"
+
+# Statistics
+statrs.workspace = true
+
+# Random
+rand.workspace = true
+rand_distr.workspace = true
+
+# Error handling
+thiserror.workspace = true
+anyhow.workspace = true
+
+# Parallel processing
+rayon.workspace = true
+
+[dev-dependencies]
+approx.workspace = true
+
+[[bench]]
+name = "encoding"
+harness = false
+
+[[bench]]
+name = "neurons"
+harness = false
+
+[[bench]]
+name = "inference"
+harness = false
+
+[[bench]]
+name = "synthetic"
+harness = false
+
+[[example]]
+name = "run_benchmarks"
+
+[lib]
+name = "dpb_bench"
+path = "src/lib.rs"

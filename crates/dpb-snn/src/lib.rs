@@ -38,9 +38,31 @@ pub use training::{
 };
 pub use conversion::{ANNToSNNConverter, WeightNormalization, ThresholdBalancing};
 pub use decoders::{
-    SpikeRateDecoder, FirstSpikeDecoder, PopulationDecoder,
-    TemporalPatternDecoder, LatencyDecoder,
+    // Rate-based decoders
+    SpikeRateDecoder, FirstSpikeDecoder, PopulationDecoder, MaxSpikeDecoder,
+    WindowedRateDecoder, ExponentialRateDecoder, AdaptiveRateDecoder,
+    NormalizedRateDecoder, WeightedRateDecoder,
+    // Temporal decoders
+    TemporalPatternDecoder, LatencyDecoder, ISIDecoder, BurstDecoder,
+    LastSpikeDecoder, PhaseDecoder, RankOrderDecoder,
+    // Clinical score decoders
     UPDRSDecoder, TremorSeverityDecoder, GaitScoreDecoder,
+    UPDRSMotorDecoder, UPDRSTremorDecoder, UPDRSBradykinesiaDecoder,
+    UPDRSRigidityDecoder, UPDRSGaitDecoder, TUGDecoder,
+    BergBalanceDecoder, MoCADecoder, VoiceHDDecoder,
+    PDQ39Decoder, HoehnYahrDecoder, SEADLDecoder,
+    // Regression decoders
+    HeartRateDecoder, HRVDecoder, TremorFrequencyDecoder,
+    TremorAmplitudeDecoder, GaitVelocityDecoder, StrideTimeDecoder,
+    TappingFrequencyDecoder, ReactionTimeDecoder, SpeechRateDecoder,
+    PupilDiameterDecoder,
+    // Classification decoders
+    BinaryClassDecoder, MultiClassDecoder, TremorTypeDecoder,
+    GaitPhaseDecoder, SleepStageDecoder, ActivityDecoder,
+    EmotionDecoder, FatigueDecoder, MedicationStateDecoder,
+    DyskinesiasDecoder,
+    // Base decoder trait
+    Decoder,
 };
 
 use dpb_core::error::{DpbError, Result};

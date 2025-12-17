@@ -51,6 +51,7 @@ pub mod config;
 pub mod error;
 pub mod gpu;
 pub mod math;
+pub mod metrics;
 pub mod signal;
 pub mod tensor;
 pub mod traits;
@@ -94,6 +95,7 @@ impl traits::Signal for types::SignalBuffer {
 pub mod prelude {
     pub use crate::config::*;
     pub use crate::error::{DpbError, Result};
+    pub use crate::metrics::MetricTrait;
     pub use crate::traits::*;
     pub use crate::types::*;
 }
