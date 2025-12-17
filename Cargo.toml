@@ -76,3 +76,22 @@ opt-level = 3
 
 [profile.dev]
 opt-level = 1
+
+# Integration tests package
+[package]
+name = "dpb-integration-tests"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+dpb-core = { workspace = true }
+dpb-encoders = { workspace = true }
+dpb-snn = { workspace = true }
+dpb-synth = { workspace = true }
+
+# Test dependencies
+approx = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+ndarray = { workspace = true }
