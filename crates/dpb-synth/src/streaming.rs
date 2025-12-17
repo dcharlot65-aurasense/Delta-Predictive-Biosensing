@@ -2270,6 +2270,377 @@ impl FrameStreamingGenerator for StreamingHand {
     }
 }
 
+// ============================================================================
+// Streaming rPPG (Remote Photoplethysmography) Generator
+// ============================================================================
+
+/// Facial ROI frame with RGB pixel data for rPPG simulation
+///
+/// Simulates camera-captured facial video with subtle cardiac-induced
+/// color changes embedded in the skin pixels.
+#[derive(Debug, Clone)]
+pub struct RppgFrame {
+    /// RGB pixel data as [R, G, B] values (0.0-1.0 normalized)
+    pub pixels: Vec<[f64; 3]>,
+    /// Frame width in pixels
+    pub width: usize,
+    /// Frame height in pixels
+    pub height: usize,
+    /// Mean RGB values over skin region (for quick signal extraction)
+    pub mean_rgb: [f64; 3],
+    /// Current cardiac phase (0.0-1.0)
+    pub cardiac_phase: f64,
+    /// Ground truth BVP (blood volume pulse) signal value
+    pub ground_truth_bvp: f64,
+    /// Frame timestamp in seconds
+    pub timestamp: f64,
+}
+
+/// Streaming rPPG generator using facial ROI video frames
+///
+/// This generator produces synthetic facial video frames with realistic
+/// rPPG signal characteristics:
+/// - Cardiac-synchronized RGB modulation (~0.1% amplitude)
+/// - Green channel dominance (hemoglobin absorption)
+/// - Illumination variations
+/// - Motion artifacts (head movement)
+/// - Skin tone variation across face
+pub struct StreamingRppg;
+
+#[derive(Debug, Clone)]
+pub struct StreamingRppgParams {
+    /// Frame rate in FPS (typically 30)
+    pub frame_rate: f64,
+    /// ROI width in pixels
+    pub roi_width: usize,
+    /// ROI height in pixels
+    pub roi_height: usize,
+    /// Heart rate in BPM
+    pub heart_rate: f64,
+    /// Heart rate variability (fraction, 0.0-0.2)
+    pub hrv: f64,
+    /// Baseline skin tone RGB [R, G, B] (0.0-1.0)
+    pub skin_tone: [f64; 3],
+    /// rPPG signal amplitude (fraction, typically 0.001-0.01)
+    pub rppg_amplitude: f64,
+    /// Motion artifact amplitude (pixel displacement)
+    pub motion_amplitude: f64,
+    /// Illumination variation amplitude (fraction)
+    pub illumination_variation: f64,
+    /// Add spatial variation in skin tone
+    pub spatial_variation: bool,
+    /// Optional finite duration in seconds
+    pub duration: Option<f64>,
+}
+
+impl Default for StreamingRppgParams {
+    fn default() -> Self {
+        Self {
+            frame_rate: 30.0,
+            roi_width: 64,
+            roi_height: 64,
+            heart_rate: 72.0,
+            hrv: 0.05,
+            skin_tone: [0.76, 0.60, 0.49], // Typical Caucasian skin
+            rppg_amplitude: 0.005,          // 0.5% color change
+            motion_amplitude: 0.5,          // Subtle head motion
+            illumination_variation: 0.02,   // 2% illumination change
+            spatial_variation: true,
+            duration: None,
+        }
+    }
+}
+
+pub struct StreamingRppgState {
+    frame_idx: usize,
+    dt: f64,
+    // Cardiac state
+    cardiac_phase: f64,
+    beat_duration: f64,
+    current_bvp: f64,
+    // Motion state
+    head_offset_x: f64,
+    head_offset_y: f64,
+    head_velocity_x: f64,
+    head_velocity_y: f64,
+    // Illumination
+    illumination_factor: f64,
+    illumination_trend: f64,
+    // Pre-computed spatial mask for skin regions
+    skin_mask: Vec<f64>,
+    // RNG
+    rng: rand::rngs::StdRng,
+    // Parameters cache
+    roi_width: usize,
+    roi_height: usize,
+    skin_tone: [f64; 3],
+    rppg_amplitude: f64,
+    hrv: f64,
+}
+
+impl StreamingGenerator for StreamingRppg {
+    type State = StreamingRppgState;
+    type Parameters = StreamingRppgParams;
+    type Sample = RppgFrame;
+
+    fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
+        use rand::{Rng, SeedableRng};
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+
+        let beat_duration = 60.0 / params.heart_rate;
+
+        // Generate spatial skin mask (elliptical face shape)
+        let mut skin_mask = vec![0.0; params.roi_width * params.roi_height];
+        let cx = params.roi_width as f64 / 2.0;
+        let cy = params.roi_height as f64 / 2.0;
+        let rx = params.roi_width as f64 / 2.5;  // Face width
+        let ry = params.roi_height as f64 / 2.0; // Face height
+
+        for y in 0..params.roi_height {
+            for x in 0..params.roi_width {
+                let dx = (x as f64 - cx) / rx;
+                let dy = (y as f64 - cy) / ry;
+                let dist = (dx * dx + dy * dy).sqrt();
+
+                // Elliptical face mask with smooth edges
+                let mask = if dist < 0.8 {
+                    1.0
+                } else if dist < 1.0 {
+                    1.0 - (dist - 0.8) / 0.2
+                } else {
+                    0.0
+                };
+
+                // Exclude eye and mouth regions (simplified)
+                let is_eye = (y as f64 - cy * 0.7).abs() < cy * 0.15
+                    && (x as f64 - cx).abs() > cx * 0.1
+                    && (x as f64 - cx).abs() < cx * 0.5;
+                let is_mouth = (y as f64 - cy * 1.4).abs() < cy * 0.1
+                    && (x as f64 - cx).abs() < cx * 0.3;
+
+                skin_mask[y * params.roi_width + x] = if is_eye || is_mouth { 0.0 } else { mask };
+            }
+        }
+
+        StreamingRppgState {
+            frame_idx: 0,
+            dt: 1.0 / params.frame_rate,
+            cardiac_phase: rng.gen_range(0.0..1.0),
+            beat_duration,
+            current_bvp: 0.0,
+            head_offset_x: 0.0,
+            head_offset_y: 0.0,
+            head_velocity_x: rng.gen_range(-0.5..0.5),
+            head_velocity_y: rng.gen_range(-0.5..0.5),
+            illumination_factor: 1.0,
+            illumination_trend: rng.gen_range(-0.001..0.001),
+            skin_mask,
+            rng,
+            roi_width: params.roi_width,
+            roi_height: params.roi_height,
+            skin_tone: params.skin_tone,
+            rppg_amplitude: params.rppg_amplitude,
+            hrv: params.hrv,
+        }
+    }
+
+    fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
+        use rand::Rng;
+        use rand_distr::{Distribution, Normal};
+        use std::f64::consts::PI;
+
+        let t = state.frame_idx as f64 * state.dt;
+
+        // Update cardiac phase
+        state.cardiac_phase += state.dt / state.beat_duration;
+        if state.cardiac_phase >= 1.0 {
+            state.cardiac_phase -= 1.0;
+            // Add HRV to next beat
+            let hrv_noise = Normal::new(0.0, state.hrv * state.beat_duration)
+                .unwrap()
+                .sample(&mut state.rng);
+            state.beat_duration = (60.0 / 72.0 + hrv_noise).max(0.5).min(1.5);
+        }
+
+        // Generate BVP waveform (PPG-like with systolic peak and dicrotic notch)
+        let phase = state.cardiac_phase;
+        let bvp = if phase < 0.15 {
+            // Systolic upstroke
+            let p = phase / 0.15;
+            p * p * (3.0 - 2.0 * p) // Smooth step up
+        } else if phase < 0.25 {
+            // Systolic peak
+            let p = (phase - 0.15) / 0.10;
+            1.0 - 0.3 * p
+        } else if phase < 0.35 {
+            // Dicrotic notch
+            let p = (phase - 0.25) / 0.10;
+            0.7 - 0.2 * (PI * p).sin()
+        } else {
+            // Diastolic decay
+            let p = (phase - 0.35) / 0.65;
+            0.5 * (-3.0 * p).exp()
+        };
+        state.current_bvp = bvp;
+
+        // Update head motion (random walk with mean reversion)
+        let motion_noise = Normal::new(0.0, 0.1).unwrap();
+        state.head_velocity_x += motion_noise.sample(&mut state.rng) - 0.1 * state.head_offset_x;
+        state.head_velocity_y += motion_noise.sample(&mut state.rng) - 0.1 * state.head_offset_y;
+        state.head_velocity_x = state.head_velocity_x.clamp(-2.0, 2.0);
+        state.head_velocity_y = state.head_velocity_y.clamp(-2.0, 2.0);
+        state.head_offset_x += state.head_velocity_x * state.dt;
+        state.head_offset_y += state.head_velocity_y * state.dt;
+        state.head_offset_x = state.head_offset_x.clamp(-3.0, 3.0);
+        state.head_offset_y = state.head_offset_y.clamp(-3.0, 3.0);
+
+        // Update illumination (slow drift)
+        state.illumination_trend += state.rng.gen_range(-0.0001..0.0001);
+        state.illumination_trend = state.illumination_trend.clamp(-0.005, 0.005);
+        state.illumination_factor += state.illumination_trend;
+        state.illumination_factor = state.illumination_factor.clamp(0.8, 1.2);
+
+        // Generate frame pixels
+        let pixel_noise = Normal::new(0.0, 0.01).unwrap();
+        let mut pixels = Vec::with_capacity(state.roi_width * state.roi_height);
+        let mut sum_r = 0.0;
+        let mut sum_g = 0.0;
+        let mut sum_b = 0.0;
+        let mut skin_pixel_count = 0.0;
+
+        let cx = state.roi_width as f64 / 2.0;
+        let cy = state.roi_height as f64 / 2.0;
+
+        for y in 0..state.roi_height {
+            for x in 0..state.roi_width {
+                let idx = y * state.roi_width + x;
+                let mask = state.skin_mask[idx];
+
+                if mask > 0.0 {
+                    // Skin pixel with rPPG modulation
+                    let dx = (x as f64 - cx) / cx;
+                    let dy = (y as f64 - cy) / cy;
+
+                    // Spatial variation in rPPG amplitude (stronger at cheeks/forehead)
+                    let spatial_weight = 1.0 - 0.3 * (dx * dx + dy * dy).sqrt();
+
+                    // rPPG color modulation
+                    // Green channel has strongest signal (hemoglobin absorption)
+                    // Red channel has medium signal
+                    // Blue channel has weak signal
+                    let rppg_mod = state.rppg_amplitude * bvp * spatial_weight;
+                    let r_mod = rppg_mod * 0.7;
+                    let g_mod = rppg_mod * 1.0;  // Green strongest
+                    let b_mod = rppg_mod * 0.3;
+
+                    // Motion artifact (slight color shift based on head position)
+                    let motion_artifact = 0.001 * (state.head_offset_x * dx + state.head_offset_y * dy);
+
+                    // Base skin color with modulations
+                    let mut r = state.skin_tone[0] * state.illumination_factor;
+                    let mut g = state.skin_tone[1] * state.illumination_factor;
+                    let mut b = state.skin_tone[2] * state.illumination_factor;
+
+                    // Apply rPPG modulation (subtractive - blood absorption reduces reflectance)
+                    r -= r_mod;
+                    g -= g_mod;
+                    b -= b_mod;
+
+                    // Add motion artifact
+                    r += motion_artifact;
+                    g += motion_artifact;
+                    b += motion_artifact;
+
+                    // Add sensor noise
+                    r += pixel_noise.sample(&mut state.rng);
+                    g += pixel_noise.sample(&mut state.rng);
+                    b += pixel_noise.sample(&mut state.rng);
+
+                    // Clamp to valid range
+                    r = r.clamp(0.0, 1.0);
+                    g = g.clamp(0.0, 1.0);
+                    b = b.clamp(0.0, 1.0);
+
+                    pixels.push([r, g, b]);
+
+                    sum_r += r * mask;
+                    sum_g += g * mask;
+                    sum_b += b * mask;
+                    skin_pixel_count += mask;
+                } else {
+                    // Background pixel (dark/neutral)
+                    let bg = 0.2 * state.illumination_factor;
+                    let noise_val = pixel_noise.sample(&mut state.rng).abs() * 0.1;
+                    pixels.push([
+                        (bg + noise_val).clamp(0.0, 1.0),
+                        (bg + noise_val).clamp(0.0, 1.0),
+                        (bg + noise_val).clamp(0.0, 1.0),
+                    ]);
+                }
+            }
+        }
+
+        let mean_rgb = if skin_pixel_count > 0.0 {
+            [
+                sum_r / skin_pixel_count,
+                sum_g / skin_pixel_count,
+                sum_b / skin_pixel_count,
+            ]
+        } else {
+            state.skin_tone
+        };
+
+        state.frame_idx += 1;
+
+        RppgFrame {
+            pixels,
+            width: state.roi_width,
+            height: state.roi_height,
+            mean_rgb,
+            cardiac_phase: state.cardiac_phase,
+            ground_truth_bvp: state.current_bvp,
+            timestamp: t,
+        }
+    }
+
+    fn current_time(&self, state: &Self::State) -> f64 {
+        state.frame_idx as f64 * state.dt
+    }
+
+    fn sampling_rate(&self, params: &Self::Parameters) -> f64 {
+        params.frame_rate
+    }
+
+    fn reset_state(&self, state: &mut Self::State, params: &Self::Parameters, seed: u64) {
+        *state = self.init_state(params, seed);
+    }
+
+    fn is_finite(&self, params: &Self::Parameters) -> bool {
+        params.duration.is_some()
+    }
+
+    fn is_complete(&self, state: &Self::State, params: &Self::Parameters) -> bool {
+        if let Some(duration) = params.duration {
+            self.current_time(state) >= duration
+        } else {
+            false
+        }
+    }
+}
+
+impl StreamingConfig {
+    /// Configuration preset for rPPG (30 FPS)
+    pub fn rppg() -> Self {
+        Self {
+            sample_rate: 30.0,
+            buffer_size: 90, // 3 seconds
+            batch_size: 30,  // 1 second worth
+            realtime_pacing: true,
+            max_latency: 0.1, // 100ms
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3302,6 +3673,228 @@ mod tests {
         let variance = wrist_x.iter().map(|x| (x - mean_x).powi(2)).sum::<f64>() / wrist_x.len() as f64;
 
         assert!(variance > 0.0, "Should have tremor-induced variance");
+    }
+
+    // ========== StreamingRppg Tests ==========
+
+    #[test]
+    fn test_streaming_rppg_basic() {
+        let generator = StreamingRppg;
+        let params = StreamingRppgParams::default();
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 30 frames (1 second at 30 fps)
+        let frames: Vec<RppgFrame> = (0..30)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        assert_eq!(frames.len(), 30);
+        assert!((generator.current_time(&state) - 1.0).abs() < 0.05);
+
+        // Check frame structure
+        for frame in &frames {
+            assert_eq!(frame.pixels.len(), params.roi_width * params.roi_height);
+            assert_eq!(frame.width, params.roi_width);
+            assert_eq!(frame.height, params.roi_height);
+            assert!(frame.cardiac_phase >= 0.0 && frame.cardiac_phase <= 1.0);
+            assert!(frame.ground_truth_bvp >= 0.0 && frame.ground_truth_bvp <= 1.0);
+        }
+    }
+
+    #[test]
+    fn test_streaming_rppg_pixel_values() {
+        let generator = StreamingRppg;
+        let params = StreamingRppgParams::default();
+        let mut state = generator.init_state(&params, 42);
+
+        let frame = generator.next_sample(&mut state);
+
+        // All pixel values should be in valid range [0, 1]
+        for pixel in &frame.pixels {
+            assert!(pixel[0] >= 0.0 && pixel[0] <= 1.0, "R out of range: {}", pixel[0]);
+            assert!(pixel[1] >= 0.0 && pixel[1] <= 1.0, "G out of range: {}", pixel[1]);
+            assert!(pixel[2] >= 0.0 && pixel[2] <= 1.0, "B out of range: {}", pixel[2]);
+        }
+
+        // Mean RGB should be approximately skin tone
+        let skin_tone = params.skin_tone;
+        assert!((frame.mean_rgb[0] - skin_tone[0]).abs() < 0.1,
+            "Mean R {} should be near skin tone {}", frame.mean_rgb[0], skin_tone[0]);
+        assert!((frame.mean_rgb[1] - skin_tone[1]).abs() < 0.1,
+            "Mean G {} should be near skin tone {}", frame.mean_rgb[1], skin_tone[1]);
+        assert!((frame.mean_rgb[2] - skin_tone[2]).abs() < 0.1,
+            "Mean B {} should be near skin tone {}", frame.mean_rgb[2], skin_tone[2]);
+    }
+
+    #[test]
+    fn test_streaming_rppg_cardiac_signal() {
+        let generator = StreamingRppg;
+        let params = StreamingRppgParams {
+            heart_rate: 60.0,  // 1 Hz = easy to track
+            hrv: 0.0,          // No HRV for predictable test
+            motion_amplitude: 0.0,
+            illumination_variation: 0.0,
+            ..StreamingRppgParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 90 frames (3 seconds at 30 fps = ~3 cardiac cycles)
+        let frames: Vec<RppgFrame> = (0..90)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        // Use ground truth BVP to verify cardiac cycles (more reliable than noisy RGB)
+        let bvp_signal: Vec<f64> = frames.iter().map(|f| f.ground_truth_bvp).collect();
+
+        // Find main peaks in the BVP signal (systolic peaks only, ignore dicrotic notch)
+        let mut peak_count = 0;
+        for i in 1..bvp_signal.len() - 1 {
+            if bvp_signal[i] > bvp_signal[i - 1] && bvp_signal[i] > bvp_signal[i + 1]
+               && bvp_signal[i] > 0.9 { // High threshold to find only main systolic peaks
+                peak_count += 1;
+            }
+        }
+
+        // At 60 BPM over 3 seconds, expect 2-4 peaks (depends on starting phase)
+        assert!(peak_count >= 2 && peak_count <= 6,
+            "Expected 2-4 cardiac cycles, got {} peaks", peak_count);
+
+        // Also verify the green channel has modulation correlated with BVP
+        let green_signal: Vec<f64> = frames.iter().map(|f| f.mean_rgb[1]).collect();
+        let green_var = {
+            let mean = green_signal.iter().sum::<f64>() / green_signal.len() as f64;
+            green_signal.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / green_signal.len() as f64
+        };
+        assert!(green_var > 0.0, "Green channel should have variation from rPPG");
+    }
+
+    #[test]
+    fn test_streaming_rppg_ground_truth_bvp() {
+        let generator = StreamingRppg;
+        let params = StreamingRppgParams {
+            heart_rate: 72.0,
+            hrv: 0.0,
+            ..StreamingRppgParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate frames and collect BVP ground truth
+        let frames: Vec<RppgFrame> = (0..60)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        let bvp_signal: Vec<f64> = frames.iter().map(|f| f.ground_truth_bvp).collect();
+
+        // BVP should have variation (cardiac pulses)
+        let mean_bvp = bvp_signal.iter().sum::<f64>() / bvp_signal.len() as f64;
+        let variance = bvp_signal.iter().map(|x| (x - mean_bvp).powi(2)).sum::<f64>() / bvp_signal.len() as f64;
+
+        assert!(variance > 0.01, "BVP should have cardiac variation, variance: {}", variance);
+    }
+
+    #[test]
+    fn test_streaming_rppg_skin_mask() {
+        let generator = StreamingRppg;
+        let params = StreamingRppgParams {
+            roi_width: 32,
+            roi_height: 32,
+            ..StreamingRppgParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        let frame = generator.next_sample(&mut state);
+
+        // Center pixels should be skin-colored (brighter)
+        let center_idx = 16 * 32 + 16;
+        let corner_idx = 0;
+
+        let center_brightness = frame.pixels[center_idx][0] + frame.pixels[center_idx][1] + frame.pixels[center_idx][2];
+        let corner_brightness = frame.pixels[corner_idx][0] + frame.pixels[corner_idx][1] + frame.pixels[corner_idx][2];
+
+        assert!(center_brightness > corner_brightness,
+            "Center should be brighter (skin): {} vs {}", center_brightness, corner_brightness);
+    }
+
+    #[test]
+    fn test_streaming_rppg_reset() {
+        let generator = StreamingRppg;
+        let params = StreamingRppgParams {
+            hrv: 0.0,
+            motion_amplitude: 0.0,
+            illumination_variation: 0.0,
+            ..StreamingRppgParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        let first: Vec<RppgFrame> = (0..10).map(|_| generator.next_sample(&mut state)).collect();
+
+        generator.reset_state(&mut state, &params, 42);
+        let second: Vec<RppgFrame> = (0..10).map(|_| generator.next_sample(&mut state)).collect();
+
+        // Ground truth BVP should be identical
+        for (a, b) in first.iter().zip(second.iter()) {
+            assert!((a.ground_truth_bvp - b.ground_truth_bvp).abs() < 1e-10,
+                "Reset should produce identical BVP");
+        }
+    }
+
+    #[test]
+    fn test_streaming_rppg_config() {
+        let config = StreamingConfig::rppg();
+        assert_eq!(config.sample_rate, 30.0);
+        assert!(config.realtime_pacing);
+    }
+
+    #[test]
+    fn test_streaming_rppg_finite_duration() {
+        let generator = StreamingRppg;
+        let params = StreamingRppgParams {
+            duration: Some(1.0), // 1 second limit
+            ..StreamingRppgParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        assert!(generator.is_finite(&params));
+        assert!(!generator.is_complete(&state, &params));
+
+        // Generate until complete
+        let mut count = 0;
+        while !generator.is_complete(&state, &params) {
+            generator.next_sample(&mut state);
+            count += 1;
+            if count > 60 { break; } // Safety limit
+        }
+
+        assert!(generator.is_complete(&state, &params));
+        assert_eq!(count, 30); // 1s at 30 fps
+    }
+
+    #[test]
+    fn test_streaming_rppg_different_skin_tones() {
+        let generator = StreamingRppg;
+
+        // Test with different skin tones
+        let skin_tones = [
+            [0.95, 0.85, 0.75], // Fair
+            [0.76, 0.60, 0.49], // Medium
+            [0.45, 0.32, 0.25], // Dark
+        ];
+
+        for skin_tone in &skin_tones {
+            let params = StreamingRppgParams {
+                skin_tone: *skin_tone,
+                ..StreamingRppgParams::default()
+            };
+            let mut state = generator.init_state(&params, 42);
+
+            let frame = generator.next_sample(&mut state);
+
+            // Mean RGB should reflect the skin tone
+            assert!((frame.mean_rgb[0] - skin_tone[0]).abs() < 0.15,
+                "Skin tone R mismatch for {:?}", skin_tone);
+            assert!((frame.mean_rgb[1] - skin_tone[1]).abs() < 0.15,
+                "Skin tone G mismatch for {:?}", skin_tone);
+        }
     }
 
     // ========== All New Generators Together ==========

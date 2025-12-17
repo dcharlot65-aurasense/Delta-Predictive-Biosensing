@@ -36,6 +36,8 @@ pub use streaming::{
     // Frame-based streaming (pose, hand)
     StreamingPose, StreamingPoseState, StreamingPoseParams, PoseFrame,
     StreamingHand, StreamingHandState, StreamingHandParams, HandFrame, HandMotionType,
+    // rPPG (remote photoplethysmography) streaming
+    StreamingRppg, StreamingRppgState, StreamingRppgParams, RppgFrame,
     // Multi-modal streaming
     MultiModalStreaming, MultiModalState, MultiModalParams, MultiModalSample,
 };
