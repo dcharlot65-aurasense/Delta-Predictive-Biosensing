@@ -23,9 +23,13 @@ pub use streaming::{
     StreamingGenerator, FrameStreamingGenerator,
     RingBuffer, AtomicRingBuffer, MultiChannelBuffer,
     StreamingConfig, StreamingStats,
-    // Example streaming generators
+    // Streaming generators
     StreamingEcg, StreamingEcgState, StreamingEcgParams,
     StreamingTremor, StreamingTremorState, StreamingTremorParams,
+    StreamingPpg, StreamingPpgState, StreamingPpgParams,
+    StreamingEmg, StreamingEmgState, StreamingEmgParams,
+    StreamingEda, StreamingEdaState, StreamingEdaParams,
+    // Multi-modal streaming
     MultiModalStreaming, MultiModalState, MultiModalParams, MultiModalSample,
 };
 

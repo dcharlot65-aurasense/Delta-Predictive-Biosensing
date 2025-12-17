@@ -896,6 +896,510 @@ impl Default for MultiModalStreaming {
     }
 }
 
+// ============================================================================
+// StreamingPPG - Photoplethysmography
+// ============================================================================
+
+/// Streaming PPG generator using phase-based waveform synthesis
+///
+/// Generates PPG signal sample-by-sample with systolic peak, dicrotic notch,
+/// and diastolic wave components following the cardiac cycle.
+pub struct StreamingPpg;
+
+/// State for streaming PPG generation
+#[derive(Debug, Clone)]
+pub struct StreamingPpgState {
+    /// Current sample index
+    pub sample_idx: usize,
+    /// Time step
+    pub dt: f64,
+    /// Beat duration in seconds
+    pub beat_duration: f64,
+    /// RNG state for noise
+    pub rng: rand::rngs::StdRng,
+    /// Heart rate variability (current RR interval adjustment)
+    pub hrv_offset: f64,
+}
+
+/// Parameters for streaming PPG
+#[derive(Debug, Clone)]
+pub struct StreamingPpgParams {
+    /// Sampling rate in Hz (typically 100-256 Hz)
+    pub sampling_rate: f64,
+    /// Heart rate in BPM
+    pub heart_rate: f64,
+    /// Systolic peak amplitude (normalized, ~1.0)
+    pub systolic_amplitude: f64,
+    /// Dicrotic notch depth (typically 0.1-0.2)
+    pub dicrotic_notch_amplitude: f64,
+    /// Diastolic wave amplitude (typically 0.2-0.4)
+    pub diastolic_amplitude: f64,
+    /// Heart rate variability (standard deviation of RR intervals)
+    pub hrv: f64,
+    /// Optional duration limit
+    pub duration: Option<f64>,
+}
+
+impl Default for StreamingPpgParams {
+    fn default() -> Self {
+        Self {
+            sampling_rate: 100.0,
+            heart_rate: 70.0,
+            systolic_amplitude: 1.0,
+            dicrotic_notch_amplitude: 0.15,
+            diastolic_amplitude: 0.3,
+            hrv: 0.02, // ~20ms HRV
+            duration: None,
+        }
+    }
+}
+
+impl StreamingGenerator for StreamingPpg {
+    type State = StreamingPpgState;
+    type Parameters = StreamingPpgParams;
+    type Sample = f64;
+
+    fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
+        use rand::SeedableRng;
+
+        StreamingPpgState {
+            sample_idx: 0,
+            dt: 1.0 / params.sampling_rate,
+            beat_duration: 60.0 / params.heart_rate,
+            rng: rand::rngs::StdRng::seed_from_u64(seed),
+            hrv_offset: 0.0,
+        }
+    }
+
+    fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
+        use rand::Rng;
+
+        let t = state.sample_idx as f64 * state.dt;
+
+        // Calculate phase within cardiac cycle (0-1)
+        let adjusted_beat_duration = state.beat_duration + state.hrv_offset;
+        let phase = (t % adjusted_beat_duration) / adjusted_beat_duration;
+
+        // Check for new beat and apply HRV
+        let prev_phase = if state.sample_idx > 0 {
+            let prev_t = (state.sample_idx - 1) as f64 * state.dt;
+            (prev_t % adjusted_beat_duration) / adjusted_beat_duration
+        } else {
+            0.0
+        };
+
+        if phase < prev_phase {
+            // New beat started - apply heart rate variability
+            let hrv_range = state.beat_duration * 0.1; // ±10% variation
+            state.hrv_offset = state.rng.gen_range(-hrv_range..hrv_range);
+        }
+
+        // Systolic peak (Gaussian centered at phase ~0.2)
+        let systolic = 1.0 *
+            (-(phase - 0.2_f64).powi(2) / (2.0 * 0.05_f64.powi(2))).exp();
+
+        // Dicrotic notch (inverted Gaussian at phase ~0.4)
+        let dicrotic = -0.15 *
+            (-(phase - 0.4_f64).powi(2) / (2.0 * 0.03_f64.powi(2))).exp();
+
+        // Diastolic wave (Gaussian at phase ~0.5)
+        let diastolic = 0.3 *
+            (-(phase - 0.5_f64).powi(2) / (2.0 * 0.1_f64.powi(2))).exp();
+
+        // Baseline decay
+        let baseline = 0.1 * (1.0 - phase);
+
+        state.sample_idx += 1;
+
+        systolic + dicrotic + diastolic + baseline
+    }
+
+    fn current_time(&self, state: &Self::State) -> f64 {
+        state.sample_idx as f64 * state.dt
+    }
+
+    fn sampling_rate(&self, params: &Self::Parameters) -> f64 {
+        params.sampling_rate
+    }
+
+    fn reset_state(&self, state: &mut Self::State, params: &Self::Parameters, seed: u64) {
+        *state = self.init_state(params, seed);
+    }
+
+    fn is_finite(&self, params: &Self::Parameters) -> bool {
+        params.duration.is_some()
+    }
+
+    fn is_complete(&self, state: &Self::State, params: &Self::Parameters) -> bool {
+        if let Some(duration) = params.duration {
+            self.current_time(state) >= duration
+        } else {
+            false
+        }
+    }
+}
+
+// ============================================================================
+// StreamingEMG - Electromyography
+// ============================================================================
+
+/// Streaming surface EMG generator
+///
+/// Generates EMG signal as filtered Gaussian noise with motor unit action
+/// potentials (MUAPs) superimposed based on contraction level.
+pub struct StreamingEmg;
+
+/// State for streaming EMG generation
+#[derive(Debug, Clone)]
+pub struct StreamingEmgState {
+    /// Current sample index
+    pub sample_idx: usize,
+    /// Time step
+    pub dt: f64,
+    /// Current amplitude based on contraction
+    pub current_amplitude: f64,
+    /// Next MUAP time (sample index)
+    pub next_muap_sample: f64,
+    /// MUAP interval in samples
+    pub muap_interval: f64,
+    /// RNG state
+    pub rng: rand::rngs::StdRng,
+    /// MUAP phase counter (for multi-sample spikes)
+    pub muap_phase: i32,
+}
+
+/// Parameters for streaming EMG
+#[derive(Debug, Clone)]
+pub struct StreamingEmgParams {
+    /// Sampling rate in Hz (typically 2000+ Hz for EMG)
+    pub sampling_rate: f64,
+    /// Baseline noise amplitude (at rest)
+    pub baseline_amplitude: f64,
+    /// Contraction level (0.0 = rest, 1.0 = maximum voluntary contraction)
+    pub contraction_level: f64,
+    /// Optional duration limit
+    pub duration: Option<f64>,
+}
+
+impl Default for StreamingEmgParams {
+    fn default() -> Self {
+        Self {
+            sampling_rate: 2000.0,
+            baseline_amplitude: 0.01,
+            contraction_level: 0.3, // 30% MVC
+            duration: None,
+        }
+    }
+}
+
+impl StreamingGenerator for StreamingEmg {
+    type State = StreamingEmgState;
+    type Parameters = StreamingEmgParams;
+    type Sample = f64;
+
+    fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
+        use rand::SeedableRng;
+        use rand::Rng;
+
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let amplitude = params.baseline_amplitude +
+            params.contraction_level * params.baseline_amplitude * 10.0;
+
+        // MUAP rate depends on contraction level
+        let muap_rate = params.contraction_level.max(0.1) * 50.0; // spikes per second
+        let muap_interval = params.sampling_rate / muap_rate;
+        let next_muap = rng.gen_range(0.0..muap_interval);
+
+        StreamingEmgState {
+            sample_idx: 0,
+            dt: 1.0 / params.sampling_rate,
+            current_amplitude: amplitude,
+            next_muap_sample: next_muap,
+            muap_interval,
+            rng,
+            muap_phase: -1, // Not in MUAP
+        }
+    }
+
+    fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
+        use rand::Rng;
+        use rand_distr::{Distribution, Normal};
+
+        let noise_dist = Normal::new(0.0, state.current_amplitude).unwrap();
+        let mut sample = noise_dist.sample(&mut state.rng);
+
+        // Check if we're in a MUAP spike
+        if state.muap_phase >= 0 && state.muap_phase < 5 {
+            // Biphasic MUAP pattern over 5 samples
+            let muap_values = [3.0, 5.0, 2.0, -2.0, -3.0];
+            sample += state.current_amplitude * muap_values[state.muap_phase as usize];
+            state.muap_phase += 1;
+            if state.muap_phase >= 5 {
+                state.muap_phase = -1;
+            }
+        } else if (state.sample_idx as f64) >= state.next_muap_sample {
+            // Start new MUAP
+            state.muap_phase = 0;
+            sample += state.current_amplitude * 3.0; // First phase
+            state.muap_phase = 1;
+
+            // Schedule next MUAP with some randomness
+            let jitter = state.rng.gen_range(-state.muap_interval * 0.3..state.muap_interval * 0.3);
+            state.next_muap_sample += state.muap_interval + jitter;
+        }
+
+        state.sample_idx += 1;
+        sample
+    }
+
+    fn current_time(&self, state: &Self::State) -> f64 {
+        state.sample_idx as f64 * state.dt
+    }
+
+    fn sampling_rate(&self, params: &Self::Parameters) -> f64 {
+        params.sampling_rate
+    }
+
+    fn reset_state(&self, state: &mut Self::State, params: &Self::Parameters, seed: u64) {
+        *state = self.init_state(params, seed);
+    }
+
+    fn is_finite(&self, params: &Self::Parameters) -> bool {
+        params.duration.is_some()
+    }
+
+    fn is_complete(&self, state: &Self::State, params: &Self::Parameters) -> bool {
+        if let Some(duration) = params.duration {
+            self.current_time(state) >= duration
+        } else {
+            false
+        }
+    }
+}
+
+// ============================================================================
+// StreamingEDA - Electrodermal Activity
+// ============================================================================
+
+/// Streaming EDA (electrodermal activity) generator
+///
+/// Generates EDA signal with tonic (slow drift) and phasic (SCR events)
+/// components. SCR events are generated using the Bateman function.
+pub struct StreamingEda;
+
+/// Active SCR event being generated
+#[derive(Debug, Clone)]
+struct ActiveScr {
+    /// Onset time in seconds
+    onset_time: f64,
+    /// Peak amplitude
+    amplitude: f64,
+    /// Rise time constant (tau1)
+    rise_time: f64,
+    /// Recovery time constant (tau2)
+    recovery_time: f64,
+}
+
+/// State for streaming EDA generation
+#[derive(Debug, Clone)]
+pub struct StreamingEdaState {
+    /// Current sample index
+    pub sample_idx: usize,
+    /// Time step
+    pub dt: f64,
+    /// Baseline skin conductance level
+    pub baseline_scl: f64,
+    /// Current tonic component
+    pub tonic_value: f64,
+    /// Tonic drift phase
+    pub tonic_phase: f64,
+    /// Next spontaneous SCR time
+    pub next_scr_time: f64,
+    /// Active SCR events (still contributing to signal)
+    active_scrs: Vec<ActiveScr>,
+    /// SCR event rate (per second)
+    pub scr_rate: f64,
+    /// RNG state
+    pub rng: rand::rngs::StdRng,
+}
+
+/// Parameters for streaming EDA
+#[derive(Debug, Clone)]
+pub struct StreamingEdaParams {
+    /// Sampling rate in Hz (typically 4-10 Hz for EDA)
+    pub sampling_rate: f64,
+    /// Baseline skin conductance level (microsiemens)
+    pub baseline_scl: f64,
+    /// Tonic drift magnitude
+    pub drift_magnitude: f64,
+    /// Tonic drift frequency (very low, ~0.01 Hz)
+    pub drift_frequency: f64,
+    /// Spontaneous SCR rate (events per minute)
+    pub scr_rate: f64,
+    /// Mean SCR amplitude (microsiemens)
+    pub scr_amplitude_mean: f64,
+    /// SCR amplitude standard deviation
+    pub scr_amplitude_std: f64,
+    /// SCR rise time (seconds, typically 1-3s)
+    pub scr_rise_time: f64,
+    /// SCR recovery time (seconds, typically 3-10s)
+    pub scr_recovery_time: f64,
+    /// Optional duration limit
+    pub duration: Option<f64>,
+}
+
+impl Default for StreamingEdaParams {
+    fn default() -> Self {
+        Self {
+            sampling_rate: 10.0,
+            baseline_scl: 5.0,     // microsiemens
+            drift_magnitude: 0.5,
+            drift_frequency: 0.01, // Very slow drift
+            scr_rate: 3.0,         // 3 SCRs per minute
+            scr_amplitude_mean: 0.5,
+            scr_amplitude_std: 0.2,
+            scr_rise_time: 1.5,
+            scr_recovery_time: 5.0,
+            duration: None,
+        }
+    }
+}
+
+impl StreamingGenerator for StreamingEda {
+    type State = StreamingEdaState;
+    type Parameters = StreamingEdaParams;
+    type Sample = f64;
+
+    fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
+        use rand::SeedableRng;
+        use rand::Rng;
+        use rand_distr::{Distribution, Exp};
+
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let tonic_phase = rng.gen_range(0.0..2.0 * std::f64::consts::PI);
+
+        // Schedule first SCR using exponential distribution
+        let scr_rate_per_second = params.scr_rate / 60.0;
+        let exp_dist = Exp::new(scr_rate_per_second.max(0.001)).unwrap();
+        let next_scr_time = exp_dist.sample(&mut rng);
+
+        StreamingEdaState {
+            sample_idx: 0,
+            dt: 1.0 / params.sampling_rate,
+            baseline_scl: params.baseline_scl,
+            tonic_value: params.baseline_scl,
+            tonic_phase,
+            next_scr_time,
+            active_scrs: Vec::new(),
+            scr_rate: params.scr_rate / 60.0, // Convert to per-second
+            rng,
+        }
+    }
+
+    fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
+        use rand::Rng;
+        use rand_distr::{Distribution, Normal, Exp};
+        use std::f64::consts::PI;
+
+        let t = state.sample_idx as f64 * state.dt;
+
+        // 1. Tonic component: baseline + slow sinusoidal drift + noise
+        let drift = 0.5 * (2.0 * PI * 0.01 * t + state.tonic_phase).sin();
+        let noise_dist = Normal::new(0.0, 0.01).unwrap();
+        let noise = noise_dist.sample(&mut state.rng);
+        let tonic = state.baseline_scl + drift + noise;
+
+        // 2. Check if we need to generate a new SCR
+        if t >= state.next_scr_time {
+            // Generate new SCR with random amplitude
+            let amp_dist = Normal::new(0.5, 0.2).unwrap();
+            let amplitude: f64 = amp_dist.sample(&mut state.rng);
+            let amplitude = amplitude.max(0.1);
+
+            state.active_scrs.push(ActiveScr {
+                onset_time: t,
+                amplitude,
+                rise_time: 1.5,
+                recovery_time: 5.0,
+            });
+
+            // Schedule next SCR
+            let exp_dist = Exp::new(state.scr_rate.max(0.001)).unwrap();
+            state.next_scr_time = t + exp_dist.sample(&mut state.rng);
+        }
+
+        // 3. Calculate phasic component from all active SCRs
+        let mut phasic = 0.0;
+        for scr in &state.active_scrs {
+            if t >= scr.onset_time {
+                let delta_t = t - scr.onset_time;
+                // Bateman function: A * (exp(-t/tau2) - exp(-t/tau1))
+                let response = scr.amplitude *
+                    ((-delta_t / scr.recovery_time).exp() -
+                     (-delta_t / scr.rise_time).exp());
+                phasic += response;
+            }
+        }
+
+        // 4. Clean up old SCRs (negligible contribution after 5 * tau2)
+        let cutoff_time = t - 5.0 * 5.0; // 5 * recovery_time
+        state.active_scrs.retain(|scr| scr.onset_time > cutoff_time);
+
+        state.sample_idx += 1;
+
+        tonic + phasic
+    }
+
+    fn current_time(&self, state: &Self::State) -> f64 {
+        state.sample_idx as f64 * state.dt
+    }
+
+    fn sampling_rate(&self, params: &Self::Parameters) -> f64 {
+        params.sampling_rate
+    }
+
+    fn reset_state(&self, state: &mut Self::State, params: &Self::Parameters, seed: u64) {
+        *state = self.init_state(params, seed);
+    }
+
+    fn is_finite(&self, params: &Self::Parameters) -> bool {
+        params.duration.is_some()
+    }
+
+    fn is_complete(&self, state: &Self::State, params: &Self::Parameters) -> bool {
+        if let Some(duration) = params.duration {
+            self.current_time(state) >= duration
+        } else {
+            false
+        }
+    }
+}
+
+/// Streaming config preset for PPG
+impl StreamingConfig {
+    /// Create config for PPG streaming (100 Hz)
+    pub fn ppg() -> Self {
+        Self {
+            buffer_size: 1000, // 10 seconds
+            sample_rate: 100.0,
+            batch_size: 64,
+            realtime_pacing: true,
+            max_latency: 0.05,
+        }
+    }
+
+    /// Create config for EDA streaming (10 Hz)
+    pub fn eda() -> Self {
+        Self {
+            buffer_size: 600, // 60 seconds
+            sample_rate: 10.0,
+            batch_size: 10,
+            realtime_pacing: true,
+            max_latency: 0.1,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1171,7 +1675,7 @@ mod tests {
         // At 5 Hz, we should see ~5 complete cycles in 1 second
         // Count zero crossings (rough frequency estimate)
         let zero_crossings: usize = samples.windows(2)
-            .filter(|w| w[0].signum() != w[1].signum())
+            .filter(|w| (w[0] >= 0.0) != (w[1] >= 0.0))
             .count();
 
         // Should be roughly 10 zero crossings (2 per cycle * 5 cycles)
@@ -1277,6 +1781,358 @@ mod tests {
 
         for (a, b) in batch.iter().zip(individual.iter()) {
             assert!((a - b).abs() < 1e-10, "Batch should match individual");
+        }
+    }
+
+    // ========== StreamingPPG Tests ==========
+
+    #[test]
+    fn test_streaming_ppg_basic() {
+        let generator = StreamingPpg;
+        let params = StreamingPpgParams::default();
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 1000 samples (10 seconds at 100 Hz)
+        let samples: Vec<f64> = (0..1000)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        assert_eq!(samples.len(), 1000);
+        assert!((generator.current_time(&state) - 10.0).abs() < 0.01);
+
+        // PPG should have variation (not constant)
+        let mean: f64 = samples.iter().sum::<f64>() / samples.len() as f64;
+        let variance: f64 = samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / samples.len() as f64;
+        assert!(variance > 0.0, "PPG should have non-zero variance");
+    }
+
+    #[test]
+    fn test_streaming_ppg_cardiac_rhythm() {
+        let generator = StreamingPpg;
+        let params = StreamingPpgParams {
+            sampling_rate: 100.0,
+            heart_rate: 60.0, // 1 Hz = 1 beat per second
+            hrv: 0.0,        // No HRV for predictable test
+            ..StreamingPpgParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 500 samples (5 seconds at 100 Hz)
+        let samples: Vec<f64> = (0..500)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        // Find peaks (systolic peaks occur at phase ~0.2)
+        let mut peak_count = 0;
+        for i in 1..samples.len() - 1 {
+            if samples[i] > samples[i - 1] && samples[i] > samples[i + 1] && samples[i] > 0.8 {
+                peak_count += 1;
+            }
+        }
+
+        // At 60 BPM, should see ~5 peaks in 5 seconds
+        assert!(peak_count >= 4 && peak_count <= 6,
+            "Expected ~5 peaks at 60 BPM, got {}", peak_count);
+    }
+
+    #[test]
+    fn test_streaming_ppg_reset() {
+        let generator = StreamingPpg;
+        let params = StreamingPpgParams {
+            hrv: 0.0, // No HRV for deterministic test
+            ..StreamingPpgParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        let first: Vec<f64> = (0..100).map(|_| generator.next_sample(&mut state)).collect();
+
+        generator.reset_state(&mut state, &params, 42);
+        let second: Vec<f64> = (0..100).map(|_| generator.next_sample(&mut state)).collect();
+
+        for (a, b) in first.iter().zip(second.iter()) {
+            assert!((a - b).abs() < 1e-10, "Reset should produce identical output");
+        }
+    }
+
+    #[test]
+    fn test_streaming_ppg_config() {
+        let config = StreamingConfig::ppg();
+        assert_eq!(config.sample_rate, 100.0);
+        assert!(config.realtime_pacing);
+    }
+
+    // ========== StreamingEMG Tests ==========
+
+    #[test]
+    fn test_streaming_emg_basic() {
+        let generator = StreamingEmg;
+        let params = StreamingEmgParams::default();
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 2000 samples (1 second at 2000 Hz)
+        let samples: Vec<f64> = (0..2000)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        assert_eq!(samples.len(), 2000);
+        assert!((generator.current_time(&state) - 1.0).abs() < 0.001);
+
+        // EMG should have significant variation (noisy signal)
+        let mean: f64 = samples.iter().sum::<f64>() / samples.len() as f64;
+        let variance: f64 = samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / samples.len() as f64;
+        assert!(variance > 0.0, "EMG should have non-zero variance");
+    }
+
+    #[test]
+    fn test_streaming_emg_contraction_levels() {
+        let generator = StreamingEmg;
+
+        // Low contraction
+        let params_low = StreamingEmgParams {
+            contraction_level: 0.1,
+            ..StreamingEmgParams::default()
+        };
+        let mut state_low = generator.init_state(&params_low, 42);
+        let samples_low: Vec<f64> = (0..2000)
+            .map(|_| generator.next_sample(&mut state_low))
+            .collect();
+        let variance_low: f64 = {
+            let mean = samples_low.iter().sum::<f64>() / 2000.0;
+            samples_low.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / 2000.0
+        };
+
+        // High contraction
+        let params_high = StreamingEmgParams {
+            contraction_level: 0.8,
+            ..StreamingEmgParams::default()
+        };
+        let mut state_high = generator.init_state(&params_high, 42);
+        let samples_high: Vec<f64> = (0..2000)
+            .map(|_| generator.next_sample(&mut state_high))
+            .collect();
+        let variance_high: f64 = {
+            let mean = samples_high.iter().sum::<f64>() / 2000.0;
+            samples_high.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / 2000.0
+        };
+
+        // High contraction should have much more variance
+        assert!(variance_high > variance_low * 2.0,
+            "High contraction EMG should have more variance: {} vs {}", variance_high, variance_low);
+    }
+
+    #[test]
+    fn test_streaming_emg_has_muaps() {
+        let generator = StreamingEmg;
+        let params = StreamingEmgParams {
+            contraction_level: 0.5,
+            baseline_amplitude: 0.01,
+            ..StreamingEmgParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 2000 samples (1 second)
+        let samples: Vec<f64> = (0..2000)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        // Look for MUAP spikes (values significantly above baseline)
+        let threshold = params.baseline_amplitude * 10.0; // MUAPs should be ~5x larger
+        let spike_count = samples.iter().filter(|x| x.abs() > threshold).count();
+
+        // At 0.5 contraction, MUAP rate ~25/s, so expect ~25 spikes * ~5 samples each
+        assert!(spike_count > 20, "Should have MUAP spikes, got {}", spike_count);
+    }
+
+    // ========== StreamingEDA Tests ==========
+
+    #[test]
+    fn test_streaming_eda_basic() {
+        let generator = StreamingEda;
+        let params = StreamingEdaParams::default();
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 600 samples (60 seconds at 10 Hz)
+        let samples: Vec<f64> = (0..600)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        assert_eq!(samples.len(), 600);
+        assert!((generator.current_time(&state) - 60.0).abs() < 0.1);
+
+        // EDA should be around baseline with some variation
+        let mean: f64 = samples.iter().sum::<f64>() / samples.len() as f64;
+        assert!((mean - 5.0).abs() < 2.0, "Mean should be near baseline SCL of 5, got {}", mean);
+    }
+
+    #[test]
+    fn test_streaming_eda_tonic_component() {
+        let generator = StreamingEda;
+        let params = StreamingEdaParams {
+            scr_rate: 0.0, // No SCRs for tonic-only test
+            baseline_scl: 5.0,
+            ..StreamingEdaParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 100 samples (10 seconds)
+        let samples: Vec<f64> = (0..100)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        // All samples should be around baseline (tonic only)
+        for sample in &samples {
+            assert!((sample - 5.0).abs() < 1.5,
+                "Tonic-only EDA should stay near baseline, got {}", sample);
+        }
+    }
+
+    #[test]
+    fn test_streaming_eda_scr_events() {
+        let generator = StreamingEda;
+        let params = StreamingEdaParams {
+            scr_rate: 30.0, // High rate: 30/minute = 0.5/second
+            ..StreamingEdaParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        // Generate 600 samples (60 seconds)
+        let samples: Vec<f64> = (0..600)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
+
+        // Find peaks (SCR events cause increases above baseline)
+        let baseline = params.baseline_scl;
+        let peaks: usize = samples.windows(3)
+            .filter(|w| w[1] > w[0] && w[1] > w[2] && w[1] > baseline + 0.3)
+            .count();
+
+        // With 30 SCRs/minute over 60 seconds, expect ~30 peaks
+        assert!(peaks >= 10, "Should have SCR peaks, got {}", peaks);
+    }
+
+    #[test]
+    fn test_streaming_eda_reset() {
+        let generator = StreamingEda;
+        let params = StreamingEdaParams {
+            scr_rate: 0.0, // No SCRs for deterministic tonic
+            ..StreamingEdaParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        let first: Vec<f64> = (0..50).map(|_| generator.next_sample(&mut state)).collect();
+
+        generator.reset_state(&mut state, &params, 42);
+        let second: Vec<f64> = (0..50).map(|_| generator.next_sample(&mut state)).collect();
+
+        for (a, b) in first.iter().zip(second.iter()) {
+            assert!((a - b).abs() < 1e-10, "Reset should produce identical output");
+        }
+    }
+
+    #[test]
+    fn test_streaming_eda_config() {
+        let config = StreamingConfig::eda();
+        assert_eq!(config.sample_rate, 10.0);
+        assert!(config.realtime_pacing);
+    }
+
+    #[test]
+    fn test_streaming_eda_finite_duration() {
+        let generator = StreamingEda;
+        let params = StreamingEdaParams {
+            duration: Some(5.0), // 5 second limit
+            ..StreamingEdaParams::default()
+        };
+        let mut state = generator.init_state(&params, 42);
+
+        assert!(generator.is_finite(&params));
+        assert!(!generator.is_complete(&state, &params));
+
+        // Generate until complete
+        let mut count = 0;
+        while !generator.is_complete(&state, &params) {
+            generator.next_sample(&mut state);
+            count += 1;
+            if count > 100 { break; } // Safety limit
+        }
+
+        assert!(generator.is_complete(&state, &params));
+        assert_eq!(count, 50); // 5s at 10 Hz
+    }
+
+    // ========== Multi-modal Tests with New Generators ==========
+
+    #[test]
+    fn test_all_streaming_generators_together() {
+        let ecg_gen = StreamingEcg;
+        let ppg_gen = StreamingPpg;
+        let emg_gen = StreamingEmg;
+        let eda_gen = StreamingEda;
+
+        let ecg_params = StreamingEcgParams::default();
+        let ppg_params = StreamingPpgParams::default();
+        let emg_params = StreamingEmgParams::default();
+        let eda_params = StreamingEdaParams::default();
+
+        let mut ecg_state = ecg_gen.init_state(&ecg_params, 1);
+        let mut ppg_state = ppg_gen.init_state(&ppg_params, 2);
+        let mut emg_state = emg_gen.init_state(&emg_params, 3);
+        let mut eda_state = eda_gen.init_state(&eda_params, 4);
+
+        // Generate samples from all generators
+        for _ in 0..100 {
+            let _ecg = ecg_gen.next_sample(&mut ecg_state);
+            let _ppg = ppg_gen.next_sample(&mut ppg_state);
+            let _emg = emg_gen.next_sample(&mut emg_state);
+            let _eda = eda_gen.next_sample(&mut eda_state);
+        }
+
+        // Verify times are advancing correctly (at different rates)
+        assert!((ecg_gen.current_time(&ecg_state) - 0.1).abs() < 0.001); // 1000 Hz
+        assert!((ppg_gen.current_time(&ppg_state) - 1.0).abs() < 0.01);  // 100 Hz
+        assert!((emg_gen.current_time(&emg_state) - 0.05).abs() < 0.001); // 2000 Hz
+        assert!((eda_gen.current_time(&eda_state) - 10.0).abs() < 0.1);  // 10 Hz
+    }
+
+    #[test]
+    fn test_multi_channel_buffer_all_signals() {
+        let mut buffer: MultiChannelBuffer<f64> = MultiChannelBuffer::new(
+            vec![
+                "ecg".to_string(),
+                "ppg".to_string(),
+                "emg".to_string(),
+                "eda".to_string(),
+            ],
+            100,
+        );
+
+        let ecg_gen = StreamingEcg;
+        let ppg_gen = StreamingPpg;
+        let emg_gen = StreamingEmg;
+        let eda_gen = StreamingEda;
+
+        let mut ecg_state = ecg_gen.init_state(&StreamingEcgParams::default(), 1);
+        let mut ppg_state = ppg_gen.init_state(&StreamingPpgParams::default(), 2);
+        let mut emg_state = emg_gen.init_state(&StreamingEmgParams::default(), 3);
+        let mut eda_state = eda_gen.init_state(&StreamingEdaParams::default(), 4);
+
+        // Push synchronized samples
+        for _ in 0..50 {
+            buffer.push_synchronized(vec![
+                ecg_gen.next_sample(&mut ecg_state),
+                ppg_gen.next_sample(&mut ppg_state),
+                emg_gen.next_sample(&mut emg_state),
+                eda_gen.next_sample(&mut eda_state),
+            ]);
+        }
+
+        assert_eq!(buffer.num_channels(), 4);
+        assert_eq!(buffer.min_len(), 50);
+
+        let batch = buffer.read_synchronized_batch(25);
+        assert_eq!(batch.len(), 4);
+        for channel_data in &batch {
+            assert_eq!(channel_data.len(), 25);
         }
     }
 }
