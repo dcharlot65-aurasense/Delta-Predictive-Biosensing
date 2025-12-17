@@ -38,6 +38,15 @@ pub use streaming::{
     StreamingHand, StreamingHandState, StreamingHandParams, HandFrame, HandMotionType,
     // rPPG (remote photoplethysmography) streaming
     StreamingRppg, StreamingRppgState, StreamingRppgParams, RppgFrame,
+    // Level 3 audio streaming
+    AudioSample,
+    StreamingVowel, StreamingVowelState, StreamingVowelParams,
+    StreamingDdk, StreamingDdkState, StreamingDdkParams, DdkEvent,
+    // Level 3 clinical pose/hand streaming
+    ClinicalGaitType, ClinicalPoseFrame,
+    StreamingClinicalPose, StreamingClinicalPoseState, StreamingClinicalPoseParams,
+    ClinicalHandTask, ClinicalHandFrame,
+    StreamingClinicalHand, StreamingClinicalHandState, StreamingClinicalHandParams,
     // Multi-modal streaming
     MultiModalStreaming, MultiModalState, MultiModalParams, MultiModalSample,
 };
