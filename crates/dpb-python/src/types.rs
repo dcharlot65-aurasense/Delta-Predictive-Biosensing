@@ -1,6 +1,6 @@
 //! Python wrappers for core DPB types
 
-use numpy::{PyArray1, PyArray2};
+use numpy::{PyArray1, PyArray2, PyArrayMethods};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use std::collections::HashMap;
@@ -31,7 +31,7 @@ pub struct PySpikeEvent {
 impl PySpikeEvent {
     #[new]
     #[pyo3(signature = (timestamp, channel, polarity=1, magnitude=1.0))]
-    fn new(timestamp: f64, channel: u32, polarity: i8, magnitude: f32) -> Self {
+    pub fn new(timestamp: f64, channel: u32, polarity: i8, magnitude: f32) -> Self {
         Self {
             timestamp,
             channel,
@@ -104,7 +104,7 @@ pub struct PySpikeTrain {
 impl PySpikeTrain {
     #[new]
     #[pyo3(signature = (events=None, duration=0.0, num_channels=1))]
-    fn new(events: Option<Vec<PySpikeEvent>>, duration: f64, num_channels: u32) -> Self {
+    pub fn new(events: Option<Vec<PySpikeEvent>>, duration: f64, num_channels: u32) -> Self {
         Self {
             events: events.unwrap_or_default(),
             duration,
@@ -213,7 +213,7 @@ pub struct PyTimeSeries {
 impl PyTimeSeries {
     #[new]
     #[pyo3(signature = (data, sample_rate, start_time=0.0))]
-    fn new(data: Py<PyArray2<f32>>, sample_rate: f64, start_time: f64) -> Self {
+    pub fn new(data: Py<PyArray2<f32>>, sample_rate: f64, start_time: f64) -> Self {
         Self {
             data,
             sample_rate,
@@ -224,7 +224,7 @@ impl PyTimeSeries {
     /// Get the data array
     #[getter]
     fn data(&self, py: Python) -> PyObject {
-        self.data.clone_ref(py).into()
+        self.data.clone_ref(py).into_any().into()
     }
 
     /// Set the data array
@@ -234,17 +234,17 @@ impl PyTimeSeries {
     }
 
     /// Get number of samples
-    fn num_samples(&self, py: Python) -> usize {
-        self.data.bind(py).shape()[0]
+    pub fn num_samples(&self, py: Python) -> usize {
+        self.data.bind(py).readonly().as_array().shape()[0]
     }
 
     /// Get number of channels
-    fn num_channels(&self, py: Python) -> usize {
-        self.data.bind(py).shape()[1]
+    pub fn num_channels(&self, py: Python) -> usize {
+        self.data.bind(py).readonly().as_array().shape()[1]
     }
 
     /// Get duration in seconds
-    fn duration(&self, py: Python) -> f64 {
+    pub fn duration(&self, py: Python) -> f64 {
         self.num_samples(py) as f64 / self.sample_rate
     }
 
@@ -268,8 +268,9 @@ impl PyTimeSeries {
     }
 
     /// Extract a single channel
-    fn get_channel(&self, py: Python, channel: usize) -> PyResult<Py<PyArray1<f32>>> {
-        let array = self.data.bind(py);
+    pub fn get_channel(&self, py: Python, channel: usize) -> PyResult<Py<PyArray1<f32>>> {
+        let readonly = self.data.bind(py).readonly();
+        let array = readonly.as_array();
         let shape = array.shape();
         if channel >= shape[1] {
             return Err(pyo3::exceptions::PyIndexError::new_err(
@@ -277,12 +278,11 @@ impl PyTimeSeries {
             ));
         }
 
-        let slice = array.readonly();
         let data: Vec<f32> = (0..shape[0])
-            .map(|i| slice[[i, channel]])
+            .map(|i| array[[i, channel]])
             .collect();
 
-        Ok(PyArray1::from_vec(py, data).into())
+        Ok(PyArray1::from_vec_bound(py, data).into())
     }
 }
 
@@ -309,7 +309,7 @@ pub struct PyGroundTruth {
 impl PyGroundTruth {
     #[new]
     #[pyo3(signature = (labels=None, timestamps=None, regions=None))]
-    fn new(
+    pub fn new(
         labels: Option<HashMap<String, String>>,
         timestamps: Option<Vec<f64>>,
         regions: Option<Vec<(f64, f64)>>,
@@ -322,7 +322,7 @@ impl PyGroundTruth {
     }
 
     /// Add a label
-    fn add_label(&mut self, key: String, value: String) {
+    pub fn add_label(&mut self, key: String, value: String) {
         self.labels.insert(key, value);
     }
 

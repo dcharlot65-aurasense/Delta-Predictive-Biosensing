@@ -1,6 +1,7 @@
 //! Python bindings for event-based encoders
 
 use crate::types::{PySpikeEvent, PySpikeTrain, PyTimeSeries};
+use numpy::PyArrayMethods;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use std::collections::HashMap;
@@ -100,8 +101,8 @@ impl PyLevelCrossingEncoder {
         // Simple level crossing detection (simplified for example)
         for ch in 0..num_channels {
             let channel_data = signal.get_channel(py, ch)?;
-            let data = channel_data.bind(py).readonly();
-            let samples = data.as_slice()?;
+            let readonly = channel_data.bind(py).readonly();
+            let samples = readonly.as_slice()?;
 
             let mut last_val = 0.0;
             for (i, &val) in samples.iter().enumerate() {

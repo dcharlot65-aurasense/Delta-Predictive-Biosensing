@@ -420,6 +420,134 @@ impl SyntheticGenerator for ArousalStateGenerator {
     }
 }
 
+/// EDA artifact generator (movement and electrode artifacts)
+pub struct EdaArtifactGenerator;
+
+#[derive(Debug, Clone)]
+pub struct EdaArtifactParams {
+    pub duration: f64,
+    pub sampling_rate: f64,
+    pub movement_artifact_rate: f64,    // artifacts per minute
+    pub movement_amplitude: f64,        // microsiemens
+    pub movement_duration: f64,         // seconds
+    pub electrode_artifact_rate: f64,   // artifacts per minute
+    pub electrode_amplitude: f64,       // microsiemens (spikes)
+}
+
+impl SyntheticGenerator for EdaArtifactGenerator {
+    type Output = Array1<f64>;
+    type GroundTruth = TimeSeriesGroundTruth;
+    type Parameters = EdaArtifactParams;
+
+    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+        Self::validate_params(params)?;
+
+        let n_samples = (params.duration * params.sampling_rate) as usize;
+        let dt = 1.0 / params.sampling_rate;
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+
+        let mut signal = vec![0.0; n_samples];
+        let mut events = Vec::new();
+
+        // Generate movement artifacts (slow, large deflections)
+        let movement_exp = Exp::new(params.movement_artifact_rate / 60.0).unwrap();
+        let mut t = movement_exp.sample(&mut rng);
+        while t < params.duration {
+            let amp_dist = Normal::new(params.movement_amplitude, params.movement_amplitude * 0.3).unwrap();
+            let amplitude = amp_dist.sample(&mut rng).abs();
+            let duration = params.movement_duration * rng.r#gen_range(0.5..1.5);
+
+            events.push(Event {
+                time: t,
+                event_type: "movement_artifact".to_string(),
+                amplitude: Some(amplitude),
+                attributes: {
+                    let mut attrs = HashMap::new();
+                    attrs.insert("duration".to_string(), duration);
+                    attrs
+                },
+            });
+
+            // Add slow artifact waveform
+            let start_idx = (t * params.sampling_rate) as usize;
+            let end_idx = (((t + duration) * params.sampling_rate) as usize).min(n_samples);
+
+            for i in start_idx..end_idx {
+                let local_t = (i - start_idx) as f64 * dt;
+                let envelope = (std::f64::consts::PI * local_t / duration).sin();
+                signal[i] += amplitude * envelope;
+            }
+
+            t += movement_exp.sample(&mut rng);
+        }
+
+        // Generate electrode artifacts (fast spikes)
+        let electrode_exp = Exp::new(params.electrode_artifact_rate / 60.0).unwrap();
+        let mut t = electrode_exp.sample(&mut rng);
+        while t < params.duration {
+            let amp_dist = Normal::new(params.electrode_amplitude, params.electrode_amplitude * 0.5).unwrap();
+            let amplitude = amp_dist.sample(&mut rng);
+
+            events.push(Event {
+                time: t,
+                event_type: "electrode_artifact".to_string(),
+                amplitude: Some(amplitude),
+                attributes: HashMap::new(),
+            });
+
+            // Add sharp spike
+            let spike_idx = (t * params.sampling_rate) as usize;
+            if spike_idx < n_samples {
+                signal[spike_idx] += amplitude;
+
+                // Exponential decay
+                for i in 1..20.min(n_samples - spike_idx) {
+                    let decay = (-(i as f64) * 0.3).exp();
+                    signal[spike_idx + i] += amplitude * decay;
+                }
+            }
+
+            t += electrode_exp.sample(&mut rng);
+        }
+
+        let signal = Array1::from_vec(signal);
+
+        let mut gt_params = HashMap::new();
+        gt_params.insert("movement_artifact_rate".to_string(), params.movement_artifact_rate);
+        gt_params.insert("electrode_artifact_rate".to_string(), params.electrode_artifact_rate);
+
+        let ground_truth = TimeSeriesGroundTruth {
+            parameters: gt_params,
+            events,
+            segments: Vec::new(),
+        };
+
+        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+    }
+
+    fn default_params() -> Self::Parameters {
+        EdaArtifactParams {
+            duration: 60.0,
+            sampling_rate: 10.0,
+            movement_artifact_rate: 2.0,     // 2 per minute
+            movement_amplitude: 2.0,          // microsiemens
+            movement_duration: 3.0,           // seconds
+            electrode_artifact_rate: 1.0,     // 1 per minute
+            electrode_amplitude: 5.0,         // microsiemens (spikes)
+        }
+    }
+
+    fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
+        if params.duration <= 0.0 {
+            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+        }
+        if params.sampling_rate <= 0.0 {
+            return Err(crate::GeneratorError::InvalidParameter("sampling_rate must be positive".to_string()));
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -456,5 +584,14 @@ mod tests {
         let result = generator.generate(&params, 42).unwrap();
         assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
         assert!(!result.ground_truth.segments.is_empty());
+    }
+
+    #[test]
+    fn test_eda_artifact_generation() {
+        let generator = EdaArtifactGenerator;
+        let params = EdaArtifactGenerator::default_params();
+        let result = generator.generate(&params, 42).unwrap();
+        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert!(!result.ground_truth.events.is_empty());
     }
 }

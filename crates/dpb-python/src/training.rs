@@ -371,6 +371,7 @@ impl PyTrainer {
     ///
     /// Returns:
     ///     dict: Training history
+    #[pyo3(signature = (train_data, epochs, validation_data=None, verbose=false))]
     fn fit(
         &mut self,
         train_data: PyObject,
@@ -408,7 +409,7 @@ impl PyTrainer {
             let metrics = PyDict::new(py);
             metrics.set_item("loss", epoch_loss)?;
             for callback in &self.callbacks {
-                callback.call_method1(py, "on_epoch_end", (epoch, metrics))?;
+                callback.call_method1(py, "on_epoch_end", (epoch, &metrics))?;
             }
         }
 

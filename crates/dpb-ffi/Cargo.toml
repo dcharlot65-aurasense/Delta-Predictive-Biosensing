@@ -1,0 +1,24 @@
+[package]
+name = "dpb-ffi"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "C-compatible FFI bindings for the DPB framework"
+rust-version = "1.85.0"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+dpb-core = { workspace = true }
+dpb-encoders = { workspace = true }
+dpb-synth = { workspace = true }
+libc = "0.2"
+
+[build-dependencies]
+cbindgen = "0.27"
+
+[features]
+default = []

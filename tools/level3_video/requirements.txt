@@ -1,0 +1,13 @@
+# Python dependencies for Level 3 video generation
+# These are needed when running outside of Blender
+
+# Note: When running inside Blender, bpy and mathutils are built-in
+# This requirements.txt is for standalone testing/validation scripts
+
+# No external dependencies required - all scripts use Python standard library
+# numpy is optional but recommended for numerical operations if extending
+# numpy>=1.20.0
+
+# For testing without Blender (optional)
+# pytest>=7.0.0
+# pytest-cov>=3.0.0

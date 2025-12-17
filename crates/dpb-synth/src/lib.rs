@@ -1,6 +1,6 @@
 //! Synthetic Data Generation for DPB Framework
 //!
-//! This crate provides 156 synthetic biosignal generators for validation and testing
+//! This crate provides 159 synthetic biosignal generators for validation and testing
 //! of the Delta-Predictive Biosensing Framework. All generators support:
 //! - Seeded RNG for reproducibility
 //! - Ground truth output
@@ -14,6 +14,7 @@ pub mod hand;
 pub mod eye;
 pub mod voice;
 pub mod multimodal;
+pub mod level3;
 
 pub use traits::{SyntheticGenerator, GroundTruth, ParameterSpace};
 

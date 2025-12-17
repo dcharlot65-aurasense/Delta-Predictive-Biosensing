@@ -508,6 +508,132 @@ impl SyntheticGenerator for RsaGenerator {
     }
 }
 
+/// Heart rate recovery generator (post-exercise HR decay)
+pub struct HeartRateRecoveryGenerator;
+
+#[derive(Debug, Clone)]
+pub struct HeartRateRecoveryParams {
+    pub duration: f64,          // seconds
+    pub sampling_rate: f64,     // Hz
+    pub peak_hr: f64,           // bpm (max HR at exercise end)
+    pub resting_hr: f64,        // bpm (baseline resting HR)
+    pub recovery_tau: f64,      // time constant (seconds) - fitness indicator
+    pub hrv_noise: f64,         // beat-to-beat variability (ms)
+}
+
+impl SyntheticGenerator for HeartRateRecoveryGenerator {
+    type Output = Vec<f64>; // RR intervals
+    type GroundTruth = TimeSeriesGroundTruth;
+    type Parameters = HeartRateRecoveryParams;
+
+    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+        Self::validate_params(params)?;
+
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let normal = Normal::new(0.0, params.hrv_noise / 1000.0).unwrap();
+
+        let mut rr_intervals = Vec::new();
+        let mut t = 0.0;
+        let mut events = Vec::new();
+
+        // Calculate HR delta for recovery curve
+        let hr_delta = params.peak_hr - params.resting_hr;
+
+        // Mark recovery start
+        events.push(Event {
+            time: 0.0,
+            event_type: "recovery_start".to_string(),
+            amplitude: Some(params.peak_hr),
+            attributes: HashMap::new(),
+        });
+
+        while t < params.duration {
+            // Exponential decay from peak HR to resting HR
+            let current_hr = params.resting_hr + hr_delta * (-t / params.recovery_tau).exp();
+
+            // Convert to RR interval
+            let mean_rr = 60.0 / current_hr;
+
+            // Add HRV noise
+            let noise = normal.sample(&mut rng);
+            let rr = (mean_rr + noise).max(0.3);
+
+            rr_intervals.push(rr);
+            t += rr;
+        }
+
+        // Calculate recovery metrics
+        let hr_1min = if t >= 60.0 {
+            let rr_at_1min = rr_intervals.iter()
+                .scan(0.0, |acc, &rr| {
+                    *acc += rr;
+                    Some(*acc)
+                })
+                .position(|cum_t| cum_t >= 60.0);
+
+            if let Some(idx) = rr_at_1min {
+                let rr = rr_intervals[idx];
+                60.0 / rr
+            } else {
+                params.resting_hr
+            }
+        } else {
+            params.resting_hr
+        };
+
+        let hr_recovery = params.peak_hr - hr_1min;
+
+        let mut gt_params = HashMap::new();
+        gt_params.insert("peak_hr".to_string(), params.peak_hr);
+        gt_params.insert("resting_hr".to_string(), params.resting_hr);
+        gt_params.insert("recovery_tau".to_string(), params.recovery_tau);
+        gt_params.insert("hr_recovery_1min".to_string(), hr_recovery);
+
+        // Mark significant recovery milestones
+        let recovery_50_time = params.recovery_tau * (2.0_f64).ln(); // 50% recovery
+        if recovery_50_time < params.duration {
+            events.push(Event {
+                time: recovery_50_time,
+                event_type: "recovery_50_percent".to_string(),
+                amplitude: Some(params.resting_hr + hr_delta * 0.5),
+                attributes: HashMap::new(),
+            });
+        }
+
+        let ground_truth = TimeSeriesGroundTruth {
+            parameters: gt_params,
+            events,
+            segments: Vec::new(),
+        };
+
+        Ok(GeneratedData::new(rr_intervals, ground_truth, params.sampling_rate))
+    }
+
+    fn default_params() -> Self::Parameters {
+        HeartRateRecoveryParams {
+            duration: 300.0,  // 5 minutes
+            sampling_rate: 4.0,
+            peak_hr: 170.0,
+            resting_hr: 70.0,
+            recovery_tau: 60.0,  // 60s tau = good fitness
+            hrv_noise: 40.0,
+        }
+    }
+
+    fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
+        if params.duration <= 0.0 {
+            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+        }
+        if params.peak_hr <= params.resting_hr {
+            return Err(crate::GeneratorError::InvalidParameter("peak_hr must be > resting_hr".to_string()));
+        }
+        if params.recovery_tau <= 0.0 {
+            return Err(crate::GeneratorError::InvalidParameter("recovery_tau must be positive".to_string()));
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -549,5 +675,18 @@ mod tests {
         let params = RsaGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
         assert!(!result.signal.is_empty());
+    }
+
+    #[test]
+    fn test_heart_rate_recovery() {
+        let generator = HeartRateRecoveryGenerator;
+        let params = HeartRateRecoveryGenerator::default_params();
+        let result = generator.generate(&params, 42).unwrap();
+        assert!(!result.signal.is_empty());
+
+        // Check HR decreases over time
+        let early_rr: f64 = result.signal.iter().take(10).sum::<f64>() / 10.0;
+        let late_rr: f64 = result.signal.iter().rev().take(10).sum::<f64>() / 10.0;
+        assert!(late_rr > early_rr); // RR should increase (HR decreases)
     }
 }
