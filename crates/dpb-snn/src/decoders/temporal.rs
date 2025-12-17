@@ -347,6 +347,213 @@ impl Decoder for BurstDecoder {
     }
 }
 
+/// Last spike decoder - time of last spike
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LastSpikeDecoder {
+    pub num_outputs: usize,
+    pub max_time: usize,
+}
+
+impl LastSpikeDecoder {
+    pub fn new(num_outputs: usize, max_time: usize) -> Self {
+        Self {
+            num_outputs,
+            max_time,
+        }
+    }
+}
+
+impl Decoder for LastSpikeDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let spike_dense = spikes.to_dense();
+        let (batch_size, num_steps, num_neurons) = (
+            spike_dense.shape()[0],
+            spike_dense.shape()[1],
+            spike_dense.shape()[2],
+        );
+
+        if num_neurons != self.num_outputs {
+            return Err(SNNError::DimensionMismatch {
+                expected: format!("{} neurons", self.num_outputs),
+                actual: format!("{} neurons", num_neurons),
+            });
+        }
+
+        let mut output = Array2::zeros((batch_size, num_neurons));
+
+        for b in 0..batch_size {
+            for n in 0..num_neurons {
+                let mut last_spike = 0.0f32;
+
+                for t in 0..num_steps {
+                    if spike_dense[[b, t, n]] > 0.5 {
+                        last_spike = t as f32;
+                    }
+                }
+
+                // Normalize to [0, 1] range
+                output[[b, n]] = last_spike / self.max_time.max(1) as f32;
+            }
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        self.num_outputs
+    }
+}
+
+/// Phase decoder - oscillation phase coding
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PhaseDecoder {
+    pub num_outputs: usize,
+    pub reference_frequency: f32, // Hz
+    pub sampling_rate: f32,       // Hz
+}
+
+impl PhaseDecoder {
+    pub fn new(num_outputs: usize, reference_frequency: f32, sampling_rate: f32) -> Self {
+        Self {
+            num_outputs,
+            reference_frequency,
+            sampling_rate,
+        }
+    }
+
+    fn compute_phase(&self, spike_times: &[usize], num_steps: usize) -> f32 {
+        if spike_times.is_empty() {
+            return 0.0;
+        }
+
+        // Compute average phase relative to reference oscillation
+        let period = self.sampling_rate / self.reference_frequency;
+        let mut phase_sum = 0.0;
+
+        for &spike_time in spike_times {
+            let phase_in_cycle = (spike_time as f32 % period) / period;
+            phase_sum += phase_in_cycle * 2.0 * std::f32::consts::PI;
+        }
+
+        let mean_phase = phase_sum / spike_times.len() as f32;
+        (mean_phase.cos() + 1.0) / 2.0 // Normalize to [0, 1]
+    }
+}
+
+impl Decoder for PhaseDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let spike_dense = spikes.to_dense();
+        let (batch_size, num_steps, num_neurons) = (
+            spike_dense.shape()[0],
+            spike_dense.shape()[1],
+            spike_dense.shape()[2],
+        );
+
+        if num_neurons != self.num_outputs {
+            return Err(SNNError::DimensionMismatch {
+                expected: format!("{} neurons", self.num_outputs),
+                actual: format!("{} neurons", num_neurons),
+            });
+        }
+
+        let mut output = Array2::zeros((batch_size, num_neurons));
+
+        for b in 0..batch_size {
+            for n in 0..num_neurons {
+                let spike_times: Vec<usize> = (0..num_steps)
+                    .filter(|&t| spike_dense[[b, t, n]] > 0.5)
+                    .collect();
+
+                output[[b, n]] = self.compute_phase(&spike_times, num_steps);
+            }
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        self.num_outputs
+    }
+}
+
+/// Rank order decoder - spike order encoding
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RankOrderDecoder {
+    pub num_outputs: usize,
+    pub time_window: usize,
+}
+
+impl RankOrderDecoder {
+    pub fn new(num_outputs: usize, time_window: usize) -> Self {
+        Self {
+            num_outputs,
+            time_window,
+        }
+    }
+
+    fn compute_rank_score(&self, first_spike_times: &[(usize, f32)]) -> Vec<f32> {
+        let mut scores = vec![0.0; self.num_outputs];
+
+        // Sort by spike time
+        let mut sorted_spikes = first_spike_times.to_vec();
+        sorted_spikes.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+
+        // Assign scores based on rank (earlier = higher score)
+        for (rank, &(neuron_idx, _)) in sorted_spikes.iter().enumerate() {
+            if neuron_idx < self.num_outputs {
+                let normalized_rank = 1.0 - (rank as f32 / sorted_spikes.len() as f32);
+                scores[neuron_idx] = normalized_rank;
+            }
+        }
+
+        scores
+    }
+}
+
+impl Decoder for RankOrderDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let spike_dense = spikes.to_dense();
+        let (batch_size, num_steps, num_neurons) = (
+            spike_dense.shape()[0],
+            spike_dense.shape()[1],
+            spike_dense.shape()[2],
+        );
+
+        if num_neurons != self.num_outputs {
+            return Err(SNNError::DimensionMismatch {
+                expected: format!("{} neurons", self.num_outputs),
+                actual: format!("{} neurons", num_neurons),
+            });
+        }
+
+        let mut output = Array2::zeros((batch_size, num_neurons));
+
+        for b in 0..batch_size {
+            let mut first_spikes = Vec::new();
+
+            for n in 0..num_neurons {
+                for t in 0..num_steps.min(self.time_window) {
+                    if spike_dense[[b, t, n]] > 0.5 {
+                        first_spikes.push((n, t as f32));
+                        break;
+                    }
+                }
+            }
+
+            let scores = self.compute_rank_score(&first_spikes);
+            for n in 0..num_neurons {
+                output[[b, n]] = scores[n];
+            }
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        self.num_outputs
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -409,5 +616,52 @@ mod tests {
 
         // Neuron 0 should have higher score due to burst
         assert!(output[[0, 0]] > output[[0, 1]]);
+    }
+
+    #[test]
+    fn test_last_spike_decoder() {
+        let decoder = LastSpikeDecoder::new(2, 20);
+
+        let mut spike_data = Array3::zeros((1, 20, 2));
+        spike_data[[0, 5, 0]] = 1.0;
+        spike_data[[0, 15, 0]] = 1.0; // Last spike at t=15
+        spike_data[[0, 8, 1]] = 1.0;  // Last spike at t=8
+
+        let spikes = SpikeTensor::from_dense(spike_data, false);
+        let output = decoder.decode(&spikes).unwrap();
+
+        assert!(output[[0, 0]] > output[[0, 1]]);
+    }
+
+    #[test]
+    fn test_phase_decoder() {
+        let decoder = PhaseDecoder::new(2, 5.0, 100.0);
+
+        let mut spike_data = Array3::zeros((1, 100, 2));
+        spike_data[[0, 10, 0]] = 1.0;
+        spike_data[[0, 30, 0]] = 1.0;
+        spike_data[[0, 50, 1]] = 1.0;
+
+        let spikes = SpikeTensor::from_dense(spike_data, false);
+        let output = decoder.decode(&spikes).unwrap();
+
+        assert_eq!(output.shape(), &[1, 2]);
+    }
+
+    #[test]
+    fn test_rank_order_decoder() {
+        let decoder = RankOrderDecoder::new(3, 20);
+
+        let mut spike_data = Array3::zeros((1, 20, 3));
+        spike_data[[0, 2, 0]] = 1.0;  // First
+        spike_data[[0, 5, 1]] = 1.0;  // Second
+        spike_data[[0, 10, 2]] = 1.0; // Third
+
+        let spikes = SpikeTensor::from_dense(spike_data, false);
+        let output = decoder.decode(&spikes).unwrap();
+
+        // Earlier spikes should have higher scores
+        assert!(output[[0, 0]] > output[[0, 1]]);
+        assert!(output[[0, 1]] > output[[0, 2]]);
     }
 }

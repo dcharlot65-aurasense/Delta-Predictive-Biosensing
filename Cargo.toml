@@ -8,6 +8,7 @@ members = [
     "crates/dpb-synth",
     "crates/dpb-python",
     "crates/dpb-ffi",
+    "crates/dpb-bench",
 ]
 
 [workspace.package]
@@ -66,6 +67,7 @@ dpb-encoders = { path = "crates/dpb-encoders" }
 dpb-neurons = { path = "crates/dpb-neurons" }
 dpb-snn = { path = "crates/dpb-snn" }
 dpb-synth = { path = "crates/dpb-synth" }
+dpb-bench = { path = "crates/dpb-bench" }
 
 [profile.release]
 lto = true
@@ -74,3 +76,22 @@ opt-level = 3
 
 [profile.dev]
 opt-level = 1
+
+# Integration tests package
+[package]
+name = "dpb-integration-tests"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+dpb-core = { workspace = true }
+dpb-encoders = { workspace = true }
+dpb-snn = { workspace = true }
+dpb-synth = { workspace = true }
+
+# Test dependencies
+approx = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+ndarray = { workspace = true }

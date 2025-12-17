@@ -10,6 +10,8 @@
 //! - ANN-to-SNN conversion utilities
 //! - Output decoders for spike trains
 //! - Model export capabilities
+//! - Training analysis and convergence detection
+//! - 44 ANN baseline architectures for fair SNN comparison
 
 pub mod tensor;
 pub mod layers;
@@ -18,6 +20,9 @@ pub mod training;
 pub mod conversion;
 pub mod decoders;
 pub mod export;
+pub mod fusion;
+pub mod analysis;
+pub mod baselines;
 
 // Re-export commonly used types
 pub use tensor::{SpikeTensor, SpikeRepresentation};
@@ -38,9 +43,73 @@ pub use training::{
 };
 pub use conversion::{ANNToSNNConverter, WeightNormalization, ThresholdBalancing};
 pub use decoders::{
-    SpikeRateDecoder, FirstSpikeDecoder, PopulationDecoder,
-    TemporalPatternDecoder, LatencyDecoder,
+    // Rate-based decoders
+    SpikeRateDecoder, FirstSpikeDecoder, PopulationDecoder, MaxSpikeDecoder,
+    WindowedRateDecoder, ExponentialRateDecoder, AdaptiveRateDecoder,
+    NormalizedRateDecoder, WeightedRateDecoder,
+    // Temporal decoders
+    TemporalPatternDecoder, LatencyDecoder, ISIDecoder, BurstDecoder,
+    LastSpikeDecoder, PhaseDecoder, RankOrderDecoder,
+    // Clinical score decoders
     UPDRSDecoder, TremorSeverityDecoder, GaitScoreDecoder,
+    UPDRSMotorDecoder, UPDRSTremorDecoder, UPDRSBradykinesiaDecoder,
+    UPDRSRigidityDecoder, UPDRSGaitDecoder, TUGDecoder,
+    BergBalanceDecoder, MoCADecoder, VoiceHDDecoder,
+    PDQ39Decoder, HoehnYahrDecoder, SEADLDecoder,
+    // Regression decoders
+    HeartRateDecoder, HRVDecoder, TremorFrequencyDecoder,
+    TremorAmplitudeDecoder, GaitVelocityDecoder, StrideTimeDecoder,
+    TappingFrequencyDecoder, ReactionTimeDecoder, SpeechRateDecoder,
+    PupilDiameterDecoder,
+    // Classification decoders
+    BinaryClassDecoder, MultiClassDecoder, TremorTypeDecoder,
+    GaitPhaseDecoder, SleepStageDecoder, ActivityDecoder,
+    EmotionDecoder, FatigueDecoder, MedicationStateDecoder,
+    DyskinesiasDecoder,
+    // Base decoder trait
+    Decoder,
+};
+pub use fusion::{
+    FusionNetwork, FusionConfig, Modality,
+    EarlyFusionSNN, LateFusionSNN, CrossModalAttentionSNN,
+    HierarchicalFusionSNN, TemporalAlignmentSNN, GatedFusionSNN,
+    NeuroPlaySNN,
+};
+pub use analysis::{
+    ConvergenceAnalyzer, TrainingMetrics, AnalysisReport,
+    LossPlateauDetector, AccuracyPlateauDetector, EarlyStoppingAnalyzer,
+    ConvergenceRateAnalyzer, OscillationDetector, DivergenceDetector,
+    LearningCurveSmoothed, GeneralizationGapAnalyzer, OverfittingDetector,
+    LearningRateAnalyzer, BatchSizeAnalyzer, EpochEfficiencyAnalyzer,
+    GradientNormTracker, GradientFlowAnalyzer, VanishingGradientDetector,
+    ExplodingGradientDetector, SurrogateGradientAnalyzer,
+    SpikeRateTracker, SparsityTracker, SilentNeuronDetector,
+    SaturatedNeuronDetector, TemporalDynamicsAnalyzer,
+    WeightDistributionTracker, WeightMagnitudeTracker, WeightSparsityTracker,
+    WeightUpdateTracker, MethodComparisonAnalyzer, HyperparameterSensitivityAnalyzer,
+};
+pub use baselines::{
+    ANNBaseline, Tensor as BaselineTensor,
+    // MLP architectures
+    MLP2Layer, MLP3Layer, MLP4Layer, MLPDropout, MLPBatchNorm, MLPResidual,
+    MLPWideSingle, MLPDeep,
+    // CNN architectures
+    CNN1DSmall, CNN1DMedium, CNN1DLarge, CNN1DResidual, CNN1DDilated,
+    CNN2DLeNet, CNN2DVGG, CNN2DResNet, CNN2DMobileNet, TCN,
+    // RNN architectures
+    SimpleRNN, LSTM, BiLSTM, StackedLSTM, GRU, BiGRU, StackedGRU,
+    PeepholeLSTM, AttentionLSTM, IndRNN,
+    // Transformer architectures
+    TransformerEncoder, TransformerSmall, TransformerMedium, TransformerLarge,
+    LinearTransformer, Performer, Informer, Autoformer,
+    // Specialized architectures
+    ECGNet, DeepGait, TremorNet, VoiceNet,
+    MultimodalFusion, AttentionFusion, GraphNN, HybridCNNRNN,
+    // Conversion utilities
+    ANNToSNNConverter as BaselineConverter,
+    ConversionConfig as BaselineConversionConfig,
+    WeightNormalizationMethod, ThresholdBalancingStrategy,
+    convert_model_to_snn,
 };
 
 use dpb_core::error::{DpbError, Result};

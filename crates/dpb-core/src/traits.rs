@@ -1,7 +1,7 @@
 //! Core traits for the DPB framework.
 
 use crate::error::Result;
-use crate::types::{Context, GroundTruth, SpikeEvent, SpikeTrain, TimeSeries};
+use crate::types::{Context, GroundTruth, SpikeEvent, TimeSeries};
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use serde::{Deserialize, Serialize};
 use std::any::Any;

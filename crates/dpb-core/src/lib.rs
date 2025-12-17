@@ -42,6 +42,8 @@
 //! - [`gpu`] - GPU infrastructure and utilities
 //! - [`signal`] - Signal processing tools
 //! - [`math`] - Mathematical and statistical utilities
+//! - [`power`] - Power estimation models for neuromorphic and conventional hardware
+//! - [`viz`] - Visualization utilities for signals, spikes, networks, training, and analysis
 
 #![warn(missing_docs)]
 #![warn(clippy::all)]
@@ -51,10 +53,13 @@ pub mod config;
 pub mod error;
 pub mod gpu;
 pub mod math;
+pub mod metrics;
+pub mod power;
 pub mod signal;
 pub mod tensor;
 pub mod traits;
 pub mod types;
+pub mod viz;
 
 // Re-export commonly used items
 pub use error::{DpbError, Result};
@@ -94,6 +99,8 @@ impl traits::Signal for types::SignalBuffer {
 pub mod prelude {
     pub use crate::config::*;
     pub use crate::error::{DpbError, Result};
+    pub use crate::metrics::MetricTrait;
+    pub use crate::power::{ModelStats, PowerEstimator, PowerMetrics};
     pub use crate::traits::*;
     pub use crate::types::*;
 }

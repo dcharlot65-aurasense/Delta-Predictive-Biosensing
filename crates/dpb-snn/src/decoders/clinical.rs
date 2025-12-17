@@ -338,6 +338,446 @@ impl Decoder for GaitScoreDecoder {
     }
 }
 
+/// UPDRS Motor decoder - comprehensive motor assessment
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UPDRSMotorDecoder {
+    pub num_neurons: usize,
+}
+
+impl UPDRSMotorDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for UPDRSMotorDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        // UPDRS Part III total score (0-132 scale)
+        let mut output = Array2::zeros((batch_size, 1));
+
+        for b in 0..batch_size {
+            let mean_rate: f32 = rates.row(b).mean().unwrap_or(0.0);
+            // Scale to UPDRS range (inverse - lower activity = higher impairment)
+            output[[b, 0]] = (1.0 - mean_rate).max(0.0) * 132.0;
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        1
+    }
+}
+
+/// UPDRS Tremor decoder - tremor-specific assessment
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UPDRSTremorDecoder {
+    pub num_neurons: usize,
+    pub tremor_band_low: f32,  // Hz
+    pub tremor_band_high: f32, // Hz
+}
+
+impl UPDRSTremorDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self {
+            num_neurons,
+            tremor_band_low: 4.0,
+            tremor_band_high: 6.0,
+        }
+    }
+}
+
+impl Decoder for UPDRSTremorDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let spike_dense = spikes.to_dense();
+        let (batch_size, _, _) = (spike_dense.shape()[0], spike_dense.shape()[1], spike_dense.shape()[2]);
+
+        // Tremor score (0-4 for each limb, 0-20 total)
+        let mut output = Array2::zeros((batch_size, 1));
+
+        for b in 0..batch_size {
+            let rates = spikes.spike_rate();
+            let variance = rates.row(b).var(0.0);
+            // Higher variance suggests tremor
+            output[[b, 0]] = (variance * 20.0).min(20.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        1
+    }
+}
+
+/// UPDRS Bradykinesia decoder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UPDRSBradykinesiaDecoder {
+    pub num_neurons: usize,
+}
+
+impl UPDRSBradykinesiaDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for UPDRSBradykinesiaDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        let mut output = Array2::zeros((batch_size, 1));
+
+        for b in 0..batch_size {
+            let mean_rate: f32 = rates.row(b).mean().unwrap_or(0.0);
+            // Lower rate suggests bradykinesia
+            output[[b, 0]] = (1.0 - mean_rate).max(0.0) * 4.0; // 0-4 scale
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        1
+    }
+}
+
+/// UPDRS Rigidity decoder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UPDRSRigidityDecoder {
+    pub num_neurons: usize,
+}
+
+impl UPDRSRigidityDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for UPDRSRigidityDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let spike_dense = spikes.to_dense();
+        let batch_size = spike_dense.shape()[0];
+
+        let mut output = Array2::zeros((batch_size, 1));
+
+        for b in 0..batch_size {
+            let rates = spikes.spike_rate();
+            let std_dev = rates.row(b).std(0.0);
+            // Low variability suggests rigidity
+            output[[b, 0]] = ((1.0 - std_dev) * 4.0).max(0.0).min(4.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        1
+    }
+}
+
+/// UPDRS Gait decoder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UPDRSGaitDecoder {
+    pub num_neurons: usize,
+}
+
+impl UPDRSGaitDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for UPDRSGaitDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let spike_dense = spikes.to_dense();
+        let (batch_size, num_steps, num_neurons) = (
+            spike_dense.shape()[0],
+            spike_dense.shape()[1],
+            spike_dense.shape()[2],
+        );
+
+        let mut output = Array2::zeros((batch_size, 1));
+
+        for b in 0..batch_size {
+            // Detect rhythm regularity
+            let mut regularity_score = 0.0;
+            for n in 0..num_neurons {
+                let spike_train: Vec<f32> = spike_dense.slice(s![b, .., n]).to_vec();
+                let spike_times: Vec<usize> = spike_train
+                    .iter()
+                    .enumerate()
+                    .filter(|&(_, s)| *s > 0.5)
+                    .map(|(t, _)| t)
+                    .collect();
+
+                if spike_times.len() >= 2 {
+                    let isis: Vec<f32> = spike_times
+                        .windows(2)
+                        .map(|w| (w[1] - w[0]) as f32)
+                        .collect();
+                    let mean_isi = isis.iter().sum::<f32>() / isis.len() as f32;
+                    let isi_std = (isis.iter().map(|&x| (x - mean_isi).powi(2)).sum::<f32>()
+                        / isis.len() as f32)
+                        .sqrt();
+                    regularity_score += isi_std / mean_isi.max(1.0);
+                }
+            }
+            regularity_score /= num_neurons as f32;
+            // Higher irregularity = higher gait impairment
+            output[[b, 0]] = (regularity_score * 4.0).min(4.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        1
+    }
+}
+
+/// Timed Up and Go (TUG) decoder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TUGDecoder {
+    pub num_neurons: usize,
+    pub expected_duration: f32, // seconds
+}
+
+impl TUGDecoder {
+    pub fn new(num_neurons: usize, expected_duration: f32) -> Self {
+        Self {
+            num_neurons,
+            expected_duration,
+        }
+    }
+}
+
+impl Decoder for TUGDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        let mut output = Array2::zeros((batch_size, 1));
+
+        for b in 0..batch_size {
+            let mean_rate: f32 = rates.row(b).mean().unwrap_or(0.0);
+            // Lower activity suggests longer TUG time
+            let estimated_time = self.expected_duration / (mean_rate + 0.1);
+            output[[b, 0]] = estimated_time.min(60.0); // Cap at 60 seconds
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        1
+    }
+}
+
+/// Berg Balance Scale decoder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BergBalanceDecoder {
+    pub num_neurons: usize,
+}
+
+impl BergBalanceDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for BergBalanceDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        let mut output = Array2::zeros((batch_size, 1));
+
+        for b in 0..batch_size {
+            let std_dev = rates.row(b).std(0.0);
+            // Higher stability (lower variance) = higher Berg score (0-56)
+            output[[b, 0]] = ((1.0 - std_dev) * 56.0).max(0.0).min(56.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        1
+    }
+}
+
+/// Montreal Cognitive Assessment (MoCA) decoder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MoCADecoder {
+    pub num_neurons: usize,
+}
+
+impl MoCADecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for MoCADecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        let mut output = Array2::zeros((batch_size, 1));
+
+        for b in 0..batch_size {
+            let mean_rate: f32 = rates.row(b).mean().unwrap_or(0.0);
+            // Higher cognitive function = higher rate (0-30 scale)
+            output[[b, 0]] = (mean_rate * 30.0).min(30.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        1
+    }
+}
+
+/// Voice Handicap Index decoder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VoiceHDDecoder {
+    pub num_neurons: usize,
+}
+
+impl VoiceHDDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for VoiceHDDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let spike_dense = spikes.to_dense();
+        let batch_size = spike_dense.shape()[0];
+
+        let mut output = Array2::zeros((batch_size, 1));
+
+        for b in 0..batch_size {
+            let rates = spikes.spike_rate();
+            let variance = rates.row(b).var(0.0);
+            // Higher irregularity suggests voice impairment (0-120 scale)
+            output[[b, 0]] = (variance * 120.0).min(120.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        1
+    }
+}
+
+/// Parkinson's Disease Questionnaire-39 decoder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PDQ39Decoder {
+    pub num_neurons: usize,
+}
+
+impl PDQ39Decoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for PDQ39Decoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        let mut output = Array2::zeros((batch_size, 1));
+
+        for b in 0..batch_size {
+            let mean_rate: f32 = rates.row(b).mean().unwrap_or(0.0);
+            // Lower quality of life = lower rate (0-100 scale, higher = worse)
+            output[[b, 0]] = ((1.0 - mean_rate) * 100.0).max(0.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        1
+    }
+}
+
+/// Hoehn & Yahr stage decoder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HoehnYahrDecoder {
+    pub num_neurons: usize,
+}
+
+impl HoehnYahrDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for HoehnYahrDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        let mut output = Array2::zeros((batch_size, 1));
+
+        for b in 0..batch_size {
+            let mean_rate: f32 = rates.row(b).mean().unwrap_or(0.0);
+            // Stage 0-5 (lower activity = higher stage)
+            let stage = ((1.0 - mean_rate) * 5.0).max(0.0).min(5.0);
+            output[[b, 0]] = stage;
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        1
+    }
+}
+
+/// Schwab & England Activities of Daily Living decoder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SEADLDecoder {
+    pub num_neurons: usize,
+}
+
+impl SEADLDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for SEADLDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        let mut output = Array2::zeros((batch_size, 1));
+
+        for b in 0..batch_size {
+            let mean_rate: f32 = rates.row(b).mean().unwrap_or(0.0);
+            // 0-100% scale (higher activity = better function)
+            output[[b, 0]] = (mean_rate * 100.0).min(100.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        1
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
