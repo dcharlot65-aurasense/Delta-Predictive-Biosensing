@@ -15,6 +15,7 @@ pub mod eye;
 pub mod voice;
 pub mod multimodal;
 pub mod level3;
+pub mod media;
 
 pub use traits::{SyntheticGenerator, GroundTruth, ParameterSpace};
 
