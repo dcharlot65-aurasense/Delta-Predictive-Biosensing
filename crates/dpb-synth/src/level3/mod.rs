@@ -54,6 +54,9 @@
 pub mod video;
 pub mod audio;
 pub mod audio_world;
+pub mod skeleton;
+pub mod smpl;
+pub mod style_transfer;
 
 pub use video::{
     Level3VideoGenerator,
@@ -88,6 +91,33 @@ pub use audio_world::{
     AudioGroundTruth,
     AudioEvent,
     WorldAudioGenerator,
+};
+
+pub use skeleton::{
+    SkeletonRenderer,
+    SkeletonParams,
+    SkeletonError,
+    RenderStyle,
+    CameraView,
+    PoseLandmarks,
+    HandLandmarks,
+    render_clinical_pose_frame,
+    render_clinical_hand_frame,
+};
+
+pub use smpl::{
+    SmplRenderer,
+    SmplParams,
+    SmplError,
+    SmplBodyModel,
+    SmplPose,
+};
+
+pub use style_transfer::{
+    StyleTransferRenderer,
+    StyleTransferParams,
+    StyleTransferError,
+    StyleType,
 };
 
 #[cfg(test)]
