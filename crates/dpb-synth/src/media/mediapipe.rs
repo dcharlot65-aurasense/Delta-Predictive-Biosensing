@@ -1,25 +1,43 @@
-//! MediaPipe Pose Extraction Integration
+//! MediaPipe Comprehensive Video and Audio Processing Integration
 //!
-//! This module provides integration with Google MediaPipe for extracting
-//! pose, hand, and face landmarks from video - closing the loop from
+//! This module provides full integration with Google MediaPipe for extracting
+//! and analyzing biosignals from video and audio - closing the loop from
 //! synthetic generation back to biosignal extraction.
 //!
-//! # Features
+//! # Vision Solutions
 //!
-//! - 33-point BlazePose body landmarks
-//! - 21-point hand landmarks per hand
-//! - 468-point face mesh
-//! - Real-time processing (30+ FPS)
-//! - 3D landmark estimation
+//! - **Pose Landmarker**: 33-point BlazePose body landmarks with world coordinates
+//! - **Hand Landmarker**: 21-point hand landmarks per hand with gesture recognition
+//! - **Face Mesh**: 468-point face mesh with blendshapes for expression analysis
+//! - **Face Detection**: Fast face detection with 6 keypoints
+//! - **Holistic**: Combined face, hands, and pose in unified model
+//! - **Gesture Recognition**: ASL alphabet and common gestures
+//! - **Image Segmentation**: Person/selfie segmentation masks
+//! - **Object Detection**: General object detection
+//! - **Iris Tracking**: Pupil and iris landmark tracking
+//!
+//! # Audio Solutions
+//!
+//! - **Audio Classification**: Speech, music, environment sound classification
+//! - **Audio Embedding**: Feature extraction for downstream tasks
+//!
+//! # Biosignal Applications
+//!
+//! - Gait analysis from pose sequences
+//! - Tremor detection from hand/pose landmarks
+//! - Facial expression analysis (hypomimia detection)
+//! - Eye tracking and pupil response
+//! - Voice activity detection
 //!
 //! # Requirements
 //!
 //! - Python 3.8+
-//! - `pip install mediapipe opencv-python`
+//! - `pip install mediapipe opencv-python numpy`
 //!
 //! # References
 //!
-//! - MediaPipe: https://google.github.io/mediapipe/
+//! - MediaPipe Solutions: https://developers.google.com/mediapipe/solutions
+//! - MediaPipe Tasks: https://developers.google.com/mediapipe/solutions/guide
 
 use super::{MediaError, Result, MediaGroundTruth, JointPositions3D, GaitGroundTruth};
 use std::path::{Path, PathBuf};
