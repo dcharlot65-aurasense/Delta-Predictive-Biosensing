@@ -2,10 +2,12 @@
 resolver = "2"
 members = [
     "crates/dpb-core",
+    "crates/dpb-cognitive",
     "crates/dpb-encoders",
     "crates/dpb-neurons",
     "crates/dpb-snn",
     "crates/dpb-synth",
+    "crates/dpb-norms",
     "crates/dpb-python",
     "crates/dpb-ffi",
     "crates/dpb-bench",
@@ -67,6 +69,8 @@ dpb-encoders = { path = "crates/dpb-encoders" }
 dpb-neurons = { path = "crates/dpb-neurons" }
 dpb-snn = { path = "crates/dpb-snn" }
 dpb-synth = { path = "crates/dpb-synth" }
+dpb-cognitive = { path = "crates/dpb-cognitive" }
+dpb-norms = { path = "crates/dpb-norms" }
 dpb-bench = { path = "crates/dpb-bench" }
 
 [profile.release]

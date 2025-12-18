@@ -49,16 +49,23 @@
 #![warn(clippy::all)]
 #![allow(clippy::too_many_arguments)]
 
+pub mod biomechanics;
+pub mod cardiopulmonary;
 pub mod config;
 pub mod error;
 pub mod gpu;
 pub mod math;
 pub mod metrics;
+pub mod pain;
 pub mod power;
 pub mod signal;
+pub mod sleep;
+pub mod somatosensory;
 pub mod tensor;
 pub mod traits;
 pub mod types;
+pub mod validation;
+pub mod vestibular;
 pub mod viz;
 
 // Re-export commonly used items

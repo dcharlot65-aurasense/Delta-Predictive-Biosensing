@@ -73,7 +73,11 @@ pub use fusion::{
     FusionNetwork, FusionConfig, Modality,
     EarlyFusionSNN, LateFusionSNN, CrossModalAttentionSNN,
     HierarchicalFusionSNN, TemporalAlignmentSNN, GatedFusionSNN,
-    NeuroPlaySNN,
+    NeuroPlaySNN, CognitiveMotorFusionSNN,
+    CognitiveMotorFusion, CognitiveMotorFusionConfig,
+    CognitiveProfile, MotorProfile, IntegratedAssessment,
+    DissociationPattern, DissociationType, ChangeMetrics, ChangeDirection,
+    RiskCategory, DomainZScores,
 };
 pub use analysis::{
     ConvergenceAnalyzer, TrainingMetrics, AnalysisReport,

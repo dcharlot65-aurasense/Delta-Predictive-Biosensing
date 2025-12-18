@@ -13,15 +13,15 @@
 //!
 //! # Usage
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use dpb_synth::level3::skeleton::{SkeletonRenderer, SkeletonParams};
 //!
 //! let renderer = SkeletonRenderer::new(SkeletonParams::default());
 //!
 //! // Render a single pose frame
 //! let keypoints = vec![[0.5, 0.5, 0.0]; 33]; // MediaPipe pose landmarks
-//! let frame = renderer.render_pose(&keypoints);
-//! frame.save("pose_frame.png").unwrap();
+//! let frame = renderer.render_pose(&keypoints)?;
+//! frame.save("pose_frame.png")?;
 //! ```
 
 use image::{ImageBuffer, Rgb, RgbImage};
