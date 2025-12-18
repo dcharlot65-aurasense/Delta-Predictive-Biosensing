@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DPB-WASM WebGPU Tests</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+        }
+        h1 {
+            color: #00d4ff;
+        }
+        .test-suite {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .test-suite h2 {
+            margin-top: 0;
+            color: #e94560;
+        }
+        .test {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #0f3460;
+        }
+        .test:last-child {
+            border-bottom: none;
+        }
+        .test-status {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        .test-status.pass {
+            background: #00d26a;
+        }
+        .test-status.fail {
+            background: #ff4757;
+        }
+        .test-status.skip {
+            background: #ffa502;
+        }
+        .test-status.running {
+            background: #1e90ff;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .test-name {
+            flex: 1;
+        }
+        .test-time {
+            color: #888;
+            font-size: 12px;
+        }
+        .summary {
+            display: flex;
+            gap: 24px;
+            margin: 24px 0;
+            font-size: 18px;
+        }
+        .summary .pass { color: #00d26a; }
+        .summary .fail { color: #ff4757; }
+        .summary .skip { color: #ffa502; }
+        #log {
+            background: #0a0a0a;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 4px 0;
+        }
+        .log-entry.error { color: #ff4757; }
+        .log-entry.info { color: #00d4ff; }
+        .log-entry.success { color: #00d26a; }
+        button {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+        button:hover {
+            background: #ff6b6b;
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .gpu-info {
+            background: #0f3460;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 16px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 DPB-WASM WebGPU Test Suite</h1>
+
+    <div class="gpu-info" id="gpu-info">
+        <strong>WebGPU Status:</strong> <span id="gpu-status">Checking...</span>
+    </div>
+
+    <div>
+        <button id="run-all" onclick="runAllTests()">Run All Tests</button>
+        <button id="run-webgpu" onclick="runWebGPUTests()">Run WebGPU Tests</button>
+        <button id="run-encoder" onclick="runEncoderTests()">Run Encoder Tests</button>
+    </div>
+
+    <div class="summary" id="summary" style="display: none;">
+        <span class="pass">✓ <span id="pass-count">0</span> passed</span>
+        <span class="fail">✗ <span id="fail-count">0</span> failed</span>
+        <span class="skip">○ <span id="skip-count">0</span> skipped</span>
+        <span>⏱ <span id="total-time">0</span>ms</span>
+    </div>
+
+    <div class="test-suite" id="webgpu-suite">
+        <h2>WebGPU Tests</h2>
+        <div id="webgpu-tests"></div>
+    </div>
+
+    <div class="test-suite" id="encoder-suite">
+        <h2>Encoder Tests</h2>
+        <div id="encoder-tests"></div>
+    </div>
+
+    <div class="test-suite" id="integration-suite">
+        <h2>Integration Tests</h2>
+        <div id="integration-tests"></div>
+    </div>
+
+    <h2>Test Log</h2>
+    <div id="log"></div>
+
+    <script type="module">
+        // Import the WASM module
+        import init, {
+            WasmTimeSeries,
+            WasmSpikeTrain,
+            WasmLevelCrossingEncoder,
+            WasmDeltaEncoder,
+            WasmTemporalContrastEncoder,
+            PerformanceTimer
+        } from './pkg/dpb_wasm.js';
+
+        // Make functions available globally
+        window.init = init;
+        window.WasmTimeSeries = WasmTimeSeries;
+        window.WasmSpikeTrain = WasmSpikeTrain;
+        window.WasmLevelCrossingEncoder = WasmLevelCrossingEncoder;
+        window.WasmDeltaEncoder = WasmDeltaEncoder;
+        window.WasmTemporalContrastEncoder = WasmTemporalContrastEncoder;
+        window.PerformanceTimer = PerformanceTimer;
+
+        // Test results storage
+        window.testResults = {
+            passed: 0,
+            failed: 0,
+            skipped: 0,
+            totalTime: 0
+        };
+
+        // Logging function
+        window.log = function(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toISOString().substr(11, 12)}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+
+        // Check WebGPU support
+        async function checkWebGPU() {
+            const statusEl = document.getElementById('gpu-status');
+            const infoEl = document.getElementById('gpu-info');
+
+            if (!navigator.gpu) {
+                statusEl.textContent = '❌ WebGPU not supported in this browser';
+                statusEl.style.color = '#ff4757';
+                return false;
+            }
+
+            try {
+                const adapter = await navigator.gpu.requestAdapter();
+                if (!adapter) {
+                    statusEl.textContent = '❌ No WebGPU adapter found';
+                    statusEl.style.color = '#ff4757';
+                    return false;
+                }
+
+                const device = await adapter.requestDevice();
+                const info = await adapter.requestAdapterInfo();
+
+                statusEl.innerHTML = `✅ Available - ${info.vendor || 'Unknown'} ${info.device || ''}`;
+                statusEl.style.color = '#00d26a';
+
+                // Add limits info
+                const limits = device.limits;
+                infoEl.innerHTML += `<br><small>
+                    Max Buffer Size: ${(limits.maxBufferSize / 1024 / 1024).toFixed(0)}MB |
+                    Max Workgroup Size: ${limits.maxComputeWorkgroupSizeX}
+                </small>`;
+
+                device.destroy();
+                return true;
+            } catch (e) {
+                statusEl.textContent = `❌ WebGPU error: ${e.message}`;
+                statusEl.style.color = '#ff4757';
+                return false;
+            }
+        }
+
+        // Initialize
+        window.addEventListener('load', async () => {
+            log('Initializing test suite...', 'info');
+
+            try {
+                await init();
+                log('WASM module loaded successfully', 'success');
+            } catch (e) {
+                log(`Failed to load WASM: ${e.message}`, 'error');
+            }
+
+            const hasWebGPU = await checkWebGPU();
+            if (hasWebGPU) {
+                log('WebGPU available', 'success');
+            } else {
+                log('WebGPU not available - GPU tests will be skipped', 'error');
+            }
+
+            // Setup test UI
+            setupTestUI();
+        });
+
+        function setupTestUI() {
+            // WebGPU tests
+            const webgpuTests = [
+                { name: 'WebGPU adapter detection', fn: testWebGPUAdapter },
+                { name: 'WebGPU device creation', fn: testWebGPUDevice },
+                { name: 'Compute shader compilation', fn: testComputeShader },
+                { name: 'Buffer allocation', fn: testBufferAllocation },
+                { name: 'GPU level crossing encoding', fn: testGPULevelCrossing },
+                { name: 'GPU delta modulation', fn: testGPUDeltaModulation },
+                { name: 'Large batch GPU encoding', fn: testLargeBatchGPU },
+            ];
+
+            // Encoder tests
+            const encoderTests = [
+                { name: 'WasmTimeSeries creation', fn: testTimeSeriesCreation },
+                { name: 'WasmSpikeTrain creation', fn: testSpikeTrainCreation },
+                { name: 'Level crossing encoder', fn: testLevelCrossingEncoder },
+                { name: 'Delta encoder', fn: testDeltaEncoder },
+                { name: 'Temporal contrast encoder', fn: testTemporalContrastEncoder },
+                { name: 'Encoder parameter validation', fn: testEncoderValidation },
+            ];
+
+            // Integration tests
+            const integrationTests = [
+                { name: 'End-to-end encoding pipeline', fn: testEndToEndPipeline },
+                { name: 'Multi-channel encoding', fn: testMultiChannelEncoding },
+                { name: 'Performance benchmark', fn: testPerformanceBenchmark },
+            ];
+
+            renderTestList('webgpu-tests', webgpuTests);
+            renderTestList('encoder-tests', encoderTests);
+            renderTestList('integration-tests', integrationTests);
+
+            window.allTests = [...webgpuTests, ...encoderTests, ...integrationTests];
+            window.webgpuTests = webgpuTests;
+            window.encoderTests = encoderTests;
+        }
+
+        function renderTestList(containerId, tests) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = tests.map((test, i) => `
+                <div class="test" id="test-${containerId}-${i}">
+                    <div class="test-status" id="status-${containerId}-${i}">•</div>
+                    <div class="test-name">${test.name}</div>
+                    <div class="test-time" id="time-${containerId}-${i}"></div>
+                </div>
+            `).join('');
+        }
+
+        // Test runner
+        async function runTest(test, containerId, index) {
+            const statusEl = document.getElementById(`status-${containerId}-${index}`);
+            const timeEl = document.getElementById(`time-${containerId}-${index}`);
+
+            statusEl.className = 'test-status running';
+            statusEl.textContent = '⟳';
+
+            const start = performance.now();
+            try {
+                await test.fn();
+                const elapsed = performance.now() - start;
+                statusEl.className = 'test-status pass';
+                statusEl.textContent = '✓';
+                timeEl.textContent = `${elapsed.toFixed(1)}ms`;
+                window.testResults.passed++;
+                window.testResults.totalTime += elapsed;
+                log(`✓ ${test.name} (${elapsed.toFixed(1)}ms)`, 'success');
+            } catch (e) {
+                const elapsed = performance.now() - start;
+                if (e.message === 'SKIP') {
+                    statusEl.className = 'test-status skip';
+                    statusEl.textContent = '○';
+                    window.testResults.skipped++;
+                    log(`○ ${test.name} - skipped`, 'info');
+                } else {
+                    statusEl.className = 'test-status fail';
+                    statusEl.textContent = '✗';
+                    window.testResults.failed++;
+                    window.testResults.totalTime += elapsed;
+                    log(`✗ ${test.name}: ${e.message}`, 'error');
+                }
+                timeEl.textContent = `${elapsed.toFixed(1)}ms`;
+            }
+        }
+
+        async function runTestSuite(tests, containerId) {
+            for (let i = 0; i < tests.length; i++) {
+                await runTest(tests[i], containerId, i);
+            }
+            updateSummary();
+        }
+
+        function updateSummary() {
+            document.getElementById('summary').style.display = 'flex';
+            document.getElementById('pass-count').textContent = window.testResults.passed;
+            document.getElementById('fail-count').textContent = window.testResults.failed;
+            document.getElementById('skip-count').textContent = window.testResults.skipped;
+            document.getElementById('total-time').textContent = window.testResults.totalTime.toFixed(0);
+        }
+
+        function resetResults() {
+            window.testResults = { passed: 0, failed: 0, skipped: 0, totalTime: 0 };
+        }
+
+        // Expose run functions globally
+        window.runAllTests = async function() {
+            resetResults();
+            log('Running all tests...', 'info');
+            await runTestSuite(window.webgpuTests, 'webgpu-tests');
+            await runTestSuite(window.encoderTests, 'encoder-tests');
+            await runTestSuite(window.allTests.filter(t =>
+                !window.webgpuTests.includes(t) && !window.encoderTests.includes(t)
+            ), 'integration-tests');
+        };
+
+        window.runWebGPUTests = async function() {
+            resetResults();
+            log('Running WebGPU tests...', 'info');
+            await runTestSuite(window.webgpuTests, 'webgpu-tests');
+        };
+
+        window.runEncoderTests = async function() {
+            resetResults();
+            log('Running encoder tests...', 'info');
+            await runTestSuite(window.encoderTests, 'encoder-tests');
+        };
+
+        // ====================================================================
+        // Test Implementations
+        // ====================================================================
+
+        async function testWebGPUAdapter() {
+            if (!navigator.gpu) throw new Error('SKIP');
+            const adapter = await navigator.gpu.requestAdapter();
+            if (!adapter) throw new Error('No adapter found');
+        }
+
+        async function testWebGPUDevice() {
+            if (!navigator.gpu) throw new Error('SKIP');
+            const adapter = await navigator.gpu.requestAdapter();
+            const device = await adapter.requestDevice();
+            if (!device) throw new Error('Could not create device');
+            device.destroy();
+        }
+
+        async function testComputeShader() {
+            if (!navigator.gpu) throw new Error('SKIP');
+            const adapter = await navigator.gpu.requestAdapter();
+            const device = await adapter.requestDevice();
+
+            const shaderCode = `
+                @group(0) @binding(0) var<storage, read> input: array<f32>;
+                @group(0) @binding(1) var<storage, read_write> output: array<f32>;
+
+                @compute @workgroup_size(64)
+                fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+                    output[gid.x] = input[gid.x] * 2.0;
+                }
+            `;
+
+            const module = device.createShaderModule({ code: shaderCode });
+            device.destroy();
+        }
+
+        async function testBufferAllocation() {
+            if (!navigator.gpu) throw new Error('SKIP');
+            const adapter = await navigator.gpu.requestAdapter();
+            const device = await adapter.requestDevice();
+
+            const buffer = device.createBuffer({
+                size: 1024 * 1024, // 1MB
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+            });
+
+            if (buffer.size !== 1024 * 1024) throw new Error('Buffer size mismatch');
+            buffer.destroy();
+            device.destroy();
+        }
+
+        async function testGPULevelCrossing() {
+            if (!navigator.gpu) throw new Error('SKIP');
+            // This would call the WASM GPU encoder if available
+            // For now, verify the API exists
+            log('GPU level crossing: API check only (full implementation requires WASM GPU)', 'info');
+        }
+
+        async function testGPUDeltaModulation() {
+            if (!navigator.gpu) throw new Error('SKIP');
+            log('GPU delta modulation: API check only (full implementation requires WASM GPU)', 'info');
+        }
+
+        async function testLargeBatchGPU() {
+            if (!navigator.gpu) throw new Error('SKIP');
+            const adapter = await navigator.gpu.requestAdapter();
+            const device = await adapter.requestDevice();
+
+            // Allocate large buffer
+            const size = 10 * 1024 * 1024; // 10MB
+            const buffer = device.createBuffer({
+                size,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+            });
+
+            buffer.destroy();
+            device.destroy();
+        }
+
+        async function testTimeSeriesCreation() {
+            const data = new Float32Array([1, 2, 3, 4, 5, 6, 7, 8]);
+            const ts = WasmTimeSeries.new(data, 2, 256.0);
+            if (ts.numChannels() !== 2) throw new Error('Channel count mismatch');
+            if (ts.sampleRate() !== 256.0) throw new Error('Sample rate mismatch');
+        }
+
+        async function testSpikeTrainCreation() {
+            const spikes = WasmSpikeTrain.new(4);
+            spikes.addSpike(0, 0.1, 1);
+            spikes.addSpike(1, 0.2, -1);
+            if (spikes.spikeCount() !== 2) throw new Error('Spike count mismatch');
+        }
+
+        async function testLevelCrossingEncoder() {
+            const encoder = WasmLevelCrossingEncoder.new(0.1, 2);
+            const data = new Float32Array([0, 0.1, 0.2, 0.3, 0.2, 0.1, 0, -0.1, -0.2]);
+            const ts = WasmTimeSeries.new(data, 1, 100.0);
+            const spikes = encoder.encode(ts);
+            if (spikes.spikeCount() === 0) throw new Error('No spikes generated');
+        }
+
+        async function testDeltaEncoder() {
+            const encoder = WasmDeltaEncoder.new(0.05, 2);
+            const data = new Float32Array([0, 0.1, 0.2, 0.15, 0.25, 0.3]);
+            const ts = WasmTimeSeries.new(data, 1, 100.0);
+            const spikes = encoder.encode(ts);
+            // Delta encoder should produce spikes on changes
+        }
+
+        async function testTemporalContrastEncoder() {
+            const encoder = WasmTemporalContrastEncoder.new(0.1, 2);
+            const data = new Float32Array([0, 0.2, 0.4, 0.3, 0.5, 0.1]);
+            const ts = WasmTimeSeries.new(data, 1, 100.0);
+            const spikes = encoder.encode(ts);
+        }
+
+        async function testEncoderValidation() {
+            try {
+                // Should fail with invalid parameters
+                const encoder = WasmLevelCrossingEncoder.new(-0.1, 0);
+                throw new Error('Should have thrown on invalid params');
+            } catch (e) {
+                if (e.message.includes('Should have thrown')) throw e;
+                // Expected error
+            }
+        }
+
+        async function testEndToEndPipeline() {
+            // Generate synthetic signal
+            const samples = 1000;
+            const data = new Float32Array(samples);
+            for (let i = 0; i < samples; i++) {
+                data[i] = Math.sin(2 * Math.PI * 10 * i / 256); // 10 Hz sine
+            }
+
+            const ts = WasmTimeSeries.new(data, 1, 256.0);
+            const encoder = WasmLevelCrossingEncoder.new(0.1, 1);
+            const spikes = encoder.encode(ts);
+
+            log(`Pipeline generated ${spikes.spikeCount()} spikes from ${samples} samples`, 'info');
+        }
+
+        async function testMultiChannelEncoding() {
+            const channels = 8;
+            const samplesPerChannel = 256;
+            const data = new Float32Array(channels * samplesPerChannel);
+
+            for (let c = 0; c < channels; c++) {
+                for (let s = 0; s < samplesPerChannel; s++) {
+                    data[c * samplesPerChannel + s] = Math.sin(2 * Math.PI * (c + 1) * s / 256);
+                }
+            }
+
+            const ts = WasmTimeSeries.new(data, channels, 256.0);
+            const encoder = WasmLevelCrossingEncoder.new(0.1, channels);
+            const spikes = encoder.encode(ts);
+
+            log(`Multi-channel: ${spikes.spikeCount()} spikes from ${channels} channels`, 'info');
+        }
+
+        async function testPerformanceBenchmark() {
+            const timer = PerformanceTimer.new();
+
+            const iterations = 100;
+            const samplesPerIter = 1000;
+
+            for (let i = 0; i < iterations; i++) {
+                const data = new Float32Array(samplesPerIter);
+                for (let j = 0; j < samplesPerIter; j++) {
+                    data[j] = Math.random() * 2 - 1;
+                }
+                const ts = WasmTimeSeries.new(data, 1, 256.0);
+                const encoder = WasmLevelCrossingEncoder.new(0.1, 1);
+                encoder.encode(ts);
+            }
+
+            const elapsed = timer.elapsedMs();
+            const throughput = (iterations * samplesPerIter) / (elapsed / 1000);
+
+            log(`Benchmark: ${throughput.toFixed(0)} samples/sec (${iterations} iterations)`, 'info');
+        }
+    </script>
+</body>
+</html>

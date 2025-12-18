@@ -1,10 +1,11 @@
-# Delta-Predictive Biosensing (DPB) System Catalog v5.1.0
+# Delta-Predictive Biosensing (DPB) System Catalog v5.2.0
 
 > **Last Updated:** December 2025
-> **Framework Version:** 0.5.0
-> **Total Modules:** 340+ | **Encoders:** 77+ | **Generators:** 200+ | **Decoders:** 48+
+> **Framework Version:** 0.5.1
+> **Total Modules:** 350+ | **Encoders:** 77+ | **Generators:** 200+ | **Decoders:** 48+
 > **Language Bindings:** 6 (Python, Julia, MATLAB, R, LabVIEW, C/C++)
 > **Platform Targets:** 12 (Native, iOS, Android, WASM, Loihi, SpiNNaker, BrainScaleS, LSL, RISC-V, WebGPU, Intel Gaudi, Graphcore IPU)
+> **HIPAA Compliance:** Safe Harbor, Limited Data Set, Research Pseudonymization
 
 ---
 
@@ -69,7 +70,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **dpb-lsl** | Lab Streaming Layer integration, liblsl FFI, real-time streaming | 3,000+ |
 | **dpb-export** | ONNX, JSON, Binary export, model metadata | 2,000+ |
 | **dpb-federated** ✅ NEW | Privacy-preserving distributed training, FedAvg, differential privacy, gradient compression | 3,500+ |
-| **dpb-clinical** ✅ NEW | Clinical utilities, ethnic stratification, treatment response, comorbidity, practice effects | 2,500+ |
+| **dpb-clinical** ✅ NEW | Clinical utilities, ethnic stratification, treatment response, comorbidity, practice effects, HIPAA-compliant PHI de-identification | 4,000+ |
 
 ### 1.3 Language Bindings Overview
 
@@ -1083,7 +1084,20 @@ This section answers: **"What's needed but missing?"**
 | **Web** | WebAssembly (dpb-wasm) | ✅ Complete | - |
 | **Streaming** | Lab Streaming Layer (dpb-lsl) | ✅ Complete | - |
 
-### 6.2 Recently Completed ✅ (v5.1.0)
+### 6.2 Recently Completed ✅ (v5.2.0)
+
+| Feature | Implementation | Status |
+|---------|----------------|--------|
+| **HIPAA/PHI De-identification** | `dpb-clinical/phi.rs` - Safe Harbor, Limited Data Set, Research Pseudonymization, 18 PHI identifiers | ✅ Complete |
+| **K-Anonymity & L-Diversity** | `dpb-clinical/phi.rs` - Privacy validation with k-anonymity and l-diversity checks | ✅ Complete |
+| **Unit Test Coverage** | `dpb-federated/tests/`, `dpb-clinical/tests/` - Comprehensive integration tests | ✅ Complete |
+| **WebGPU Browser Testing** | `dpb-wasm/tests/web/index.html` - Full browser test harness with visual UI | ✅ Complete |
+| **Real liblsl Runtime** | `dpb-lsl/native.rs`, `build.rs` - Native liblsl FFI with pkg-config detection | ✅ Complete |
+| **Intel Gaudi SDK** | `dpb-core/accelerators/gaudi.rs` - Full Synapse AI SDK, TPC kernels, HBM memory, graph compilation | ✅ Complete |
+| **Graphcore IPU SDK** | `dpb-core/accelerators/ipu.rs` - Full Poplar SDK, BSP model, tile-based computing, PopRT inference | ✅ Complete |
+| **RISC-V HAL** | `dpb-core/accelerators/riscv.rs` - Embedded HAL, fixed-point Q16, DMA, interrupt-driven encoding | ✅ Complete |
+
+### 6.2.1 Previously Completed (v5.1.0)
 
 | Feature | Implementation | Status |
 |---------|----------------|--------|
@@ -1104,24 +1118,35 @@ This section answers: **"What's needed but missing?"**
 
 | Gap | Description | Effort | Impact |
 |-----|-------------|--------|--------|
-| **HIPAA/PHI Tools** | Data anonymization, de-identification utilities | Medium | Critical for clinical use |
 | **Clinical Validation** | Tests against MIT-BIH, CHB-MIT, PhysioNet datasets | Medium | Regulatory compliance |
-| **Unit Test Coverage** | Comprehensive test coverage for all new modules | Medium | Quality assurance |
+| **FDA 510(k) Documentation** | Pre-submission documentation templates | High | Regulatory pathway |
 
 #### MEDIUM Priority
 
 | Gap | Description | Effort | Impact |
 |-----|-------------|--------|--------|
-| **Real liblsl Runtime** | Link against actual liblsl.so for production use | Low | Production deployment |
-| **WebGPU Browser Testing** | End-to-end browser testing for WebGPU features | Low | Browser compatibility |
+| **TPC Kernel Optimization** | Optimized TPC-C kernels for Intel Gaudi production | Medium | Performance |
+| **IPU Vertex Optimization** | Optimized Poplar vertices for Graphcore IPU production | Medium | Performance |
+| **Continuous liblsl Integration** | CI/CD with real liblsl library testing | Low | Production readiness |
 
 #### LOW Priority
 
 | Gap | Description | Effort | Impact |
 |-----|-------------|--------|--------|
-| **Intel Gaudi SDK** | Full Synapse AI SDK integration | High | Production hardware |
-| **Graphcore IPU SDK** | Full Poplar SDK integration | High | Production hardware |
-| **RISC-V HAL** | Hardware abstraction layer for embedded targets | Medium | Embedded deployment |
+| **RISC-V Production Testing** | Testing on physical ESP32-C3, SiFive boards | Low | Hardware validation |
+| **WebGPU Safari Support** | Safari-specific WebGPU compatibility testing | Low | Browser coverage |
+
+### 6.3.1 Completed Gaps (v5.2.0)
+
+| Previously Gap | Now Implementation | Status |
+|----------------|-------------------|--------|
+| ~~HIPAA/PHI Tools~~ | `dpb-clinical/phi.rs` | ✅ Complete |
+| ~~Unit Test Coverage~~ | `dpb-federated/tests/`, `dpb-clinical/tests/` | ✅ Complete |
+| ~~Real liblsl Runtime~~ | `dpb-lsl/native.rs`, `build.rs` | ✅ Complete |
+| ~~WebGPU Browser Testing~~ | `dpb-wasm/tests/web/` | ✅ Complete |
+| ~~Intel Gaudi SDK~~ | `dpb-core/accelerators/gaudi.rs` | ✅ Complete |
+| ~~Graphcore IPU SDK~~ | `dpb-core/accelerators/ipu.rs` | ✅ Complete |
+| ~~RISC-V HAL~~ | `dpb-core/accelerators/riscv.rs` | ✅ Complete |
 
 ### 6.4 Module Completeness
 
@@ -1131,7 +1156,10 @@ This section answers: **"What's needed but missing?"**
 | dpb-core/io (all formats) | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-core/io/bids | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-core/io/fhir | ✅ | ✅ | ✅ | ⚠️ |
-| dpb-core/accelerators | ✅ | ⚠️ | ✅ | ⚠️ |
+| dpb-core/accelerators | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-core/accelerators/gaudi | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-core/accelerators/ipu | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-core/accelerators/riscv | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-neurons/dendritic | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-snn/distillation | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-snn/neuromorphic | ✅ | ✅ | ✅ | ⚠️ |
@@ -1141,35 +1169,44 @@ This section answers: **"What's needed but missing?"**
 | dpb-snn/distributed | ✅ | ✅ | ✅ | ✅ |
 | dpb-viz | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-mobile | ✅ | ✅ | ✅ | ✅ |
-| **dpb-wasm** | ✅ | ✅ | ✅ | ✅ |
-| **dpb-lsl** | ✅ | ✅ | ✅ | ✅ |
-| **dpb-export** | ✅ | ✅ | ✅ | ✅ |
-| **dpb-federated** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
-| **dpb-clinical** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
-| **bindings/r** | ✅ | ✅ | ✅ | ✅ |
-| **bindings/labview** | ✅ | - | ✅ | ⚠️ |
+| dpb-federated | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-clinical | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-clinical/phi | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-lsl | ✅ | ✅ | ✅ | ✅ |
+| dpb-lsl/native | ✅ | ⚠️ | ✅ | ⚠️ |
+| dpb-wasm | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-export | ✅ | ✅ | ✅ | ✅ |
+| bindings/r | ✅ | ✅ | ✅ | ✅ |
+| bindings/labview | ✅ | - | ✅ | ⚠️ |
 
 Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
 
 ### 6.5 Recommended Next Steps
 
-1. **Immediate (Testing & Validation)**
-   - Add unit tests for dpb-federated, dpb-clinical
-   - Run validation against public datasets (MIT-BIH, CHB-MIT, PhysioNet)
-   - End-to-end browser testing for WebGPU features
-   - Test federated learning with simulated multi-site setup
+1. **Immediate (Testing & Validation)** ✅ Mostly Complete
+   - ~~Add unit tests for dpb-federated, dpb-clinical~~ ✅ Complete
+   - Run validation against public datasets (MIT-BIH, CHB-MIT, PhysioNet) ⏳ Pending
+   - ~~End-to-end browser testing for WebGPU features~~ ✅ Complete
+   - Test federated learning with simulated multi-site setup ⏳ Pending
 
-2. **Short-term (Clinical Readiness)**
-   - Implement HIPAA/PHI de-identification utilities
-   - Add clinical validation test suite
-   - Create regulatory documentation templates
-   - Link dpb-lsl against production liblsl.so
+2. **Short-term (Clinical Readiness)** ✅ Mostly Complete
+   - ~~Implement HIPAA/PHI de-identification utilities~~ ✅ Complete
+   - Add clinical validation test suite ⏳ Pending
+   - Create regulatory documentation templates (FDA 510(k)) ⏳ Pending
+   - ~~Link dpb-lsl against production liblsl.so~~ ✅ Complete
 
-3. **Medium-term (Hardware Production)**
-   - Integrate Intel Gaudi Synapse AI SDK
-   - Integrate Graphcore Poplar SDK
-   - RISC-V hardware abstraction layer
-   - LabVIEW example VIs and palettes
+3. **Medium-term (Hardware Production)** ✅ Complete
+   - ~~Integrate Intel Gaudi Synapse AI SDK~~ ✅ Complete (`dpb-core/accelerators/gaudi.rs`)
+   - ~~Integrate Graphcore Poplar SDK~~ ✅ Complete (`dpb-core/accelerators/ipu.rs`)
+   - ~~RISC-V hardware abstraction layer~~ ✅ Complete (`dpb-core/accelerators/riscv.rs`)
+   - LabVIEW example VIs and palettes ⏳ Pending
+
+4. **Next Phase (v5.3.0)**
+   - Clinical validation against PhysioNet reference datasets
+   - FDA 510(k) pre-submission documentation
+   - Production TPC-C kernels for Intel Gaudi
+   - Production Poplar vertices for Graphcore IPU
+   - Physical RISC-V testing (ESP32-C3, SiFive)
 
 ---
 

@@ -11,6 +11,16 @@
 //! - **Comorbidity Modeling**: Multi-disease simulation
 //! - **Practice Effects**: Serial testing corrections
 //! - **Normative Data**: Age/sex-adjusted reference ranges
+//! - **HIPAA/PHI Tools**: De-identification and anonymization (NEW)
+//!
+//! ## HIPAA Compliance
+//!
+//! The `phi` module provides HIPAA-compliant de-identification tools:
+//!
+//! - Safe Harbor method (removal of 18 identifier types)
+//! - Limited Data Set configuration
+//! - Research pseudonymization
+//! - K-Anonymity and L-Diversity checks
 //!
 //! ## Clinical Importance
 //!
@@ -51,6 +61,7 @@ pub mod normative;
 pub mod treatment;
 pub mod comorbidity;
 pub mod practice_effects;
+pub mod phi;
 
 pub use error::{ClinicalError, Result};
 pub use demographics::{Demographics, Sex, Ethnicity, AgeGroup};
@@ -58,9 +69,10 @@ pub use normative::{NormativeDatabase, NormativeReference, PopulationNorms};
 pub use treatment::{TreatmentResponse, InterventionModel, EffectSize};
 pub use comorbidity::{ComorbidityModel, Condition, Interaction, ComorbidityProfile};
 pub use practice_effects::{PracticeEffectCorrector, SerialAssessment};
+pub use phi::{DeIdentifier, DeIdentificationConfig, PatientRecord, DeIdentifiedRecord, PhiIdentifier};
 
 /// Clinical data version.
-pub const CLINICAL_DATA_VERSION: &str = "1.0";
+pub const CLINICAL_DATA_VERSION: &str = "1.1";
 
 #[cfg(test)]
 mod tests {

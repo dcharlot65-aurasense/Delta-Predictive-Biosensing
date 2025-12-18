@@ -1,15 +1,24 @@
 //! Hardware accelerator abstractions for DPB.
 //!
 //! This module provides traits and implementations for various hardware
-//! accelerators including Intel Gaudi, Graphcore IPU, and standard GPUs.
+//! accelerators including Intel Gaudi, Graphcore IPU, RISC-V, and standard GPUs.
 //!
 //! ## Supported Accelerators
 //!
-//! - **Intel Gaudi**: AI training accelerator with high memory bandwidth
-//! - **Graphcore IPU**: Massively parallel graph processor
+//! - **Intel Gaudi**: AI training accelerator with high memory bandwidth (Synapse AI SDK)
+//! - **Graphcore IPU**: Massively parallel graph processor (Poplar SDK)
+//! - **RISC-V**: Embedded targets with fixed-point arithmetic (ESP32-C3, SiFive, etc.)
 //! - **NVIDIA GPU**: CUDA-based acceleration (via wgpu)
 //! - **AMD GPU**: ROCm-based acceleration (via wgpu)
 //! - **CPU SIMD**: AVX2/AVX-512 vectorization
+//!
+//! ## Submodules
+//!
+//! Feature-gated implementations provide full SDK integration:
+//!
+//! - `gaudi` (feature: `intel-gaudi`) - Full Synapse AI SDK integration
+//! - `ipu` (feature: `graphcore-ipu`) - Full Poplar SDK integration
+//! - `riscv` (feature: `riscv-hal`) - Hardware abstraction for embedded RISC-V targets
 //!
 //! ## Example
 //!
@@ -24,6 +33,16 @@
 //!     let result = accel.encode_signal(&signal, &config)?;
 //! }
 //! ```
+
+// Feature-gated submodules
+#[cfg(feature = "intel-gaudi")]
+pub mod gaudi;
+
+#[cfg(feature = "graphcore-ipu")]
+pub mod ipu;
+
+#[cfg(feature = "riscv-hal")]
+pub mod riscv;
 
 use std::fmt;
 
@@ -46,6 +65,8 @@ pub enum AcceleratorType {
     AppleMetal,
     /// WebGPU (browser).
     WebGpu,
+    /// RISC-V embedded processor.
+    RiscV,
 }
 
 impl fmt::Display for AcceleratorType {
@@ -59,6 +80,7 @@ impl fmt::Display for AcceleratorType {
             AcceleratorType::GraphcoreIpu => write!(f, "Graphcore IPU"),
             AcceleratorType::AppleMetal => write!(f, "Apple Metal"),
             AcceleratorType::WebGpu => write!(f, "WebGPU"),
+            AcceleratorType::RiscV => write!(f, "RISC-V"),
         }
     }
 }
@@ -484,14 +506,15 @@ pub fn detect_accelerators() -> Vec<Box<dyn Accelerator>> {
 pub fn best_accelerator() -> Box<dyn Accelerator> {
     let accelerators = detect_accelerators();
 
-    // Priority: IPU > Gaudi > GPU > CPU SIMD > CPU
+    // Priority: IPU > Gaudi > GPU > CPU SIMD > RISC-V > CPU
     let priority = |a: &dyn Accelerator| match a.accelerator_type() {
-        AcceleratorType::GraphcoreIpu => 6,
-        AcceleratorType::IntelGaudi => 5,
-        AcceleratorType::NvidiaCuda => 4,
-        AcceleratorType::AmdRocm => 3,
-        AcceleratorType::AppleMetal => 2,
-        AcceleratorType::CpuSimd => 1,
+        AcceleratorType::GraphcoreIpu => 7,
+        AcceleratorType::IntelGaudi => 6,
+        AcceleratorType::NvidiaCuda => 5,
+        AcceleratorType::AmdRocm => 4,
+        AcceleratorType::AppleMetal => 3,
+        AcceleratorType::CpuSimd => 2,
+        AcceleratorType::RiscV => 1, // Specialized embedded target
         AcceleratorType::Cpu => 0,
         AcceleratorType::WebGpu => 0,
     };
