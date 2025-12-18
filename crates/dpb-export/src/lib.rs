@@ -171,3 +171,180 @@ impl Default for ModelExporter {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::encoder_export::MockEncoder;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_export_format_extension() {
+        assert_eq!(ExportFormat::Onnx.extension(), "onnx");
+        assert_eq!(ExportFormat::Json.extension(), "json");
+        assert_eq!(ExportFormat::Binary.extension(), "dpb");
+        assert_eq!(ExportFormat::TensorFlow.extension(), "pb");
+        assert_eq!(ExportFormat::PyTorch.extension(), "pt");
+    }
+
+    #[test]
+    fn test_export_format_is_supported() {
+        // JSON and Binary are always supported
+        assert!(ExportFormat::Json.is_supported());
+        assert!(ExportFormat::Binary.is_supported());
+
+        // ONNX support depends on feature flag
+        #[cfg(feature = "onnx")]
+        assert!(ExportFormat::Onnx.is_supported());
+        #[cfg(not(feature = "onnx"))]
+        assert!(!ExportFormat::Onnx.is_supported());
+
+        // TensorFlow support depends on feature flag
+        #[cfg(feature = "tensorflow")]
+        assert!(ExportFormat::TensorFlow.is_supported());
+        #[cfg(not(feature = "tensorflow"))]
+        assert!(!ExportFormat::TensorFlow.is_supported());
+
+        // PyTorch support depends on feature flag
+        #[cfg(feature = "pytorch")]
+        assert!(ExportFormat::PyTorch.is_supported());
+        #[cfg(not(feature = "pytorch"))]
+        assert!(!ExportFormat::PyTorch.is_supported());
+    }
+
+    #[test]
+    fn test_export_format_equality() {
+        assert_eq!(ExportFormat::Onnx, ExportFormat::Onnx);
+        assert_ne!(ExportFormat::Onnx, ExportFormat::Json);
+        assert_ne!(ExportFormat::Binary, ExportFormat::TensorFlow);
+    }
+
+    #[test]
+    fn test_export_format_clone() {
+        let format = ExportFormat::Json;
+        let cloned = format.clone();
+        assert_eq!(format, cloned);
+    }
+
+    #[test]
+    fn test_export_format_copy() {
+        let format = ExportFormat::Binary;
+        let copied: ExportFormat = format; // Copy, not move
+        assert_eq!(format, copied);
+    }
+
+    #[test]
+    fn test_export_format_debug() {
+        let format = ExportFormat::Onnx;
+        let debug_str = format!("{:?}", format);
+        assert!(debug_str.contains("Onnx"));
+    }
+
+    #[test]
+    fn test_model_exporter_new() {
+        let exporter = ModelExporter::new();
+        assert_eq!(exporter.metadata().name, "DPB Model");
+    }
+
+    #[test]
+    fn test_model_exporter_default() {
+        let exporter = ModelExporter::default();
+        assert_eq!(exporter.metadata().name, "DPB Model");
+    }
+
+    #[test]
+    fn test_model_exporter_with_name() {
+        let exporter = ModelExporter::new()
+            .with_name("Custom Model");
+        assert_eq!(exporter.metadata().name, "Custom Model");
+    }
+
+    #[test]
+    fn test_model_exporter_with_version() {
+        let exporter = ModelExporter::new()
+            .with_version("2.0.0");
+        assert_eq!(exporter.metadata().version, "2.0.0");
+    }
+
+    #[test]
+    fn test_model_exporter_with_description() {
+        let exporter = ModelExporter::new()
+            .with_description("A test model for unit testing");
+        assert_eq!(exporter.metadata().description, "A test model for unit testing");
+    }
+
+    #[test]
+    fn test_model_exporter_with_metadata() {
+        let exporter = ModelExporter::new()
+            .with_metadata("encoder_type", "level_crossing")
+            .with_metadata("channels", "8");
+
+        assert_eq!(exporter.metadata().get("encoder_type"), Some("level_crossing"));
+        assert_eq!(exporter.metadata().get("channels"), Some("8"));
+    }
+
+    #[test]
+    fn test_model_exporter_builder_chain() {
+        let exporter = ModelExporter::new()
+            .with_name("Chained Model")
+            .with_version("1.0.0")
+            .with_description("Testing builder pattern")
+            .with_metadata("key1", "value1")
+            .with_metadata("key2", "value2");
+
+        let metadata = exporter.metadata();
+        assert_eq!(metadata.name, "Chained Model");
+        assert_eq!(metadata.version, "1.0.0");
+        assert_eq!(metadata.description, "Testing builder pattern");
+        assert_eq!(metadata.get("key1"), Some("value1"));
+        assert_eq!(metadata.get("key2"), Some("value2"));
+    }
+
+    #[test]
+    fn test_model_exporter_export_json() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("model.json");
+
+        let exporter = ModelExporter::new()
+            .with_name("JSON Export Test");
+
+        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
+        let result = exporter.export_json(&path, &encoder);
+
+        assert!(result.is_ok());
+        assert!(path.exists());
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert!(content.contains("JSON Export Test"));
+    }
+
+    #[test]
+    fn test_model_exporter_export_binary() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("model.dpb");
+
+        let exporter = ModelExporter::new()
+            .with_name("Binary Export Test");
+
+        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
+        let result = exporter.export_binary(&path, &encoder);
+
+        assert!(result.is_ok());
+        assert!(path.exists());
+
+        // Verify it's a valid DPB file
+        let content = std::fs::read(&path).unwrap();
+        assert_eq!(&content[0..4], b"DPB\x00");
+    }
+
+    #[test]
+    fn test_model_exporter_metadata_accessor() {
+        let exporter = ModelExporter::new()
+            .with_name("Accessor Test")
+            .with_metadata("custom_key", "custom_value");
+
+        let metadata = exporter.metadata();
+        assert_eq!(metadata.name, "Accessor Test");
+        assert_eq!(metadata.get("custom_key"), Some("custom_value"));
+    }
+}

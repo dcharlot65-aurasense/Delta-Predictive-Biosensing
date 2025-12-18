@@ -279,3 +279,211 @@ pub struct ModelMetrics {
     /// Processing latency in milliseconds.
     pub latency_ms: Option<f64>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_model_metadata_creation() {
+        let metadata = ModelMetadata::new();
+        assert_eq!(metadata.name, "DPB Model");
+        assert!(metadata.author.is_some());
+        assert_eq!(metadata.author.as_deref(), Some("AuraSense Tech Corporation"));
+        assert!(metadata.license.is_some());
+        assert!(!metadata.id.is_empty());
+    }
+
+    #[test]
+    fn test_model_metadata_setters() {
+        let mut metadata = ModelMetadata::new();
+        let original_modified = metadata.modified_at;
+
+        // Small delay to ensure timestamp changes
+        std::thread::sleep(std::time::Duration::from_millis(10));
+
+        metadata.set_name("Test Model");
+        assert_eq!(metadata.name, "Test Model");
+        assert!(metadata.modified_at >= original_modified);
+
+        metadata.set_version("1.0.0");
+        assert_eq!(metadata.version, "1.0.0");
+
+        metadata.set_description("A test model");
+        assert_eq!(metadata.description, "A test model");
+
+        metadata.set_author("Test Author");
+        assert_eq!(metadata.author, Some("Test Author".to_string()));
+    }
+
+    #[test]
+    fn test_model_metadata_custom() {
+        let mut metadata = ModelMetadata::new();
+        metadata.add("encoder_type", "level_crossing");
+        metadata.add("threshold", "0.1");
+
+        assert_eq!(metadata.get("encoder_type"), Some("level_crossing"));
+        assert_eq!(metadata.get("threshold"), Some("0.1"));
+        assert_eq!(metadata.get("nonexistent"), None);
+    }
+
+    #[test]
+    fn test_model_metadata_io_specs() {
+        let mut metadata = ModelMetadata::new();
+
+        let input = TensorSpec::float32("input", vec![-1, 8, 256]);
+        let output = TensorSpec::float32("spikes", vec![-1, 8, -1]);
+
+        metadata.add_input(input);
+        metadata.add_output(output);
+
+        assert_eq!(metadata.inputs.len(), 1);
+        assert_eq!(metadata.outputs.len(), 1);
+        assert_eq!(metadata.inputs[0].name, "input");
+        assert_eq!(metadata.outputs[0].name, "spikes");
+    }
+
+    #[test]
+    fn test_tensor_spec_creation() {
+        let spec = TensorSpec::new("data", DataType::Float32, vec![1, 8, 256]);
+        assert_eq!(spec.name, "data");
+        assert_eq!(spec.dtype, DataType::Float32);
+        assert_eq!(spec.shape, vec![1, 8, 256]);
+        assert!(spec.description.is_none());
+        assert!(!spec.is_dynamic());
+    }
+
+    #[test]
+    fn test_tensor_spec_with_description() {
+        let spec = TensorSpec::float32("input", vec![-1, 8, 256])
+            .with_description("Input EEG signal");
+
+        assert_eq!(spec.description, Some("Input EEG signal".to_string()));
+    }
+
+    #[test]
+    fn test_tensor_spec_type_helpers() {
+        let f32_spec = TensorSpec::float32("a", vec![1]);
+        assert_eq!(f32_spec.dtype, DataType::Float32);
+
+        let f64_spec = TensorSpec::float64("b", vec![2]);
+        assert_eq!(f64_spec.dtype, DataType::Float64);
+
+        let i32_spec = TensorSpec::int32("c", vec![3]);
+        assert_eq!(i32_spec.dtype, DataType::Int32);
+    }
+
+    #[test]
+    fn test_tensor_spec_dynamic() {
+        let static_spec = TensorSpec::float32("static", vec![1, 8, 256]);
+        assert!(!static_spec.is_dynamic());
+
+        let dynamic_spec = TensorSpec::float32("dynamic", vec![-1, 8, -1]);
+        assert!(dynamic_spec.is_dynamic());
+    }
+
+    #[test]
+    fn test_data_type_size() {
+        assert_eq!(DataType::Float32.size(), 4);
+        assert_eq!(DataType::Float64.size(), 8);
+        assert_eq!(DataType::Int8.size(), 1);
+        assert_eq!(DataType::Int16.size(), 2);
+        assert_eq!(DataType::Int32.size(), 4);
+        assert_eq!(DataType::Int64.size(), 8);
+        assert_eq!(DataType::UInt8.size(), 1);
+        assert_eq!(DataType::Bool.size(), 1);
+        assert_eq!(DataType::String.size(), 0);
+    }
+
+    #[test]
+    fn test_data_type_to_onnx() {
+        assert_eq!(DataType::Float32.to_onnx_type(), 1);
+        assert_eq!(DataType::Float64.to_onnx_type(), 11);
+        assert_eq!(DataType::Int32.to_onnx_type(), 6);
+        assert_eq!(DataType::Int64.to_onnx_type(), 7);
+        assert_eq!(DataType::Bool.to_onnx_type(), 9);
+        assert_eq!(DataType::String.to_onnx_type(), 8);
+    }
+
+    #[test]
+    fn test_model_info_creation() {
+        let info = ModelInfo::new("level_crossing", 8, 256.0);
+        assert_eq!(info.encoder_type, "level_crossing");
+        assert_eq!(info.num_channels, 8);
+        assert_eq!(info.sample_rate, 256.0);
+        assert!(info.training.is_none());
+        assert!(info.metrics.is_none());
+    }
+
+    #[test]
+    fn test_model_info_with_training() {
+        let training = TrainingInfo {
+            dataset: "test_dataset".to_string(),
+            num_samples: 10000,
+            duration_sec: 120.0,
+            epochs: Some(100),
+            final_loss: Some(0.001),
+        };
+
+        let info = ModelInfo::new("delta", 4, 512.0)
+            .with_training(training.clone());
+
+        assert!(info.training.is_some());
+        let t = info.training.unwrap();
+        assert_eq!(t.dataset, "test_dataset");
+        assert_eq!(t.num_samples, 10000);
+    }
+
+    #[test]
+    fn test_model_info_with_metrics() {
+        let metrics = ModelMetrics {
+            spike_rate: 15.5,
+            compression_ratio: 10.2,
+            snr: Some(25.0),
+            reconstruction_error: Some(0.05),
+            latency_ms: Some(1.5),
+        };
+
+        let info = ModelInfo::new("temporal_contrast", 16, 1024.0)
+            .with_metrics(metrics.clone());
+
+        assert!(info.metrics.is_some());
+        let m = info.metrics.unwrap();
+        assert_eq!(m.spike_rate, 15.5);
+        assert_eq!(m.compression_ratio, 10.2);
+    }
+
+    #[test]
+    fn test_metadata_serialization() {
+        let metadata = ModelMetadata::new();
+        let json = serde_json::to_string(&metadata).unwrap();
+        assert!(json.contains("DPB Model"));
+        assert!(json.contains("AuraSense"));
+
+        let deserialized: ModelMetadata = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.name, metadata.name);
+        assert_eq!(deserialized.version, metadata.version);
+    }
+
+    #[test]
+    fn test_tensor_spec_serialization() {
+        let spec = TensorSpec::float32("input", vec![-1, 8, 256])
+            .with_description("EEG data");
+
+        let json = serde_json::to_string(&spec).unwrap();
+        let deserialized: TensorSpec = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.name, spec.name);
+        assert_eq!(deserialized.dtype, spec.dtype);
+        assert_eq!(deserialized.shape, spec.shape);
+        assert_eq!(deserialized.description, spec.description);
+    }
+
+    #[test]
+    fn test_default_metadata() {
+        let default = ModelMetadata::default();
+        let new = ModelMetadata::new();
+        assert_eq!(default.name, new.name);
+        assert_eq!(default.author, new.author);
+    }
+}

@@ -239,3 +239,263 @@ impl PipelineConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::encoder_export::MockEncoder;
+    use crate::metadata::ModelMetadata;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_json_exporter_new() {
+        let metadata = ModelMetadata::new();
+        let exporter = JsonExporter::new(metadata);
+        assert!(exporter.pretty);
+    }
+
+    #[test]
+    fn test_json_exporter_with_pretty() {
+        let metadata = ModelMetadata::new();
+        let exporter = JsonExporter::new(metadata).with_pretty(false);
+        assert!(!exporter.pretty);
+    }
+
+    #[test]
+    fn test_json_export_to_file() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("test_export.json");
+
+        let mut metadata = ModelMetadata::new();
+        metadata.set_name("Test Model");
+
+        let exporter = JsonExporter::new(metadata);
+        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
+
+        let result = exporter.export(&path, &encoder);
+        assert!(result.is_ok());
+        assert!(path.exists());
+
+        // Verify content
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert!(content.contains("Test Model"));
+        assert!(content.contains("level_crossing"));
+    }
+
+    #[test]
+    fn test_json_export_string() {
+        let mut metadata = ModelMetadata::new();
+        metadata.set_name("String Export Test");
+
+        let exporter = JsonExporter::new(metadata);
+        let encoder = MockEncoder::delta(4, 512.0, 0.05, 16);
+
+        let result = exporter.export_string(&encoder);
+        assert!(result.is_ok());
+
+        let json = result.unwrap();
+        assert!(json.contains("String Export Test"));
+        assert!(json.contains("delta"));
+        assert!(json.contains("512"));
+    }
+
+    #[test]
+    fn test_json_export_string_compact() {
+        let metadata = ModelMetadata::new();
+        let exporter = JsonExporter::new(metadata).with_pretty(false);
+        let encoder = MockEncoder::level_crossing(2, 256.0, 0.1);
+
+        let result = exporter.export_string(&encoder);
+        assert!(result.is_ok());
+
+        let json = result.unwrap();
+        // Compact JSON shouldn't have newlines (except possibly in strings)
+        assert!(!json.contains("\n  "));
+    }
+
+    #[test]
+    fn test_json_import_from_file() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("import_test.json");
+
+        // First export
+        let metadata = ModelMetadata::new();
+        let exporter = JsonExporter::new(metadata);
+        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
+        exporter.export(&path, &encoder).unwrap();
+
+        // Then import
+        let result = JsonExporter::import(&path);
+        assert!(result.is_ok());
+
+        let imported = result.unwrap();
+        assert_eq!(imported.encoder_type(), "level_crossing");
+        assert_eq!(imported.num_channels(), 8);
+        assert_eq!(imported.sample_rate(), 256.0);
+    }
+
+    #[test]
+    fn test_json_import_string() {
+        // Create export string
+        let metadata = ModelMetadata::new();
+        let exporter = JsonExporter::new(metadata);
+        let encoder = MockEncoder::delta(4, 512.0, 0.05, 16);
+        let json = exporter.export_string(&encoder).unwrap();
+
+        // Import from string
+        let result = JsonExporter::import_string(&json);
+        assert!(result.is_ok());
+
+        let imported = result.unwrap();
+        assert_eq!(imported.encoder_type(), "delta");
+        assert_eq!(imported.num_channels(), 4);
+    }
+
+    #[test]
+    fn test_json_model_export_accessors() {
+        let metadata = ModelMetadata::new();
+        let exporter = JsonExporter::new(metadata);
+        let encoder = MockEncoder::level_crossing(16, 1024.0, 0.08);
+        let json = exporter.export_string(&encoder).unwrap();
+
+        let imported = JsonExporter::import_string(&json).unwrap();
+        assert_eq!(imported.encoder_type(), "level_crossing");
+        assert_eq!(imported.num_channels(), 16);
+        assert_eq!(imported.sample_rate(), 1024.0);
+    }
+
+    #[test]
+    fn test_pipeline_config_default_eeg() {
+        let config = PipelineConfig::default_eeg();
+        assert_eq!(config.name, "EEG Processing Pipeline");
+        assert_eq!(config.version, "1.0");
+        assert_eq!(config.input.channels, 8);
+        assert_eq!(config.input.sample_rate, 256.0);
+        assert_eq!(config.encoders.len(), 1);
+        assert_eq!(config.encoders[0].encoder_type, "level_crossing");
+    }
+
+    #[test]
+    fn test_pipeline_config_save_load() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("pipeline_config.json");
+
+        let config = PipelineConfig::default_eeg();
+        config.save(&path).unwrap();
+        assert!(path.exists());
+
+        let loaded = PipelineConfig::load(&path).unwrap();
+        assert_eq!(loaded.name, config.name);
+        assert_eq!(loaded.input.channels, config.input.channels);
+    }
+
+    #[test]
+    fn test_pipeline_config_custom() {
+        let config = PipelineConfig {
+            name: "Custom Pipeline".to_string(),
+            version: "2.0".to_string(),
+            input: InputConfig {
+                source_type: "stream".to_string(),
+                source: "lsl://EEG".to_string(),
+                channels: 32,
+                sample_rate: 512.0,
+                buffer_size: Some(2048),
+            },
+            encoders: vec![
+                EncoderConfig {
+                    name: "encoder_1".to_string(),
+                    encoder_type: "delta".to_string(),
+                    params: serde_json::json!({"threshold": 0.05}),
+                    input_channels: Some(vec![0, 1, 2, 3]),
+                },
+                EncoderConfig {
+                    name: "encoder_2".to_string(),
+                    encoder_type: "temporal_contrast".to_string(),
+                    params: serde_json::json!({"threshold": 0.1}),
+                    input_channels: Some(vec![4, 5, 6, 7]),
+                },
+            ],
+            output: OutputConfig {
+                output_type: "stream".to_string(),
+                destination: "lsl://Spikes".to_string(),
+                format: Some("binary".to_string()),
+            },
+        };
+
+        assert_eq!(config.name, "Custom Pipeline");
+        assert_eq!(config.encoders.len(), 2);
+        assert_eq!(config.encoders[0].input_channels, Some(vec![0, 1, 2, 3]));
+    }
+
+    #[test]
+    fn test_input_config_serialization() {
+        let config = InputConfig {
+            source_type: "file".to_string(),
+            source: "test.csv".to_string(),
+            channels: 8,
+            sample_rate: 256.0,
+            buffer_size: Some(1024),
+        };
+
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: InputConfig = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.source_type, config.source_type);
+        assert_eq!(deserialized.channels, config.channels);
+        assert_eq!(deserialized.buffer_size, config.buffer_size);
+    }
+
+    #[test]
+    fn test_encoder_config_serialization() {
+        let config = EncoderConfig {
+            name: "test_encoder".to_string(),
+            encoder_type: "level_crossing".to_string(),
+            params: serde_json::json!({"threshold": 0.1, "adaptive": true}),
+            input_channels: Some(vec![0, 1, 2]),
+        };
+
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: EncoderConfig = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.name, config.name);
+        assert_eq!(deserialized.encoder_type, config.encoder_type);
+        assert_eq!(deserialized.input_channels, config.input_channels);
+    }
+
+    #[test]
+    fn test_output_config_serialization() {
+        let config = OutputConfig {
+            output_type: "file".to_string(),
+            destination: "output.json".to_string(),
+            format: Some("json".to_string()),
+        };
+
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: OutputConfig = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.output_type, config.output_type);
+        assert_eq!(deserialized.format, config.format);
+    }
+
+    #[test]
+    fn test_json_export_invalid_file_path() {
+        let metadata = ModelMetadata::new();
+        let exporter = JsonExporter::new(metadata);
+        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
+
+        let result = exporter.export("/nonexistent/path/file.json", &encoder);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_json_import_invalid_file() {
+        let result = JsonExporter::import("/nonexistent/file.json");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_json_import_invalid_content() {
+        let result = JsonExporter::import_string("not valid json");
+        assert!(result.is_err());
+    }
+}

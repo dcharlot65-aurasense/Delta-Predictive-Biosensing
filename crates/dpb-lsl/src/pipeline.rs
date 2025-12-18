@@ -462,3 +462,294 @@ impl Default for PipelineBuilder {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pipeline_config_default() {
+        let config = PipelineConfig::default();
+        assert_eq!(config.input_stream, "");
+        assert_eq!(config.input_type, "EEG");
+        assert_eq!(config.output_name, "DPB_Spikes");
+        assert_eq!(config.output_source_id, "dpb_pipeline");
+        assert_eq!(config.encoder_type, EncoderType::LevelCrossing);
+        assert_eq!(config.buffer_size, 1024);
+        assert!(config.adaptive);
+        assert_eq!(config.stats_interval, 60.0);
+    }
+
+    #[test]
+    fn test_encoder_params_default() {
+        let params = EncoderParams::default();
+        assert_eq!(params.threshold, 0.1);
+        assert_eq!(params.num_levels, 64);
+        assert_eq!(params.refractory_period, 0.001);
+        assert_eq!(params.adaptation_rate, 0.01);
+    }
+
+    #[test]
+    fn test_encoder_type_equality() {
+        assert_eq!(EncoderType::LevelCrossing, EncoderType::LevelCrossing);
+        assert_ne!(EncoderType::LevelCrossing, EncoderType::Delta);
+        assert_ne!(EncoderType::TemporalContrast, EncoderType::SendOnDelta);
+    }
+
+    #[test]
+    fn test_encoder_type_clone() {
+        let encoder = EncoderType::Delta;
+        let cloned = encoder.clone();
+        assert_eq!(encoder, cloned);
+    }
+
+    #[test]
+    fn test_encoder_type_copy() {
+        let encoder = EncoderType::TemporalContrast;
+        let copied: EncoderType = encoder;
+        assert_eq!(encoder, copied);
+    }
+
+    #[test]
+    fn test_pipeline_stats_default() {
+        let stats = PipelineStats::default();
+        assert_eq!(stats.samples_processed, 0);
+        assert_eq!(stats.spikes_generated, 0);
+        assert_eq!(stats.spike_rate, 0.0);
+        assert_eq!(stats.samples_dropped, 0);
+        assert_eq!(stats.avg_latency, 0.0);
+        assert_eq!(stats.max_latency, 0.0);
+        assert_eq!(stats.uptime, 0.0);
+    }
+
+    #[test]
+    fn test_pipeline_stats_clone() {
+        let mut stats = PipelineStats::default();
+        stats.samples_processed = 1000;
+        stats.spikes_generated = 50;
+        stats.spike_rate = 5.0;
+
+        let cloned = stats.clone();
+        assert_eq!(cloned.samples_processed, 1000);
+        assert_eq!(cloned.spikes_generated, 50);
+        assert_eq!(cloned.spike_rate, 5.0);
+    }
+
+    #[test]
+    fn test_encoding_pipeline_new() {
+        let config = PipelineConfig::default();
+        let pipeline = EncodingPipeline::new(config.clone());
+        assert!(!pipeline.is_running());
+        assert_eq!(pipeline.config().input_type, config.input_type);
+    }
+
+    #[test]
+    fn test_encoding_pipeline_is_not_running_initially() {
+        let pipeline = EncodingPipeline::new(PipelineConfig::default());
+        assert!(!pipeline.is_running());
+    }
+
+    #[test]
+    fn test_encoding_pipeline_get_stats_none_initially() {
+        let pipeline = EncodingPipeline::new(PipelineConfig::default());
+        assert!(pipeline.get_stats().is_none());
+    }
+
+    #[test]
+    fn test_encoding_pipeline_config_accessor() {
+        let mut config = PipelineConfig::default();
+        config.input_stream = "TestStream".to_string();
+        config.encoder_params.threshold = 0.05;
+
+        let pipeline = EncodingPipeline::new(config);
+        assert_eq!(pipeline.config().input_stream, "TestStream");
+    }
+
+    #[test]
+    fn test_pipeline_builder_new() {
+        let builder = PipelineBuilder::new();
+        let pipeline = builder.build();
+        assert!(!pipeline.is_running());
+    }
+
+    #[test]
+    fn test_pipeline_builder_default() {
+        let builder = PipelineBuilder::default();
+        let pipeline = builder.build();
+        assert_eq!(pipeline.config().input_type, "EEG");
+    }
+
+    #[test]
+    fn test_pipeline_builder_input_stream() {
+        let pipeline = PipelineBuilder::new()
+            .input_stream("MyEEG")
+            .build();
+        assert_eq!(pipeline.config().input_stream, "MyEEG");
+    }
+
+    #[test]
+    fn test_pipeline_builder_input_type() {
+        let pipeline = PipelineBuilder::new()
+            .input_type("ECG")
+            .build();
+        assert_eq!(pipeline.config().input_type, "ECG");
+    }
+
+    #[test]
+    fn test_pipeline_builder_output_name() {
+        let pipeline = PipelineBuilder::new()
+            .output_name("CustomSpikes")
+            .build();
+        assert_eq!(pipeline.config().output_name, "CustomSpikes");
+    }
+
+    #[test]
+    fn test_pipeline_builder_output_source_id() {
+        let pipeline = PipelineBuilder::new()
+            .output_source_id("custom_source")
+            .build();
+        assert_eq!(pipeline.config().output_source_id, "custom_source");
+    }
+
+    #[test]
+    fn test_pipeline_builder_encoder() {
+        let pipeline = PipelineBuilder::new()
+            .encoder(EncoderType::Delta)
+            .build();
+        assert_eq!(pipeline.config().encoder_type, EncoderType::Delta);
+    }
+
+    #[test]
+    fn test_pipeline_builder_threshold() {
+        let pipeline = PipelineBuilder::new()
+            .threshold(0.05)
+            .build();
+        assert_eq!(pipeline.config().encoder_params.threshold, 0.05);
+    }
+
+    #[test]
+    fn test_pipeline_builder_num_levels() {
+        let pipeline = PipelineBuilder::new()
+            .num_levels(128)
+            .build();
+        assert_eq!(pipeline.config().encoder_params.num_levels, 128);
+    }
+
+    #[test]
+    fn test_pipeline_builder_adaptive() {
+        let pipeline = PipelineBuilder::new()
+            .adaptive(false)
+            .build();
+        assert!(!pipeline.config().adaptive);
+    }
+
+    #[test]
+    fn test_pipeline_builder_adaptation_rate() {
+        let pipeline = PipelineBuilder::new()
+            .adaptation_rate(0.05)
+            .build();
+        assert_eq!(pipeline.config().encoder_params.adaptation_rate, 0.05);
+    }
+
+    #[test]
+    fn test_pipeline_builder_buffer_size() {
+        let pipeline = PipelineBuilder::new()
+            .buffer_size(2048)
+            .build();
+        assert_eq!(pipeline.config().buffer_size, 2048);
+    }
+
+    #[test]
+    fn test_pipeline_builder_stats_interval() {
+        let pipeline = PipelineBuilder::new()
+            .stats_interval(30.0)
+            .build();
+        assert_eq!(pipeline.config().stats_interval, 30.0);
+    }
+
+    #[test]
+    fn test_pipeline_builder_chained() {
+        let pipeline = PipelineBuilder::new()
+            .input_stream("TestStream")
+            .input_type("EEG")
+            .output_name("Spikes")
+            .encoder(EncoderType::TemporalContrast)
+            .threshold(0.08)
+            .adaptive(true)
+            .buffer_size(512)
+            .build();
+
+        let config = pipeline.config();
+        assert_eq!(config.input_stream, "TestStream");
+        assert_eq!(config.input_type, "EEG");
+        assert_eq!(config.output_name, "Spikes");
+        assert_eq!(config.encoder_type, EncoderType::TemporalContrast);
+        assert_eq!(config.encoder_params.threshold, 0.08);
+        assert!(config.adaptive);
+        assert_eq!(config.buffer_size, 512);
+    }
+
+    #[test]
+    fn test_pipeline_config_serialization() {
+        let config = PipelineConfig {
+            input_stream: "TestStream".to_string(),
+            input_type: "EEG".to_string(),
+            output_name: "Spikes".to_string(),
+            output_source_id: "test".to_string(),
+            encoder_type: EncoderType::Delta,
+            encoder_params: EncoderParams::default(),
+            buffer_size: 1024,
+            adaptive: true,
+            stats_interval: 60.0,
+        };
+
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("TestStream"));
+        assert!(json.contains("Delta"));
+
+        let deserialized: PipelineConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.input_stream, config.input_stream);
+        assert_eq!(deserialized.encoder_type, config.encoder_type);
+    }
+
+    #[test]
+    fn test_encoder_params_serialization() {
+        let params = EncoderParams {
+            threshold: 0.15,
+            num_levels: 32,
+            refractory_period: 0.002,
+            adaptation_rate: 0.02,
+        };
+
+        let json = serde_json::to_string(&params).unwrap();
+        let deserialized: EncoderParams = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.threshold, params.threshold);
+        assert_eq!(deserialized.num_levels, params.num_levels);
+        assert_eq!(deserialized.refractory_period, params.refractory_period);
+    }
+
+    #[test]
+    fn test_encoder_type_serialization() {
+        let encoder = EncoderType::SendOnDelta;
+        let json = serde_json::to_string(&encoder).unwrap();
+        let deserialized: EncoderType = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized, encoder);
+    }
+
+    #[test]
+    fn test_all_encoder_types_serialization() {
+        let types = vec![
+            EncoderType::LevelCrossing,
+            EncoderType::Delta,
+            EncoderType::TemporalContrast,
+            EncoderType::SendOnDelta,
+        ];
+
+        for encoder_type in types {
+            let json = serde_json::to_string(&encoder_type).unwrap();
+            let deserialized: EncoderType = serde_json::from_str(&json).unwrap();
+            assert_eq!(deserialized, encoder_type);
+        }
+    }
+}

@@ -416,3 +416,246 @@ pub struct BinaryModelImport {
     /// Optional encoder state.
     pub state: Option<EncoderState>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::encoder_export::MockEncoder;
+    use crate::metadata::ModelMetadata;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_binary_exporter_new() {
+        let metadata = ModelMetadata::new();
+        let exporter = BinaryExporter::new(metadata);
+        assert_eq!(exporter.compression, 0);
+    }
+
+    #[test]
+    fn test_binary_exporter_with_compression() {
+        let metadata = ModelMetadata::new();
+        let exporter = BinaryExporter::new(metadata).with_compression(5);
+        assert_eq!(exporter.compression, 5);
+    }
+
+    #[test]
+    fn test_binary_exporter_compression_clamped() {
+        let metadata = ModelMetadata::new();
+        let exporter = BinaryExporter::new(metadata).with_compression(15);
+        assert_eq!(exporter.compression, 9); // Should be clamped to max 9
+    }
+
+    #[test]
+    fn test_binary_export_to_file() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("test_export.dpb");
+
+        let mut metadata = ModelMetadata::new();
+        metadata.set_name("Binary Test Model");
+
+        let exporter = BinaryExporter::new(metadata);
+        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
+
+        let result = exporter.export(&path, &encoder);
+        assert!(result.is_ok());
+        assert!(path.exists());
+
+        // Verify file starts with magic number
+        let content = std::fs::read(&path).unwrap();
+        assert!(content.len() >= 4);
+        assert_eq!(&content[0..4], b"DPB\x00");
+    }
+
+    #[test]
+    fn test_binary_export_import_roundtrip() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("roundtrip.dpb");
+
+        let mut metadata = ModelMetadata::new();
+        metadata.set_name("Roundtrip Test");
+        metadata.set_version("1.0.0");
+
+        let exporter = BinaryExporter::new(metadata);
+        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
+
+        // Export
+        exporter.export(&path, &encoder).unwrap();
+
+        // Import
+        let imported = BinaryImporter::import(&path).unwrap();
+
+        assert_eq!(imported.format_version, FORMAT_VERSION);
+        assert_eq!(imported.metadata.name, "Roundtrip Test");
+        assert_eq!(imported.params.encoder_type, "level_crossing");
+        assert_eq!(imported.params.num_channels, 8);
+        assert_eq!(imported.params.sample_rate, 256.0);
+    }
+
+    #[test]
+    fn test_binary_export_import_delta_encoder() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("delta.dpb");
+
+        let metadata = ModelMetadata::new();
+        let exporter = BinaryExporter::new(metadata);
+        let encoder = MockEncoder::delta(4, 512.0, 0.05, 16);
+
+        exporter.export(&path, &encoder).unwrap();
+        let imported = BinaryImporter::import(&path).unwrap();
+
+        assert_eq!(imported.params.encoder_type, "delta");
+        assert_eq!(imported.params.num_channels, 4);
+        assert_eq!(imported.params.sample_rate, 512.0);
+        assert_eq!(imported.params.num_levels, Some(16));
+    }
+
+    #[test]
+    fn test_binary_export_import_with_thresholds() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("thresholds.dpb");
+
+        let metadata = ModelMetadata::new();
+        let exporter = BinaryExporter::new(metadata);
+        let encoder = MockEncoder::level_crossing(4, 256.0, 0.15);
+
+        exporter.export(&path, &encoder).unwrap();
+        let imported = BinaryImporter::import(&path).unwrap();
+
+        assert_eq!(imported.params.thresholds.len(), 4);
+        for threshold in &imported.params.thresholds {
+            assert!((threshold - 0.15).abs() < 1e-5);
+        }
+    }
+
+    #[test]
+    fn test_binary_import_invalid_magic() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("invalid.dpb");
+
+        // Write invalid magic number
+        std::fs::write(&path, b"NOPE\x00\x01\x00\x00").unwrap();
+
+        let result = BinaryImporter::import(&path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("magic"));
+    }
+
+    #[test]
+    fn test_binary_import_missing_meta_section() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("no_meta.dpb");
+
+        // Write valid header but invalid section marker
+        let mut content = Vec::new();
+        content.extend_from_slice(b"DPB\x00"); // Magic
+        content.extend_from_slice(&1u16.to_le_bytes()); // Version
+        content.extend_from_slice(&0u16.to_le_bytes()); // Flags
+        content.extend_from_slice(&[0u8; 8]); // Reserved
+        content.extend_from_slice(b"XXXX"); // Invalid section marker
+
+        std::fs::write(&path, &content).unwrap();
+
+        let result = BinaryImporter::import(&path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_binary_import_nonexistent_file() {
+        let result = BinaryImporter::import("/nonexistent/file.dpb");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_binary_export_invalid_path() {
+        let metadata = ModelMetadata::new();
+        let exporter = BinaryExporter::new(metadata);
+        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
+
+        let result = exporter.export("/nonexistent/directory/file.dpb", &encoder);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_binary_format_version() {
+        assert_eq!(FORMAT_VERSION, 1);
+    }
+
+    #[test]
+    fn test_binary_magic_number() {
+        assert_eq!(MAGIC, b"DPB\x00");
+    }
+
+    #[test]
+    fn test_binary_model_import_fields() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("fields_test.dpb");
+
+        let mut metadata = ModelMetadata::new();
+        metadata.set_name("Fields Test");
+        metadata.set_version("2.0.0");
+        metadata.set_description("Testing all fields");
+        metadata.set_author("Test Author");
+
+        let exporter = BinaryExporter::new(metadata);
+        let encoder = MockEncoder::level_crossing(16, 1024.0, 0.08);
+
+        exporter.export(&path, &encoder).unwrap();
+        let imported = BinaryImporter::import(&path).unwrap();
+
+        assert_eq!(imported.metadata.name, "Fields Test");
+        assert_eq!(imported.metadata.version, "2.0.0");
+        assert_eq!(imported.metadata.description, "Testing all fields");
+        assert_eq!(imported.metadata.author, Some("Test Author".to_string()));
+    }
+
+    #[test]
+    fn test_binary_export_file_size_reasonable() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("size_test.dpb");
+
+        let metadata = ModelMetadata::new();
+        let exporter = BinaryExporter::new(metadata);
+        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
+
+        exporter.export(&path, &encoder).unwrap();
+
+        let file_size = std::fs::metadata(&path).unwrap().len();
+        // File should be reasonably sized (less than 10KB for this simple encoder)
+        assert!(file_size > 0);
+        assert!(file_size < 10000);
+    }
+
+    #[test]
+    fn test_binary_export_with_compression_flag() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("compressed.dpb");
+
+        let metadata = ModelMetadata::new();
+        let exporter = BinaryExporter::new(metadata).with_compression(5);
+        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
+
+        exporter.export(&path, &encoder).unwrap();
+
+        // Verify compression flag is set
+        let content = std::fs::read(&path).unwrap();
+        // Flags are at offset 6-7 (after magic[4] and version[2])
+        let flags = u16::from_le_bytes([content[6], content[7]]);
+        assert_eq!(flags & 1, 1); // Compression flag should be set
+    }
+
+    #[test]
+    fn test_binary_export_without_compression_flag() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("uncompressed.dpb");
+
+        let metadata = ModelMetadata::new();
+        let exporter = BinaryExporter::new(metadata); // No compression
+        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
+
+        exporter.export(&path, &encoder).unwrap();
+
+        let content = std::fs::read(&path).unwrap();
+        let flags = u16::from_le_bytes([content[6], content[7]]);
+        assert_eq!(flags & 1, 0); // Compression flag should not be set
+    }
+}

@@ -109,3 +109,88 @@ pub mod stream_types {
     /// Spike trains (DPB custom type)
     pub const SPIKES: &str = "Spikes";
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_channel_format_bytes_per_sample() {
+        assert_eq!(ChannelFormat::Float32.bytes_per_sample(), 4);
+        assert_eq!(ChannelFormat::Float64.bytes_per_sample(), 8);
+        assert_eq!(ChannelFormat::Int32.bytes_per_sample(), 4);
+        assert_eq!(ChannelFormat::Int16.bytes_per_sample(), 2);
+        assert_eq!(ChannelFormat::Int8.bytes_per_sample(), 1);
+        assert_eq!(ChannelFormat::String.bytes_per_sample(), 0);
+        assert_eq!(ChannelFormat::Undefined.bytes_per_sample(), 0);
+    }
+
+    #[test]
+    fn test_channel_format_equality() {
+        assert_eq!(ChannelFormat::Float32, ChannelFormat::Float32);
+        assert_ne!(ChannelFormat::Float32, ChannelFormat::Float64);
+        assert_ne!(ChannelFormat::Int32, ChannelFormat::Int16);
+    }
+
+    #[test]
+    fn test_channel_format_clone() {
+        let format = ChannelFormat::Float32;
+        let cloned = format.clone();
+        assert_eq!(format, cloned);
+    }
+
+    #[test]
+    fn test_channel_format_copy() {
+        let format = ChannelFormat::Int16;
+        let copied: ChannelFormat = format; // Copy, not move
+        assert_eq!(format, copied);
+    }
+
+    #[test]
+    fn test_channel_format_debug() {
+        let debug_str = format!("{:?}", ChannelFormat::Float64);
+        assert!(debug_str.contains("Float64"));
+    }
+
+    #[test]
+    fn test_stream_types_constants() {
+        assert_eq!(stream_types::EEG, "EEG");
+        assert_eq!(stream_types::ECG, "ECG");
+        assert_eq!(stream_types::EMG, "EMG");
+        assert_eq!(stream_types::EOG, "EOG");
+        assert_eq!(stream_types::PPG, "PPG");
+        assert_eq!(stream_types::EDA, "EDA");
+        assert_eq!(stream_types::RESP, "Respiration");
+        assert_eq!(stream_types::ACC, "Accelerometer");
+        assert_eq!(stream_types::GYRO, "Gyroscope");
+        assert_eq!(stream_types::MARKERS, "Markers");
+        assert_eq!(stream_types::SPIKES, "Spikes");
+    }
+
+    #[test]
+    fn test_stream_types_are_not_empty() {
+        assert!(!stream_types::EEG.is_empty());
+        assert!(!stream_types::ECG.is_empty());
+        assert!(!stream_types::SPIKES.is_empty());
+    }
+
+    #[test]
+    fn test_public_exports() {
+        // Verify that public types are accessible
+        let _: fn(String, f64) -> LslError = |name: String, timeout: f64| LslError::StreamNotFound {
+            name,
+            timeout_sec: timeout,
+        };
+
+        // StreamInfo creation should work
+        let info_result = StreamInfo::new(
+            "Test",
+            stream_types::EEG,
+            8,
+            256.0,
+            ChannelFormat::Float32,
+            "source",
+        );
+        assert!(info_result.is_ok());
+    }
+}
