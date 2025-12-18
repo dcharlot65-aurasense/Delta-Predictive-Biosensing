@@ -579,7 +579,7 @@ mod tests {
 
     #[test]
     fn test_heart_rate_conversion() {
-        let time = "2024-01-01T00:00:00Z".to_string();
+        let time = "2025-01-01T00:00:00Z".to_string();
         let obs = SignalToObservation::heart_rate(
             "obs-hr-001".to_string(),
             "patient-001".to_string(),
@@ -595,7 +595,7 @@ mod tests {
 
     #[test]
     fn test_hrv_metrics_conversion() {
-        let time = "2024-01-01T00:00:00Z".to_string();
+        let time = "2025-01-01T00:00:00Z".to_string();
         let observations = MetricsToObservation::hrv_time_domain(
             "patient-001".to_string(),
             time,
@@ -611,7 +611,7 @@ mod tests {
 
     #[test]
     fn test_diagnostic_report_creation() {
-        let time = "2024-01-01T00:00:00Z".to_string();
+        let time = "2025-01-01T00:00:00Z".to_string();
         let report = AnalysisToReport::cardiac_assessment(
             "report-001".to_string(),
             "patient-001".to_string(),

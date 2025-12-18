@@ -490,7 +490,7 @@ mod chrono {
     pub struct DateTime;
     impl DateTime {
         pub fn to_rfc3339(&self) -> String {
-            "2024-01-01T00:00:00Z".to_string()
+            "2025-01-01T00:00:00Z".to_string()
         }
     }
 }

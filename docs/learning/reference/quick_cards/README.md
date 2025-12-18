@@ -189,7 +189,7 @@ Found an error? Have a suggestion?
 
 ## Version History
 
-- **v1.0** (Dec 2024) - Initial 5-card set created
+- **v1.0** (Dec 2025) - Initial 5-card set created
   - Card 1: Signal Types
   - Card 2: Normal vs Abnormal
   - Card 3: Analysis Steps

@@ -1,6 +1,6 @@
 # Delta-Predictive Biosensing (DPB) System Catalog v4.0.0
 
-> **Last Updated:** December 2024
+> **Last Updated:** December 2025
 > **Framework Version:** 0.4.0
 > **Total Modules:** 250+ | **Encoders:** 77+ | **Generators:** 200+ | **Decoders:** 48+
 
@@ -801,10 +801,10 @@ docs/learning/
 
 | Version | Date | Changes |
 |---------|------|---------|
-| v1.0.0 | Dec 2024 | Initial catalog |
-| v2.0.0 | Dec 2024 | ECG/HRV, transforms, pipeline, calibration, explainability |
-| v3.0.0 | Dec 2024 | GPU, distributed, dpb-viz, GDF/BDF/XDF, dpb-mobile |
-| v4.0.0 | Dec 2024 | **Knowledge distillation**, **BIDS**, **FHIR**, **neuromorphic export**, **TFLite**, **EMD/EEMD**, **dendritic computation**, **neuromodulation**, **learning library** |
+| v1.0.0 | Dec 2025 | Initial catalog |
+| v2.0.0 | Dec 2025 | ECG/HRV, transforms, pipeline, calibration, explainability |
+| v3.0.0 | Dec 2025 | GPU, distributed, dpb-viz, GDF/BDF/XDF, dpb-mobile |
+| v4.0.0 | Dec 2025 | **Knowledge distillation**, **BIDS**, **FHIR**, **neuromorphic export**, **TFLite**, **EMD/EEMD**, **dendritic computation**, **neuromodulation**, **learning library** |
 
 ---
 

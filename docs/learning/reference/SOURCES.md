@@ -518,7 +518,7 @@ When citing DPB Framework implementations, please reference both:
 @software{dpb_framework,
   title = {Delta-Predictive Biosensing Framework},
   author = {AuraSense},
-  year = {2024},
+  year = {2025},
   url = {https://github.com/dcharlot65-aurasense/Delta-Predictive-Biosensing}
 }
 ```
@@ -529,7 +529,7 @@ When citing DPB Framework implementations, please reference both:
 
 This document is maintained as part of the DPB Framework. For corrections or additions, please submit a pull request.
 
-**Last Updated**: December 2024
+**Last Updated**: December 2025
 **Version**: 1.0.0
 
 ---

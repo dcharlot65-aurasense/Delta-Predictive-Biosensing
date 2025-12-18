@@ -101,7 +101,7 @@ impl VitalSignsObservation {
     }
 
     /// Creates a heart rate observation (LOINC: 8867-4)
-    /// Time should be in RFC3339 format (e.g., "2024-01-01T12:00:00Z")
+    /// Time should be in RFC3339 format (e.g., "2025-01-01T12:00:00Z")
     pub fn heart_rate(id: String, patient_ref: String, bpm: f64, time: String) -> Self {
         let mut vs = Self::new(id, patient_ref);
         vs.observation.code = CodeableConcept::loinc("8867-4", "Heart rate");
@@ -111,7 +111,7 @@ impl VitalSignsObservation {
     }
 
     /// Creates a blood pressure observation (LOINC: 85354-9)
-    /// Time should be in RFC3339 format (e.g., "2024-01-01T12:00:00Z")
+    /// Time should be in RFC3339 format (e.g., "2025-01-01T12:00:00Z")
     pub fn blood_pressure(
         id: String,
         patient_ref: String,
@@ -360,7 +360,7 @@ mod tests {
 
     #[test]
     fn test_heart_rate_observation() {
-        let time = "2024-01-01T00:00:00Z".to_string();
+        let time = "2025-01-01T00:00:00Z".to_string();
         let obs = VitalSignsObservation::heart_rate(
             "obs-hr-001".to_string(),
             "patient-123".to_string(),
@@ -377,7 +377,7 @@ mod tests {
 
     #[test]
     fn test_blood_pressure_observation() {
-        let time = "2024-01-01T00:00:00Z".to_string();
+        let time = "2025-01-01T00:00:00Z".to_string();
         let obs = VitalSignsObservation::blood_pressure(
             "obs-bp-001".to_string(),
             "patient-123".to_string(),
@@ -394,7 +394,7 @@ mod tests {
 
     #[test]
     fn test_ecg_waveform() {
-        let time = "2024-01-01T00:00:00Z".to_string();
+        let time = "2025-01-01T00:00:00Z".to_string();
         let obs = WaveformObservation::ecg(
             "obs-ecg-001".to_string(),
             "patient-123".to_string(),
@@ -409,7 +409,7 @@ mod tests {
 
     #[test]
     fn test_component_observation() {
-        let time = "2024-01-01T00:00:00Z".to_string();
+        let time = "2025-01-01T00:00:00Z".to_string();
         let obs = ComponentObservation::new(
             "obs-comp-001".to_string(),
             "patient-123".to_string(),
