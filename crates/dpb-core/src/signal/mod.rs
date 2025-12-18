@@ -30,6 +30,20 @@ pub use eye::{EyeAnalyzer, Saccade, Fixation, Blink, SmoothPursuitMetrics, Pupil
 // Voice analysis exports
 pub use voice::{VoiceAnalyzer, F0Metrics, JitterMetrics, ShimmerMetrics, VoiceQualityMetrics, SpectralVoiceFeatures, SpeechTimingMetrics};
 
+// EEG analysis exports
+pub use eeg::{
+    // Band power analysis
+    alpha_asymmetry, compute_band_powers, extract_band_power, relative_band_power,
+    theta_beta_ratio, BandPowers, EegBands,
+    // Artifact detection
+    apply_notch_filter, detect_artifacts, ArtifactSegment, ArtifactType,
+    // ERP analysis
+    Erp, ErpAnalyzer, ErpComponent, ErpGenerator, OddballData,
+    // Seizure detection
+    SeizureDetector, SeizureEvent, SeizureType, SeizureEvolution,
+    EpileptiformSpike, AlertLevel, SeizureAnalysisResult, analyze_for_seizures,
+};
+
 // Fatigue detection exports
 pub use fatigue::{
     EmgFatigueAnalyzer, EmgFatigueMetrics,

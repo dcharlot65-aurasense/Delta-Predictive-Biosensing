@@ -1,11 +1,13 @@
 //! EEG signal processing and analysis.
 //!
 //! This module provides tools for processing and analyzing electroencephalography (EEG) signals,
-//! including frequency band analysis, artifact detection, and common preprocessing operations.
+//! including frequency band analysis, artifact detection, seizure detection, and common
+//! preprocessing operations.
 
 pub mod artifacts;
 pub mod bands;
 pub mod erp;
+pub mod seizure;
 
 pub use artifacts::{
     apply_notch_filter, detect_artifacts, remove_dc_offset, remove_trend, ArtifactSegment,
@@ -16,3 +18,7 @@ pub use bands::{
     theta_beta_ratio, BandPowers, EegBands,
 };
 pub use erp::{Erp, ErpAnalyzer, ErpComponent, ErpGenerator, OddballData};
+pub use seizure::{
+    SeizureDetector, SeizureEvent, SeizureType, SeizureEvolution,
+    EpileptiformSpike, AlertLevel, SeizureAnalysisResult, analyze_for_seizures,
+};
