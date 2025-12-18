@@ -859,6 +859,270 @@ impl NormativeDatabase {
             ],
         );
         self.set_reliability(MetricType::TremorFrequency, 0.88);
+
+        // === Additional Cognitive Metrics ===
+
+        // Reaction Time Variability (Coefficient of Variation, %)
+        self.add_age_sex_norms(
+            MetricType::ReactionTimeVariability,
+            &[
+                ((18, 29), None, 12.0, 4.0, 250),
+                ((30, 49), None, 14.0, 4.5, 300),
+                ((50, 69), None, 18.0, 5.5, 280),
+                ((70, 89), None, 24.0, 7.0, 200),
+            ],
+        );
+        self.set_reliability(MetricType::ReactionTimeVariability, 0.75);
+
+        // N-Back Accuracy (%)
+        self.add_age_sex_norms(
+            MetricType::NBackAccuracy,
+            &[
+                ((18, 29), None, 85.0, 8.0, 300),
+                ((30, 49), None, 82.0, 9.0, 350),
+                ((50, 69), None, 75.0, 12.0, 320),
+                ((70, 89), None, 65.0, 15.0, 180),
+            ],
+        );
+        self.set_reliability(MetricType::NBackAccuracy, 0.78);
+
+        // N-Back d-prime (signal detection)
+        self.add_age_sex_norms(
+            MetricType::NBackDPrime,
+            &[
+                ((18, 29), None, 2.8, 0.6, 280),
+                ((30, 49), None, 2.5, 0.7, 320),
+                ((50, 69), None, 2.0, 0.8, 300),
+                ((70, 89), None, 1.5, 0.9, 160),
+            ],
+        );
+        self.set_reliability(MetricType::NBackDPrime, 0.80);
+
+        // CPT Omissions (miss rate, %)
+        self.add_age_sex_norms(
+            MetricType::CptOmissions,
+            &[
+                ((18, 29), None, 2.0, 2.5, 250),
+                ((30, 49), None, 3.5, 3.0, 300),
+                ((50, 69), None, 6.0, 4.5, 280),
+                ((70, 89), None, 12.0, 7.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::CptOmissions, 0.72);
+
+        // CPT Commissions (false alarm rate, %)
+        self.add_age_sex_norms(
+            MetricType::CptCommissions,
+            &[
+                ((18, 29), None, 15.0, 8.0, 250),
+                ((30, 49), None, 12.0, 7.0, 300),
+                ((50, 69), None, 10.0, 6.0, 280),
+                ((70, 89), None, 8.0, 5.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::CptCommissions, 0.70);
+
+        // Trail Making B-A (executive function indicator, seconds)
+        self.add_age_sex_norms(
+            MetricType::TrailMakingBMinusA,
+            &[
+                ((18, 29), None, 25.0, 12.0, 280),
+                ((30, 49), None, 30.0, 15.0, 320),
+                ((50, 69), None, 45.0, 22.0, 300),
+                ((70, 89), None, 70.0, 35.0, 180),
+            ],
+        );
+        self.set_reliability(MetricType::TrailMakingBMinusA, 0.78);
+
+        // === Additional Motor Metrics ===
+
+        // Stride Time Variability (CV, %)
+        self.add_age_sex_norms(
+            MetricType::StrideTimeVariability,
+            &[
+                ((18, 39), None, 2.5, 0.8, 300),
+                ((40, 59), None, 3.0, 1.0, 350),
+                ((60, 74), None, 3.8, 1.3, 320),
+                ((75, 89), None, 5.0, 2.0, 180),
+            ],
+        );
+        self.set_reliability(MetricType::StrideTimeVariability, 0.85);
+
+        // Double Support Time (% of gait cycle)
+        self.add_age_sex_norms(
+            MetricType::DoubleSupportTime,
+            &[
+                ((18, 39), None, 22.0, 3.0, 300),
+                ((40, 59), None, 24.0, 3.5, 350),
+                ((60, 74), None, 27.0, 4.0, 320),
+                ((75, 89), None, 32.0, 5.0, 180),
+            ],
+        );
+        self.set_reliability(MetricType::DoubleSupportTime, 0.88);
+
+        // Tapping Variability (CV, %)
+        self.add_age_sex_norms(
+            MetricType::TappingVariability,
+            &[
+                ((18, 39), None, 8.0, 3.0, 250),
+                ((40, 59), None, 10.0, 4.0, 280),
+                ((60, 74), None, 14.0, 5.0, 250),
+                ((75, 89), None, 20.0, 7.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::TappingVariability, 0.82);
+
+        // UPDRS Motor Score (0-132)
+        self.add_age_sex_norms(
+            MetricType::UpdrsMotor,
+            &[
+                ((18, 49), None, 0.0, 1.0, 500),  // Healthy baseline
+                ((50, 69), None, 2.0, 3.0, 450),
+                ((70, 89), None, 5.0, 5.0, 300),
+            ],
+        );
+        self.set_reliability(MetricType::UpdrsMotor, 0.92);
+
+        // === Additional Balance Metrics ===
+
+        // Romberg Quotient (eyes closed / eyes open sway ratio)
+        self.add_age_sex_norms(
+            MetricType::RombergQuotient,
+            &[
+                ((18, 39), None, 1.3, 0.3, 280),
+                ((40, 59), None, 1.5, 0.4, 320),
+                ((60, 74), None, 1.8, 0.5, 300),
+                ((75, 89), None, 2.2, 0.7, 150),
+            ],
+        );
+        self.set_reliability(MetricType::RombergQuotient, 0.75);
+
+        // Limits of Stability - Directional Control (%)
+        self.add_age_sex_norms(
+            MetricType::LosDirectionalControl,
+            &[
+                ((18, 39), None, 82.0, 8.0, 280),
+                ((40, 59), None, 78.0, 10.0, 320),
+                ((60, 74), None, 72.0, 12.0, 300),
+                ((75, 89), None, 62.0, 15.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::LosDirectionalControl, 0.82);
+
+        // === Additional Physiological Metrics ===
+
+        // HRV LF/HF Ratio (autonomic balance)
+        self.add_age_sex_norms(
+            MetricType::HrvLfHf,
+            &[
+                ((18, 29), None, 1.5, 0.8, 300),
+                ((30, 49), None, 2.0, 1.0, 350),
+                ((50, 69), None, 2.5, 1.2, 320),
+                ((70, 89), None, 3.0, 1.5, 180),
+            ],
+        );
+        self.set_reliability(MetricType::HrvLfHf, 0.75);
+
+        // === Additional Sleep Metrics ===
+
+        // Sleep Onset Latency (minutes)
+        self.add_age_sex_norms(
+            MetricType::SleepOnsetLatency,
+            &[
+                ((18, 39), None, 12.0, 8.0, 400),
+                ((40, 59), None, 15.0, 10.0, 450),
+                ((60, 74), None, 20.0, 12.0, 380),
+                ((75, 89), None, 25.0, 15.0, 200),
+            ],
+        );
+        self.set_reliability(MetricType::SleepOnsetLatency, 0.70);
+
+        // Wake After Sleep Onset (minutes)
+        self.add_age_sex_norms(
+            MetricType::WakeAfterSleepOnset,
+            &[
+                ((18, 39), None, 15.0, 12.0, 400),
+                ((40, 59), None, 25.0, 18.0, 450),
+                ((60, 74), None, 40.0, 25.0, 380),
+                ((75, 89), None, 60.0, 35.0, 200),
+            ],
+        );
+        self.set_reliability(MetricType::WakeAfterSleepOnset, 0.72);
+
+        // REM Percentage (%)
+        self.add_age_sex_norms(
+            MetricType::RemPercent,
+            &[
+                ((18, 39), None, 22.0, 4.0, 400),
+                ((40, 59), None, 20.0, 4.5, 450),
+                ((60, 74), None, 18.0, 5.0, 380),
+                ((75, 89), None, 15.0, 5.5, 200),
+            ],
+        );
+        self.set_reliability(MetricType::RemPercent, 0.75);
+
+        // Deep Sleep Percentage (N3, %)
+        self.add_age_sex_norms(
+            MetricType::DeepSleepPercent,
+            &[
+                ((18, 29), None, 20.0, 5.0, 350),
+                ((30, 49), None, 15.0, 5.0, 400),
+                ((50, 69), None, 10.0, 4.0, 380),
+                ((70, 89), None, 5.0, 3.0, 180),
+            ],
+        );
+        self.set_reliability(MetricType::DeepSleepPercent, 0.78);
+
+        // === Composite Metrics ===
+
+        // Cognitive Composite (standardized, mean=100, SD=15)
+        self.add_age_sex_norms(
+            MetricType::CognitiveComposite,
+            &[
+                ((18, 29), None, 105.0, 15.0, 500),
+                ((30, 49), None, 100.0, 15.0, 600),
+                ((50, 69), None, 95.0, 15.0, 550),
+                ((70, 89), None, 88.0, 16.0, 300),
+            ],
+        );
+        self.set_reliability(MetricType::CognitiveComposite, 0.90);
+
+        // Motor Composite (standardized, mean=100, SD=15)
+        self.add_age_sex_norms(
+            MetricType::MotorComposite,
+            &[
+                ((18, 29), None, 105.0, 14.0, 500),
+                ((30, 49), None, 100.0, 14.0, 600),
+                ((50, 69), None, 92.0, 15.0, 550),
+                ((70, 89), None, 82.0, 16.0, 300),
+            ],
+        );
+        self.set_reliability(MetricType::MotorComposite, 0.92);
+
+        // Global Composite (standardized, mean=100, SD=15)
+        self.add_age_sex_norms(
+            MetricType::GlobalComposite,
+            &[
+                ((18, 29), None, 105.0, 14.0, 500),
+                ((30, 49), None, 100.0, 14.0, 600),
+                ((50, 69), None, 94.0, 15.0, 550),
+                ((70, 89), None, 85.0, 16.0, 300),
+            ],
+        );
+        self.set_reliability(MetricType::GlobalComposite, 0.93);
+
+        // Frailty Index (0-1 scale, proportion of deficits)
+        self.add_age_sex_norms(
+            MetricType::FrailtyIndex,
+            &[
+                ((18, 49), None, 0.05, 0.03, 600),
+                ((50, 64), None, 0.10, 0.06, 500),
+                ((65, 74), None, 0.18, 0.10, 450),
+                ((75, 84), None, 0.28, 0.12, 300),
+                ((85, 99), None, 0.38, 0.15, 150),
+            ],
+        );
+        self.set_reliability(MetricType::FrailtyIndex, 0.88);
     }
 
     /// Helper to add multiple normative entries

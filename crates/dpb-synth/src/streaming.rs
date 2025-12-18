@@ -4149,6 +4149,409 @@ impl StreamingConfig {
             max_latency: 0.1,
         }
     }
+
+    /// Configuration preset for EEG streaming (256 Hz)
+    pub fn eeg() -> Self {
+        Self {
+            sample_rate: 256.0,
+            buffer_size: 512,  // 2 seconds
+            batch_size: 64,    // 250ms
+            realtime_pacing: true,
+            max_latency: 0.05,
+        }
+    }
+}
+
+// ============================================================================
+// Streaming EEG Generator
+// ============================================================================
+
+/// Multi-channel EEG sample with band powers
+#[derive(Debug, Clone)]
+pub struct EegSample {
+    /// Raw EEG values for each channel (μV)
+    pub channels: Vec<f64>,
+    /// Delta band power (0.5-4 Hz)
+    pub delta_power: f64,
+    /// Theta band power (4-8 Hz)
+    pub theta_power: f64,
+    /// Alpha band power (8-13 Hz)
+    pub alpha_power: f64,
+    /// Beta band power (13-30 Hz)
+    pub beta_power: f64,
+    /// Gamma band power (30-100 Hz)
+    pub gamma_power: f64,
+    /// Sample index
+    pub sample_idx: usize,
+    /// Timestamp in seconds
+    pub timestamp: f64,
+}
+
+/// Streaming EEG generator
+///
+/// Generates multi-channel EEG with configurable:
+/// - Number of channels
+/// - Band power profiles (wake, sleep stages, pathological)
+/// - Artifacts (blinks, muscle, movement)
+/// - Individual alpha frequency
+pub struct StreamingEeg;
+
+/// Parameters for streaming EEG generation
+#[derive(Debug, Clone)]
+pub struct StreamingEegParams {
+    /// Sample rate in Hz
+    pub sample_rate: f64,
+    /// Number of EEG channels
+    pub num_channels: usize,
+    /// Target alpha power (μV²)
+    pub alpha_power: f64,
+    /// Target beta power (μV²)
+    pub beta_power: f64,
+    /// Target theta power (μV²)
+    pub theta_power: f64,
+    /// Target delta power (μV²)
+    pub delta_power: f64,
+    /// Target gamma power (μV²)
+    pub gamma_power: f64,
+    /// Individual alpha frequency (Hz)
+    pub alpha_peak_freq: f64,
+    /// Noise level
+    pub noise_level: f64,
+    /// Artifact probability per second
+    pub artifact_rate: f64,
+    /// Whether to simulate eyes-closed condition
+    pub eyes_closed: bool,
+}
+
+impl Default for StreamingEegParams {
+    fn default() -> Self {
+        Self {
+            sample_rate: 256.0,
+            num_channels: 1,
+            alpha_power: 30.0,
+            beta_power: 12.0,
+            theta_power: 15.0,
+            delta_power: 10.0,
+            gamma_power: 4.0,
+            alpha_peak_freq: 10.0,
+            noise_level: 0.1,
+            artifact_rate: 0.2,
+            eyes_closed: true,
+        }
+    }
+}
+
+impl StreamingEegParams {
+    /// Relaxed wakefulness with eyes closed (high alpha)
+    pub fn eyes_closed_rest() -> Self {
+        Self {
+            alpha_power: 40.0,
+            beta_power: 10.0,
+            theta_power: 12.0,
+            delta_power: 8.0,
+            gamma_power: 3.0,
+            eyes_closed: true,
+            ..Default::default()
+        }
+    }
+
+    /// Alert wakefulness with eyes open (suppressed alpha)
+    pub fn eyes_open_alert() -> Self {
+        Self {
+            alpha_power: 15.0,
+            beta_power: 20.0,
+            theta_power: 10.0,
+            delta_power: 5.0,
+            gamma_power: 5.0,
+            eyes_closed: false,
+            artifact_rate: 0.3, // More blink artifacts
+            ..Default::default()
+        }
+    }
+
+    /// Drowsiness/N1 sleep (increased theta, decreased alpha)
+    pub fn drowsy() -> Self {
+        Self {
+            alpha_power: 20.0,
+            beta_power: 8.0,
+            theta_power: 30.0,
+            delta_power: 15.0,
+            gamma_power: 3.0,
+            eyes_closed: true,
+            artifact_rate: 0.1,
+            ..Default::default()
+        }
+    }
+
+    /// N2 sleep (spindles, K-complexes)
+    pub fn n2_sleep() -> Self {
+        Self {
+            alpha_power: 10.0,
+            beta_power: 15.0, // Spindles
+            theta_power: 25.0,
+            delta_power: 20.0,
+            gamma_power: 2.0,
+            eyes_closed: true,
+            artifact_rate: 0.05,
+            ..Default::default()
+        }
+    }
+
+    /// N3/slow wave sleep (dominant delta)
+    pub fn slow_wave_sleep() -> Self {
+        Self {
+            alpha_power: 5.0,
+            beta_power: 5.0,
+            theta_power: 15.0,
+            delta_power: 60.0,
+            gamma_power: 2.0,
+            eyes_closed: true,
+            artifact_rate: 0.02,
+            ..Default::default()
+        }
+    }
+
+    /// REM sleep (low voltage mixed, sawtooth waves)
+    pub fn rem_sleep() -> Self {
+        Self {
+            alpha_power: 15.0,
+            beta_power: 12.0,
+            theta_power: 25.0,
+            delta_power: 8.0,
+            gamma_power: 4.0,
+            eyes_closed: true,
+            artifact_rate: 0.1,
+            ..Default::default()
+        }
+    }
+
+    /// Cognitive task (increased frontal theta, reduced alpha)
+    pub fn cognitive_task() -> Self {
+        Self {
+            alpha_power: 20.0,
+            beta_power: 18.0,
+            theta_power: 22.0, // Frontal midline theta
+            delta_power: 8.0,
+            gamma_power: 6.0, // Increased gamma
+            eyes_closed: false,
+            artifact_rate: 0.25,
+            ..Default::default()
+        }
+    }
+
+    /// Elderly profile (slowed alpha, increased theta/delta)
+    pub fn elderly(age: f64) -> Self {
+        let alpha_slowing = (age - 60.0).max(0.0) * 0.05;
+        Self {
+            alpha_power: 25.0 - (age - 60.0).max(0.0) * 0.3,
+            beta_power: 12.0,
+            theta_power: 18.0 + (age - 60.0).max(0.0) * 0.2,
+            delta_power: 12.0 + (age - 60.0).max(0.0) * 0.15,
+            gamma_power: 3.5 - (age - 60.0).max(0.0) * 0.05,
+            alpha_peak_freq: 10.0 - alpha_slowing,
+            eyes_closed: true,
+            artifact_rate: 0.15,
+            ..Default::default()
+        }
+    }
+
+    /// Multi-channel montage
+    pub fn multichannel(channels: usize) -> Self {
+        Self {
+            num_channels: channels,
+            ..Default::default()
+        }
+    }
+}
+
+/// State for streaming EEG generation
+pub struct StreamingEegState {
+    pub rng: rand::rngs::StdRng,
+    pub sample_idx: usize,
+    pub dt: f64,
+    // Oscillator phases for each band
+    pub alpha_phases: Vec<f64>,
+    pub beta_phases: Vec<f64>,
+    pub theta_phases: Vec<f64>,
+    pub delta_phases: Vec<f64>,
+    pub gamma_phases: Vec<f64>,
+    // Running band power estimates
+    pub alpha_power_est: f64,
+    pub beta_power_est: f64,
+    pub theta_power_est: f64,
+    pub delta_power_est: f64,
+    pub gamma_power_est: f64,
+    // Artifact state
+    pub in_artifact: bool,
+    pub artifact_samples_remaining: usize,
+    pub artifact_type: u8, // 0=blink, 1=muscle, 2=movement
+    // Parameters
+    pub num_channels: usize,
+    pub alpha_amp: f64,
+    pub beta_amp: f64,
+    pub theta_amp: f64,
+    pub delta_amp: f64,
+    pub gamma_amp: f64,
+    pub alpha_freq: f64,
+    pub noise_level: f64,
+    pub artifact_rate: f64,
+}
+
+impl StreamingGenerator for StreamingEeg {
+    type State = StreamingEegState;
+    type Parameters = StreamingEegParams;
+    type Sample = EegSample;
+
+    fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
+        use rand::SeedableRng;
+
+        let num_channels = params.num_channels.max(1);
+
+        StreamingEegState {
+            rng: rand::rngs::StdRng::seed_from_u64(seed),
+            sample_idx: 0,
+            dt: 1.0 / params.sample_rate,
+            alpha_phases: vec![0.0; num_channels],
+            beta_phases: vec![0.0; num_channels],
+            theta_phases: vec![0.0; num_channels],
+            delta_phases: vec![0.0; num_channels],
+            gamma_phases: vec![0.0; num_channels],
+            alpha_power_est: params.alpha_power,
+            beta_power_est: params.beta_power,
+            theta_power_est: params.theta_power,
+            delta_power_est: params.delta_power,
+            gamma_power_est: params.gamma_power,
+            in_artifact: false,
+            artifact_samples_remaining: 0,
+            artifact_type: 0,
+            num_channels,
+            alpha_amp: params.alpha_power.sqrt(),
+            beta_amp: params.beta_power.sqrt(),
+            theta_amp: params.theta_power.sqrt(),
+            delta_amp: params.delta_power.sqrt(),
+            gamma_amp: params.gamma_power.sqrt(),
+            alpha_freq: params.alpha_peak_freq,
+            noise_level: params.noise_level,
+            artifact_rate: params.artifact_rate,
+        }
+    }
+
+    fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
+        use rand::Rng;
+        use std::f64::consts::PI;
+
+        let t = state.sample_idx as f64 * state.dt;
+        let mut channels = Vec::with_capacity(state.num_channels);
+
+        // Check for new artifact
+        if !state.in_artifact && state.rng.r#gen::<f64>() < state.artifact_rate * state.dt {
+            state.in_artifact = true;
+            state.artifact_type = state.rng.gen_range(0..3);
+            state.artifact_samples_remaining = match state.artifact_type {
+                0 => (0.2 / state.dt) as usize, // Blink: ~200ms
+                1 => (0.1 / state.dt) as usize, // Muscle: ~100ms
+                _ => (0.3 / state.dt) as usize, // Movement: ~300ms
+            };
+        }
+
+        for ch in 0..state.num_channels {
+            // Generate each band's oscillation
+            // Delta (0.5-4 Hz) - use 2 Hz center
+            let delta_freq = 2.0 + state.rng.r#gen::<f64>() * 0.2;
+            state.delta_phases[ch] += 2.0 * PI * delta_freq * state.dt;
+            let delta = state.delta_amp * state.delta_phases[ch].sin();
+
+            // Theta (4-8 Hz) - use 6 Hz center
+            let theta_freq = 6.0 + state.rng.r#gen::<f64>() * 0.5;
+            state.theta_phases[ch] += 2.0 * PI * theta_freq * state.dt;
+            let theta = state.theta_amp * state.theta_phases[ch].sin();
+
+            // Alpha (8-13 Hz) - use individual alpha frequency
+            let alpha_freq = state.alpha_freq + state.rng.r#gen::<f64>() * 0.3;
+            state.alpha_phases[ch] += 2.0 * PI * alpha_freq * state.dt;
+            let alpha = state.alpha_amp * state.alpha_phases[ch].sin();
+
+            // Beta (13-30 Hz) - use 20 Hz center
+            let beta_freq = 20.0 + state.rng.r#gen::<f64>() * 2.0;
+            state.beta_phases[ch] += 2.0 * PI * beta_freq * state.dt;
+            let beta = state.beta_amp * state.beta_phases[ch].sin();
+
+            // Gamma (30-100 Hz) - use 40 Hz center
+            let gamma_freq = 40.0 + state.rng.r#gen::<f64>() * 5.0;
+            state.gamma_phases[ch] += 2.0 * PI * gamma_freq * state.dt;
+            let gamma = state.gamma_amp * state.gamma_phases[ch].sin();
+
+            // Combine bands
+            let mut signal = delta + theta + alpha + beta + gamma;
+
+            // Add pink noise
+            let noise = state.rng.r#gen::<f64>() * 2.0 - 1.0;
+            signal += noise * state.noise_level * 5.0;
+
+            // Add artifact if active
+            if state.in_artifact {
+                let artifact_progress = 1.0 - (state.artifact_samples_remaining as f64 * state.dt / 0.2);
+                let envelope = (-4.0 * (artifact_progress - 0.5).powi(2)).exp();
+
+                match state.artifact_type {
+                    0 => signal += 100.0 * envelope, // Blink: large slow wave
+                    1 => signal += state.rng.r#gen::<f64>() * 30.0 * envelope, // Muscle: high freq noise
+                    _ => signal += 50.0 * (artifact_progress * PI).sin(), // Movement: slow artifact
+                }
+            }
+
+            // Keep phase bounded
+            if state.delta_phases[ch] > 2.0 * PI { state.delta_phases[ch] -= 2.0 * PI; }
+            if state.theta_phases[ch] > 2.0 * PI { state.theta_phases[ch] -= 2.0 * PI; }
+            if state.alpha_phases[ch] > 2.0 * PI { state.alpha_phases[ch] -= 2.0 * PI; }
+            if state.beta_phases[ch] > 2.0 * PI { state.beta_phases[ch] -= 2.0 * PI; }
+            if state.gamma_phases[ch] > 2.0 * PI { state.gamma_phases[ch] -= 2.0 * PI; }
+
+            channels.push(signal);
+        }
+
+        // Update artifact state
+        if state.in_artifact {
+            if state.artifact_samples_remaining > 0 {
+                state.artifact_samples_remaining -= 1;
+            } else {
+                state.in_artifact = false;
+            }
+        }
+
+        // Update running power estimates (exponential moving average)
+        let alpha = 0.99;
+        state.alpha_power_est = alpha * state.alpha_power_est + (1.0 - alpha) * state.alpha_amp.powi(2);
+        state.beta_power_est = alpha * state.beta_power_est + (1.0 - alpha) * state.beta_amp.powi(2);
+        state.theta_power_est = alpha * state.theta_power_est + (1.0 - alpha) * state.theta_amp.powi(2);
+        state.delta_power_est = alpha * state.delta_power_est + (1.0 - alpha) * state.delta_amp.powi(2);
+        state.gamma_power_est = alpha * state.gamma_power_est + (1.0 - alpha) * state.gamma_amp.powi(2);
+
+        state.sample_idx += 1;
+
+        EegSample {
+            channels,
+            delta_power: state.delta_power_est,
+            theta_power: state.theta_power_est,
+            alpha_power: state.alpha_power_est,
+            beta_power: state.beta_power_est,
+            gamma_power: state.gamma_power_est,
+            sample_idx: state.sample_idx - 1,
+            timestamp: t,
+        }
+    }
+
+    fn current_time(&self, state: &Self::State) -> f64 {
+        state.sample_idx as f64 * state.dt
+    }
+
+    fn sampling_rate(&self, params: &Self::Parameters) -> f64 {
+        params.sample_rate
+    }
+
+    fn reset_state(&self, state: &mut Self::State, params: &Self::Parameters, seed: u64) {
+        *state = self.init_state(params, seed);
+    }
 }
 
 #[cfg(test)]
