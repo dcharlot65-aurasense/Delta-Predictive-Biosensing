@@ -227,30 +227,61 @@ pub mod hand;
 pub mod pose;
 pub mod voice;
 
+// New modality encoders (Phase D)
+pub mod balance;
+pub mod cardiopulmonary;
+pub mod cognitive;
+pub mod force;
+pub mod pain;
+pub mod vestibular;
+
 // Population templates
 pub mod templates;
 
 // Re-exports for convenience
+pub use balance::*;
 pub use base::*;
+pub use cardiopulmonary::*;
+pub use cognitive::*;
 pub use contact::*;
 pub use eye::*;
+pub use force::*;
 pub use hand::*;
+pub use pain::*;
 pub use pose::*;
+pub use vestibular::*;
 pub use voice::*;
 
 /// Prelude module for convenient imports
 pub mod prelude {
+    // Base encoders
     pub use crate::base::*;
+
+    // Contact modality encoders
     pub use crate::contact::ecg::*;
     pub use crate::contact::eda::*;
     pub use crate::contact::emg::*;
     pub use crate::contact::ppg::*;
     pub use crate::contact::tremor::*;
+
+    // Movement and tracking encoders
     pub use crate::eye::*;
     pub use crate::hand::*;
     pub use crate::pose::*;
-    pub use crate::templates;
     pub use crate::voice::*;
+
+    // New modality encoders (Phase D)
+    pub use crate::balance::*;
+    pub use crate::cardiopulmonary::*;
+    pub use crate::cognitive::*;
+    pub use crate::force::*;
+    pub use crate::pain::*;
+    pub use crate::vestibular::*;
+
+    // Templates
+    pub use crate::templates;
+
+    // Core re-exports
     pub use dpb_core::{Context, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent};
 }
 

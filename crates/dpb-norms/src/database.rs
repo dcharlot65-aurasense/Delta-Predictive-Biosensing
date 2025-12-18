@@ -490,6 +490,375 @@ impl NormativeDatabase {
             ],
         );
         self.set_reliability(MetricType::SleepEfficiency, 0.78);
+
+        // === Pain/Sensory Metrics (Phase F) ===
+
+        // Pressure Pain Threshold (kPa) - sex-stratified, highly variable
+        self.add_age_sex_norms(
+            MetricType::PressurePainThreshold,
+            &[
+                ((18, 29), Some(crate::demographics::Sex::Male), 450.0, 120.0, 200),
+                ((18, 29), Some(crate::demographics::Sex::Female), 350.0, 100.0, 200),
+                ((30, 39), Some(crate::demographics::Sex::Male), 440.0, 115.0, 180),
+                ((30, 39), Some(crate::demographics::Sex::Female), 340.0, 95.0, 180),
+                ((40, 49), Some(crate::demographics::Sex::Male), 420.0, 110.0, 160),
+                ((40, 49), Some(crate::demographics::Sex::Female), 330.0, 90.0, 160),
+                ((50, 59), Some(crate::demographics::Sex::Male), 400.0, 105.0, 150),
+                ((50, 59), Some(crate::demographics::Sex::Female), 315.0, 85.0, 150),
+                ((60, 69), Some(crate::demographics::Sex::Male), 380.0, 100.0, 140),
+                ((60, 69), Some(crate::demographics::Sex::Female), 300.0, 80.0, 140),
+                ((70, 89), Some(crate::demographics::Sex::Male), 360.0, 95.0, 100),
+                ((70, 89), Some(crate::demographics::Sex::Female), 285.0, 75.0, 100),
+            ],
+        );
+        self.set_reliability(MetricType::PressurePainThreshold, 0.88);
+
+        // Pain Tolerance (kPa) - higher than threshold
+        self.add_age_sex_norms(
+            MetricType::PainTolerance,
+            &[
+                ((18, 29), Some(crate::demographics::Sex::Male), 650.0, 150.0, 200),
+                ((18, 29), Some(crate::demographics::Sex::Female), 520.0, 130.0, 200),
+                ((30, 49), Some(crate::demographics::Sex::Male), 620.0, 145.0, 180),
+                ((30, 49), Some(crate::demographics::Sex::Female), 500.0, 125.0, 180),
+                ((50, 69), Some(crate::demographics::Sex::Male), 580.0, 140.0, 150),
+                ((50, 69), Some(crate::demographics::Sex::Female), 470.0, 120.0, 150),
+                ((70, 89), Some(crate::demographics::Sex::Male), 540.0, 135.0, 100),
+                ((70, 89), Some(crate::demographics::Sex::Female), 440.0, 115.0, 100),
+            ],
+        );
+        self.set_reliability(MetricType::PainTolerance, 0.85);
+
+        // CPM Effect (% pain reduction) - conditioned pain modulation
+        self.add_age_sex_norms(
+            MetricType::CpmEffect,
+            &[
+                ((18, 39), None, 35.0, 15.0, 200),
+                ((40, 59), None, 30.0, 14.0, 180),
+                ((60, 79), None, 22.0, 12.0, 150),
+                ((80, 89), None, 15.0, 10.0, 80),
+            ],
+        );
+        self.set_reliability(MetricType::CpmEffect, 0.75);
+
+        // Vibration Threshold (μm) - increases with age
+        self.add_age_sex_norms(
+            MetricType::VibrationThreshold,
+            &[
+                ((18, 29), None, 0.5, 0.2, 300),
+                ((30, 39), None, 0.6, 0.25, 280),
+                ((40, 49), None, 0.8, 0.3, 260),
+                ((50, 59), None, 1.2, 0.4, 250),
+                ((60, 69), None, 2.0, 0.6, 240),
+                ((70, 79), None, 3.5, 1.0, 200),
+                ((80, 89), None, 5.5, 1.5, 150),
+            ],
+        );
+        self.set_reliability(MetricType::VibrationThreshold, 0.82);
+
+        // Joint Position Error (degrees) - proprioception
+        self.add_age_sex_norms(
+            MetricType::JointPositionError,
+            &[
+                ((18, 39), None, 2.5, 1.0, 300),
+                ((40, 49), None, 3.0, 1.2, 280),
+                ((50, 59), None, 3.5, 1.4, 260),
+                ((60, 69), None, 4.5, 1.8, 240),
+                ((70, 79), None, 6.0, 2.2, 200),
+                ((80, 89), None, 8.0, 3.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::JointPositionError, 0.78);
+
+        // === Additional Balance Metrics ===
+
+        // Sway Velocity (cm/s)
+        self.add_age_sex_norms(
+            MetricType::SwayVelocity,
+            &[
+                ((18, 39), None, 0.8, 0.25, 400),
+                ((40, 49), None, 0.95, 0.30, 350),
+                ((50, 59), None, 1.1, 0.35, 320),
+                ((60, 69), None, 1.4, 0.45, 300),
+                ((70, 79), None, 1.8, 0.55, 250),
+                ((80, 89), None, 2.4, 0.70, 180),
+            ],
+        );
+        self.set_reliability(MetricType::SwayVelocity, 0.82);
+
+        // Sway Path Length (cm)
+        self.add_age_sex_norms(
+            MetricType::SwayPathLength,
+            &[
+                ((18, 39), None, 25.0, 8.0, 400),
+                ((40, 49), None, 30.0, 10.0, 350),
+                ((50, 59), None, 36.0, 12.0, 320),
+                ((60, 69), None, 45.0, 15.0, 300),
+                ((70, 79), None, 58.0, 20.0, 250),
+                ((80, 89), None, 75.0, 28.0, 180),
+            ],
+        );
+        self.set_reliability(MetricType::SwayPathLength, 0.80);
+
+        // Limits of Stability - Max Excursion (%)
+        self.add_age_sex_norms(
+            MetricType::LosMaxExcursion,
+            &[
+                ((18, 39), None, 95.0, 8.0, 350),
+                ((40, 49), None, 92.0, 9.0, 320),
+                ((50, 59), None, 88.0, 10.0, 300),
+                ((60, 69), None, 82.0, 12.0, 280),
+                ((70, 79), None, 74.0, 14.0, 220),
+                ((80, 89), None, 65.0, 16.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::LosMaxExcursion, 0.85);
+
+        // Limits of Stability - Reaction Time (ms)
+        self.add_age_sex_norms(
+            MetricType::LosReactionTime,
+            &[
+                ((18, 39), None, 450.0, 80.0, 350),
+                ((40, 49), None, 480.0, 90.0, 320),
+                ((50, 59), None, 520.0, 100.0, 300),
+                ((60, 69), None, 580.0, 120.0, 280),
+                ((70, 79), None, 660.0, 150.0, 220),
+                ((80, 89), None, 780.0, 180.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::LosReactionTime, 0.82);
+
+        // === Additional Motor Metrics ===
+
+        // Rate of Force Development (N/s)
+        self.add_age_sex_norms(
+            MetricType::RateOfForceDevelopment,
+            &[
+                ((18, 29), Some(crate::demographics::Sex::Male), 1200.0, 300.0, 200),
+                ((18, 29), Some(crate::demographics::Sex::Female), 750.0, 200.0, 200),
+                ((30, 39), Some(crate::demographics::Sex::Male), 1100.0, 280.0, 180),
+                ((30, 39), Some(crate::demographics::Sex::Female), 700.0, 185.0, 180),
+                ((40, 49), Some(crate::demographics::Sex::Male), 950.0, 260.0, 160),
+                ((40, 49), Some(crate::demographics::Sex::Female), 620.0, 170.0, 160),
+                ((50, 59), Some(crate::demographics::Sex::Male), 800.0, 240.0, 150),
+                ((50, 59), Some(crate::demographics::Sex::Female), 530.0, 155.0, 150),
+                ((60, 69), Some(crate::demographics::Sex::Male), 650.0, 220.0, 140),
+                ((60, 69), Some(crate::demographics::Sex::Female), 440.0, 140.0, 140),
+                ((70, 89), Some(crate::demographics::Sex::Male), 480.0, 180.0, 100),
+                ((70, 89), Some(crate::demographics::Sex::Female), 320.0, 120.0, 100),
+            ],
+        );
+        self.set_reliability(MetricType::RateOfForceDevelopment, 0.90);
+
+        // Tapping Frequency (Hz)
+        self.add_age_sex_norms(
+            MetricType::TappingFrequency,
+            &[
+                ((18, 29), None, 6.0, 0.8, 300),
+                ((30, 39), None, 5.8, 0.9, 280),
+                ((40, 49), None, 5.5, 0.9, 260),
+                ((50, 59), None, 5.2, 1.0, 250),
+                ((60, 69), None, 4.8, 1.1, 240),
+                ((70, 79), None, 4.3, 1.2, 200),
+                ((80, 89), None, 3.7, 1.3, 150),
+            ],
+        );
+        self.set_reliability(MetricType::TappingFrequency, 0.88);
+
+        // Stride Length (m) - sex-stratified due to height differences
+        self.add_age_sex_norms(
+            MetricType::StrideLength,
+            &[
+                ((18, 39), Some(crate::demographics::Sex::Male), 1.50, 0.12, 250),
+                ((18, 39), Some(crate::demographics::Sex::Female), 1.35, 0.11, 250),
+                ((40, 59), Some(crate::demographics::Sex::Male), 1.45, 0.13, 220),
+                ((40, 59), Some(crate::demographics::Sex::Female), 1.30, 0.12, 220),
+                ((60, 79), Some(crate::demographics::Sex::Male), 1.35, 0.15, 180),
+                ((60, 79), Some(crate::demographics::Sex::Female), 1.20, 0.14, 180),
+                ((80, 89), Some(crate::demographics::Sex::Male), 1.20, 0.18, 120),
+                ((80, 89), Some(crate::demographics::Sex::Female), 1.05, 0.16, 120),
+            ],
+        );
+        self.set_reliability(MetricType::StrideLength, 0.92);
+
+        // Cadence (steps/min)
+        self.add_age_sex_norms(
+            MetricType::Cadence,
+            &[
+                ((18, 39), None, 115.0, 10.0, 400),
+                ((40, 49), None, 112.0, 11.0, 350),
+                ((50, 59), None, 108.0, 12.0, 320),
+                ((60, 69), None, 104.0, 13.0, 300),
+                ((70, 79), None, 98.0, 14.0, 250),
+                ((80, 89), None, 90.0, 16.0, 180),
+            ],
+        );
+        self.set_reliability(MetricType::Cadence, 0.90);
+
+        // === Additional Physiological Metrics ===
+
+        // Heart Rate (bpm) - resting
+        self.add_age_sex_norms(
+            MetricType::HeartRate,
+            &[
+                ((18, 29), None, 68.0, 10.0, 500),
+                ((30, 39), None, 70.0, 10.0, 480),
+                ((40, 49), None, 72.0, 11.0, 450),
+                ((50, 59), None, 74.0, 11.0, 420),
+                ((60, 69), None, 72.0, 10.0, 400),
+                ((70, 79), None, 70.0, 10.0, 350),
+                ((80, 89), None, 72.0, 12.0, 250),
+            ],
+        );
+        self.set_reliability(MetricType::HeartRate, 0.92);
+
+        // Respiratory Rate (breaths/min)
+        self.add_age_sex_norms(
+            MetricType::RespiratoryRate,
+            &[
+                ((18, 39), None, 14.0, 2.5, 400),
+                ((40, 59), None, 15.0, 3.0, 380),
+                ((60, 79), None, 16.0, 3.5, 300),
+                ((80, 89), None, 18.0, 4.0, 200),
+            ],
+        );
+        self.set_reliability(MetricType::RespiratoryRate, 0.75);
+
+        // SpO2 (%) - oxygen saturation
+        self.add_age_sex_norms(
+            MetricType::SpO2,
+            &[
+                ((18, 59), None, 97.5, 1.0, 500),
+                ((60, 69), None, 97.0, 1.2, 400),
+                ((70, 79), None, 96.5, 1.5, 300),
+                ((80, 89), None, 95.5, 2.0, 200),
+            ],
+        );
+        self.set_reliability(MetricType::SpO2, 0.85);
+
+        // Blood Pressure Systolic (mmHg)
+        self.add_age_sex_norms(
+            MetricType::BpSystolic,
+            &[
+                ((18, 29), None, 115.0, 10.0, 500),
+                ((30, 39), None, 118.0, 11.0, 480),
+                ((40, 49), None, 122.0, 12.0, 450),
+                ((50, 59), None, 128.0, 14.0, 420),
+                ((60, 69), None, 132.0, 16.0, 400),
+                ((70, 79), None, 138.0, 18.0, 350),
+                ((80, 89), None, 142.0, 20.0, 250),
+            ],
+        );
+        self.set_reliability(MetricType::BpSystolic, 0.88);
+
+        // Blood Pressure Diastolic (mmHg)
+        self.add_age_sex_norms(
+            MetricType::BpDiastolic,
+            &[
+                ((18, 29), None, 72.0, 8.0, 500),
+                ((30, 39), None, 75.0, 8.0, 480),
+                ((40, 49), None, 78.0, 9.0, 450),
+                ((50, 59), None, 80.0, 9.0, 420),
+                ((60, 69), None, 78.0, 10.0, 400),
+                ((70, 79), None, 76.0, 10.0, 350),
+                ((80, 89), None, 74.0, 11.0, 250),
+            ],
+        );
+        self.set_reliability(MetricType::BpDiastolic, 0.86);
+
+        // HRV pNN50 (%)
+        self.add_age_sex_norms(
+            MetricType::HrvPnn50,
+            &[
+                ((18, 29), None, 20.0, 12.0, 400),
+                ((30, 39), None, 16.0, 10.0, 380),
+                ((40, 49), None, 12.0, 8.0, 350),
+                ((50, 59), None, 8.0, 6.0, 320),
+                ((60, 69), None, 5.0, 4.0, 300),
+                ((70, 79), None, 3.0, 3.0, 250),
+                ((80, 89), None, 2.0, 2.0, 180),
+            ],
+        );
+        self.set_reliability(MetricType::HrvPnn50, 0.80);
+
+        // === Additional Cognitive Metrics ===
+
+        // Digit Span Forward
+        self.add_age_sex_norms(
+            MetricType::DigitSpanForward,
+            &[
+                ((18, 39), None, 7.0, 1.2, 400),
+                ((40, 59), None, 6.8, 1.3, 350),
+                ((60, 79), None, 6.2, 1.4, 280),
+                ((80, 89), None, 5.5, 1.5, 180),
+            ],
+        );
+        self.set_reliability(MetricType::DigitSpanForward, 0.80);
+
+        // Digit Span Backward
+        self.add_age_sex_norms(
+            MetricType::DigitSpanBackward,
+            &[
+                ((18, 39), None, 5.5, 1.3, 400),
+                ((40, 59), None, 5.2, 1.4, 350),
+                ((60, 79), None, 4.5, 1.5, 280),
+                ((80, 89), None, 3.8, 1.6, 180),
+            ],
+        );
+        self.set_reliability(MetricType::DigitSpanBackward, 0.78);
+
+        // Verbal Fluency (words/min)
+        self.add_age_sex_norms(
+            MetricType::VerbalFluency,
+            &[
+                ((18, 39), None, 18.0, 5.0, 400),
+                ((40, 59), None, 16.0, 5.0, 350),
+                ((60, 79), None, 13.0, 4.5, 280),
+                ((80, 89), None, 10.0, 4.0, 180),
+            ],
+        );
+        self.set_reliability(MetricType::VerbalFluency, 0.82);
+
+        // Stroop Interference (ms)
+        self.add_age_sex_norms(
+            MetricType::StroopInterference,
+            &[
+                ((18, 29), None, 40.0, 20.0, 400),
+                ((30, 39), None, 45.0, 22.0, 380),
+                ((40, 49), None, 55.0, 25.0, 350),
+                ((50, 59), None, 70.0, 30.0, 320),
+                ((60, 69), None, 90.0, 38.0, 280),
+                ((70, 79), None, 120.0, 50.0, 220),
+                ((80, 89), None, 160.0, 65.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::StroopInterference, 0.75);
+
+        // === Tremor Metrics ===
+
+        // Tremor Amplitude (mm) - physiological tremor increases with age
+        self.add_age_sex_norms(
+            MetricType::TremorAmplitude,
+            &[
+                ((18, 39), None, 0.15, 0.08, 350),
+                ((40, 59), None, 0.22, 0.12, 320),
+                ((60, 79), None, 0.35, 0.18, 280),
+                ((80, 89), None, 0.50, 0.25, 180),
+            ],
+        );
+        self.set_reliability(MetricType::TremorAmplitude, 0.85);
+
+        // Tremor Frequency (Hz) - typically 8-12 Hz physiological
+        self.add_age_sex_norms(
+            MetricType::TremorFrequency,
+            &[
+                ((18, 39), None, 10.0, 1.5, 350),
+                ((40, 59), None, 9.5, 1.8, 320),
+                ((60, 79), None, 8.5, 2.0, 280),
+                ((80, 89), None, 7.5, 2.2, 180),
+            ],
+        );
+        self.set_reliability(MetricType::TremorFrequency, 0.88);
     }
 
     /// Helper to add multiple normative entries

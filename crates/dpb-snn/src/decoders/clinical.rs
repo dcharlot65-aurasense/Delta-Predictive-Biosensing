@@ -778,6 +778,555 @@ impl Decoder for SEADLDecoder {
     }
 }
 
+// ============================================================================
+// Additional Balance Decoders (Phase E)
+// ============================================================================
+
+/// Tinetti Performance-Oriented Mobility Assessment decoder
+/// Assesses both gait (12 points) and balance (16 points) for total 0-28 score
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TinettiDecoder {
+    pub num_neurons: usize,
+    /// Neurons allocated to gait assessment
+    pub gait_neurons: usize,
+    /// Neurons allocated to balance assessment
+    pub balance_neurons: usize,
+}
+
+impl TinettiDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        let gait_neurons = num_neurons * 12 / 28; // Proportional to score range
+        let balance_neurons = num_neurons - gait_neurons;
+        Self {
+            num_neurons,
+            gait_neurons,
+            balance_neurons,
+        }
+    }
+}
+
+impl Decoder for TinettiDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        let mut output = Array2::zeros((batch_size, 3)); // gait, balance, total
+
+        for b in 0..batch_size {
+            // Gait score (0-12): regularity of spike patterns
+            let gait_rates: Vec<f32> = rates.slice(s![b, 0..self.gait_neurons.min(rates.shape()[1])]).to_vec();
+            let gait_regularity = if gait_rates.len() >= 2 {
+                let mean = gait_rates.iter().sum::<f32>() / gait_rates.len() as f32;
+                let std = (gait_rates.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / gait_rates.len() as f32).sqrt();
+                1.0 - (std / (mean + 0.01)).min(1.0)
+            } else {
+                0.5
+            };
+            let gait_score = (gait_regularity * 12.0).max(0.0).min(12.0);
+
+            // Balance score (0-16): stability of spike patterns
+            let start = self.gait_neurons.min(rates.shape()[1]);
+            let end = rates.shape()[1];
+            let balance_rates: Vec<f32> = rates.slice(s![b, start..end]).to_vec();
+            let balance_stability = if !balance_rates.is_empty() {
+                let mean = balance_rates.iter().sum::<f32>() / balance_rates.len() as f32;
+                let variance = balance_rates.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / balance_rates.len() as f32;
+                1.0 - variance.sqrt().min(1.0)
+            } else {
+                0.5
+            };
+            let balance_score = (balance_stability * 16.0).max(0.0).min(16.0);
+
+            output[[b, 0]] = gait_score;
+            output[[b, 1]] = balance_score;
+            output[[b, 2]] = gait_score + balance_score; // Total (0-28)
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        3 // gait, balance, total
+    }
+}
+
+/// Mini-BESTest (Balance Evaluation Systems Test) decoder
+/// Assesses 4 balance domains: anticipatory, reactive, sensory, dynamic gait
+/// Score: 0-32 (each domain 0-8)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MiniBESTDecoder {
+    pub num_neurons: usize,
+}
+
+impl MiniBESTDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for MiniBESTDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        let mut output = Array2::zeros((batch_size, 5)); // 4 domains + total
+
+        let neurons_per_domain = (rates.shape()[1] / 4).max(1);
+
+        for b in 0..batch_size {
+            let mut total = 0.0;
+
+            for domain in 0..4 {
+                let start = domain * neurons_per_domain;
+                let end = ((domain + 1) * neurons_per_domain).min(rates.shape()[1]);
+
+                if start < end {
+                    let domain_rates: Vec<f32> = rates.slice(s![b, start..end]).to_vec();
+                    let mean = domain_rates.iter().sum::<f32>() / domain_rates.len() as f32;
+                    let variance = domain_rates.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / domain_rates.len() as f32;
+
+                    // Higher stability = better balance
+                    let domain_score = match domain {
+                        0 => mean * 8.0,                          // Anticipatory: activity level
+                        1 => (1.0 - variance.sqrt()) * 8.0,       // Reactive: consistency
+                        2 => ((mean + 1.0 - variance) * 4.0).max(0.0), // Sensory: combined
+                        3 => {                                     // Dynamic gait: regularity
+                            let regularity = 1.0 - variance.sqrt();
+                            regularity * 8.0
+                        }
+                        _ => 0.0,
+                    };
+
+                    output[[b, domain]] = domain_score.max(0.0).min(8.0);
+                    total += output[[b, domain]];
+                }
+            }
+
+            output[[b, 4]] = total.min(32.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        5 // 4 domains + total
+    }
+}
+
+// ============================================================================
+// Pain Decoders (Phase E)
+// ============================================================================
+
+/// Visual Analog Scale (VAS) decoder for pain intensity
+/// Output: 0-100 continuous scale
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VasDecoder {
+    pub num_neurons: usize,
+    /// Whether high spike activity indicates high pain
+    pub high_activity_is_high_pain: bool,
+}
+
+impl VasDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self {
+            num_neurons,
+            high_activity_is_high_pain: true,
+        }
+    }
+}
+
+impl Decoder for VasDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        let mut output = Array2::zeros((batch_size, 1));
+
+        for b in 0..batch_size {
+            let mean_rate: f32 = rates.row(b).mean().unwrap_or(0.0);
+
+            let vas = if self.high_activity_is_high_pain {
+                mean_rate * 100.0
+            } else {
+                (1.0 - mean_rate) * 100.0
+            };
+
+            output[[b, 0]] = vas.max(0.0).min(100.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        1
+    }
+}
+
+/// Numeric Rating Scale (NRS) decoder for pain intensity
+/// Output: 0-10 integer scale
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NrsDecoder {
+    pub num_neurons: usize,
+}
+
+impl NrsDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for NrsDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        let mut output = Array2::zeros((batch_size, 1));
+
+        for b in 0..batch_size {
+            let mean_rate: f32 = rates.row(b).mean().unwrap_or(0.0);
+            // Round to nearest integer 0-10
+            let nrs = (mean_rate * 10.0).round().max(0.0).min(10.0);
+            output[[b, 0]] = nrs;
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        1
+    }
+}
+
+/// QST Sensory Phenotype decoder
+/// Classifies into: Normal, SensoryLoss, ThermalHyperalgesia, MechanicalHyperalgesia, Mixed
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QstPhenotypeDecoder {
+    pub num_neurons: usize,
+    /// Number of QST modalities (typically 8-13)
+    pub num_modalities: usize,
+}
+
+impl QstPhenotypeDecoder {
+    pub fn new(num_neurons: usize, num_modalities: usize) -> Self {
+        Self {
+            num_neurons,
+            num_modalities,
+        }
+    }
+
+    /// Default with standard 8 QST modalities
+    pub fn standard(num_neurons: usize) -> Self {
+        Self::new(num_neurons, 8)
+    }
+}
+
+impl Decoder for QstPhenotypeDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        // Output: 5 phenotype probabilities + dominant phenotype index
+        let mut output = Array2::zeros((batch_size, 6));
+
+        let neurons_per_modality = (rates.shape()[1] / self.num_modalities).max(1);
+
+        for b in 0..batch_size {
+            // Calculate Z-scores for each modality group
+            let mut thermal_loss = 0.0_f32;
+            let mut thermal_gain = 0.0_f32;
+            let mut mech_loss = 0.0_f32;
+            let mut mech_gain = 0.0_f32;
+
+            for m in 0..self.num_modalities.min(8) {
+                let start = m * neurons_per_modality;
+                let end = ((m + 1) * neurons_per_modality).min(rates.shape()[1]);
+
+                if start < end {
+                    let modality_rates: Vec<f32> = rates.slice(s![b, start..end]).to_vec();
+                    let mean = modality_rates.iter().sum::<f32>() / modality_rates.len() as f32;
+
+                    // Simplified Z-score interpretation
+                    let z_score = (mean - 0.5) * 4.0; // Centered at 0.5, scaled
+
+                    match m {
+                        0..=3 => { // Thermal modalities
+                            if z_score < -1.0 {
+                                thermal_loss += z_score.abs();
+                            } else if z_score > 1.0 {
+                                thermal_gain += z_score;
+                            }
+                        }
+                        4..=7 => { // Mechanical modalities
+                            if z_score < -1.0 {
+                                mech_loss += z_score.abs();
+                            } else if z_score > 1.0 {
+                                mech_gain += z_score;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            // Calculate phenotype probabilities (softmax-like)
+            let total = thermal_loss + thermal_gain + mech_loss + mech_gain + 1.0;
+            output[[b, 0]] = 1.0 / total;                    // Normal
+            output[[b, 1]] = thermal_loss / total;           // Sensory loss
+            output[[b, 2]] = thermal_gain / total;           // Thermal hyperalgesia
+            output[[b, 3]] = mech_gain / total;              // Mechanical hyperalgesia
+            output[[b, 4]] = (thermal_gain + mech_gain) / total; // Mixed
+
+            // Dominant phenotype (argmax)
+            let phenotypes = [output[[b, 0]], output[[b, 1]], output[[b, 2]], output[[b, 3]], output[[b, 4]]];
+            let max_idx = phenotypes.iter().enumerate()
+                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                .map(|(i, _)| i)
+                .unwrap_or(0);
+            output[[b, 5]] = max_idx as f32;
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        6 // 5 phenotype probabilities + dominant index
+    }
+}
+
+// ============================================================================
+// Vestibular Decoders (Phase E)
+// ============================================================================
+
+/// VOR (Vestibulo-Ocular Reflex) Gain decoder
+/// Output: VOR gain (normal ~0.8-1.0)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VorGainDecoder {
+    pub num_neurons: usize,
+    /// Neurons for head velocity encoding
+    pub head_neurons: usize,
+    /// Neurons for eye velocity encoding
+    pub eye_neurons: usize,
+}
+
+impl VorGainDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        let head_neurons = num_neurons / 2;
+        let eye_neurons = num_neurons - head_neurons;
+        Self {
+            num_neurons,
+            head_neurons,
+            eye_neurons,
+        }
+    }
+}
+
+impl Decoder for VorGainDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        // Output: VOR gain, asymmetry, left gain, right gain
+        let mut output = Array2::zeros((batch_size, 4));
+
+        for b in 0..batch_size {
+            // Head velocity neurons (first half)
+            let head_end = self.head_neurons.min(rates.shape()[1]);
+            let head_rates: Vec<f32> = rates.slice(s![b, 0..head_end]).to_vec();
+            let head_activity = if !head_rates.is_empty() {
+                head_rates.iter().sum::<f32>() / head_rates.len() as f32
+            } else {
+                0.5
+            };
+
+            // Eye velocity neurons (second half)
+            let eye_start = head_end;
+            let eye_end = rates.shape()[1];
+            let eye_rates: Vec<f32> = rates.slice(s![b, eye_start..eye_end]).to_vec();
+            let eye_activity = if !eye_rates.is_empty() {
+                eye_rates.iter().sum::<f32>() / eye_rates.len() as f32
+            } else {
+                0.5
+            };
+
+            // VOR gain = eye velocity / head velocity
+            let vor_gain = if head_activity > 0.01 {
+                eye_activity / head_activity
+            } else {
+                1.0
+            };
+
+            // Asymmetry (difference between left and right responses)
+            let mid_eye = (eye_start + eye_end) / 2;
+            let left_eye: f32 = rates.slice(s![b, eye_start..mid_eye]).mean().unwrap_or(0.5);
+            let right_eye: f32 = rates.slice(s![b, mid_eye..eye_end]).mean().unwrap_or(0.5);
+
+            let left_gain = if head_activity > 0.01 { left_eye / head_activity } else { 1.0 };
+            let right_gain = if head_activity > 0.01 { right_eye / head_activity } else { 1.0 };
+            let asymmetry = ((left_gain - right_gain) / (left_gain + right_gain + 0.01) * 100.0).abs();
+
+            output[[b, 0]] = vor_gain.max(0.0).min(2.0);
+            output[[b, 1]] = asymmetry.max(0.0).min(100.0);
+            output[[b, 2]] = left_gain.max(0.0).min(2.0);
+            output[[b, 3]] = right_gain.max(0.0).min(2.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        4 // gain, asymmetry, left, right
+    }
+}
+
+/// Canal Paresis decoder (caloric test asymmetry)
+/// Output: Canal paresis percentage (normal <20-25%)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CanalParesisDecoder {
+    pub num_neurons: usize,
+}
+
+impl CanalParesisDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for CanalParesisDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        // Output: CP%, directional preponderance, left warm, right warm, left cool, right cool
+        let mut output = Array2::zeros((batch_size, 6));
+
+        let quarter = (rates.shape()[1] / 4).max(1);
+
+        for b in 0..batch_size {
+            // Jongkees formula: CP = (RW + RC - LW - LC) / (RW + RC + LW + LC) × 100
+            // Where: RW=right warm, RC=right cool, LW=left warm, LC=left cool
+
+            let lw: f32 = rates.slice(s![b, 0..quarter]).mean().unwrap_or(0.0);
+            let lc: f32 = rates.slice(s![b, quarter..quarter*2]).mean().unwrap_or(0.0);
+            let rw: f32 = rates.slice(s![b, quarter*2..quarter*3]).mean().unwrap_or(0.0);
+            let rc: f32 = rates.slice(s![b, quarter*3..]).mean().unwrap_or(0.0);
+
+            let total = lw + lc + rw + rc + 0.001; // Avoid division by zero
+            let cp = ((rw + rc - lw - lc) / total * 100.0).abs();
+
+            // Directional preponderance: (RW + LC - LW - RC) / total × 100
+            let dp = ((rw + lc - lw - rc) / total * 100.0).abs();
+
+            output[[b, 0]] = cp.min(100.0);
+            output[[b, 1]] = dp.min(100.0);
+            output[[b, 2]] = lw * 100.0; // Scale to SPV-like values
+            output[[b, 3]] = rw * 100.0;
+            output[[b, 4]] = lc * 100.0;
+            output[[b, 5]] = rc * 100.0;
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        6 // CP, DP, LW, RW, LC, RC
+    }
+}
+
+/// BPPV (Benign Paroxysmal Positional Vertigo) decoder
+/// Classifies BPPV presence and affected canal
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BppvDecoder {
+    pub num_neurons: usize,
+}
+
+impl BppvDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for BppvDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let spike_dense = spikes.to_dense();
+        let (batch_size, num_steps, num_neurons) = (
+            spike_dense.shape()[0],
+            spike_dense.shape()[1],
+            spike_dense.shape()[2],
+        );
+
+        // Output: BPPV probability, canal type (0-5 for 6 semicircular canals)
+        let mut output = Array2::zeros((batch_size, 7));
+
+        for b in 0..batch_size {
+            // Detect characteristic BPPV patterns:
+            // - Latency (1-5 seconds)
+            // - Crescendo-decrescendo pattern
+            // - Duration (<60 seconds)
+            // - Fatigability
+
+            let mut has_latency = false;
+            let mut has_pattern = false;
+            let mut onset_time = 0;
+
+            // Find response onset (latency detection)
+            for t in 0..num_steps {
+                let time_activity: f32 = spike_dense.slice(s![b, t, ..]).sum();
+                if time_activity > 0.5 && onset_time == 0 {
+                    onset_time = t;
+                    // Check if onset is delayed (BPPV typically has 1-5s latency)
+                    if t > num_steps / 20 && t < num_steps / 4 {
+                        has_latency = true;
+                    }
+                }
+            }
+
+            // Check for crescendo-decrescendo pattern
+            if onset_time > 0 {
+                let mut prev_activity = 0.0_f32;
+                let mut increasing = true;
+                let mut peak_found = false;
+
+                for t in onset_time..num_steps {
+                    let activity: f32 = spike_dense.slice(s![b, t, ..]).sum();
+                    if increasing && activity < prev_activity {
+                        peak_found = true;
+                        increasing = false;
+                    }
+                    prev_activity = activity;
+                }
+
+                has_pattern = peak_found && !increasing;
+            }
+
+            // BPPV probability based on features
+            let bppv_prob = if has_latency && has_pattern {
+                0.9
+            } else if has_latency || has_pattern {
+                0.5
+            } else {
+                0.1
+            };
+
+            output[[b, 0]] = bppv_prob;
+
+            // Canal classification based on neuron group activity
+            let neurons_per_canal = (num_neurons / 6).max(1);
+            for canal in 0..6 {
+                let start = canal * neurons_per_canal;
+                let end = ((canal + 1) * neurons_per_canal).min(num_neurons);
+                let canal_activity: f32 = spike_dense.slice(s![b, .., start..end]).sum();
+                output[[b, canal + 1]] = canal_activity / num_steps as f32;
+            }
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        7 // BPPV prob + 6 canal activities
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
