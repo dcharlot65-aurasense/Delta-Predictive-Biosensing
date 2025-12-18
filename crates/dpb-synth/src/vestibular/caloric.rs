@@ -9,7 +9,6 @@
 use rand::prelude::*;
 use rand_distr::Normal;
 use serde::{Deserialize, Serialize};
-use std::f64::consts::PI;
 
 /// Configuration for caloric generation
 #[derive(Debug, Clone, Serialize, Deserialize)]

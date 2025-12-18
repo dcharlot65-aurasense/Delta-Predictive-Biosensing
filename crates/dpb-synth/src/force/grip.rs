@@ -8,7 +8,7 @@
 //! - Pathological patterns (weakness, tremor, fatigue)
 
 use rand::prelude::*;
-use rand_distr::{Normal, Uniform};
+use rand_distr::Normal;
 use serde::{Deserialize, Serialize};
 
 /// Configuration for grip strength generation

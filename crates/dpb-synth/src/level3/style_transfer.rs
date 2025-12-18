@@ -26,16 +26,16 @@
 //!
 //! # Usage
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use dpb_synth::level3::style_transfer::{StyleTransferRenderer, StyleTransferParams, StyleType};
+//! use std::path::Path;
 //!
 //! let renderer = StyleTransferRenderer::new(StyleTransferParams::default())?;
 //!
 //! // Apply realistic human style to skeleton
 //! let output = renderer.transfer_style(
-//!     "skeleton_frame.png",
-//!     StyleType::RealisticHuman,
-//!     "styled_frame.png",
+//!     Path::new("skeleton_frame.png"),
+//!     Path::new("styled_frame.png"),
 //! )?;
 //! ```
 

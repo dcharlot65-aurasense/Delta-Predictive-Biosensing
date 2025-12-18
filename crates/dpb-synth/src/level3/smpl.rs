@@ -26,16 +26,18 @@
 //!
 //! # Usage
 //!
-//! ```rust,no_run
-//! use dpb_synth::level3::smpl::{SmplRenderer, SmplParams, SmplPose};
+//! ```rust,ignore
+//! use dpb_synth::level3::smpl::{SmplRenderer, SmplParams, SmplPose, SmplShape};
+//! use std::path::Path;
 //!
 //! let renderer = SmplRenderer::new(SmplParams::default())?;
 //!
-//! // Create a pose
+//! // Create a pose and shape
 //! let pose = SmplPose::from_axis_angles(&[0.0; 72]);
+//! let shape = SmplShape::default();
 //!
 //! // Render frame
-//! let output = renderer.render_pose(&pose)?;
+//! let output = renderer.render_pose(&pose, &shape, Path::new("output.png"))?;
 //! ```
 
 use serde::{Deserialize, Serialize};

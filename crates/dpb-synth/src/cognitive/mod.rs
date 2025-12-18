@@ -9,7 +9,7 @@
 //! - Pathological patterns (ADHD, dementia, TBI)
 
 use rand::prelude::*;
-use rand_distr::{LogNormal, Normal};
+use rand_distr::Normal;
 use serde::{Deserialize, Serialize};
 
 /// Configuration for cognitive task generation
