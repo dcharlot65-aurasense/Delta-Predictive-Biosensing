@@ -509,12 +509,13 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
+        let resting_hr = config.resting_hr;
         let mut generator = CardiopulmonaryGenerator::new(config);
         let output = generator.generate_exercise(300.0, 80.0);
 
         // Peak HR should be higher than resting
         let peak_hr = output.heart_rate.iter().cloned().fold(0.0_f64, f64::max);
-        assert!(peak_hr > config.resting_hr * 1.5);
+        assert!(peak_hr > resting_hr * 1.5);
     }
 
     #[test]
