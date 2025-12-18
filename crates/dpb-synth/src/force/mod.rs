@@ -16,10 +16,10 @@ pub use grf::{
     GaitPhaseLabel, ForceEvent, PathologicalGrf,
 };
 pub use grip::{
-    GripStrengthGenerator, GripConfig, GripOutput, GripGroundTruth,
-    GripProtocol, GripPathology,
+    GripGenerator, GripConfig, GripOutput, GripGroundTruth,
+    GripEvent, GripEventType, PathologicalGrip,
 };
 pub use rfd::{
     RfdGenerator, RfdConfig, RfdOutput, RfdGroundTruth,
-    RfdType, RfdMetrics,
+    RfdTaskType, PathologicalRfd,
 };
