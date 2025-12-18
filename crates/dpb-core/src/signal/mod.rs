@@ -32,6 +32,7 @@
 //! - [`wavelet`]: Continuous and discrete wavelet transforms
 //! - [`hilbert`]: Hilbert transform and analytic signals
 //! - [`ica`]: Independent Component Analysis
+//! - [`emd`]: Empirical Mode Decomposition and Hilbert-Huang Transform
 //!
 //! ## Example: ECG Analysis
 //!
@@ -104,6 +105,7 @@ pub mod ecg;
 pub mod eeg;
 pub mod eda;
 pub mod emg;
+pub mod emd;
 pub mod eye;
 pub mod fatigue;
 pub mod fft;
@@ -134,6 +136,22 @@ pub use hilbert::{
 
 // ICA exports
 pub use ica::{FastICA, ICAResult, NonlinearFunction};
+
+// EMD exports
+pub use emd::{
+    // Core EMD
+    Emd, EmdConfig, StoppingCriterion,
+    // Ensemble methods
+    Eemd, EemdConfig, Ceemdan, CeemdanConfig,
+    // VMD
+    Vmd, VmdConfig,
+    // Hilbert-Huang Transform
+    HilbertHuangTransform, HilbertSpectrum,
+    // IMF structures
+    Imf, ImfSet,
+    // Spline interpolation
+    CubicSpline, BoundaryCondition,
+};
 
 // ECG analysis exports
 pub use ecg::{

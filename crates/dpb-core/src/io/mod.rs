@@ -10,6 +10,10 @@
 //! - **BDF** ([`bdf`]) - BioSemi Data Format, 24-bit variant of EDF for high-resolution recordings
 //! - **GDF** ([`gdf`]) - General Data Format, extended EDF with additional features
 //! - **XDF** ([`xdf`]) - Extensible Data Format, multi-stream format for Lab Streaming Layer
+//! - **BIDS** ([`bids`]) - Brain Imaging Data Structure, standardized organization for neuroimaging
+//!   and electrophysiology data
+//! - **FHIR** ([`fhir`]) - HL7 Fast Healthcare Interoperability Resources for clinical data exchange
+//!   and electronic health record (EHR) integration
 //!
 //! ## Format Detection
 //!
@@ -106,9 +110,39 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! ### Working with BIDS datasets
+//!
+//! ```rust,no_run
+//! use dpb_core::io::bids::{BidsDataset, DatasetDescription, Modality};
+//! use std::path::Path;
+//!
+//! # fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Open an existing BIDS dataset
+//! let dataset = BidsDataset::open(Path::new("data/bids_dataset"))?;
+//! println!("Dataset: {}", dataset.name());
+//!
+//! // Iterate through subjects and sessions
+//! for subject in dataset.subjects()? {
+//!     println!("Subject: {}", subject.id());
+//!     for session in subject.sessions()? {
+//!         println!("  Session: {}", session.id());
+//!
+//!         // Access EEG data
+//!         if session.has_modality(Modality::Eeg) {
+//!             let eeg_files = session.data_files_for_modality(Modality::Eeg)?;
+//!             println!("    EEG files: {}", eeg_files.len());
+//!         }
+//!     }
+//! }
+//! # Ok(())
+//! # }
+//! ```
 
 pub mod bdf;
+pub mod bids;
 pub mod edf;
+pub mod fhir;
 pub mod format_detect;
 pub mod gdf;
 pub mod wfdb;
@@ -117,6 +151,10 @@ pub mod xdf;
 // Re-export main types from each format
 pub use bdf::{BdfHeader, BdfReader, BdfSignal, BdfTrigger, BdfWriter};
 pub use edf::{EdfHeader, EdfReader, EdfSignal, EdfWriter};
+pub use fhir::{
+    Bundle, BundleEntry, BundleType, CodeableConcept, Coding, FhirClient, FhirClientConfig,
+    FhirResource, Observation, Patient, ResourceType,
+};
 pub use format_detect::{
     detect_format, FormatType, UnifiedBiosignalReader, UnifiedReader,
 };
@@ -127,3 +165,10 @@ pub use wfdb::{
     AnnotationType, WfdbAnnotation, WfdbHeader, WfdbReader, WfdbSignal, WfdbWriter,
 };
 pub use xdf::{ChannelFormat, XdfFile, XdfStream, XdfStreamInfo, XdfWriter};
+
+// Re-export main BIDS types
+pub use bids::{
+    BidsDataset, BidsSession, BidsSubject, BidsValidator, ChannelInfo, CoordinateSystem,
+    DatasetDescription, DerivativesDataset, EegBids, EegMetadata, ElectrodeInfo, EventInfo,
+    Modality, Participant, PipelineDescription, TaskMetadata, ValidationLevel, ValidationReport,
+};
