@@ -49,6 +49,7 @@
 #![warn(clippy::all)]
 #![allow(clippy::too_many_arguments)]
 
+pub mod biomechanics;
 pub mod config;
 pub mod error;
 pub mod gpu;
@@ -59,6 +60,7 @@ pub mod signal;
 pub mod tensor;
 pub mod traits;
 pub mod types;
+pub mod vestibular;
 pub mod viz;
 
 // Re-export commonly used items

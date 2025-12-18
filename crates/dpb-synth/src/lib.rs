@@ -14,6 +14,7 @@ pub mod pose;
 pub mod hand;
 pub mod eye;
 pub mod voice;
+pub mod neural;
 pub mod multimodal;
 pub mod level3;
 pub mod media;

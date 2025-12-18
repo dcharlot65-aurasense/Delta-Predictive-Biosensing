@@ -1,5 +1,6 @@
 //! Signal processing utilities for biosensor data.
 
+pub mod eeg;
 pub mod fft;
 pub mod filter;
 pub mod resample;
