@@ -1,8 +1,8 @@
 //! # DPB Neurons - Neuron Models for Spiking Neural Networks
 //!
-//! This crate implements 19 different neuron models for the Delta-Predictive
-//! Biosensing Framework, ranging from simple integrate-and-fire to complex
-//! biophysical models.
+//! This crate implements 19 different neuron models plus multi-compartment dendritic
+//! models for the Delta-Predictive Biosensing Framework, ranging from simple
+//! integrate-and-fire to complex biophysical models.
 //!
 //! ## Neuron Models
 //!
@@ -36,6 +36,16 @@
 //! - [`XyloLifNeuron`](hardware::XyloLifNeuron) - SynSense Xylo chip compatible
 //! - [`PulsarLifNeuron`](hardware::PulsarLifNeuron) - Generic neuromorphic hardware
 //! - [`QuantizedLifNeuron`](hardware::QuantizedLifNeuron) - Fixed-point for edge devices
+//!
+//! ## Multi-Compartment Dendritic Models
+//!
+//! - [`MultiCompartmentNeuron`](dendritic::MultiCompartmentNeuron) - Complete multi-compartment model
+//! - [`Compartment`](dendritic::Compartment) - Single compartment with cable equation
+//! - [`DendriticTree`](dendritic::DendriticTree) - Morphology structure (SWC support)
+//! - Ion channels: Hodgkin-Huxley Na⁺/K⁺, Ca²⁺ channels, NMDA/AMPA/GABA receptors
+//! - [`DendriticSynapse`](dendritic::DendriticSynapse) - Synapses with location
+//! - Integration: Passive, Active, Nonlinear dendrites, Coincidence detection
+//! - Plasticity: Dendritic STDP, Branch-specific, Heterosynaptic, Metaplasticity
 //!
 //! ## Surrogate Gradients (6 functions)
 //!
@@ -100,6 +110,29 @@
 //! let kernel = GpuNeuronKernel::Lif;
 //! let shader_source = kernel.shader_source();
 //! ```
+//!
+//! ### Multi-Compartment Dendritic Neuron
+//!
+//! ```rust
+//! use dpb_neurons::dendritic::{MultiCompartmentNeuron, DendriticSynapse};
+//!
+//! // Create neuron with 10 compartments (1 soma + 9 dendrites)
+//! let mut neuron = MultiCompartmentNeuron::new(10);
+//!
+//! // Add excitatory synapse on distal dendrite
+//! let synapse = DendriticSynapse::excitatory(8, 1.0, 0.5);
+//! neuron.add_synapse(synapse);
+//!
+//! // Simulate
+//! for _ in 0..1000 {
+//!     let spike = neuron.update(0.1); // 0.1 ms timestep
+//!     if spike {
+//!         println!("Action potential at soma!");
+//!     }
+//! }
+//!
+//! println!("Soma voltage: {} mV", neuron.soma_voltage());
+//! ```
 
 pub mod traits;
 
@@ -116,6 +149,9 @@ pub mod hardware;
 
 // Reservoir computing
 pub mod reservoir;
+
+// Dendritic computation and multi-compartment models
+pub mod dendritic;
 
 // Training support
 pub mod surrogate;
@@ -164,6 +200,14 @@ pub use gpu::{
 
 // Re-export reservoir computing types
 pub use reservoir::{EchoStateNetwork, LiquidStateMachine, SparsityPattern};
+
+// Re-export dendritic computation types
+pub use dendritic::{
+    Compartment, DendriticTree, MultiCompartmentNeuron, DendriticSynapse,
+    IonChannel, HodgkinHuxleyChannel, CalciumChannel, NmdaReceptor,
+    DendriticIntegration, PassiveIntegration, ActiveIntegration,
+    DendriticPlasticity, DendriticStdp,
+};
 
 /// Prelude module for convenient imports.
 pub mod prelude {

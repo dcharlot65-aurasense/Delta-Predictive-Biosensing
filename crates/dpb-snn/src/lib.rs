@@ -6,11 +6,13 @@
 //!
 //! - **Architectures**: Feedforward, convolutional, recurrent SNNs
 //! - **Training**: BPTT, surrogate gradients, ANN-to-SNN conversion
+//! - **Neuromodulation**: Dopamine, acetylcholine, reward-modulated learning, homeostasis
+//! - **Distillation**: Knowledge distillation for SNN compression
 //! - **Calibration**: Temperature scaling, isotonic regression, uncertainty quantification
 //! - **Explainability**: Spike importance, attention maps, feature attribution
 //! - **Fusion**: Multi-modal sensor fusion architectures
 //! - **Baselines**: 44 ANN architectures for comparison
-//! - **Export**: ONNX format, weight serialization
+//! - **Export**: ONNX format, weight serialization, neuromorphic hardware
 //!
 //! ## Quick Start: Building an SNN
 //!
@@ -98,6 +100,61 @@
 //! # }
 //! ```
 //!
+//! ## Example: Knowledge Distillation
+//!
+//! ```rust
+//! use dpb_snn::distillation::*;
+//!
+//! # fn example() -> dpb_snn::SNNResult<()> {
+//! // Configure distillation for model compression
+//! let config = DistillationConfig {
+//!     temperature: 4.0,
+//!     alpha: 0.7,  // Weight for soft targets
+//!     beta: 0.3,   // Weight for hard targets
+//!     mode: DistillationMode::ResponseBased,
+//!     feature_layers: vec![],
+//!     scale_temperature: true,
+//! };
+//!
+//! // Find optimal student architecture
+//! let teacher_layers = vec![128, 256, 128, 64, 10];
+//! let search = ArchitectureSearch::new(
+//!     teacher_layers,
+//!     SearchStrategy::Hybrid,
+//!     0.3  // 30% compression
+//! )?;
+//!
+//! let student_layers = search.get_best_candidate()?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Example: Neuromodulation
+//!
+//! ```rust
+//! use dpb_snn::neuromodulation::*;
+//!
+//! # fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create integrated modulatory network
+//! let config = ModulatoryNetworkConfig::default();
+//! let mut network = ModulatoryNetwork::new(config);
+//!
+//! // Update with reward signal (dopamine)
+//! network.update_with_reward(1.0, 1.0, 0.5)?;
+//!
+//! // Update with attention signal (acetylcholine)
+//! network.update_with_attention(1.0, 0.8)?;
+//!
+//! // Get learning rate modulation
+//! let lr_modulation = network.get_learning_rate_modulation();
+//!
+//! // Apply modulatory effects to plasticity
+//! let base_weight_change = 0.01;
+//! let modulated_change = network.modulate_weight_change(base_weight_change);
+//! # Ok(())
+//! # }
+//! ```
+//!
 //! ## Modules
 //!
 //! | Module | Description |
@@ -113,8 +170,11 @@
 //! | [`conversion`] | ANN-to-SNN conversion |
 //! | [`analysis`] | Training analysis and convergence |
 //! | [`learning`] | Unsupervised learning rules (STDP, Hebbian) |
+//! | [`neuromodulation`] | Neuromodulation systems (dopamine, acetylcholine, reward learning) |
 //! | [`optimization`] | Network pruning and compression |
+//! | [`distillation`] | Knowledge distillation for model compression |
 //! | [`export`] | Model export utilities |
+//! | [`neuromorphic`] | Neuromorphic hardware export (Loihi, SpiNNaker, BrainScaleS) |
 //! | [`gpu`] | GPU acceleration (CUDA, Metal) - requires `gpu` feature |
 //! | [`distributed`] | Distributed training infrastructure - requires `distributed` feature |
 
@@ -132,6 +192,9 @@ pub mod learning;
 pub mod optimization;
 pub mod calibration;
 pub mod explain;
+pub mod distillation;
+pub mod neuromorphic;
+pub mod neuromodulation;
 
 #[cfg(feature = "distributed")]
 pub mod distributed;
@@ -254,6 +317,56 @@ pub use explain::{
     AttentionMap, TemporalAttention, SpatialAttention,
     FeatureAttribution, GradientAttribution, IntegratedGradients, SpikeSHAP,
     ExplanationVisualizer, HeatmapData, export_explanation_json,
+};
+
+// Re-export distillation types
+pub use distillation::{
+    // Core distillation
+    TeacherStudentFramework, TeacherModel, StudentModel,
+    DistillationConfig, DistillationMode, KnowledgeTransfer,
+    // Loss functions
+    DistillationLoss, KLDivergenceLoss, MSELoss, CosineSimLoss,
+    HintLoss, AttentionTransferLoss, CombinedDistillationLoss, LossWeights,
+    // SNN-specific distillation
+    SpikePatternDistillation, SpikeRateDistillation,
+    MembranePotentialDistillation, SynapticWeightTransfer,
+    TemporalCreditAssignment, SpikeDistillationConfig,
+    // Compression utilities
+    ArchitectureSearch, LayerMerging, ChannelPruningGuided,
+    QuantizationAwareDistillation, CompressionMetrics,
+    CompressionConfig, SearchStrategy,
+    // Self-distillation
+    SelfDistillation, BornAgainNetworks, ProgressiveDistillation,
+    SelfDistillationConfig, ProgressiveConfig,
+};
+
+// Re-export neuromodulation types
+pub use neuromodulation::{
+    // Core types
+    Neuromodulator, NeuromodulatorType, ModulatorySystem,
+    ModulatorConcentration, DiffusionModel, ReceptorBinding,
+    Dopamine, Acetylcholine, Serotonin, Norepinephrine,
+    // Dopamine system
+    DopamineSystem, DopamineConfig, RewardPredictionError,
+    DopamineMode, DopamineReceptorType, StrialRegion,
+    // Acetylcholine system
+    AcetylcholineSystem, AcetylcholineConfig,
+    AChReceptorType, AttentionState, BasalForebrainRegion, ChAT,
+    // Reward-modulated learning
+    RewardModulatedSTDP, RewardSignal, EligibilityTrace,
+    TemporalCreditAssignment as NeuromodTemporalCreditAssignment,
+    IntrinsicMotivation, RewardShaping, ThreeFactorRule,
+    // Gating
+    GainModulation, GainModulationConfig, ModulationType,
+    InputGating, OutputGating, ThresholdModulation,
+    // Homeostasis
+    HomeostaticPlasticity, HomeostaticConfig, FiringRateHomeostasis,
+    SynapticScaling, IntrinsicPlasticity, Metaplasticity,
+    SleepConsolidation,
+    // Integration
+    ModulatoryNetwork, ModulatoryNetworkConfig,
+    ModulatorInteraction, SpatialScope, TemporalCoordination,
+    StateDependent, BrainState,
 };
 
 use dpb_core::error::{DpbError, Result};
