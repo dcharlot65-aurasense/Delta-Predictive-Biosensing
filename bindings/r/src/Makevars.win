@@ -1,0 +1,7 @@
+# Makevars.win for dpb R package (Windows)
+
+# Include path for DPB FFI header
+PKG_CFLAGS = -I../inst/include
+
+# Link against the DPB FFI library (Windows DLL)
+PKG_LIBS = -L../inst/libs -ldpb_ffi

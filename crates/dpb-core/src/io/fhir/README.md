@@ -39,7 +39,7 @@ let hr_obs = VitalSignsObservation::heart_rate(
     "obs-hr-001".to_string(),
     "patient-001".to_string(),
     72.0,  // BPM
-    "2024-01-01T12:00:00Z".to_string()
+    "2025-01-01T12:00:00Z".to_string()
 )
 .with_device("device-001".to_string())
 .build();
@@ -50,7 +50,7 @@ let bp_obs = VitalSignsObservation::blood_pressure(
     "patient-001".to_string(),
     120.0,  // Systolic
     80.0,   // Diastolic
-    "2024-01-01T12:00:00Z".to_string()
+    "2025-01-01T12:00:00Z".to_string()
 )
 .build();
 ```
@@ -65,14 +65,14 @@ let hr_observation = SignalToObservation::heart_rate(
     "obs-hr-123".to_string(),
     "patient-001".to_string(),
     75.0,
-    "2024-01-01T12:00:00Z".to_string(),
+    "2025-01-01T12:00:00Z".to_string(),
     Some("device-ecg-001".to_string())
 );
 
 // Convert HRV metrics
 let hrv_observations = MetricsToObservation::hrv_time_domain(
     "patient-001".to_string(),
-    "2024-01-01T12:00:00Z".to_string(),
+    "2025-01-01T12:00:00Z".to_string(),
     50.0,  // SDNN (ms)
     30.0,  // RMSSD (ms)
     20.0,  // pNN50 (%)
@@ -91,7 +91,7 @@ let report = AnalysisToReport::cardiac_assessment(
     "patient-001".to_string(),
     vec!["obs-hr-001".to_string(), "obs-bp-001".to_string()],
     "Normal sinus rhythm with appropriate heart rate variability.".to_string(),
-    "2024-01-01T12:30:00Z".to_string()
+    "2025-01-01T12:30:00Z".to_string()
 );
 ```
 

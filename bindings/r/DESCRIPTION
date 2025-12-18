@@ -1,0 +1,36 @@
+Package: dpb
+Type: Package
+Title: Delta-Predictive Biosensing Framework
+Version: 0.4.0
+Authors@R: c(
+    person("AuraSense", "Tech Corporation",
+           email = "dev@aurasense.tech",
+           role = c("aut", "cre", "cph")))
+Description: R interface to the Delta-Predictive Biosensing (DPB) framework
+    for neuromorphic signal processing, spike encoding, and biosignal analysis.
+    Provides efficient spike-based encoding of continuous biosignals using
+    level-crossing, delta, and temporal contrast encoders. Supports real-time
+    processing of ECG, EEG, EMG, PPG, and EDA signals with sub-millisecond
+    precision.
+License: MIT + file LICENSE
+URL: https://github.com/dcharlot65-aurasense/Delta-Predictive-Biosensing
+BugReports: https://github.com/dcharlot65-aurasense/Delta-Predictive-Biosensing/issues
+Encoding: UTF-8
+LazyData: true
+Depends: R (>= 4.0.0)
+Imports:
+    R6 (>= 2.5.0),
+    methods
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    ggplot2
+SystemRequirements:
+    Rust (>= 1.70),
+    Cargo,
+    libdpb_ffi shared library
+NeedsCompilation: yes
+RoxygenNote: 7.3.1
+VignetteBuilder: knitr
+Config/testthat/edition: 3

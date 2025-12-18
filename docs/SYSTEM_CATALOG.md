@@ -1,8 +1,10 @@
-# Delta-Predictive Biosensing (DPB) System Catalog v4.0.0
+# Delta-Predictive Biosensing (DPB) System Catalog v5.0.0
 
-> **Last Updated:** December 2024
+> **Last Updated:** December 2025
 > **Framework Version:** 0.4.0
-> **Total Modules:** 250+ | **Encoders:** 77+ | **Generators:** 200+ | **Decoders:** 48+
+> **Total Modules:** 290+ | **Encoders:** 77+ | **Generators:** 200+ | **Decoders:** 48+
+> **Language Bindings:** 6 (Python, Julia, MATLAB, R, LabVIEW, C/C++)
+> **Platform Targets:** 8 (Native, iOS, Android, WASM, Loihi, SpiNNaker, BrainScaleS, LSL)
 
 ---
 
@@ -11,10 +13,11 @@
 1. [Executive Summary](#1-executive-summary)
 2. [Capability → Implementation Map](#2-capability--implementation-map)
 3. [Implementation → Capabilities Map](#3-implementation--capabilities-map)
-4. [Dependency Graph](#4-dependency-graph)
-5. [Gap Analysis](#5-gap-analysis)
-6. [Quick Reference Tables](#6-quick-reference-tables)
-7. [Learning Resources](#7-learning-resources)
+4. [Cross-Platform Integration](#4-cross-platform-integration)
+5. [Dependency Graph](#5-dependency-graph)
+6. [Gap Analysis](#6-gap-analysis)
+7. [Quick Reference Tables](#7-quick-reference-tables)
+8. [Learning Resources](#8-learning-resources)
 
 ---
 
@@ -26,7 +29,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 
 | Metric | Count |
 |--------|-------|
-| Crates | 14 |
+| Crates | 17 |
 | Neuron Models | 19 + Reservoir + Multi-Compartment |
 | Event Encoders | 77+ |
 | Population Templates | 61+ |
@@ -39,10 +42,12 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | Data Formats | 10 (WFDB, EDF, GDF, BDF, XDF, BIDS, FHIR + auto-detect) |
 | GPU Backends | 2 (CUDA, Metal) |
 | Neuromorphic Targets | 3 (Loihi, SpiNNaker, BrainScaleS) |
-| Export Formats | 3 (ONNX, TFLite, Mobile) |
+| Export Formats | 5 (ONNX, TFLite, JSON, Binary, Mobile) |
 | Visualization Types | 6 |
 | Normative Databases | Age/Sex stratified (Pediatric/Adult/Geriatric) |
 | Learning Resources | 5 Books, 8 Notebooks, 5 Video Scripts |
+| **Language Bindings** | 6 (Python, Julia, MATLAB, R, LabVIEW, C/C++) |
+| **Web/Streaming** | 2 (WebAssembly, Lab Streaming Layer) |
 
 ### 1.2 Crate Overview
 
@@ -60,6 +65,21 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **dpb-python** | PyO3 Python bindings | 3,000+ |
 | **dpb-ffi** | C-compatible FFI | 1,500+ |
 | **dpb-bench** | Benchmarking suite | 2,500+ |
+| **dpb-wasm** ✅ NEW | WebAssembly bindings, browser deployment | 1,500+ |
+| **dpb-lsl** ✅ NEW | Lab Streaming Layer integration, real-time streaming | 2,500+ |
+| **dpb-export** ✅ NEW | ONNX, JSON, Binary export, model metadata | 2,000+ |
+
+### 1.3 Language Bindings Overview
+
+| Binding | Location | Interface | Status |
+|---------|----------|-----------|--------|
+| **Python** | `crates/dpb-python/` | PyO3 native extension | ✅ Complete |
+| **Julia** | `bindings/julia/` | C FFI via CBinding.jl | ✅ Complete |
+| **MATLAB** | `bindings/matlab/` | MEX functions | ✅ Complete |
+| **R** ✅ NEW | `bindings/r/` | R6 classes via .Call() | ✅ Complete |
+| **LabVIEW** ✅ NEW | `bindings/labview/` | Call Library Function Nodes | ✅ Complete |
+| **C/C++** | `crates/dpb-ffi/` | cbindgen C headers | ✅ Complete |
+| **JavaScript/WASM** ✅ NEW | `crates/dpb-wasm/` | wasm-bindgen | ✅ Complete |
 
 ---
 
@@ -443,59 +463,278 @@ dpb-encoders/               → Event-based encoders
 dpb-python/                 → Python bindings
 dpb-ffi/                    → C FFI
 dpb-bench/                  → Benchmarking
+dpb-wasm/ ✅ NEW            → WebAssembly bindings
+dpb-lsl/ ✅ NEW             → Lab Streaming Layer integration
+dpb-export/ ✅ NEW          → Model export (ONNX, JSON, Binary)
+```
+
+### 3.6 Cross-Platform Bindings ✅ NEW
+
+```
+bindings/
+├── r/ ✅ NEW
+│   ├── DESCRIPTION         → CRAN package metadata
+│   ├── NAMESPACE           → Export declarations
+│   ├── R/
+│   │   ├── dpb.R           → Package load, version, error handling
+│   │   ├── timeseries.R    → R6 TimeSeries class
+│   │   ├── spiketrain.R    → R6 SpikeTrain class
+│   │   └── encoders.R      → LevelCrossingEncoder, DeltaEncoder
+│   └── src/
+│       └── dpb_r.c         → C bridge to DPB FFI
+├── labview/ ✅ NEW
+│   └── README.md           → Integration guide, VI specifications
+├── julia/                  → Julia bindings (C FFI)
+└── matlab/                 → MATLAB MEX bindings
+```
+
+### 3.7 dpb-wasm (WebAssembly) ✅ NEW
+
+```
+dpb-wasm/
+├── Cargo.toml              → wasm-bindgen 0.2.93, optional WebGPU
+└── src/
+    ├── lib.rs              → Module init, PerformanceTimer
+    ├── timeseries.rs       → WasmTimeSeries (Float32Array interop)
+    ├── spiketrain.rs       → WasmSpikeTrain (event storage)
+    ├── encoders.rs         → Level crossing, Delta, Temporal contrast
+    └── utils.rs            → Panic hook, console logging
+```
+
+### 3.8 dpb-lsl (Lab Streaming Layer) ✅ NEW
+
+```
+dpb-lsl/
+├── Cargo.toml              → Optional async/tokio feature
+└── src/
+    ├── lib.rs              → ChannelFormat, stream_types constants
+    ├── error.rs            → LslError enum, Result type
+    ├── stream_info.rs      → StreamInfo, StreamInfoBuilder, ChannelInfo
+    ├── inlet.rs            → LslInlet, InletConfig, AsyncLslInlet
+    ├── outlet.rs           → LslOutlet, SpikeOutlet, OutletBuilder
+    ├── resolver.rs         → StreamResolver, StreamWatcher, queries
+    └── pipeline.rs         → EncodingPipeline, PipelineConfig, stats
+```
+
+### 3.9 dpb-export (Model Export) ✅ NEW
+
+```
+dpb-export/
+├── Cargo.toml              → Optional onnx, tensorflow, pytorch features
+└── src/
+    ├── lib.rs              → ExportFormat, ModelExporter
+    ├── error.rs            → ExportError enum
+    ├── metadata.rs         → ModelMetadata, TensorSpec, DataType
+    ├── encoder_export.rs   → EncoderParams, EncoderState, ExportableEncoder
+    ├── json.rs             → JsonExporter, PipelineConfig
+    ├── binary.rs           → BinaryExporter, BinaryImporter (embedded format)
+    └── onnx.rs             → OnnxExporter, computation graph generation
 ```
 
 ---
 
-## 4. Dependency Graph
+## 4. Cross-Platform Integration
 
-### 4.1 Crate Dependencies
+This section provides detailed documentation for all cross-platform integrations.
+
+### 4.1 Language Binding Architecture
 
 ```
-                                    ┌─────────────────┐
-                                    │   dpb-python    │
-                                    │   dpb-ffi       │
-                                    └────────┬────────┘
-                                             │
-              ┌──────────────────────────────┼──────────────────────────────┐
-              │                              │                              │
-              ▼                              ▼                              ▼
-    ┌─────────────────┐           ┌─────────────────┐           ┌─────────────────┐
-    │   dpb-bench     │           │   dpb-snn       │           │   dpb-synth     │
-    └────────┬────────┘           │ ✅ +distillation │          └────────┬────────┘
-             │                    │ ✅ +neuromorphic │                   │
-             │                    │ ✅ +neuromodulat │                   │
-             │                    └────────┬────────┘                    │
-             │                             │                              │
-             │                    ┌────────┴────────┐                     │
-             │                    │                 │                     │
-             │                    ▼                 ▼                     │
-             │          ┌─────────────────┐  ┌─────────────────┐         │
-             │          │  dpb-neurons    │  │  dpb-encoders   │         │
-             │          │ ✅ +dendritic   │  └────────┬────────┘         │
-             │          └────────┬────────┘           │                  │
-             │                   │                    │                  │
-             │                   └──────────┬─────────┘                  │
-             │                              │                            │
-             │                              ▼                            │
-             │                   ┌─────────────────┐                     │
-             │                   │   dpb-norms     │◄────────────────────┤
-             │                   └────────┬────────┘                     │
-             │                            │                              │
-             └────────────────────────────┼──────────────────────────────┘
-                                          │
-                    ┌─────────────────────┼─────────────────────┐
-                    │                     │                     │
-                    ▼                     ▼                     ▼
-          ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-          │   dpb-viz       │  │   dpb-core      │  │   dpb-mobile    │
-          │                 │  │ ✅ +BIDS        │  │                 │
-          │                 │  │ ✅ +FHIR        │  │                 │
-          │                 │  │ ✅ +EMD         │  │                 │
-          └─────────────────┘  └─────────────────┘  └─────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                            LANGUAGE BINDINGS ARCHITECTURE                            │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                      │
+│  Native Rust Crates                    FFI Layer                 Language Bindings  │
+│  ─────────────────                     ─────────                 ─────────────────  │
+│                                                                                      │
+│  ┌─────────────┐                   ┌─────────────┐            ┌─────────────────┐   │
+│  │ dpb-core    │──────────────────►│ dpb-ffi     │───────────►│ Python (PyO3)   │   │
+│  │ dpb-encoders│                   │ (C headers) │            │ Julia (CBinding)│   │
+│  │ dpb-neurons │                   └──────┬──────┘            │ MATLAB (MEX)    │   │
+│  │ dpb-snn     │                          │                   │ R (.Call())     │   │
+│  └─────────────┘                          │                   │ LabVIEW (CLFN)  │   │
+│                                           │                   │ C/C++ (direct)  │   │
+│                                           │                   └─────────────────┘   │
+│                                           │                                          │
+│                                           ▼                                          │
+│  ┌─────────────┐                   ┌─────────────┐            ┌─────────────────┐   │
+│  │ dpb-wasm    │◄──────────────────│ dpb-export  │───────────►│ ONNX Runtime    │   │
+│  │ (browser)   │                   │ (formats)   │            │ TensorFlow Lite │   │
+│  └──────┬──────┘                   └─────────────┘            │ Edge Devices    │   │
+│         │                                                     └─────────────────┘   │
+│         ▼                                                                            │
+│  ┌─────────────────┐               ┌─────────────┐            ┌─────────────────┐   │
+│  │ JavaScript/     │               │ dpb-lsl     │───────────►│ LSL Ecosystem   │   │
+│  │ TypeScript      │               │ (streaming) │            │ OpenBCI, Muse   │   │
+│  │ Web Apps        │               └─────────────┘            │ BrainVision     │   │
+│  └─────────────────┘                                          └─────────────────┘   │
+│                                                                                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 Feature Flags
+### 4.2 R Bindings
+
+| Capability | Implementation | Notes |
+|------------|----------------|-------|
+| **TimeSeries** | `TimeSeries` R6 class | Matrix storage, FFI bridge |
+| **SpikeTrain** | `SpikeTrain` R6 class | Event-based storage |
+| **Level Crossing Encoder** | `LevelCrossingEncoder` R6 class | Threshold-based encoding |
+| **Delta Encoder** | `DeltaEncoder` R6 class | Change-based encoding |
+| **File I/O** | `timeseries_from_file()` | CSV, custom formats |
+| **Version Info** | `dpb_version()` | Library version |
+| **Error Handling** | `dpb_last_error()`, `dpb_clear_error()` | Thread-local errors |
+
+**Installation:**
+```r
+# From source
+install.packages("devtools")
+devtools::install_local("bindings/r")
+
+# Usage
+library(dpb)
+ts <- TimeSeries$new(data_matrix, sample_rate = 256)
+encoder <- LevelCrossingEncoder$new(threshold = 0.1, num_channels = 8)
+spikes <- encoder$encode(ts)
+```
+
+### 4.3 LabVIEW Integration
+
+| Component | VI/Function | Description |
+|-----------|-------------|-------------|
+| **Library Loading** | Call Library Function Node | Load dpb_ffi.dll/.so/.dylib |
+| **TimeSeries** | DPB_TimeSeries_Create.vi | Create from 2D array |
+| **Encoding** | DPB_Encoder_Encode.vi | Generic encoder wrapper |
+| **Spike Output** | DPB_SpikeTrain_GetData.vi | Extract spike data |
+| **Error Handling** | DPB_GetLastError.vi | Thread-safe error messages |
+
+### 4.4 WebAssembly (WASM)
+
+| Capability | Implementation | Notes |
+|------------|----------------|-------|
+| **WasmTimeSeries** | `WasmTimeSeries` class | Float32Array integration |
+| **WasmSpikeTrain** | `WasmSpikeTrain` class | JavaScript event access |
+| **Level Crossing** | `WasmLevelCrossingEncoder` | Browser-side encoding |
+| **Delta Encoder** | `WasmDeltaEncoder` | Adaptive thresholds |
+| **Temporal Contrast** | `WasmTemporalContrastEncoder` | Event-based vision style |
+| **Performance Timer** | `PerformanceTimer` | Benchmarking utilities |
+
+**Usage:**
+```javascript
+import init, { WasmTimeSeries, WasmLevelCrossingEncoder } from 'dpb-wasm';
+
+await init();
+const ts = WasmTimeSeries.new(new Float32Array(data), numChannels, sampleRate);
+const encoder = WasmLevelCrossingEncoder.new(0.1, numChannels);
+const spikes = encoder.encode(ts);
+console.log(`Generated ${spikes.spikeCount()} spikes`);
+```
+
+### 4.5 Lab Streaming Layer (LSL)
+
+| Capability | Implementation | Notes |
+|------------|----------------|-------|
+| **Stream Discovery** | `StreamResolver` | Find streams by name/type/property |
+| **Data Reception** | `LslInlet` | Pull samples/chunks |
+| **Data Transmission** | `LslOutlet` | Push samples/chunks |
+| **Spike Streaming** | `SpikeOutlet` | Specialized spike output |
+| **Real-time Pipeline** | `EncodingPipeline` | Live encoding with stats |
+| **Async Support** | `AsyncLslInlet` | Tokio integration |
+
+**Pipeline Example:**
+```rust
+use dpb_lsl::{EncodingPipeline, PipelineBuilder, EncoderType};
+
+let pipeline = PipelineBuilder::new()
+    .input_stream("MyEEG")
+    .input_type("EEG")
+    .output_name("DPB_Spikes")
+    .encoder(EncoderType::LevelCrossing)
+    .threshold(0.1)
+    .adaptive(true)
+    .build();
+
+pipeline.start(5.0)?;  // 5 second timeout
+```
+
+### 4.6 Model Export Formats
+
+| Format | Exporter | Use Case |
+|--------|----------|----------|
+| **ONNX** | `OnnxExporter` | Universal deployment, cross-platform |
+| **JSON** | `JsonExporter` | Configuration, human-readable params |
+| **Binary** | `BinaryExporter` | Embedded systems, fast loading |
+| **TFLite** | (via dpb-snn) | Mobile deployment |
+
+**Export Example:**
+```rust
+use dpb_export::{ModelExporter, JsonExporter};
+
+let exporter = ModelExporter::new()
+    .with_name("ECG_Encoder")
+    .with_version("1.0.0")
+    .with_metadata("encoder_type", "level_crossing");
+
+exporter.export_json("model_config.json", &encoder)?;
+exporter.export_binary("model.dpb", &encoder)?;
+
+#[cfg(feature = "onnx")]
+exporter.export_onnx("model.onnx", &encoder)?;
+```
+
+---
+
+## 5. Dependency Graph
+
+### 5.1 Crate Dependencies
+
+```
+                         ┌─────────────────────────────────────────────────────────┐
+                         │               LANGUAGE BINDINGS LAYER                    │
+                         │  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌──────────┐ │
+                         │  │dpb-python │ │ dpb-ffi   │ │ dpb-wasm  │ │ R/LabVIEW│ │
+                         │  │  (PyO3)   │ │(C headers)│ │  (WASM)   │ │(bindings)│ │
+                         │  └─────┬─────┘ └─────┬─────┘ └─────┬─────┘ └────┬─────┘ │
+                         └────────┼─────────────┼─────────────┼────────────┼───────┘
+                                  │             │             │            │
+              ┌───────────────────┼─────────────┼─────────────┼────────────┼────────┐
+              │                   │             │             │            │        │
+              ▼                   ▼             ▼             ▼            ▼        │
+    ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
+    │   dpb-bench     │  │   dpb-snn       │  │   dpb-synth     │  │ dpb-export  │ │
+    └────────┬────────┘  │ ✅ +distillation │  └────────┬────────┘  │ ✅ NEW      │ │
+             │           │ ✅ +neuromorphic │           │           │ONNX/JSON/Bin│ │
+             │           │ ✅ +neuromodulat │           │           └──────┬──────┘ │
+             │           └────────┬────────┘           │                  │        │
+             │                    │                    │                  │        │
+             │           ┌────────┴────────┐           │                  │        │
+             │           │                 │           │                  │        │
+             │           ▼                 ▼           │                  │        │
+             │  ┌─────────────────┐ ┌─────────────────┐│                  │        │
+             │  │  dpb-neurons    │ │  dpb-encoders   ││                  │        │
+             │  │ ✅ +dendritic   │ └────────┬────────┘│                  │        │
+             │  └────────┬────────┘          │         │                  │        │
+             │           │                   │         │                  │        │
+             │           └─────────┬─────────┘         │                  │        │
+             │                     │                   │                  │        │
+             │                     ▼                   │                  │        │
+             │          ┌─────────────────┐            │                  │        │
+             │          │   dpb-norms     │◄───────────┤                  │        │
+             │          └────────┬────────┘            │                  │        │
+             │                   │                     │                  │        │
+             └───────────────────┼─────────────────────┼──────────────────┼────────┘
+                                 │                     │                  │
+           ┌─────────────────────┼─────────────────────┼──────────────────┘
+           │                     │                     │
+           ▼                     ▼                     ▼
+ ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+ │   dpb-viz       │  │   dpb-core      │  │   dpb-mobile    │  │   dpb-lsl       │
+ │                 │  │ ✅ +BIDS        │  │                 │  │ ✅ NEW          │
+ │                 │  │ ✅ +FHIR        │  │                 │  │ LSL streaming   │
+ │                 │  │ ✅ +EMD         │  │                 │  │                 │
+ └─────────────────┘  └─────────────────┘  └─────────────────┘  └─────────────────┘
+```
+
+### 5.2 Feature Flags
 
 ```
 dpb-snn features:
@@ -523,13 +762,26 @@ dpb-mobile features:
 dpb-snn/export features:
 ├── onnx               → ONNX export
 └── tflite             → TensorFlow Lite export
+
+dpb-wasm features: ✅ NEW
+├── console_error_panic_hook → Better panic messages in browser
+└── webgpu             → WebGPU acceleration (experimental)
+
+dpb-lsl features: ✅ NEW
+└── async              → Tokio async runtime support
+
+dpb-export features: ✅ NEW
+├── onnx               → ONNX graph export
+├── tensorflow         → TensorFlow export (planned)
+├── pytorch            → PyTorch export (planned)
+└── full               → All export formats
 ```
 
-### 4.3 Data Flow Pipeline
+### 5.3 Data Flow Pipeline
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                              COMPLETE DATA FLOW v4.0                                     │
+│                              COMPLETE DATA FLOW v5.0                                     │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                          │
 │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐             │
@@ -583,11 +835,11 @@ dpb-snn/export features:
 
 ---
 
-## 5. Gap Analysis
+## 6. Gap Analysis
 
 This section answers: **"What's needed but missing?"**
 
-### 5.1 Implementation Status Matrix
+### 6.1 Implementation Status Matrix
 
 | Category | Feature | Status | Priority |
 |----------|---------|--------|----------|
@@ -612,12 +864,21 @@ This section answers: **"What's needed but missing?"**
 | **Export** | ONNX | ✅ Complete | - |
 | **Export** | TensorFlow Lite | ✅ Complete | - |
 | **Export** | Neuromorphic Hardware | ✅ Complete | - |
+| **Export** | JSON/Binary (dpb-export) | ✅ Complete | - |
 | **Visualization** | Dashboard/Raster/Heatmap | ✅ Complete | - |
 | **Mobile** | iOS/Android Runtime | ✅ Complete | - |
 | **Normative** | Pediatric/Adult/Geriatric | ✅ Complete | - |
 | **Learning** | Books/Notebooks/Videos | ✅ Complete | - |
+| **Bindings** | Python (PyO3) | ✅ Complete | - |
+| **Bindings** | Julia (C FFI) | ✅ Complete | - |
+| **Bindings** | MATLAB (MEX) | ✅ Complete | - |
+| **Bindings** | R (.Call/R6) | ✅ Complete | - |
+| **Bindings** | LabVIEW (CLFN) | ✅ Complete | - |
+| **Bindings** | C/C++ (cbindgen) | ✅ Complete | - |
+| **Web** | WebAssembly (dpb-wasm) | ✅ Complete | - |
+| **Streaming** | Lab Streaming Layer (dpb-lsl) | ✅ Complete | - |
 
-### 5.2 Remaining Gaps
+### 6.2 Remaining Gaps
 
 #### HIGH Priority
 
@@ -635,7 +896,7 @@ This section answers: **"What's needed but missing?"**
 | **Treatment Response** | Pre/post intervention modeling | Medium | Clinical utility |
 | **Performance Regression** | Automated CI/CD benchmarks | Low | Development velocity |
 | **Federated Learning** | Privacy-preserving distributed training | High | Multi-site collaboration |
-| **Edge Deployment** | WebAssembly, RISC-V targets | Medium | Browser/embedded use |
+| **liblsl Integration** | Complete liblsl C library bindings | Medium | Full LSL support |
 
 #### LOW Priority
 
@@ -644,9 +905,10 @@ This section answers: **"What's needed but missing?"**
 | **Comorbidity Modeling** | Multi-disease simulation | Medium | Research utility |
 | **Practice Effects** | Serial testing corrections | Low | Longitudinal accuracy |
 | **Additional Hardware** | Intel Gaudi, Graphcore IPU | High | Hardware diversity |
-| **Streaming Inference** | Continuous real-time processing | Medium | Real-time applications |
+| **WebGPU Acceleration** | GPU compute in browser via dpb-wasm | Medium | Browser performance |
+| **RISC-V Targets** | Embedded microcontroller support | Medium | IoT deployment |
 
-### 5.3 Module Completeness
+### 6.3 Module Completeness
 
 | Module | Core | Tests | Docs | Examples |
 |--------|:----:|:-----:|:----:|:--------:|
@@ -663,31 +925,39 @@ This section answers: **"What's needed but missing?"**
 | dpb-snn/distributed | ✅ | ✅ | ✅ | ✅ |
 | dpb-viz | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-mobile | ✅ | ✅ | ✅ | ✅ |
+| **dpb-wasm** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
+| **dpb-lsl** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
+| **dpb-export** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
+| **bindings/r** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
+| **bindings/labview** ✅ NEW | ✅ | - | ✅ | ⚠️ |
 
 Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
 
-### 5.4 Recommended Next Steps
+### 6.4 Recommended Next Steps
 
 1. **Immediate (Consolidation)**
-   - Add integration examples for BIDS, FHIR, TFLite, neuromorphic export
-   - Create end-to-end tutorial notebooks using new features
+   - Add unit tests for dpb-wasm, dpb-lsl, dpb-export, R bindings
+   - Create integration examples for all new cross-platform modules
    - Run validation against public datasets
+   - Test R package on CRAN check infrastructure
 
 2. **Short-term (Clinical Readiness)**
    - Implement HIPAA/PHI de-identification utilities
    - Add clinical validation test suite
    - Create regulatory documentation templates
+   - Complete liblsl C library bindings for dpb-lsl
 
 3. **Medium-term (Advanced Features)**
    - Federated learning for multi-site studies
-   - WebAssembly compilation for browser deployment
-   - Streaming inference pipeline
+   - WebGPU acceleration for dpb-wasm
+   - RISC-V embedded targets
+   - LabVIEW example VIs and palettes
 
 ---
 
-## 6. Quick Reference Tables
+## 7. Quick Reference Tables
 
-### 6.1 Signal Processing Quick Reference
+### 7.1 Signal Processing Quick Reference
 
 | Task | Function/Type | Location |
 |------|---------------|----------|
@@ -698,7 +968,7 @@ Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
 | Wavelet transform | `ContinuousWaveletTransform::transform()` | `dpb-core/signal/wavelet.rs` |
 | ICA | `FastICA::fit_transform()` | `dpb-core/signal/ica.rs` |
 
-### 6.2 Data Format Quick Reference
+### 7.2 Data Format Quick Reference
 
 | Format | Read | Write | Key Types |
 |--------|------|-------|-----------|
@@ -711,7 +981,7 @@ Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
 | FHIR | `FhirClient` | `FhirBundle` | `FhirObservation`, `FhirPatient` |
 | Auto | `UnifiedReader` | - | Magic byte detection |
 
-### 6.3 Neural Network Quick Reference
+### 7.3 Neural Network Quick Reference
 
 | Model Type | Class | Key Methods |
 |------------|-------|-------------|
@@ -722,7 +992,7 @@ Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
 | ESN | `EchoStateNetwork` | `forward()`, `train_readout()` |
 | LSM | `LiquidStateMachine` | `forward()`, `get_state()` |
 
-### 6.4 Training Quick Reference
+### 7.4 Training Quick Reference
 
 | Method | Class | When to Use |
 |--------|-------|-------------|
@@ -732,7 +1002,7 @@ Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
 | Distillation | `TeacherStudentTrainer` | Model compression |
 | Reward STDP | `RewardModulatedSTDP` | Reinforcement learning |
 
-### 6.5 Export Quick Reference
+### 7.5 Export Quick Reference
 
 | Target | Exporter | Output |
 |--------|----------|--------|
@@ -742,8 +1012,10 @@ Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
 | SpiNNaker | `SpinnakerExporter` | PyNN-compatible |
 | BrainScaleS | `BrainscalesExporter` | BrainScaleS mapping |
 | iOS/Android | `MobileRuntime` | Native runtime |
+| **JSON** ✅ NEW | `JsonExporter` | `.json` config |
+| **Binary** ✅ NEW | `BinaryExporter` | `.dpb` embedded |
 
-### 6.6 Neuromodulation Quick Reference
+### 7.6 Neuromodulation Quick Reference
 
 | System | Class | Effect |
 |--------|-------|--------|
@@ -752,11 +1024,36 @@ Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
 | Norepinephrine | `NorepinephrineSystem` | Arousal, gain modulation |
 | Serotonin | `SerotoninSystem` | Mood, temporal discounting |
 
+### 7.7 Cross-Platform Quick Reference ✅ NEW
+
+| Platform | Crate/Binding | Key Types/Classes | Build Command |
+|----------|---------------|-------------------|---------------|
+| **Python** | `dpb-python` | `TimeSeries`, `SpikeTrain`, encoders | `maturin build` |
+| **R** | `bindings/r` | `TimeSeries`, `SpikeTrain` R6 classes | `R CMD INSTALL` |
+| **Julia** | `bindings/julia` | `DPB.TimeSeries`, `DPB.encode` | Load via `include()` |
+| **MATLAB** | `bindings/matlab` | `dpb_timeseries`, `dpb_encode` | MEX compile |
+| **LabVIEW** | `bindings/labview` | Call Library Function Nodes | NI LabVIEW |
+| **JavaScript** | `dpb-wasm` | `WasmTimeSeries`, `WasmLevelCrossingEncoder` | `wasm-pack build` |
+| **LSL** | `dpb-lsl` | `LslInlet`, `LslOutlet`, `EncodingPipeline` | `cargo build -p dpb-lsl` |
+
+### 7.8 LSL Stream Types Quick Reference ✅ NEW
+
+| Constant | Type | Description |
+|----------|------|-------------|
+| `stream_types::EEG` | `"EEG"` | Electroencephalography |
+| `stream_types::ECG` | `"ECG"` | Electrocardiography |
+| `stream_types::EMG` | `"EMG"` | Electromyography |
+| `stream_types::PPG` | `"PPG"` | Photoplethysmography |
+| `stream_types::EDA` | `"EDA"` | Electrodermal activity |
+| `stream_types::RESP` | `"Respiration"` | Respiratory signals |
+| `stream_types::MARKERS` | `"Markers"` | Event markers |
+| `stream_types::SPIKES` | `"Spikes"` | DPB spike trains |
+
 ---
 
-## 7. Learning Resources
+## 8. Learning Resources
 
-### 7.1 Documentation Structure
+### 8.1 Documentation Structure
 
 ```
 docs/learning/
@@ -778,7 +1075,7 @@ docs/learning/
     └── video_scripts/          → 5 episode scripts (~38 min total)
 ```
 
-### 7.2 Learning Path
+### 8.2 Learning Path
 
 | Level | Content | Time |
 |-------|---------|------|
@@ -787,7 +1084,7 @@ docs/learning/
 | **Advanced** | Book 5, Notebooks 07-08 | ~8 hours |
 | **Video Series** | Episodes 1-5 | ~40 minutes |
 
-### 7.3 Quick Cards Available
+### 8.3 Quick Cards Available
 
 1. **Signal Types** - ECG, EEG, EMG, PPG, EDA at a glance
 2. **Normal vs Abnormal** - Reference ranges and warning signs
@@ -801,10 +1098,11 @@ docs/learning/
 
 | Version | Date | Changes |
 |---------|------|---------|
-| v1.0.0 | Dec 2024 | Initial catalog |
-| v2.0.0 | Dec 2024 | ECG/HRV, transforms, pipeline, calibration, explainability |
-| v3.0.0 | Dec 2024 | GPU, distributed, dpb-viz, GDF/BDF/XDF, dpb-mobile |
-| v4.0.0 | Dec 2024 | **Knowledge distillation**, **BIDS**, **FHIR**, **neuromorphic export**, **TFLite**, **EMD/EEMD**, **dendritic computation**, **neuromodulation**, **learning library** |
+| v1.0.0 | Dec 2025 | Initial catalog |
+| v2.0.0 | Dec 2025 | ECG/HRV, transforms, pipeline, calibration, explainability |
+| v3.0.0 | Dec 2025 | GPU, distributed, dpb-viz, GDF/BDF/XDF, dpb-mobile |
+| v4.0.0 | Dec 2025 | Knowledge distillation, BIDS, FHIR, neuromorphic export, TFLite, EMD/EEMD, dendritic computation, neuromodulation, learning library |
+| v5.0.0 | Dec 2025 | **R bindings**, **LabVIEW bindings**, **dpb-wasm** (WebAssembly), **dpb-lsl** (Lab Streaming Layer), **dpb-export** (ONNX/JSON/Binary), cross-platform integration |
 
 ---
 
@@ -828,6 +1126,15 @@ cargo build -p dpb-snn --features metal
 cargo build -p dpb-mobile --target aarch64-apple-ios --features ios
 cargo ndk --target aarch64-linux-android -- build -p dpb-mobile --features android
 
+# Cross-platform builds (NEW)
+cargo build -p dpb-wasm --target wasm32-unknown-unknown
+wasm-pack build crates/dpb-wasm --target web
+cargo build -p dpb-lsl --features async
+cargo build -p dpb-export --features onnx
+
+# R package build
+R CMD INSTALL bindings/r
+
 # Run all tests
 cargo test --all
 
@@ -837,7 +1144,7 @@ cargo doc --no-deps --all-features --open
 
 ---
 
-## Appendix C: File Counts by Module (v4.0.0)
+## Appendix C: File Counts by Module (v5.0.0)
 
 | Module | Files | Approx LOC |
 |--------|-------|------------|
@@ -850,8 +1157,13 @@ cargo doc --no-deps --all-features --open
 | dpb-viz | 7 | 4,500 |
 | dpb-mobile | 8 | 4,000 |
 | docs/learning | 55+ | 25,000 |
-| **Total** | **250+** | **~180,000** |
+| **dpb-wasm** ✅ NEW | 5 | 1,500 |
+| **dpb-lsl** ✅ NEW | 7 | 2,500 |
+| **dpb-export** ✅ NEW | 7 | 2,000 |
+| **bindings/r** ✅ NEW | 11 | 1,500 |
+| **bindings/labview** ✅ NEW | 1 | 500 |
+| **Total** | **290+** | **~188,000** |
 
 ---
 
-*End of System Catalog v4.0.0*
+*End of System Catalog v5.0.0*

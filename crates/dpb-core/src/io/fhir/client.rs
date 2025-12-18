@@ -413,11 +413,11 @@ mod tests {
     #[test]
     fn test_search_params_date_range() {
         let params = SearchParams::new()
-            .date_range("2024-01-01".to_string(), "2024-12-31".to_string());
+            .date_range("2025-01-01".to_string(), "2025-12-31".to_string());
 
         let query = params.to_query_string();
-        assert!(query.contains("date=ge2024-01-01"));
-        assert!(query.contains("date=le2024-12-31"));
+        assert!(query.contains("date=ge2025-01-01"));
+        assert!(query.contains("date=le2025-12-31"));
     }
 
     #[test]

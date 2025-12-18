@@ -1,0 +1,48 @@
+[package]
+name = "dpb-export"
+version = "0.4.0"
+edition = "2021"
+authors = ["AuraSense Tech Corporation"]
+description = "Model export capabilities for DPB Framework - ONNX, TensorFlow, and more"
+license = "MIT"
+repository = "https://github.com/dcharlot65-aurasense/Delta-Predictive-Biosensing"
+keywords = ["onnx", "export", "model", "neural-network", "biosignal"]
+categories = ["science", "encoding"]
+
+[features]
+default = []
+# Enable ONNX export support
+onnx = ["tract-onnx"]
+# Enable TensorFlow/Keras support
+tensorflow = []
+# Enable PyTorch export support
+pytorch = []
+# Enable all export formats
+full = ["onnx", "tensorflow", "pytorch"]
+
+[dependencies]
+# Error handling
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# ONNX runtime (optional)
+tract-onnx = { version = "0.21", optional = true }
+
+# Numeric operations
+ndarray = "0.15"
+
+# UUID for model identification
+uuid = { version = "1.0", features = ["v4"] }
+
+# Timestamps
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+tempfile = "3.10"
+tracing-subscriber = "0.3"

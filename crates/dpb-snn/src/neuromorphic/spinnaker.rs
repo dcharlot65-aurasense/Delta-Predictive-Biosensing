@@ -361,7 +361,7 @@ impl NeuromorphicExporter for SpiNNakerExporter {
         };
 
         let metadata = ExportMetadata {
-            timestamp: "2024-01-01T00:00:00Z".to_string(),
+            timestamp: "2025-01-01T00:00:00Z".to_string(),
             stats,
             utilization,
         };
