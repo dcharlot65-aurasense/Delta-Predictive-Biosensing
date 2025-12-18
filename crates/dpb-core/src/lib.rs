@@ -42,6 +42,7 @@
 //! - [`gpu`] - GPU infrastructure and utilities
 //! - [`signal`] - Signal processing tools
 //! - [`math`] - Mathematical and statistical utilities
+//! - [`pipeline`] - Real-time processing pipeline infrastructure with buffering and latency tracking
 //! - [`power`] - Power estimation models for neuromorphic and conventional hardware
 //! - [`viz`] - Visualization utilities for signals, spikes, networks, training, and analysis
 //! - [`io`] - I/O support for physiological data formats (WFDB, EDF)
@@ -59,6 +60,7 @@ pub mod io;
 pub mod math;
 pub mod metrics;
 pub mod pain;
+pub mod pipeline;
 pub mod power;
 pub mod signal;
 pub mod sleep;

@@ -12,6 +12,8 @@
 //! - Model export capabilities
 //! - Training analysis and convergence detection
 //! - 44 ANN baseline architectures for fair SNN comparison
+//! - Model calibration and uncertainty quantification
+//! - Explainability and interpretability tools
 
 pub mod tensor;
 pub mod layers;
@@ -25,6 +27,8 @@ pub mod analysis;
 pub mod baselines;
 pub mod learning;
 pub mod optimization;
+pub mod calibration;
+pub mod explain;
 
 // Re-export commonly used types
 pub use tensor::{SpikeTensor, SpikeRepresentation};
@@ -125,6 +129,23 @@ pub use learning::{
 
 // Re-export optimization types
 pub use optimization::{NetworkPruner, PruningMask, PruningSchedule, PruningStats, PruningStrategy};
+
+// Re-export calibration types
+pub use calibration::{
+    TemperatureScaling, PlattScaling, IsotonicCalibration,
+    UncertaintyEstimator, MCDropout, EnsembleUncertainty, ConfidenceInterval,
+    expected_calibration_error, maximum_calibration_error, reliability_diagram,
+    brier_score, negative_log_likelihood, ReliabilityBin, bootstrap_ci,
+};
+
+// Re-export explainability types
+pub use explain::{
+    SpikeImportance, NeuronImportance, LayerImportance,
+    compute_spike_importance, compute_importance_by_perturbation, aggregate_to_neurons,
+    AttentionMap, TemporalAttention, SpatialAttention,
+    FeatureAttribution, GradientAttribution, IntegratedGradients, SpikeSHAP,
+    ExplanationVisualizer, HeatmapData, export_explanation_json,
+};
 
 use dpb_core::error::{DpbError, Result};
 use ndarray::{Array, ArrayD};
