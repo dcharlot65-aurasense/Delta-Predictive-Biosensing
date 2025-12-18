@@ -9,6 +9,7 @@ pub mod fft;
 pub mod filter;
 pub mod ppg;
 pub mod resample;
+pub mod respiratory;
 pub mod voice;
 
 pub use fft::{FftProcessor, Stft, WindowType, create_window, fft_frequencies, stft_times};
@@ -51,6 +52,13 @@ pub use fatigue::{
     CognitiveFatigueAnalyzer, CognitiveFatigueMetrics,
     IntegratedFatigueMetrics, FatigueType, FatigueSeverity,
     integrate_fatigue,
+};
+
+// Respiratory analysis exports
+pub use respiratory::{
+    RespiratoryAnalyzer, RespiratoryMetrics, RespiratoryPattern, PatternType,
+    BreathEvent, ApneaEvent, ApneaType, ApneaSeverity,
+    SleepBreathingAnalysis, SleepApneaSeverity, analyze_sleep_breathing,
 };
 
 use crate::error::{DpbError, Result};
