@@ -1,35 +1,36 @@
-//! # EDF (European Data Format) Support
+//! # BDF (BioSemi Data Format) Support
 //!
-//! This module provides support for reading and writing European Data Format (EDF) files,
-//! which are widely used for storing polysomnography, EEG, and other physiological signals.
+//! This module provides support for reading and writing BioSemi Data Format (BDF) files,
+//! which is a 24-bit variant of the EDF format used by BioSemi active electrode systems.
 //!
 //! ## Format Overview
 //!
-//! EDF format consists of:
-//! - **Header** (256 bytes): General recording information
-//! - **Signal Headers** (256 bytes per signal): Signal-specific metadata
-//! - **Data Records**: Contiguous blocks of signal samples
+//! BDF format features:
+//! - **Header** (256 + 256*n_signals bytes): Similar to EDF
+//! - **24-bit samples**: Higher resolution than EDF's 16-bit
+//! - **Status channel**: Contains trigger and sensor status information
+//! - **Data Records**: Contiguous blocks of 24-bit samples
 //!
-//! EDF+ is an extension that supports:
-//! - Interrupted recordings
-//! - Annotations (events and timestamps)
-//! - Variable record duration
+//! ## Key Differences from EDF
+//!
+//! - Uses 24-bit signed integers instead of 16-bit
+//! - Version field starts with 0xFF (255) instead of "0"
+//! - Status channel contains trigger codes and CMS/DRL information
 //!
 //! ## References
 //!
-//! - [EDF Specification](https://www.edfplus.info/specs/edf.html)
-//! - [EDF+ Specification](https://www.edfplus.info/specs/edfplus.html)
+//! - [BioSemi Data Format](https://www.biosemi.com/faq/file_format.htm)
 
 use crate::error::{DpbError, Result};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
-/// EDF file header
+/// BDF file header
 #[derive(Debug, Clone)]
-pub struct EdfHeader {
-    /// Version of data format (typically "0")
-    pub version: String,
+pub struct BdfHeader {
+    /// Version identifier (should be 255/0xFF for BDF or "BIOSEMI" string)
+    pub version: u8,
     /// Local patient identification
     pub patient_id: String,
     /// Local recording identification
@@ -46,11 +47,11 @@ pub struct EdfHeader {
     pub n_signals: usize,
 }
 
-impl EdfHeader {
-    /// Create a new EDF header
+impl BdfHeader {
+    /// Create a new BDF header
     pub fn new(patient_id: String, recording_id: String, n_signals: usize) -> Self {
         Self {
-            version: "0".to_string(),
+            version: 255, // BDF identifier
             patient_id,
             recording_id,
             start_date: "01.01.00".to_string(),
@@ -74,46 +75,70 @@ impl EdfHeader {
         self.record_duration = duration;
         self
     }
+
+    /// Check if this is a valid BDF header
+    pub fn is_bdf(&self) -> bool {
+        self.version == 255
+    }
 }
 
-/// Signal-specific metadata
+/// BDF signal descriptor
 #[derive(Debug, Clone)]
-pub struct EdfSignal {
-    /// Label (e.g., "EEG Fpz-Cz")
+pub struct BdfSignal {
+    /// Label (e.g., "EEG Fpz-Cz" or "Status")
     pub label: String,
-    /// Transducer type (e.g., "AgAgCl electrode")
+    /// Transducer type (e.g., "Active Electrode")
     pub transducer_type: String,
-    /// Physical dimension (e.g., "uV", "degreeC")
+    /// Physical dimension (e.g., "uV", "Boolean")
     pub physical_dimension: String,
-    /// Physical minimum (e.g., -500.0 or -500 uV)
+    /// Physical minimum (e.g., -262144.0)
     pub physical_min: f64,
-    /// Physical maximum (e.g., 500.0 or 500 uV)
+    /// Physical maximum (e.g., 262143.0)
     pub physical_max: f64,
-    /// Digital minimum (e.g., -2048)
-    pub digital_min: i16,
-    /// Digital maximum (e.g., 2047)
-    pub digital_max: i16,
-    /// Prefiltering (e.g., "HP:0.1Hz LP:75Hz")
+    /// Digital minimum (e.g., -8388608)
+    pub digital_min: i32,
+    /// Digital maximum (e.g., 8388607)
+    pub digital_max: i32,
+    /// Prefiltering (e.g., "HP:DC LP:410Hz")
     pub prefiltering: String,
     /// Number of samples in each data record
     pub samples_per_record: usize,
 }
 
-impl EdfSignal {
-    /// Create a new EDF signal descriptor
+impl BdfSignal {
+    /// Create a new BDF signal descriptor
     pub fn new(
         label: String,
         physical_dimension: String,
         samples_per_record: usize,
     ) -> Self {
+        // Default ranges for 24-bit data
+        let digital_min = -8388608; // -2^23
+        let digital_max = 8388607; // 2^23 - 1
+
         Self {
             label,
             transducer_type: String::new(),
             physical_dimension,
-            physical_min: -500.0,
-            physical_max: 500.0,
-            digital_min: -2048,
-            digital_max: 2047,
+            physical_min: -262144.0,
+            physical_max: 262143.0,
+            digital_min,
+            digital_max,
+            prefiltering: String::new(),
+            samples_per_record,
+        }
+    }
+
+    /// Create a status channel descriptor
+    pub fn status_channel(samples_per_record: usize) -> Self {
+        Self {
+            label: "Status".to_string(),
+            transducer_type: String::new(),
+            physical_dimension: "Boolean".to_string(),
+            physical_min: -8388608.0,
+            physical_max: 8388607.0,
+            digital_min: -8388608,
+            digital_max: 8388607,
             prefiltering: String::new(),
             samples_per_record,
         }
@@ -126,8 +151,8 @@ impl EdfSignal {
         self
     }
 
-    /// Set digital range
-    pub fn with_digital_range(mut self, min: i16, max: i16) -> Self {
+    /// Set digital range (usually 24-bit range)
+    pub fn with_digital_range(mut self, min: i32, max: i32) -> Self {
         self.digital_min = min;
         self.digital_max = max;
         self
@@ -138,8 +163,8 @@ impl EdfSignal {
         self.samples_per_record as f64 / record_duration
     }
 
-    /// Convert digital value to physical value
-    pub fn digital_to_physical(&self, digital: i16) -> f64 {
+    /// Convert 24-bit digital value to physical value
+    pub fn digital_to_physical(&self, digital: i32) -> f64 {
         let digital_range = self.digital_max - self.digital_min;
         let physical_range = self.physical_max - self.physical_min;
 
@@ -151,8 +176,8 @@ impl EdfSignal {
         self.physical_min + normalized * physical_range
     }
 
-    /// Convert physical value to digital value
-    pub fn physical_to_digital(&self, physical: f64) -> i16 {
+    /// Convert physical value to 24-bit digital value
+    pub fn physical_to_digital(&self, physical: f64) -> i32 {
         let physical_range = self.physical_max - self.physical_min;
         let digital_range = self.digital_max - self.digital_min;
 
@@ -163,34 +188,76 @@ impl EdfSignal {
         let normalized = (physical - self.physical_min) / physical_range;
         let digital = self.digital_min as f64 + normalized * digital_range as f64;
 
-        digital.round().clamp(self.digital_min as f64, self.digital_max as f64) as i16
+        digital
+            .round()
+            .clamp(self.digital_min as f64, self.digital_max as f64) as i32
+    }
+
+    /// Check if this is a status channel
+    pub fn is_status_channel(&self) -> bool {
+        self.label.to_lowercase().contains("status")
     }
 }
 
-/// EDF file reader
-pub struct EdfReader {
-    file: File,
-    header: EdfHeader,
-    signals: Vec<EdfSignal>,
-    header_bytes: usize,
+/// BDF trigger information extracted from status channel
+#[derive(Debug, Clone)]
+pub struct BdfTrigger {
+    /// Sample index where trigger occurred
+    pub sample: usize,
+    /// Trigger code (bits 0-15 of status word)
+    pub code: u16,
+    /// CMS in range flag
+    pub cms_in_range: bool,
+    /// Battery low flag
+    pub battery_low: bool,
 }
 
-impl EdfReader {
-    /// Open an EDF file for reading
+impl BdfTrigger {
+    /// Extract trigger from 24-bit status value
+    pub fn from_status_value(sample: usize, status: i32) -> Self {
+        let trigger_code = (status & 0xFFFF) as u16;
+        let cms_in_range = (status & 0x10000) != 0;
+        let battery_low = (status & 0x800000) != 0;
+
+        Self {
+            sample,
+            code: trigger_code,
+            cms_in_range,
+            battery_low,
+        }
+    }
+
+    /// Check if this is a valid trigger (non-zero code)
+    pub fn is_valid(&self) -> bool {
+        self.code != 0
+    }
+}
+
+/// BDF file reader
+pub struct BdfReader {
+    file: File,
+    header: BdfHeader,
+    signals: Vec<BdfSignal>,
+    header_bytes: usize,
+    status_channel_index: Option<usize>,
+}
+
+impl BdfReader {
+    /// Open a BDF file for reading
     ///
     /// # Arguments
     ///
-    /// * `path` - Path to the EDF file
+    /// * `path` - Path to the BDF file
     ///
     /// # Example
     ///
     /// ```rust,no_run
-    /// use dpb_core::io::EdfReader;
+    /// use dpb_core::io::BdfReader;
     /// use std::path::Path;
     ///
     /// # fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let reader = EdfReader::open(Path::new("data/sleep.edf"))?;
-    /// println!("Opened EDF with {} signals", reader.header().n_signals);
+    /// let reader = BdfReader::open(Path::new("data/biosemi.bdf"))?;
+    /// println!("Opened BDF with {} signals", reader.header().n_signals);
     /// # Ok(())
     /// # }
     /// ```
@@ -198,24 +265,37 @@ impl EdfReader {
         let mut file = File::open(path)?;
 
         let (header, signals) = Self::read_headers(&mut file)?;
+
+        if !header.is_bdf() {
+            return Err(DpbError::DataValidation(
+                "Not a valid BDF file (version byte != 255)".to_string(),
+            ));
+        }
+
         let header_bytes = 256 + signals.len() * 256;
+
+        // Find status channel
+        let status_channel_index = signals
+            .iter()
+            .position(|s| s.is_status_channel());
 
         Ok(Self {
             file,
             header,
             signals,
             header_bytes,
+            status_channel_index,
         })
     }
 
-    /// Read EDF header and signal headers
-    fn read_headers(file: &mut File) -> Result<(EdfHeader, Vec<EdfSignal>)> {
+    /// Read BDF header and signal headers
+    fn read_headers(file: &mut File) -> Result<(BdfHeader, Vec<BdfSignal>)> {
         // Read main header (256 bytes)
         let mut buffer = vec![0u8; 256];
         file.read_exact(&mut buffer)?;
 
         // Parse main header fields
-        let version = Self::read_ascii(&buffer[0..8]);
+        let version = buffer[0];
         let patient_id = Self::read_ascii(&buffer[8..88]);
         let recording_id = Self::read_ascii(&buffer[88..168]);
         let start_date = Self::read_ascii(&buffer[168..176]);
@@ -224,7 +304,6 @@ impl EdfReader {
             .parse::<usize>()
             .map_err(|_| DpbError::DataValidation("Invalid header bytes".to_string()))?;
 
-        // Skip reserved field (44 bytes)
         let n_records = Self::read_ascii(&buffer[236..244])
             .parse::<i32>()
             .map_err(|_| DpbError::DataValidation("Invalid record count".to_string()))?;
@@ -237,7 +316,7 @@ impl EdfReader {
             .parse::<usize>()
             .map_err(|_| DpbError::DataValidation("Invalid signal count".to_string()))?;
 
-        let header = EdfHeader {
+        let header = BdfHeader {
             version,
             patient_id,
             recording_id,
@@ -255,7 +334,7 @@ impl EdfReader {
 
         let mut signals = Vec::with_capacity(n_signals);
 
-        // Parse signal headers in EDF order
+        // Parse signal headers in BDF order (same as EDF)
         let labels = Self::read_signal_field(&signal_buffer, 0, 16, n_signals);
         let transducer_types = Self::read_signal_field(&signal_buffer, 16, 80, n_signals);
         let dimensions = Self::read_signal_field(&signal_buffer, 80, 8, n_signals);
@@ -267,7 +346,7 @@ impl EdfReader {
         let samples_per_record = Self::read_signal_field(&signal_buffer, 200, 8, n_signals);
 
         for i in 0..n_signals {
-            let signal = EdfSignal {
+            let signal = BdfSignal {
                 label: labels[i].clone(),
                 transducer_type: transducer_types[i].clone(),
                 physical_dimension: dimensions[i].clone(),
@@ -286,7 +365,9 @@ impl EdfReader {
                 prefiltering: prefiltering[i].clone(),
                 samples_per_record: samples_per_record[i]
                     .parse()
-                    .map_err(|_| DpbError::DataValidation("Invalid samples per record".to_string()))?,
+                    .map_err(|_| {
+                        DpbError::DataValidation("Invalid samples per record".to_string())
+                    })?,
             };
             signals.push(signal);
         }
@@ -316,20 +397,31 @@ impl EdfReader {
     }
 
     /// Get reference to the header
-    pub fn header(&self) -> &EdfHeader {
+    pub fn header(&self) -> &BdfHeader {
         &self.header
     }
 
     /// Get reference to signal descriptors
-    pub fn signals(&self) -> &[EdfSignal] {
+    pub fn signals(&self) -> &[BdfSignal] {
         &self.signals
     }
 
-    /// Check if this is an EDF+ file
-    pub fn is_edf_plus(&self) -> bool {
-        // EDF+ files have "EDF+C" or "EDF+D" in the reserved field
-        // This is a simplified check
-        self.header.recording_id.contains("EDF+")
+    /// Get status channel index if present
+    pub fn status_channel_index(&self) -> Option<usize> {
+        self.status_channel_index
+    }
+
+    /// Read 24-bit signed integer from 3 bytes
+    fn read_int24(bytes: &[u8]) -> i32 {
+        let mut buffer = [0u8; 4];
+        buffer[0..3].copy_from_slice(&bytes[0..3]);
+
+        // Sign extend if negative (bit 23 is set)
+        if bytes[2] & 0x80 != 0 {
+            buffer[3] = 0xFF;
+        }
+
+        i32::from_le_bytes(buffer)
     }
 
     /// Read all samples for a specific signal
@@ -356,17 +448,17 @@ impl EdfReader {
         let total_samples = signal.samples_per_record * self.header.n_records as usize;
         let mut samples = Vec::with_capacity(total_samples);
 
-        // Calculate bytes per record
+        // Calculate bytes per record (24-bit = 3 bytes per sample)
         let bytes_per_record: usize = self
             .signals
             .iter()
-            .map(|s| s.samples_per_record * 2)
+            .map(|s| s.samples_per_record * 3)
             .sum();
 
         // Calculate offset to this signal's data within each record
         let signal_offset: usize = self.signals[0..signal_index]
             .iter()
-            .map(|s| s.samples_per_record * 2)
+            .map(|s| s.samples_per_record * 3)
             .sum();
 
         // Seek to start of data records
@@ -377,15 +469,14 @@ impl EdfReader {
         let mut record_buffer = vec![0u8; bytes_per_record];
 
         for _ in 0..self.header.n_records {
-            self.file
-                .read_exact(&mut record_buffer)?;
+            self.file.read_exact(&mut record_buffer)?;
 
             // Extract this signal's samples from the record
             let signal_bytes = &record_buffer
-                [signal_offset..signal_offset + signal.samples_per_record * 2];
+                [signal_offset..signal_offset + signal.samples_per_record * 3];
 
-            for chunk in signal_bytes.chunks_exact(2) {
-                let digital = i16::from_le_bytes([chunk[0], chunk[1]]);
+            for chunk in signal_bytes.chunks_exact(3) {
+                let digital = Self::read_int24(chunk);
                 let physical = signal.digital_to_physical(digital);
                 samples.push(physical);
             }
@@ -394,15 +485,60 @@ impl EdfReader {
         Ok(samples)
     }
 
+    /// Read status channel and extract triggers
+    pub fn read_triggers(&mut self) -> Result<Vec<BdfTrigger>> {
+        let status_index = self.status_channel_index.ok_or_else(|| {
+            DpbError::Other("No status channel found in BDF file".to_string())
+        })?;
+
+        if self.header.n_records < 0 {
+            return Err(DpbError::Other(
+                "Unknown number of records".to_string(),
+            ));
+        }
+
+        let signal = &self.signals[status_index];
+        let mut triggers = Vec::new();
+
+        let bytes_per_record: usize = self
+            .signals
+            .iter()
+            .map(|s| s.samples_per_record * 3)
+            .sum();
+
+        let signal_offset: usize = self.signals[0..status_index]
+            .iter()
+            .map(|s| s.samples_per_record * 3)
+            .sum();
+
+        self.file
+            .seek(SeekFrom::Start(self.header_bytes as u64))?;
+
+        let mut record_buffer = vec![0u8; bytes_per_record];
+        let mut sample_counter = 0;
+
+        for _ in 0..self.header.n_records {
+            self.file.read_exact(&mut record_buffer)?;
+
+            let signal_bytes = &record_buffer
+                [signal_offset..signal_offset + signal.samples_per_record * 3];
+
+            for chunk in signal_bytes.chunks_exact(3) {
+                let status_value = Self::read_int24(chunk);
+                let trigger = BdfTrigger::from_status_value(sample_counter, status_value);
+
+                if trigger.is_valid() {
+                    triggers.push(trigger);
+                }
+
+                sample_counter += 1;
+            }
+        }
+
+        Ok(triggers)
+    }
+
     /// Read a specific data record (all signals)
-    ///
-    /// # Arguments
-    ///
-    /// * `record_index` - Index of the record to read (0-based)
-    ///
-    /// # Returns
-    ///
-    /// Vector of signal samples, one vector per signal
     pub fn read_record(&mut self, record_index: usize) -> Result<Vec<Vec<f64>>> {
         if self.header.n_records < 0 {
             return Err(DpbError::Other(
@@ -418,62 +554,57 @@ impl EdfReader {
             )));
         }
 
-        // Calculate bytes per record
         let bytes_per_record: usize = self
             .signals
             .iter()
-            .map(|s| s.samples_per_record * 2)
+            .map(|s| s.samples_per_record * 3)
             .sum();
 
-        // Seek to the specific record
         let record_offset = self.header_bytes + record_index * bytes_per_record;
         self.file
             .seek(SeekFrom::Start(record_offset as u64))?;
 
-        // Read the record
         let mut record_buffer = vec![0u8; bytes_per_record];
-        self.file
-            .read_exact(&mut record_buffer)?;
+        self.file.read_exact(&mut record_buffer)?;
 
-        // Parse samples for each signal
         let mut all_samples = Vec::with_capacity(self.header.n_signals);
         let mut offset = 0;
 
         for signal in &self.signals {
             let mut signal_samples = Vec::with_capacity(signal.samples_per_record);
-            let signal_bytes = &record_buffer[offset..offset + signal.samples_per_record * 2];
+            let signal_bytes = &record_buffer[offset..offset + signal.samples_per_record * 3];
 
-            for chunk in signal_bytes.chunks_exact(2) {
-                let digital = i16::from_le_bytes([chunk[0], chunk[1]]);
+            for chunk in signal_bytes.chunks_exact(3) {
+                let digital = Self::read_int24(chunk);
                 let physical = signal.digital_to_physical(digital);
                 signal_samples.push(physical);
             }
 
             all_samples.push(signal_samples);
-            offset += signal.samples_per_record * 2;
+            offset += signal.samples_per_record * 3;
         }
 
         Ok(all_samples)
     }
 }
 
-/// EDF file writer
-pub struct EdfWriter {
+/// BDF file writer
+pub struct BdfWriter {
     file: File,
-    header: EdfHeader,
-    signals: Vec<EdfSignal>,
+    header: BdfHeader,
+    signals: Vec<BdfSignal>,
     records_written: usize,
 }
 
-impl EdfWriter {
-    /// Create a new EDF writer
+impl BdfWriter {
+    /// Create a new BDF writer
     ///
     /// # Arguments
     ///
-    /// * `path` - Path to the EDF file to create
-    /// * `header` - EDF header
+    /// * `path` - Path to the BDF file to create
+    /// * `header` - BDF header
     /// * `signals` - Signal descriptors
-    pub fn new(path: &Path, header: EdfHeader, signals: Vec<EdfSignal>) -> Result<Self> {
+    pub fn new(path: &Path, header: BdfHeader, signals: Vec<BdfSignal>) -> Result<Self> {
         if signals.len() != header.n_signals {
             return Err(DpbError::InvalidParameter(format!(
                 "Signal count mismatch: header specifies {}, got {}",
@@ -492,32 +623,31 @@ impl EdfWriter {
         })
     }
 
-    /// Write EDF headers
+    /// Write BDF headers
     fn write_headers(&mut self) -> Result<()> {
-        // Calculate header size
         let header_bytes = 256 + self.header.n_signals * 256;
 
         // Write main header (256 bytes)
         let mut buffer = vec![b' '; 256];
-        Self::write_field(&mut buffer, 0, 8, &self.header.version);
+
+        // Version byte (255 for BDF)
+        buffer[0] = self.header.version;
+
         Self::write_field(&mut buffer, 8, 80, &self.header.patient_id);
         Self::write_field(&mut buffer, 88, 80, &self.header.recording_id);
         Self::write_field(&mut buffer, 168, 8, &self.header.start_date);
         Self::write_field(&mut buffer, 176, 8, &self.header.start_time);
         Self::write_field(&mut buffer, 184, 8, &header_bytes.to_string());
-        // Reserved field at 192 (44 bytes)
         Self::write_field(&mut buffer, 236, 8, &self.header.n_records.to_string());
         Self::write_field(&mut buffer, 244, 8, &self.header.record_duration.to_string());
         Self::write_field(&mut buffer, 252, 4, &self.header.n_signals.to_string());
 
-        self.file
-            .write_all(&buffer)?;
+        self.file.write_all(&buffer)?;
 
         // Write signal headers
         let signal_header_size = self.header.n_signals * 256;
         let mut signal_buffer = vec![b' '; signal_header_size];
 
-        // Write each field for all signals
         Self::write_signal_field(&mut signal_buffer, 0, 16, &self.signals, |s| s.label.clone());
         Self::write_signal_field(&mut signal_buffer, 16, 80, &self.signals, |s| {
             s.transducer_type.clone()
@@ -543,10 +673,8 @@ impl EdfWriter {
         Self::write_signal_field(&mut signal_buffer, 200, 8, &self.signals, |s| {
             s.samples_per_record.to_string()
         });
-        // Reserved field at 208 (32 bytes per signal)
 
-        self.file
-            .write_all(&signal_buffer)?;
+        self.file.write_all(&signal_buffer)?;
 
         Ok(())
     }
@@ -563,16 +691,22 @@ impl EdfWriter {
         buffer: &mut [u8],
         field_offset: usize,
         field_size: usize,
-        signals: &[EdfSignal],
+        signals: &[BdfSignal],
         accessor: F,
     ) where
-        F: Fn(&EdfSignal) -> String,
+        F: Fn(&BdfSignal) -> String,
     {
         for (i, signal) in signals.iter().enumerate() {
             let start = field_offset * signals.len() + i * field_size;
             let value = accessor(signal);
             Self::write_field(buffer, start, field_size, &value);
         }
+    }
+
+    /// Write 24-bit signed integer to 3 bytes
+    fn write_int24(value: i32) -> [u8; 3] {
+        let bytes = value.to_le_bytes();
+        [bytes[0], bytes[1], bytes[2]]
     }
 
     /// Write a data record
@@ -589,7 +723,6 @@ impl EdfWriter {
             )));
         }
 
-        // Verify sample counts and convert to digital values
         for (i, samples) in record.iter().enumerate() {
             if samples.len() != self.signals[i].samples_per_record {
                 return Err(DpbError::InvalidParameter(format!(
@@ -600,11 +733,10 @@ impl EdfWriter {
                 )));
             }
 
-            // Write samples for this signal
             for &sample in samples {
                 let digital = self.signals[i].physical_to_digital(sample);
-                self.file
-                    .write_all(&digital.to_le_bytes())?;
+                let bytes = Self::write_int24(digital);
+                self.file.write_all(&bytes)?;
             }
         }
 
@@ -612,20 +744,14 @@ impl EdfWriter {
         Ok(())
     }
 
-    /// Finalize the EDF file
+    /// Finalize the BDF file
     pub fn finish(mut self) -> Result<()> {
-        // Update header with actual record count
         self.header.n_records = self.records_written as i32;
 
-        // Seek to beginning and rewrite header
-        self.file
-            .seek(SeekFrom::Start(0))?;
-
+        self.file.seek(SeekFrom::Start(0))?;
         self.write_headers()?;
 
-        self.file
-            .flush()?;
-
+        self.file.flush()?;
         Ok(())
     }
 }
@@ -635,56 +761,82 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_signal_conversion() {
-        let signal = EdfSignal::new("EEG".to_string(), "uV".to_string(), 100)
-            .with_physical_range(-500.0, 500.0)
-            .with_digital_range(-2048, 2047);
+    fn test_int24_conversion() {
+        // Test positive value
+        let bytes = [0x01, 0x02, 0x03];
+        let value = BdfReader::read_int24(&bytes);
+        assert_eq!(value, 0x030201);
 
-        // Test digital to physical
-        // Note: digital range -2048 to 2047 is not symmetric, so 0 doesn't map exactly to 0.0
-        let physical = signal.digital_to_physical(0);
-        assert!((physical - 0.0).abs() < 1.0);
+        // Test negative value (sign bit set)
+        let bytes = [0xFF, 0xFF, 0xFF];
+        let value = BdfReader::read_int24(&bytes);
+        assert_eq!(value, -1);
 
-        let physical = signal.digital_to_physical(2047);
-        assert!((physical - 500.0).abs() < 1.0);
+        // Test zero
+        let bytes = [0x00, 0x00, 0x00];
+        let value = BdfReader::read_int24(&bytes);
+        assert_eq!(value, 0);
 
-        let physical = signal.digital_to_physical(-2048);
-        assert!((physical - (-500.0)).abs() < 1.0);
+        // Test write
+        let bytes = BdfWriter::write_int24(0x030201);
+        assert_eq!(bytes, [0x01, 0x02, 0x03]);
 
-        // Test physical to digital
-        let digital = signal.physical_to_digital(0.0);
-        assert!((digital - 0).abs() <= 1);
-
-        let digital = signal.physical_to_digital(500.0);
-        assert_eq!(digital, 2047);
-
-        let digital = signal.physical_to_digital(-500.0);
-        assert_eq!(digital, -2048);
+        let bytes = BdfWriter::write_int24(-1);
+        assert_eq!(bytes, [0xFF, 0xFF, 0xFF]);
     }
 
     #[test]
-    fn test_sample_rate() {
-        let signal = EdfSignal::new("EEG".to_string(), "uV".to_string(), 256);
-        let sample_rate = signal.sample_rate(1.0);
-        assert_eq!(sample_rate, 256.0);
+    fn test_signal_conversion() {
+        let signal = BdfSignal::new("EEG".to_string(), "uV".to_string(), 100)
+            .with_physical_range(-262144.0, 262143.0)
+            .with_digital_range(-8388608, 8388607);
 
-        let sample_rate = signal.sample_rate(2.0);
-        assert_eq!(sample_rate, 128.0);
+        let physical = signal.digital_to_physical(0);
+        assert!((physical - 0.0).abs() < 1.0);
+
+        let physical = signal.digital_to_physical(8388607);
+        assert!((physical - 262143.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn test_trigger_extraction() {
+        // Status value with trigger code 15
+        let trigger = BdfTrigger::from_status_value(100, 0x0F);
+        assert_eq!(trigger.sample, 100);
+        assert_eq!(trigger.code, 15);
+        assert!(trigger.is_valid());
+
+        // Status value with no trigger
+        let trigger = BdfTrigger::from_status_value(200, 0x00);
+        assert_eq!(trigger.code, 0);
+        assert!(!trigger.is_valid());
+
+        // Status with CMS flag
+        let trigger = BdfTrigger::from_status_value(300, 0x10001);
+        assert_eq!(trigger.code, 1);
+        assert!(trigger.cms_in_range);
     }
 
     #[test]
     fn test_header_builder() {
-        let header = EdfHeader::new(
+        let header = BdfHeader::new(
             "Patient X".to_string(),
             "Recording Y".to_string(),
-            2,
+            4,
         )
         .with_start_datetime("01.01.20".to_string(), "12.00.00".to_string())
         .with_records(100, 1.0);
 
-        assert_eq!(header.patient_id, "Patient X");
-        assert_eq!(header.n_signals, 2);
-        assert_eq!(header.n_records, 100);
-        assert_eq!(header.record_duration, 1.0);
+        assert_eq!(header.version, 255);
+        assert!(header.is_bdf());
+        assert_eq!(header.n_signals, 4);
+    }
+
+    #[test]
+    fn test_status_channel() {
+        let status = BdfSignal::status_channel(256);
+        assert_eq!(status.label, "Status");
+        assert!(status.is_status_channel());
+        assert_eq!(status.physical_dimension, "Boolean");
     }
 }

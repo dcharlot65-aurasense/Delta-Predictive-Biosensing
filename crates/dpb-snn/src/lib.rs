@@ -115,6 +115,8 @@
 //! | [`learning`] | Unsupervised learning rules (STDP, Hebbian) |
 //! | [`optimization`] | Network pruning and compression |
 //! | [`export`] | Model export utilities |
+//! | [`gpu`] | GPU acceleration (CUDA, Metal) - requires `gpu` feature |
+//! | [`distributed`] | Distributed training infrastructure - requires `distributed` feature |
 
 pub mod tensor;
 pub mod layers;
@@ -130,6 +132,12 @@ pub mod learning;
 pub mod optimization;
 pub mod calibration;
 pub mod explain;
+
+#[cfg(feature = "distributed")]
+pub mod distributed;
+
+#[cfg(feature = "gpu")]
+pub mod gpu;
 
 // Re-export commonly used types
 pub use tensor::{SpikeTensor, SpikeRepresentation};
@@ -332,7 +340,8 @@ pub struct SNNConfig {
     pub neuron_model: NeuronModel,
     /// Neuron parameters
     pub neuron_params: NeuronParams,
-    /// Enable GPU acceleration
+    /// Enable GPU acceleration (requires `gpu` feature)
+    #[cfg(feature = "gpu")]
     pub use_gpu: bool,
 }
 
@@ -343,6 +352,7 @@ impl Default for SNNConfig {
             num_steps: 100,
             neuron_model: NeuronModel::LIF,
             neuron_params: NeuronParams::default(),
+            #[cfg(feature = "gpu")]
             use_gpu: false,
         }
     }
