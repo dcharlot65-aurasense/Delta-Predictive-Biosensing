@@ -25,6 +25,9 @@
 //! - [`pain`] - Pain and sensory testing (QST, temporal summation)
 //! - [`cardiopulmonary`] - Cardiorespiratory signals (HRV, respiratory)
 //! - [`cognitive`] - Cognitive task responses (RT, accuracy, d-prime)
+//!
+//! ### Disease Pathology Modules (New)
+//! - [`pathology`] - Disease-specific models (ALS, MS, stroke)
 
 pub mod traits;
 pub mod streaming;
@@ -45,6 +48,7 @@ pub mod vestibular;
 pub mod pain;
 pub mod cardiopulmonary;
 pub mod cognitive;
+pub mod pathology;
 
 pub use traits::{SyntheticGenerator, GroundTruth, ParameterSpace};
 pub use streaming::{
