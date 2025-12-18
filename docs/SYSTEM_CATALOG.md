@@ -1,8 +1,8 @@
-# Delta-Predictive Biosensing (DPB) System Catalog v2.0.0
+# Delta-Predictive Biosensing (DPB) System Catalog v3.0.0
 
 > **Last Updated:** December 2024
-> **Framework Version:** 0.2.0
-> **Total Modules:** 150+ | **Encoders:** 77+ | **Generators:** 200+ | **Decoders:** 48+
+> **Framework Version:** 0.3.0
+> **Total Modules:** 200+ | **Encoders:** 77+ | **Generators:** 200+ | **Decoders:** 48+
 
 ---
 
@@ -23,7 +23,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 
 | Metric | Count |
 |--------|-------|
-| Crates | 10 |
+| Crates | 12 |
 | Neuron Models | 19 + Reservoir (ESN/LSM) |
 | Event Encoders | 77+ |
 | Population Templates | 61+ |
@@ -33,19 +33,24 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | Calibration Methods | 4 |
 | Explainability Tools | 8 |
 | Clinical Metrics | 100+ |
+| Data Formats | 6 (WFDB, EDF, GDF, BDF, XDF + auto-detect) |
+| GPU Backends | 2 (CUDA, Metal) |
+| Visualization Types | 6 (Dashboard, Raster, Network, Heatmap, Timeline, Export) |
 | Normative Databases | Age/Sex stratified (incl. Pediatric/Geriatric) |
-| Integration Tests | 25+ |
+| Integration Tests | 50+ |
 
 ### Crate Overview
 
 | Crate | Purpose | LOC (approx) |
 |-------|---------|--------------|
-| **dpb-core** | Types, traits, GPU, signal processing, pipelines, I/O | 25,000+ |
+| **dpb-core** | Types, traits, signal processing, pipelines, I/O (6 formats) | 35,000+ |
 | **dpb-encoders** | Event-based encoders, population templates | 12,000+ |
 | **dpb-neurons** | 19 neuron models, surrogate gradients, reservoir computing | 10,000+ |
-| **dpb-snn** | SNN architectures, training, calibration, explainability, export | 35,000+ |
+| **dpb-snn** | SNN architectures, training, calibration, explainability, GPU, distributed | 45,000+ |
 | **dpb-synth** | 200+ synthetic generators, augmentation, cohorts, pathology | 30,000+ |
 | **dpb-norms** | Normative databases (adult, pediatric, geriatric), longitudinal | 10,000+ |
+| **dpb-viz** ✅ NEW | Dashboards, raster plots, heatmaps, network graphs, timeline | 4,500+ |
+| **dpb-mobile** ✅ NEW | iOS/Android runtime, FFI, optimization, benchmarking | 4,000+ |
 | **dpb-cognitive** | Cognitive assessment paradigms | 4,000+ |
 | **dpb-python** | PyO3 Python bindings | 3,000+ |
 | **dpb-ffi** | C-compatible FFI | 1,500+ |
@@ -68,7 +73,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **Envelope Extraction** | `envelope` | `dpb-core/signal/mod.rs` |
 | **RMS/Energy Calculation** | `rms`, `energy`, `snr_db` | `dpb-core/signal/mod.rs` |
 
-### 2.2 Advanced Signal Transforms ✅ NEW
+### 2.2 Advanced Signal Transforms
 
 | Capability | Implementation | Location |
 |------------|----------------|----------|
@@ -86,11 +91,11 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **EEG** | Artifact Detection | `detect_artifacts`, `ArtifactType` | `dpb-core/signal/eeg/artifacts.rs` |
 | **EEG** | ERP Analysis | `ErpAnalyzer`, `ErpComponent` | `dpb-core/signal/eeg/erp.rs` |
 | **EEG** | Seizure Detection | `SeizureDetector`, `SeizureEvent` | `dpb-core/signal/eeg/seizure.rs` |
-| **ECG** | R-Peak Detection ✅ | `PanTompkinsDetector`, `RPeak` | `dpb-core/signal/ecg.rs` |
-| **ECG** | QRS Morphology ✅ | `QrsMorphology`, `QrsTemplate`, `BeatType` | `dpb-core/signal/ecg.rs` |
-| **ECG** | Arrhythmia Detection ✅ | `ArrhythmiaDetector`, `ArrhythmiaAnalysis` | `dpb-core/signal/ecg.rs` |
-| **HRV** | Time-Domain Metrics ✅ | `HrvTimeDomain` (SDNN, RMSSD, pNN50) | `dpb-core/signal/hrv.rs` |
-| **HRV** | Frequency-Domain ✅ | `HrvFrequencyDomain` (VLF, LF, HF) | `dpb-core/signal/hrv.rs` |
+| **ECG** | R-Peak Detection | `PanTompkinsDetector`, `RPeak` | `dpb-core/signal/ecg.rs` |
+| **ECG** | QRS Morphology | `QrsMorphology`, `QrsTemplate`, `BeatType` | `dpb-core/signal/ecg.rs` |
+| **ECG** | Arrhythmia Detection | `ArrhythmiaDetector`, `ArrhythmiaAnalysis` | `dpb-core/signal/ecg.rs` |
+| **HRV** | Time-Domain Metrics | `HrvTimeDomain` (SDNN, RMSSD, pNN50) | `dpb-core/signal/hrv.rs` |
+| **HRV** | Frequency-Domain | `HrvFrequencyDomain` (VLF, LF, HF) | `dpb-core/signal/hrv.rs` |
 | **PPG** | Pulse Analysis | `PpgAnalyzer`, `PulseWaveFeatures` | `dpb-core/signal/ppg.rs` |
 | **PPG** | SpO2 Estimation | `SpO2Result` | `dpb-core/signal/ppg.rs` |
 | **EDA** | Tonic/Phasic Decomposition | `EdaDecomposition` | `dpb-core/signal/eda.rs` |
@@ -111,7 +116,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **Cognitive Fatigue** | `CognitiveFatigueAnalyzer` (RT deterioration, lapses) | `dpb-core/signal/fatigue.rs` |
 | **Integrated Fatigue** | `IntegratedFatigueMetrics`, `integrate_fatigue` | `dpb-core/signal/fatigue.rs` |
 
-### 2.5 Real-Time Pipeline ✅ NEW
+### 2.5 Real-Time Pipeline
 
 | Capability | Implementation | Location |
 |------------|----------------|----------|
@@ -123,7 +128,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **Latency Tracking** | `LatencyStats` (P95, P99, miss rate) | `dpb-core/pipeline/executor.rs` |
 | **Pipeline Builder** | `PipelineBuilder`, `Pipeline` | `dpb-core/pipeline/executor.rs` |
 
-### 2.6 Data Format Support ✅ NEW
+### 2.6 Data Format Support
 
 | Capability | Implementation | Location |
 |------------|----------------|----------|
@@ -132,6 +137,10 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **WFDB Annotations** | `WfdbAnnotation`, `AnnotationType` | `dpb-core/io/wfdb.rs` |
 | **EDF/EDF+ Read** | `EdfReader`, `EdfHeader`, `EdfSignal` | `dpb-core/io/edf.rs` |
 | **EDF/EDF+ Write** | `EdfWriter` | `dpb-core/io/edf.rs` |
+| **GDF Read/Write** ✅ NEW | `GdfReader`, `GdfWriter`, `GdfHeader` | `dpb-core/io/gdf.rs` |
+| **BDF Read/Write** ✅ NEW | `BdfReader`, `BdfWriter`, `BdfHeader` | `dpb-core/io/bdf.rs` |
+| **XDF Read** ✅ NEW | `XdfFile`, `XdfStream`, clock sync | `dpb-core/io/xdf.rs` |
+| **Format Auto-Detect** ✅ NEW | `detect_format`, `UnifiedReader` | `dpb-core/io/format_detect.rs` |
 
 ### 2.7 Event-Based Encoding
 
@@ -157,17 +166,47 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | Capability | Implementation | Location |
 |------------|----------------|----------|
 | **Neuron Models (19)** | LIF, ALIF, ELIF, QLIF, GLIF, Izhikevich, AdEx, HH, etc. | `dpb-neurons/models/*.rs` |
-| **Reservoir Computing ✅** | `EchoStateNetwork`, `LiquidStateMachine` | `dpb-neurons/reservoir.rs` |
+| **Reservoir Computing** | `EchoStateNetwork`, `LiquidStateMachine` | `dpb-neurons/reservoir.rs` |
 | **Surrogate Gradients (6)** | FastSigmoid, Arctan, Triangular, SuperSpike, etc. | `dpb-neurons/surrogates.rs` |
 | **Spiking Layers** | SpikingLinear, SpikingConv1d/2d, SpikingRNN/LSTM | `dpb-snn/layers/*.rs` |
 | **Architectures** | Feedforward, Convolutional, Recurrent, Transformer | `dpb-snn/architectures/*.rs` |
 | **Training** | BPTT, OTTT, SLTT | `dpb-snn/training/*.rs` |
-| **Hebbian Learning ✅** | `STDP`, `BCMRule`, `OjasRule` | `dpb-snn/learning/hebbian.rs` |
-| **Network Pruning ✅** | `NetworkPruner`, `PruningStrategy`, `PruningSchedule` | `dpb-snn/optimization/pruning.rs` |
+| **Hebbian Learning** | `STDP`, `BCMRule`, `OjasRule` | `dpb-snn/learning/hebbian.rs` |
+| **Network Pruning** | `NetworkPruner`, `PruningStrategy`, `PruningSchedule` | `dpb-snn/optimization/pruning.rs` |
 | **ANN-to-SNN Conversion** | `ANNToSNNConverter`, `WeightNormalization` | `dpb-snn/conversion/*.rs` |
 | **Multi-Modal Fusion** | Early, Late, Cross-Modal, Hierarchical, Gated | `dpb-snn/fusion/*.rs` |
 
-### 2.9 Model Calibration ✅ NEW
+### 2.9 GPU Acceleration ✅ NEW
+
+| Capability | Implementation | Location |
+|------------|----------------|----------|
+| **Backend Abstraction** | `Backend` (Cuda, Metal, Cpu), `GpuDevice` trait | `dpb-snn/gpu/mod.rs` |
+| **Auto-Detection** | `auto_detect_backend`, `list_devices` | `dpb-snn/gpu/mod.rs` |
+| **CUDA Backend** | `CudaDevice`, `CudaBuffer`, `CudaStream` | `dpb-snn/gpu/cuda.rs` |
+| **CUDA Memory Pool** | `CudaMemoryPool`, efficient allocation | `dpb-snn/gpu/cuda.rs` |
+| **Metal Backend** | `MetalDevice`, `MetalBuffer`, `MetalComputeEncoder` | `dpb-snn/gpu/metal.rs` |
+| **Metal Pipelines** | `MetalPipelineCache`, compute shaders | `dpb-snn/gpu/metal.rs` |
+| **Kernel Abstractions** | `SpikeKernel`, `WeightUpdateKernel`, `ReductionKernel` | `dpb-snn/gpu/kernels.rs` |
+| **Sparse Connectivity** | `SparseConnectivity` (CSR format) | `dpb-snn/gpu/kernels.rs` |
+| **Memory Management** | `MemoryPool`, `PinnedMemory<T>`, `AsyncTransferManager` | `dpb-snn/gpu/memory.rs` |
+| **Performance Tracking** | `KernelMetrics`, FLOPS, bandwidth | `dpb-snn/gpu/kernels.rs` |
+
+### 2.10 Distributed Training ✅ NEW
+
+| Capability | Implementation | Location |
+|------------|----------------|----------|
+| **Configuration** | `DistributedConfig`, `DistributedBackend` (Mpi, Gloo, Nccl) | `dpb-snn/distributed/mod.rs` |
+| **Runtime** | `DistributedRuntime`, state management | `dpb-snn/distributed/mod.rs` |
+| **Training Coordinator** | `TrainingCoordinator`, barrier sync | `dpb-snn/distributed/coordinator.rs` |
+| **Gradient Aggregation** | AllReduce, AsyncSGD, GossipSGD, Hierarchical, LocalSGD | `dpb-snn/distributed/coordinator.rs` |
+| **Data Parallel** | `DataParallel`, batch splitting, LR scaling | `dpb-snn/distributed/partitioning.rs` |
+| **Model Parallel** | `ModelParallel`, layer distribution | `dpb-snn/distributed/partitioning.rs` |
+| **Pipeline Parallel** | `PipelineParallel`, 1F1B scheduling | `dpb-snn/distributed/partitioning.rs` |
+| **Communication** | `Message`, Send/Receive, Ring-AllReduce | `dpb-snn/distributed/communication.rs` |
+| **Fault Tolerance** | `HeartbeatMonitor`, `CheckpointManager`, `ElasticTrainingManager` | `dpb-snn/distributed/fault_tolerance.rs` |
+| **Metrics** | Throughput, scaling efficiency, straggler detection | `dpb-snn/distributed/metrics.rs` |
+
+### 2.11 Model Calibration
 
 | Capability | Implementation | Location |
 |------------|----------------|----------|
@@ -181,7 +220,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **Reliability Diagrams** | `reliability_diagram`, `ReliabilityBin` | `dpb-snn/calibration/metrics.rs` |
 | **Brier Score** | `brier_score` | `dpb-snn/calibration/metrics.rs` |
 
-### 2.10 Explainability Tools ✅ NEW
+### 2.12 Explainability Tools
 
 | Capability | Implementation | Location |
 |------------|----------------|----------|
@@ -196,7 +235,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **Spike SHAP** | `SpikeSHAP`, Shapley values | `dpb-snn/explain/attribution.rs` |
 | **Visualization Export** | `ExplanationVisualizer`, JSON export | `dpb-snn/explain/visualization.rs` |
 
-### 2.11 Model Export ✅ NEW
+### 2.13 Model Export
 
 | Capability | Implementation | Location |
 |------------|----------------|----------|
@@ -207,7 +246,37 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **Model Config** | `ModelConfig`, `LayerConfig`, validation | `dpb-snn/export/config.rs` |
 | **Export Metadata** | `ExportMetadata` | `dpb-snn/export/config.rs` |
 
-### 2.12 Output Decoding (48+ Decoders)
+### 2.14 Visualization ✅ NEW (dpb-viz crate)
+
+| Capability | Implementation | Location |
+|------------|----------------|----------|
+| **Dashboard Server** | `DashboardServer`, `DashboardConfig`, WebSocket | `dpb-viz/dashboard.rs` |
+| **Metric Panels** | `SpikeRatePanel`, `LossPanel`, `AccuracyPanel`, `ResourcePanel` | `dpb-viz/dashboard.rs` |
+| **Spike Raster Plots** | `RasterPlot`, `RasterPlot3D`, color schemes | `dpb-viz/raster.rs` |
+| **Network Topology** | `NetworkGraph`, force-directed, hierarchical layouts | `dpb-viz/network.rs` |
+| **Weight Heatmaps** | `WeightHeatmap`, `ActivationHeatmap`, `CorrelationMatrix` | `dpb-viz/heatmap.rs` |
+| **Color Scales** | Viridis, Plasma, Inferno, Coolwarm, Grayscale, RedBlue | `dpb-viz/heatmap.rs` |
+| **Event Timeline** | `EventTimeline`, `TimelineEvent`, zoom levels | `dpb-viz/timeline.rs` |
+| **Export Formats** | `SvgExporter`, `PngExporter`, `JsonExporter`, `CsvExporter` | `dpb-viz/export.rs` |
+| **Batch Export** | `BatchExporter`, timestamp generation | `dpb-viz/export.rs` |
+
+### 2.15 Mobile Runtime ✅ NEW (dpb-mobile crate)
+
+| Capability | Implementation | Location |
+|------------|----------------|----------|
+| **Mobile Runtime** | `MobileRuntime`, batch=1 optimized, pre-allocated buffers | `dpb-mobile/runtime.rs` |
+| **Mobile Model Format** | `MobileModel`, quantization (Float16, Int8, Int4) | `dpb-mobile/model.rs` |
+| **C FFI** | `dpb_runtime_create`, `dpb_model_load`, `dpb_infer` | `dpb-mobile/ffi.rs` |
+| **iOS Integration** | `MetalConfig`, `CoreMLConfig`, `IosRuntime` | `dpb-mobile/ios.rs` |
+| **Android Integration** | `NnapiConfig`, `VulkanConfig`, `AndroidRuntime` | `dpb-mobile/android.rs` |
+| **Weight Pruning** | `WeightPruner`, magnitude/structured | `dpb-mobile/optimization.rs` |
+| **Operator Fusion** | `OperatorFusion`, layer fusion patterns | `dpb-mobile/optimization.rs` |
+| **Quantization** | `QuantizationOptimizer`, Int8/Float16 | `dpb-mobile/optimization.rs` |
+| **Memory Planning** | `MemoryPlanner`, buffer optimization | `dpb-mobile/optimization.rs` |
+| **SIMD Hints** | `SimdOptimizer`, ARM NEON detection | `dpb-mobile/optimization.rs` |
+| **Benchmarking** | `BenchmarkRunner`, `LatencyMetrics`, `PowerMetrics` | `dpb-mobile/benchmark.rs` |
+
+### 2.16 Output Decoding (48+ Decoders)
 
 | Category | Decoders | Location |
 |----------|----------|----------|
@@ -217,7 +286,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **Regression** | HR, HRV, Tremor Freq/Amp, Gait Velocity, RT | `dpb-snn/decoders/regression.rs` |
 | **Classification** | Binary, MultiClass, TremorType, SleepStage, Emotion | `dpb-snn/decoders/classification.rs` |
 
-### 2.13 Synthetic Data Generation (200+ Generators)
+### 2.17 Synthetic Data Generation (200+ Generators)
 
 | Category | Generators | Location |
 |----------|------------|----------|
@@ -229,7 +298,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **Voice** | Normal, PD, dysarthria | `dpb-synth/voice/*.rs` |
 | **Respiratory** | Normal, apnea patterns | `dpb-synth/respiratory/*.rs` |
 
-### 2.14 Signal Augmentation ✅ NEW
+### 2.18 Signal Augmentation
 
 | Category | Augmentations | Location |
 |----------|---------------|----------|
@@ -238,7 +307,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **Spectral** | MagnitudeScale, FrequencyMask, TimeMask | `dpb-synth/augmentation/spectral.rs` |
 | **Pipeline** | `AugmentationPipeline` with probabilities | `dpb-synth/augmentation/mod.rs` |
 
-### 2.15 Pathology Models
+### 2.19 Pathology Models
 
 | Disease | Features | Location |
 |---------|----------|----------|
@@ -248,7 +317,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **Progression** | Linear, exponential, relapsing trajectories | `dpb-synth/pathology/progression.rs` |
 | **Medications** | 12 classes, PK modeling, interactions | `dpb-synth/pathology/medication.rs` |
 
-### 2.16 Virtual Cohorts ✅ NEW
+### 2.20 Virtual Cohorts
 
 | Capability | Implementation | Location |
 |------------|----------------|----------|
@@ -256,14 +325,14 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **Virtual Patients** | `VirtualPatient`, conditions, medications | `dpb-synth/cohort.rs` |
 | **Cohort Generation** | `CohortGenerator`, disease prevalence | `dpb-synth/cohort.rs` |
 
-### 2.17 Normative Databases
+### 2.21 Normative Databases
 
 | Population | Features | Location |
 |------------|----------|----------|
 | **Adult** | Age/sex stratified, 100+ metrics | `dpb-norms/adult.rs` |
-| **Pediatric ✅** | Ages 0-17, developmental stages | `dpb-norms/pediatric.rs` |
-| **Geriatric ✅** | 65+, frailty adjustments | `dpb-norms/geriatric.rs` |
-| **Longitudinal ✅** | MDC, RCI, change detection | `dpb-norms/longitudinal.rs` |
+| **Pediatric** | Ages 0-17, developmental stages | `dpb-norms/pediatric.rs` |
+| **Geriatric** | 65+, frailty adjustments | `dpb-norms/geriatric.rs` |
+| **Longitudinal** | MDC, RCI, change detection | `dpb-norms/longitudinal.rs` |
 
 ---
 
@@ -278,11 +347,11 @@ dpb-core/
 │   ├── fft.rs          → Spectral analysis, STFT
 │   ├── filter.rs       → FIR, IIR, bandpass, notch
 │   ├── resampling.rs   → Up/downsampling, interpolation
-│   ├── ecg.rs ✅       → Pan-Tompkins, R-peaks, QRS, arrhythmia
-│   ├── hrv.rs ✅       → SDNN, RMSSD, pNN50, VLF/LF/HF
-│   ├── wavelet.rs ✅   → CWT, DWT, Morlet, Daubechies
-│   ├── hilbert.rs ✅   → Analytic signal, inst. phase/freq
-│   ├── ica.rs ✅       → FastICA, blind source separation
+│   ├── ecg.rs          → Pan-Tompkins, R-peaks, QRS, arrhythmia
+│   ├── hrv.rs          → SDNN, RMSSD, pNN50, VLF/LF/HF
+│   ├── wavelet.rs      → CWT, DWT, Morlet, Daubechies
+│   ├── hilbert.rs      → Analytic signal, inst. phase/freq
+│   ├── ica.rs          → FastICA, blind source separation
 │   ├── eeg/            → Band power, artifacts, seizure, ERP
 │   ├── ppg.rs          → Pulse detection, SpO2, PRV
 │   ├── eda.rs          → Tonic/phasic, SCR detection
@@ -291,15 +360,19 @@ dpb-core/
 │   ├── eye.rs          → Saccades, fixations, blinks
 │   ├── respiratory.rs  → Breath detection, apnea, AHI
 │   └── fatigue.rs      → EMG/force/cognitive fatigue
-├── pipeline/ ✅
+├── pipeline/
 │   ├── mod.rs          → Module exports
 │   ├── buffer.rs       → RingBuffer, SlidingWindow, OverlapBuffer
 │   ├── stage.rs        → PipelineStage trait, TimedStage
 │   └── executor.rs     → PipelineExecutor, latency tracking
-├── io/ ✅
-│   ├── mod.rs          → Module exports
+├── io/
+│   ├── mod.rs          → Module exports, unified reader
 │   ├── wfdb.rs         → PhysioNet format read/write
-│   └── edf.rs          → EDF/EDF+ format read/write
+│   ├── edf.rs          → EDF/EDF+ format read/write
+│   ├── gdf.rs ✅       → General Data Format read/write
+│   ├── bdf.rs ✅       → BioSemi Data Format (24-bit)
+│   ├── xdf.rs ✅       → Extensible Data Format (LSL)
+│   └── format_detect.rs ✅ → Auto-detection, UnifiedReader
 ├── types/              → Core type definitions
 ├── gpu/                → GPU acceleration
 └── metrics/            → Performance metrics
@@ -315,7 +388,7 @@ dpb-neurons/
 │   ├── izhikevich.rs   → Izhikevich model
 │   ├── adex.rs         → Adaptive Exponential
 │   └── ...             → 15+ more models
-├── reservoir.rs ✅     → Echo State Network, Liquid State Machine
+├── reservoir.rs        → Echo State Network, Liquid State Machine
 └── surrogates.rs       → 6 surrogate gradient functions
 ```
 
@@ -329,29 +402,42 @@ dpb-snn/
 ├── decoders/           → Rate, temporal, clinical decoders
 ├── fusion/             → Multi-modal fusion (8 types)
 ├── conversion/         → ANN-to-SNN conversion
-├── learning/ ✅
+├── learning/
 │   ├── mod.rs          → Module exports
 │   └── hebbian.rs      → STDP, BCM, Oja's rule
-├── optimization/ ✅
+├── optimization/
 │   ├── mod.rs          → Module exports
 │   └── pruning.rs      → Network pruning strategies
-├── calibration/ ✅
+├── calibration/
 │   ├── mod.rs          → Module exports
 │   ├── temperature.rs  → Temperature/Platt scaling
 │   ├── isotonic.rs     → Isotonic calibration (PAVA)
 │   ├── uncertainty.rs  → MC Dropout, ensemble, bootstrap
 │   └── metrics.rs      → ECE, MCE, Brier, reliability
-├── explain/ ✅
+├── explain/
 │   ├── mod.rs          → Module exports
 │   ├── importance.rs   → Spike/neuron importance
 │   ├── attention.rs    → Temporal/spatial attention
 │   ├── attribution.rs  → Gradients, IG, SHAP
 │   └── visualization.rs → Heatmaps, JSON export
-└── export/ ✅
-    ├── mod.rs          → Module exports
-    ├── onnx.rs         → ONNX graph export
-    ├── weights.rs      → Weight serialization
-    └── config.rs       → Model configuration
+├── export/
+│   ├── mod.rs          → Module exports
+│   ├── onnx.rs         → ONNX graph export
+│   ├── weights.rs      → Weight serialization
+│   └── config.rs       → Model configuration
+├── gpu/ ✅
+│   ├── mod.rs          → Backend enum, GpuDevice trait
+│   ├── cuda.rs         → CUDA device, buffers, streams
+│   ├── metal.rs        → Metal device, pipelines
+│   ├── kernels.rs      → Kernel traits, sparse connectivity
+│   └── memory.rs       → Memory pools, pinned memory
+└── distributed/ ✅
+    ├── mod.rs          → Config, runtime, backends
+    ├── coordinator.rs  → Aggregation strategies
+    ├── partitioning.rs → Data/Model/Pipeline parallel
+    ├── communication.rs → Messages, collectives
+    ├── fault_tolerance.rs → Heartbeat, checkpoints
+    └── metrics.rs      → Throughput, efficiency
 ```
 
 ### 3.4 dpb-synth
@@ -372,13 +458,13 @@ dpb-synth/
 │   ├── stroke.rs       → Stroke model, NIHSS
 │   ├── progression.rs  → Disease trajectories
 │   └── medication.rs   → 12 medication classes
-├── augmentation/ ✅
+├── augmentation/
 │   ├── mod.rs          → SignalAugmentation trait, pipeline
 │   ├── noise.rs        → 5 noise types
 │   ├── temporal.rs     → 5 temporal augmentations
 │   ├── spectral.rs     → 3 spectral augmentations
 │   └── rand_helpers.rs → RNG utilities
-└── cohort.rs ✅        → Virtual patient cohorts
+└── cohort.rs           → Virtual patient cohorts
 ```
 
 ### 3.5 dpb-norms
@@ -386,9 +472,43 @@ dpb-synth/
 ```
 dpb-norms/
 ├── adult.rs            → Adult normative data
-├── pediatric.rs ✅     → Pediatric norms (0-17)
-├── geriatric.rs ✅     → Geriatric norms (65+, frailty)
-└── longitudinal.rs ✅  → MDC, RCI, change detection
+├── pediatric.rs        → Pediatric norms (0-17)
+├── geriatric.rs        → Geriatric norms (65+, frailty)
+└── longitudinal.rs     → MDC, RCI, change detection
+```
+
+### 3.6 dpb-viz ✅ NEW
+
+```
+dpb-viz/
+├── Cargo.toml          → Crate configuration
+├── README.md           → Documentation
+└── src/
+    ├── lib.rs          → Main exports, error types
+    ├── dashboard.rs    → DashboardServer, MetricPanels
+    ├── raster.rs       → RasterPlot, RasterPlot3D
+    ├── network.rs      → NetworkGraph, layouts
+    ├── heatmap.rs      → WeightHeatmap, ColorScales
+    ├── timeline.rs     → EventTimeline, zoom levels
+    └── export.rs       → SVG, PNG, JSON, CSV exporters
+```
+
+### 3.7 dpb-mobile ✅ NEW
+
+```
+dpb-mobile/
+├── Cargo.toml          → crate-type: cdylib, staticlib
+├── README.md           → Documentation
+├── BUILD_GUIDE.md      → iOS/Android build instructions
+└── src/
+    ├── lib.rs          → Main exports
+    ├── runtime.rs      → MobileRuntime (batch=1)
+    ├── model.rs        → MobileModel, quantization
+    ├── ffi.rs          → C FFI functions
+    ├── ios.rs          → Metal, CoreML integration
+    ├── android.rs      → NNAPI, Vulkan integration
+    ├── optimization.rs → Pruning, fusion, quantization
+    └── benchmark.rs    → Latency, memory, power metrics
 ```
 
 ---
@@ -408,7 +528,8 @@ dpb-norms/
               ▼                              ▼                              ▼
     ┌─────────────────┐           ┌─────────────────┐           ┌─────────────────┐
     │   dpb-bench     │           │   dpb-snn       │           │   dpb-synth     │
-    └────────┬────────┘           └────────┬────────┘           └────────┬────────┘
+    └────────┬────────┘           │  (gpu, dist)    │           └────────┬────────┘
+             │                    └────────┬────────┘                    │
              │                             │                              │
              │                    ┌────────┴────────┐                     │
              │                    │                 │                     │
@@ -426,42 +547,32 @@ dpb-norms/
              │                            │                              │
              └────────────────────────────┼──────────────────────────────┘
                                           │
-                                          ▼
-                               ┌─────────────────┐
-                               │   dpb-core      │
-                               └─────────────────┘
-
+                    ┌─────────────────────┼─────────────────────┐
+                    │                     │                     │
+                    ▼                     ▼                     ▼
+          ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+          │   dpb-viz       │  │   dpb-core      │  │   dpb-mobile    │
+          │  (visualization)│  │   (6 formats)   │  │  (iOS/Android)  │
+          └─────────────────┘  └─────────────────┘  └─────────────────┘
 ```
 
-### 4.2 Module Dependencies within dpb-core
+### 4.2 Feature Flags
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                              dpb-core                                    │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│   ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐         │
-│   │ pipeline │───►│  signal  │───►│   io     │    │   gpu    │         │
-│   └──────────┘    └──────────┘    └──────────┘    └──────────┘         │
-│        │               │               │               │                │
-│        │               ▼               │               │                │
-│        │         ┌──────────┐         │               │                │
-│        │         │   ecg    │         │               │                │
-│        │         │   hrv    │◄────────┘               │                │
-│        │         │ wavelet  │                         │                │
-│        │         │ hilbert  │                         │                │
-│        │         │   ica    │                         │                │
-│        │         │ seizure  │                         │                │
-│        │         │   ...    │                         │                │
-│        │         └──────────┘                         │                │
-│        │               │                              │                │
-│        └───────────────┼──────────────────────────────┘                │
-│                        │                                                │
-│                        ▼                                                │
-│                  ┌──────────┐                                          │
-│                  │  types   │                                          │
-│                  └──────────┘                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+dpb-snn features:
+├── gpu           → GPU acceleration (base)
+│   ├── cuda      → NVIDIA CUDA support
+│   └── metal     → Apple Metal support
+└── distributed   → Multi-node training
+
+dpb-mobile features:
+├── ios           → iOS-specific code
+│   ├── metal     → Metal compute
+│   └── coreml    → CoreML interop
+├── android       → Android-specific code
+│   ├── nnapi     → Android NNAPI
+│   └── vulkan    → Vulkan compute
+└── quantized     → Quantized inference
 ```
 
 ### 4.3 Data Flow Pipeline
@@ -473,22 +584,22 @@ dpb-norms/
 │                                                                                  │
 │  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐      │
 │  │   I/O    │──►│  Signal  │──►│ Encoders │──►│   SNN    │──►│ Decoders │      │
-│  │ WFDB/EDF │   │Processing│   │          │   │          │   │          │      │
+│  │ 6 formats│   │Processing│   │          │   │ GPU/Dist │   │          │      │
 │  └──────────┘   └──────────┘   └──────────┘   └──────────┘   └──────────┘      │
 │       │              │              │              │              │              │
 │       │              │              │              │              │              │
 │       │              ▼              │              ▼              ▼              │
 │       │        ┌──────────┐        │        ┌──────────┐   ┌──────────┐        │
 │       │        │ Pipeline │        │        │Calibrate │   │  Export  │        │
-│       │        │ Buffer   │        │        │          │   │  ONNX    │        │
+│       │        │ Buffer   │        │        │Explain   │   │ONNX/Mobile│       │
 │       │        │ Latency  │        │        └──────────┘   └──────────┘        │
-│       │        └──────────┘        │              │                             │
-│       │                            │              ▼                             │
-│       │                            │        ┌──────────┐                       │
-│       │                            │        │ Explain  │                       │
-│       │                            │        │Attention │                       │
-│       │                            │        │   SHAP   │                       │
-│       │                            │        └──────────┘                       │
+│       │        └──────────┘        │              │              │              │
+│       │                            │              ▼              ▼              │
+│       │                            │        ┌──────────┐   ┌──────────┐        │
+│       │                            │        │   Viz    │   │  Mobile  │        │
+│       │                            │        │Dashboard │   │ Runtime  │        │
+│       │                            │        │ Raster   │   │iOS/Android│       │
+│       │                            │        └──────────┘   └──────────┘        │
 │       │                            │                                            │
 │       ▼                            ▼                                            │
 │  ┌──────────┐              ┌──────────┐                                        │
@@ -504,109 +615,81 @@ dpb-norms/
 
 ## 5. Gap Analysis & Recommendations
 
-### 5.1 Signal Processing Gaps
+### 5.1 Summary: All Resolved Gaps
 
-| Gap | Priority | Status | Recommendation |
-|-----|----------|--------|----------------|
-| **ECG R-Peak Detector** | HIGH | ✅ DONE | Pan-Tompkins implemented |
-| **ECG QRS Morphology** | MEDIUM | ✅ DONE | Template matching implemented |
-| **ECG Arrhythmia Detection** | MEDIUM | ✅ DONE | AFib, PVC, PAC detection implemented |
-| **HRV Time-Domain** | HIGH | ✅ DONE | SDNN, RMSSD, pNN50 implemented |
-| **HRV Frequency-Domain** | HIGH | ✅ DONE | VLF/LF/HF power implemented |
-| **Wavelet Transform** | MEDIUM | ✅ DONE | CWT/DWT implemented |
-| **Hilbert Transform** | MEDIUM | ✅ DONE | Analytic signal implemented |
-| **Independent Component Analysis** | LOW | ✅ DONE | FastICA implemented |
-| **Empirical Mode Decomposition** | LOW | OPEN | Add EMD/EEMD for nonlinear analysis |
+| Category | Gap | Priority | Status |
+|----------|-----|----------|--------|
+| **Signal Processing** | ECG R-Peak, QRS, Arrhythmia | HIGH | ✅ DONE |
+| **Signal Processing** | HRV Time/Frequency Domain | HIGH | ✅ DONE |
+| **Signal Processing** | Wavelet/Hilbert/ICA Transforms | MEDIUM | ✅ DONE |
+| **Neural Networks** | Reservoir Computing (ESN/LSM) | MEDIUM | ✅ DONE |
+| **Neural Networks** | Hebbian Learning (STDP/BCM/Oja) | MEDIUM | ✅ DONE |
+| **Neural Networks** | Network Pruning | MEDIUM | ✅ DONE |
+| **Infrastructure** | Real-Time Pipeline | HIGH | ✅ DONE |
+| **Infrastructure** | Model Calibration | HIGH | ✅ DONE |
+| **Infrastructure** | Explainability Tools | HIGH | ✅ DONE |
+| **Infrastructure** | ONNX Export | HIGH | ✅ DONE |
+| **Infrastructure** | Integration Tests | HIGH | ✅ DONE |
+| **Infrastructure** | API Documentation | HIGH | ✅ DONE |
+| **Data Formats** | WFDB/EDF Support | HIGH | ✅ DONE |
+| **Data Formats** | GDF/BDF/XDF Support | LOW | ✅ DONE |
+| **Normative Data** | Pediatric/Geriatric/Longitudinal | MEDIUM | ✅ DONE |
+| **Synthetic Data** | Augmentation Suite | HIGH | ✅ DONE |
+| **Synthetic Data** | Virtual Cohorts | MEDIUM | ✅ DONE |
+| **GPU** | CUDA/Metal Acceleration | MEDIUM | ✅ DONE |
+| **Distributed** | Multi-node Training | MEDIUM | ✅ DONE |
+| **Visualization** | Dashboards, Rasters, Heatmaps | MEDIUM | ✅ DONE |
+| **Mobile** | iOS/Android Runtime | LOW | ✅ DONE |
 
-### 5.2 Neural Network Gaps
-
-| Gap | Priority | Status | Recommendation |
-|-----|----------|--------|----------------|
-| **Reservoir Computing** | MEDIUM | ✅ DONE | ESN/LSM implemented |
-| **Hebbian Learning** | MEDIUM | ✅ DONE | STDP/BCM/Oja implemented |
-| **Network Pruning** | MEDIUM | ✅ DONE | Multiple strategies implemented |
-| **Knowledge Distillation** | MEDIUM | OPEN | Add SNN-to-SNN distillation |
-| **Dendritic Computation** | LOW | OPEN | Add dendritic tree models |
-| **Neuromodulation** | LOW | OPEN | Add dopamine/ACh modulation |
-
-### 5.3 Clinical/Application Gaps
-
-| Gap | Priority | Status | Recommendation |
-|-----|----------|--------|----------------|
-| **Real-Time Pipeline** | HIGH | ✅ DONE | Full pipeline infrastructure |
-| **Model Calibration** | HIGH | ✅ DONE | Temperature/isotonic/uncertainty |
-| **Explainability** | HIGH | ✅ DONE | Importance, attention, SHAP |
-| **HIPAA Compliance** | HIGH | OPEN | Add data anonymization utilities |
-| **Longitudinal Tracking** | MEDIUM | ✅ DONE | MDC/RCI implemented |
-| **Clinical Decision Support** | MEDIUM | OPEN | Add rule-based CDS layer |
-
-### 5.4 Normative Database Gaps
-
-| Gap | Priority | Status | Recommendation |
-|-----|----------|--------|----------------|
-| **Pediatric Norms** | MEDIUM | ✅ DONE | Ages 0-17 implemented |
-| **Geriatric Norms** | MEDIUM | ✅ DONE | 65+ with frailty implemented |
-| **Longitudinal MDC** | MEDIUM | ✅ DONE | Change detection implemented |
-| **Ethnic Stratification** | MEDIUM | OPEN | Add ethnicity-specific norms |
-| **Practice Effects** | LOW | OPEN | Add serial testing corrections |
-
-### 5.5 Synthetic Data Gaps
-
-| Gap | Priority | Status | Recommendation |
-|-----|----------|--------|----------------|
-| **Augmentation Suite** | HIGH | ✅ DONE | 13 augmentation types |
-| **Virtual Cohorts** | MEDIUM | ✅ DONE | CohortGenerator implemented |
-| **Longitudinal Trajectories** | MEDIUM | PARTIAL | Basic progression exists |
-| **Treatment Response** | MEDIUM | OPEN | Add intervention modeling |
-| **Comorbidity Modeling** | LOW | OPEN | Add multi-condition interactions |
-
-### 5.6 Integration Gaps
-
-| Gap | Priority | Status | Recommendation |
-|-----|----------|--------|----------------|
-| **WFDB/PhysioNet** | HIGH | ✅ DONE | Full read/write support |
-| **EDF/EDF+** | HIGH | ✅ DONE | Full read/write support |
-| **ONNX Runtime** | HIGH | ✅ DONE | Export with graph builder |
-| **BIDS Format** | MEDIUM | OPEN | Add neuroimaging standard |
-| **HL7 FHIR** | MEDIUM | OPEN | Add healthcare interop |
-| **Neuromorphic Hardware** | MEDIUM | OPEN | Add Loihi/SpiNNaker export |
-| **TensorFlow Lite** | MEDIUM | OPEN | Add mobile export |
-
-### 5.7 Testing & Documentation Gaps
-
-| Gap | Priority | Status | Recommendation |
-|-----|----------|--------|----------------|
-| **Integration Tests** | HIGH | ✅ DONE | 25+ comprehensive tests |
-| **API Documentation** | HIGH | ✅ DONE | Full rustdoc + API guide |
-| **Clinical Validation** | HIGH | OPEN | Add tests against published datasets |
-| **Performance Regression** | MEDIUM | OPEN | Add automated benchmarks |
-| **Tutorial Notebooks** | HIGH | OPEN | Add Jupyter examples |
-| **Deployment Guide** | MEDIUM | OPEN | Add production instructions |
-
----
-
-### 5.8 Summary: Remaining Gaps
+### 5.2 Remaining Gaps
 
 #### HIGH Priority (Remaining)
-1. **HIPAA Compliance** - Data anonymization utilities
-2. **Clinical Validation** - Tests against MIT-BIH, CHB-MIT
-3. **Tutorial Notebooks** - Jupyter examples for all workflows
+
+| Gap | Description | Recommendation |
+|-----|-------------|----------------|
+| **HIPAA Compliance** | Data anonymization utilities | Add PHI detection, de-identification |
+| **Clinical Validation** | Tests against published datasets | MIT-BIH, CHB-MIT, PhysioNet validation |
+| **Tutorial Notebooks** | Jupyter examples for all workflows | Create 10+ tutorial notebooks |
 
 #### MEDIUM Priority (Remaining)
-4. **Knowledge Distillation** - SNN compression
-5. **BIDS Format** - Neuroimaging standard support
-6. **HL7 FHIR** - Healthcare interoperability
-7. **Neuromorphic Export** - Loihi, SpiNNaker
-8. **Ethnic Stratification** - Population-specific norms
-9. **Treatment Response** - Intervention modeling
-10. **Performance Regression** - Automated benchmarks
+
+| Gap | Description | Recommendation |
+|-----|-------------|----------------|
+| **Knowledge Distillation** | SNN compression | Teacher-student training |
+| **BIDS Format** | Neuroimaging standard | Brain Imaging Data Structure |
+| **HL7 FHIR** | Healthcare interoperability | Add FHIR resources |
+| **Neuromorphic Export** | Loihi, SpiNNaker | Hardware-specific formats |
+| **Ethnic Stratification** | Population-specific norms | Ethnicity-aware normative data |
+| **Treatment Response** | Intervention modeling | Pre/post treatment simulation |
+| **Performance Regression** | Automated benchmarks | CI/CD performance tracking |
+| **TensorFlow Lite** | Mobile ML export | Add TFLite converter |
 
 #### LOW Priority (Remaining)
-11. **EMD/EEMD** - Empirical mode decomposition
-12. **Dendritic Computation** - Multi-compartment models
-13. **Neuromodulation** - Biologically plausible learning
-14. **Comorbidity Modeling** - Multi-disease simulation
-15. **Practice Effects** - Serial testing corrections
+
+| Gap | Description | Recommendation |
+|-----|-------------|----------------|
+| **EMD/EEMD** | Empirical mode decomposition | Nonlinear signal analysis |
+| **Dendritic Computation** | Multi-compartment models | Biologically detailed neurons |
+| **Neuromodulation** | Dopamine/ACh modulation | Neuromodulatory learning |
+| **Comorbidity Modeling** | Multi-disease simulation | Disease interaction effects |
+| **Practice Effects** | Serial testing corrections | Repeated assessment adjustments |
+
+### 5.3 Implementation Completeness Matrix
+
+| Module | Core | Tests | Docs | Examples |
+|--------|:----:|:-----:|:----:|:--------:|
+| dpb-core/signal | ✅ | ✅ | ✅ | ✅ |
+| dpb-core/pipeline | ✅ | ✅ | ✅ | ✅ |
+| dpb-core/io | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-snn/gpu | ✅ | ✅ | ✅ | ✅ |
+| dpb-snn/distributed | ✅ | ✅ | ✅ | ✅ |
+| dpb-snn/calibration | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-snn/explain | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-snn/export | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-viz | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-mobile | ✅ | ✅ | ✅ | ✅ |
+
+Legend: ✅ Complete | ⚠️ Partial | ❌ Missing
 
 ---
 
@@ -622,16 +705,56 @@ dpb-norms/
 | `hilbert` | `AnalyticSignal` | `hilbert_transform`, `analytic_signal` |
 | `ica` | `FastICA`, `ICAResult` | `fit`, `transform`, `fit_transform` |
 
-### 6.2 Pipeline Quick Reference
+### 6.2 Data Format Quick Reference
 
-| Component | Key Types | Purpose |
-|-----------|-----------|---------|
-| Buffer | `RingBuffer<T>`, `SlidingWindow<T>` | Efficient streaming data management |
-| Stage | `PipelineStage`, `TimedStage` | Processing stage abstraction |
-| Executor | `PipelineExecutor`, `ExecutionMode` | Real-time execution with latency tracking |
-| Stats | `LatencyStats` | P95/P99 latency, deadline misses |
+| Format | Reader | Writer | Features |
+|--------|--------|--------|----------|
+| WFDB | `WfdbReader` | `WfdbWriter` | PhysioNet, annotations |
+| EDF/EDF+ | `EdfReader` | `EdfWriter` | Standard polysomnography |
+| GDF | `GdfReader` | `GdfWriter` | General Data Format 1.x/2.x |
+| BDF | `BdfReader` | `BdfWriter` | 24-bit BioSemi |
+| XDF | `XdfFile` | - | Lab Streaming Layer, multi-stream |
+| Auto | `UnifiedReader` | - | Magic byte detection |
 
-### 6.3 Calibration Quick Reference
+### 6.3 GPU Quick Reference
+
+| Backend | Device | Buffer | Features |
+|---------|--------|--------|----------|
+| CUDA | `CudaDevice` | `CudaBuffer` | Streams, memory pool |
+| Metal | `MetalDevice` | `MetalBuffer` | Pipelines, compute encoder |
+| CPU | Fallback | `Vec<T>` | Always available |
+
+### 6.4 Distributed Training Quick Reference
+
+| Strategy | When to Use | Scaling |
+|----------|-------------|---------|
+| DataParallel | Large batches | Linear |
+| ModelParallel | Large models | Sublinear |
+| PipelineParallel | Very deep networks | ~Linear |
+| AllReduce | Synchronous training | Best accuracy |
+| AsyncSGD | High latency | Best throughput |
+| GossipSGD | Decentralized | Fault tolerant |
+
+### 6.5 Visualization Quick Reference
+
+| Type | Class | Output Formats |
+|------|-------|----------------|
+| Dashboard | `DashboardServer` | WebSocket, JSON |
+| Raster | `RasterPlot`, `RasterPlot3D` | SVG, JSON |
+| Network | `NetworkGraph` | SVG, JSON |
+| Heatmap | `WeightHeatmap`, `ActivationHeatmap` | SVG, JSON |
+| Timeline | `EventTimeline` | SVG, JSON |
+| Export | `BatchExporter` | SVG, PNG, JSON, CSV |
+
+### 6.6 Mobile Quick Reference
+
+| Platform | Config | Backend |
+|----------|--------|---------|
+| iOS | `IosRuntime` | Metal, CoreML |
+| Android | `AndroidRuntime` | NNAPI, Vulkan |
+| Both | `MobileRuntime` | CPU (optimized) |
+
+### 6.7 Calibration Quick Reference
 
 | Method | When to Use | Key Metric |
 |--------|-------------|------------|
@@ -641,7 +764,7 @@ dpb-norms/
 | MC Dropout | Epistemic uncertainty | Variance |
 | Ensemble | Robust uncertainty | Entropy |
 
-### 6.4 Explainability Quick Reference
+### 6.8 Explainability Quick Reference
 
 | Method | Output | Use Case |
 |--------|--------|----------|
@@ -650,7 +773,7 @@ dpb-norms/
 | Integrated Gradients | Per-feature attribution | Feature importance |
 | SpikeSHAP | Shapley values | Fair attribution |
 
-### 6.5 Augmentation Quick Reference
+### 6.9 Augmentation Quick Reference
 
 | Category | Types | Parameters |
 |----------|-------|------------|
@@ -658,13 +781,14 @@ dpb-norms/
 | Temporal | Warp, Shift, Crop, Resample, Dropout | sigma, samples, ratio, rate |
 | Spectral | Magnitude, FreqMask, TimeMask | range, width, masks |
 
-### 6.6 Export Quick Reference
+### 6.10 Export Quick Reference
 
 | Format | Use Case | Key Types |
 |--------|----------|-----------|
 | ONNX | Deployment, inference | `OnnxExporter`, `OnnxConfig` |
 | Binary | Fast storage | `WeightExporter` |
 | JSON | Debugging, inspection | `WeightExporter`, `ModelConfig` |
+| Mobile | iOS/Android | `MobileModel`, `MobileRuntime` |
 
 ---
 
@@ -674,6 +798,7 @@ dpb-norms/
 |---------|------|---------|
 | v1.0.0 | Dec 2024 | Initial catalog |
 | v2.0.0 | Dec 2024 | Added ECG/HRV, transforms, pipeline, calibration, explainability, export, tests, docs |
+| v3.0.0 | Dec 2024 | Added GPU (CUDA/Metal), distributed training, dpb-viz, GDF/BDF/XDF, dpb-mobile |
 
 ---
 
@@ -681,11 +806,41 @@ dpb-norms/
 
 | Crate | Integration Tests | Unit Tests |
 |-------|-------------------|------------|
-| dpb-core | `signal_processing_integration.rs`, `io_format_integration.rs` | 200+ |
-| dpb-snn | `snn_basic_integration.rs`, `snn_pipeline_integration.rs`, `export_integration.rs` | 300+ |
-| dpb-synth | - | 150+ |
+| dpb-core | `signal_processing_integration.rs`, `io_format_integration.rs` | 250+ |
+| dpb-snn | `snn_basic_integration.rs`, `snn_pipeline_integration.rs`, `export_integration.rs` | 400+ |
+| dpb-snn (gpu) | GPU feature tests | 17 |
+| dpb-snn (distributed) | Distributed feature tests | 46 |
+| dpb-synth | Augmentation tests | 150+ |
+| dpb-viz | Visualization tests | 75 |
+| dpb-mobile | `integration_test.rs` | 63 |
 | Workspace | `full_pipeline_integration.rs` | - |
 
 ---
 
-*End of System Catalog v2.0.0*
+## Appendix C: Build Commands
+
+```bash
+# Standard build
+cargo build --all-features
+
+# GPU features
+cargo build -p dpb-snn --features cuda
+cargo build -p dpb-snn --features metal
+
+# Distributed features
+cargo build -p dpb-snn --features distributed
+
+# Mobile builds
+cargo build -p dpb-mobile --target aarch64-apple-ios --features ios
+cargo ndk --target aarch64-linux-android -- build -p dpb-mobile --features android
+
+# Run all tests
+cargo test --all
+
+# Generate documentation
+cargo doc --no-deps --all-features --open
+```
+
+---
+
+*End of System Catalog v3.0.0*
