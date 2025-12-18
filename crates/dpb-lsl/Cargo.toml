@@ -1,0 +1,39 @@
+[package]
+name = "dpb-lsl"
+version = "0.4.0"
+edition = "2021"
+authors = ["AuraSense Tech Corporation"]
+description = "Lab Streaming Layer integration for DPB Framework - real-time biosignal streaming"
+license = "MIT"
+repository = "https://github.com/dcharlot65-aurasense/Delta-Predictive-Biosensing"
+keywords = ["lsl", "biosignal", "streaming", "real-time", "eeg"]
+categories = ["science", "asynchronous"]
+
+[features]
+default = []
+# Enable async runtime support
+async = ["tokio"]
+
+[dependencies]
+# Error handling
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+
+# Channel communication
+crossbeam-channel = "0.5"
+
+# Async runtime (optional)
+tokio = { version = "1.0", features = ["rt-multi-thread", "sync", "time", "macros"], optional = true }
+
+# Serialization for configuration
+serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
+tracing-subscriber = "0.3"
+
+[build-dependencies]
+# For finding liblsl
+pkg-config = "0.3"

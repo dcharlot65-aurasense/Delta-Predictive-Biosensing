@@ -13,6 +13,9 @@ members = [
     "crates/dpb-bench",
     "crates/dpb-mobile",
     "crates/dpb-viz",
+    "crates/dpb-wasm",
+    "crates/dpb-lsl",
+    "crates/dpb-export",
 ]
 
 [workspace.package]
@@ -78,6 +81,9 @@ dpb-norms = { path = "crates/dpb-norms" }
 dpb-bench = { path = "crates/dpb-bench" }
 dpb-mobile = { path = "crates/dpb-mobile" }
 dpb-viz = { path = "crates/dpb-viz" }
+dpb-wasm = { path = "crates/dpb-wasm" }
+dpb-lsl = { path = "crates/dpb-lsl" }
+dpb-export = { path = "crates/dpb-export" }
 
 [profile.release]
 lto = true

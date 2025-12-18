@@ -1,0 +1,20 @@
+# Makevars for dpb R package
+
+# Include path for DPB FFI header
+PKG_CFLAGS = -I../inst/include
+
+# Link against the DPB FFI library
+PKG_LIBS = -L../inst/libs -ldpb_ffi
+
+# Platform-specific RPATH settings
+UNAME_S := $(shell uname -s)
+
+ifeq ($(UNAME_S),Darwin)
+# macOS: Use @loader_path for relative RPATH
+PKG_LIBS += -Wl,-rpath,@loader_path/../libs
+endif
+
+ifeq ($(UNAME_S),Linux)
+# Linux: Use $ORIGIN for relative RPATH
+PKG_LIBS += -Wl,-rpath,'$$ORIGIN/../libs'
+endif
