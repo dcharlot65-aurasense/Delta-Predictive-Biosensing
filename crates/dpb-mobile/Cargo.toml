@@ -1,0 +1,53 @@
+[package]
+name = "dpb-mobile"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Mobile runtime for iOS and Android inference in DPB Framework"
+
+[lib]
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+dpb-core.workspace = true
+dpb-snn.workspace = true
+dpb-neurons.workspace = true
+dpb-encoders.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+bincode.workspace = true
+ndarray = { workspace = true, features = ["serde"] }
+thiserror.workspace = true
+anyhow.workspace = true
+
+[target.'cfg(target_os = "ios")'.dependencies]
+# iOS-specific dependencies for future Metal/CoreML integration
+# metal = "0.27"
+# core-foundation = "0.9"
+
+[target.'cfg(target_os = "android")'.dependencies]
+# Android-specific dependencies for future JNI integration
+# jni = "0.21"
+# ndk = "0.8"
+# ndk-context = "0.1"
+
+[dev-dependencies]
+approx.workspace = true
+criterion.workspace = true
+rand.workspace = true
+tempfile.workspace = true
+
+[features]
+default = []
+ios = []
+android = []
+quantized = []
+metal = []
+coreml = []
+nnapi = []
+vulkan = []
+
+[[bench]]
+name = "mobile_inference"
+harness = false

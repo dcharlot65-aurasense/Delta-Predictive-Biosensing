@@ -11,6 +11,8 @@ members = [
     "crates/dpb-python",
     "crates/dpb-ffi",
     "crates/dpb-bench",
+    "crates/dpb-mobile",
+    "crates/dpb-viz",
 ]
 
 [workspace.package]
@@ -74,6 +76,8 @@ dpb-synth = { path = "crates/dpb-synth" }
 dpb-cognitive = { path = "crates/dpb-cognitive" }
 dpb-norms = { path = "crates/dpb-norms" }
 dpb-bench = { path = "crates/dpb-bench" }
+dpb-mobile = { path = "crates/dpb-mobile" }
+dpb-viz = { path = "crates/dpb-viz" }
 
 [profile.release]
 lto = true

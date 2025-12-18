@@ -1,0 +1,36 @@
+[package]
+name = "dpb-viz"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Visualization toolkit for Delta-Predictive Biosensing Framework"
+rust-version.workspace = true
+
+[dependencies]
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Async/networking
+tokio = { workspace = true, features = ["net", "sync", "rt-multi-thread", "macros"] }
+
+# Math and data structures
+ndarray = { workspace = true }
+glam = { version = "0.29", features = ["serde"] }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Internal dependencies
+dpb-core = { workspace = true }
+
+[dev-dependencies]
+approx = { workspace = true }
+tempfile = { workspace = true }
+
+[features]
+default = ["web"]
+web = []  # WebSocket server support
