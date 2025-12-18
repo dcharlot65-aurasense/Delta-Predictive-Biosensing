@@ -42,6 +42,17 @@
 //!
 //! This crate requires the liblsl library to be installed on the system.
 //! See <https://github.com/sccn/liblsl> for installation instructions.
+//!
+//! ### Native Feature
+//!
+//! Enable the `native` feature to link against the real liblsl library:
+//!
+//! ```toml
+//! [dependencies]
+//! dpb-lsl = { version = "0.1", features = ["native"] }
+//! ```
+//!
+//! Without the `native` feature, mock implementations are used for testing.
 
 pub mod error;
 pub mod stream_info;
@@ -50,6 +61,9 @@ pub mod outlet;
 pub mod resolver;
 pub mod pipeline;
 pub mod ffi;
+
+#[cfg(feature = "native")]
+pub mod native;
 
 pub use error::{LslError, Result};
 pub use stream_info::StreamInfo;
