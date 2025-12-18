@@ -300,3 +300,278 @@ impl ExportableEncoder for MockEncoder {
         self.params.num_channels
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_encoder_params_new() {
+        let params = EncoderParams::new("test_encoder", 8, 256.0);
+        assert_eq!(params.encoder_type, "test_encoder");
+        assert_eq!(params.num_channels, 8);
+        assert_eq!(params.sample_rate, 256.0);
+        assert!(params.thresholds.is_empty());
+        assert!(params.num_levels.is_none());
+        assert!(!params.adaptive);
+    }
+
+    #[test]
+    fn test_encoder_params_level_crossing() {
+        let params = EncoderParams::level_crossing(8, 256.0, 0.1);
+        assert_eq!(params.encoder_type, "level_crossing");
+        assert_eq!(params.thresholds.len(), 8);
+        assert!(params.thresholds.iter().all(|&t| (t - 0.1).abs() < 1e-6));
+    }
+
+    #[test]
+    fn test_encoder_params_delta() {
+        let params = EncoderParams::delta(4, 512.0, 0.05, 16);
+        assert_eq!(params.encoder_type, "delta");
+        assert_eq!(params.num_channels, 4);
+        assert_eq!(params.sample_rate, 512.0);
+        assert_eq!(params.thresholds.len(), 4);
+        assert_eq!(params.num_levels, Some(16));
+    }
+
+    #[test]
+    fn test_encoder_params_temporal_contrast() {
+        let params = EncoderParams::temporal_contrast(16, 1024.0, 0.08, 0.002);
+        assert_eq!(params.encoder_type, "temporal_contrast");
+        assert_eq!(params.num_channels, 16);
+        assert_eq!(params.refractory_period, Some(0.002));
+    }
+
+    #[test]
+    fn test_encoder_params_with_adaptive() {
+        let params = EncoderParams::level_crossing(8, 256.0, 0.1)
+            .with_adaptive(0.01);
+        assert!(params.adaptive);
+        assert_eq!(params.adaptation_rate, Some(0.01));
+    }
+
+    #[test]
+    fn test_encoder_params_with_thresholds() {
+        let custom_thresholds = vec![0.1, 0.2, 0.15, 0.12];
+        let params = EncoderParams::new("custom", 4, 256.0)
+            .with_thresholds(custom_thresholds.clone());
+        assert_eq!(params.thresholds, custom_thresholds);
+    }
+
+    #[test]
+    fn test_encoder_params_with_extra() {
+        let params = EncoderParams::new("custom", 4, 256.0)
+            .with_extra("custom_param", serde_json::json!(42));
+        assert!(params.extra.contains_key("custom_param"));
+        assert_eq!(params.extra.get("custom_param").unwrap(), &serde_json::json!(42));
+    }
+
+    #[test]
+    fn test_encoder_params_validate_success() {
+        let params = EncoderParams::level_crossing(8, 256.0, 0.1);
+        assert!(params.validate().is_ok());
+    }
+
+    #[test]
+    fn test_encoder_params_validate_zero_channels() {
+        let params = EncoderParams::new("test", 0, 256.0);
+        let result = params.validate();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("num_channels"));
+    }
+
+    #[test]
+    fn test_encoder_params_validate_negative_sample_rate() {
+        let params = EncoderParams::new("test", 8, -1.0);
+        let result = params.validate();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("sample_rate"));
+    }
+
+    #[test]
+    fn test_encoder_params_validate_threshold_mismatch() {
+        let params = EncoderParams::new("test", 8, 256.0)
+            .with_thresholds(vec![0.1, 0.2, 0.3]); // Only 3 thresholds for 8 channels
+        let result = params.validate();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("thresholds length"));
+    }
+
+    #[test]
+    fn test_encoder_state_new() {
+        let state = EncoderState::new(4);
+        assert_eq!(state.channel_states.len(), 4);
+        assert!(state.global.is_empty());
+        for ch_state in &state.channel_states {
+            assert_eq!(ch_state.last_value, 0.0);
+            assert_eq!(ch_state.spike_count, 0);
+        }
+    }
+
+    #[test]
+    fn test_encoder_state_with_global() {
+        let state = EncoderState::new(2)
+            .with_global("iteration", serde_json::json!(100));
+        assert!(state.global.contains_key("iteration"));
+    }
+
+    #[test]
+    fn test_channel_state_default() {
+        let state = ChannelState::default();
+        assert_eq!(state.last_value, 0.0);
+        assert_eq!(state.current_threshold, 0.0);
+        assert_eq!(state.current_level, 0);
+        assert_eq!(state.time_since_spike, 0.0);
+        assert_eq!(state.running_mean, 0.0);
+        assert_eq!(state.running_var, 0.0);
+        assert_eq!(state.spike_count, 0);
+    }
+
+    #[test]
+    fn test_encoder_export_new() {
+        let params = EncoderParams::level_crossing(8, 256.0, 0.1);
+        let export = EncoderExport::new(params);
+        assert_eq!(export.schema_version, "1.0");
+        assert!(export.state.is_none());
+        assert!(export.checksum.is_none());
+    }
+
+    #[test]
+    fn test_encoder_export_with_state() {
+        let params = EncoderParams::level_crossing(4, 256.0, 0.1);
+        let state = EncoderState::new(4);
+        let export = EncoderExport::new(params).with_state(state);
+        assert!(export.state.is_some());
+        assert_eq!(export.state.as_ref().unwrap().channel_states.len(), 4);
+    }
+
+    #[test]
+    fn test_encoder_export_with_checksum() {
+        let params = EncoderParams::level_crossing(8, 256.0, 0.1);
+        let export = EncoderExport::new(params).with_checksum();
+        assert!(export.checksum.is_some());
+        assert!(!export.checksum.as_ref().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_encoder_export_verify_checksum() {
+        let params = EncoderParams::level_crossing(8, 256.0, 0.1);
+        let export = EncoderExport::new(params).with_checksum();
+        assert!(export.verify_checksum());
+    }
+
+    #[test]
+    fn test_encoder_export_verify_no_checksum() {
+        let params = EncoderParams::level_crossing(8, 256.0, 0.1);
+        let export = EncoderExport::new(params);
+        // No checksum set, should return true
+        assert!(export.verify_checksum());
+    }
+
+    #[test]
+    fn test_encoder_export_validate_success() {
+        let params = EncoderParams::level_crossing(4, 256.0, 0.1);
+        let state = EncoderState::new(4);
+        let export = EncoderExport::new(params)
+            .with_state(state)
+            .with_checksum();
+        assert!(export.validate().is_ok());
+    }
+
+    #[test]
+    fn test_encoder_export_validate_state_mismatch() {
+        let params = EncoderParams::level_crossing(4, 256.0, 0.1);
+        let state = EncoderState::new(8); // Wrong channel count
+        let export = EncoderExport::new(params).with_state(state);
+        let result = export.validate();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("channel count"));
+    }
+
+    #[test]
+    fn test_mock_encoder_level_crossing() {
+        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
+        assert_eq!(encoder.encoder_type(), "level_crossing");
+        assert_eq!(encoder.num_channels(), 8);
+
+        let params = encoder.get_params();
+        assert_eq!(params.encoder_type, "level_crossing");
+        assert_eq!(params.sample_rate, 256.0);
+    }
+
+    #[test]
+    fn test_mock_encoder_delta() {
+        let encoder = MockEncoder::delta(4, 512.0, 0.05, 16);
+        assert_eq!(encoder.encoder_type(), "delta");
+        assert_eq!(encoder.num_channels(), 4);
+
+        let params = encoder.get_params();
+        assert_eq!(params.num_levels, Some(16));
+    }
+
+    #[test]
+    fn test_mock_encoder_validate_for_export() {
+        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
+        assert!(encoder.validate_for_export().is_ok());
+    }
+
+    #[test]
+    fn test_mock_encoder_get_state() {
+        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
+        // MockEncoder doesn't have state
+        assert!(encoder.get_state().is_none());
+    }
+
+    #[test]
+    fn test_encoder_params_serialization() {
+        let params = EncoderParams::level_crossing(8, 256.0, 0.1)
+            .with_adaptive(0.01);
+
+        let json = serde_json::to_string(&params).unwrap();
+        let deserialized: EncoderParams = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.encoder_type, params.encoder_type);
+        assert_eq!(deserialized.num_channels, params.num_channels);
+        assert_eq!(deserialized.sample_rate, params.sample_rate);
+        assert_eq!(deserialized.adaptive, params.adaptive);
+    }
+
+    #[test]
+    fn test_encoder_state_serialization() {
+        let state = EncoderState::new(4)
+            .with_global("test_key", serde_json::json!("test_value"));
+
+        let json = serde_json::to_string(&state).unwrap();
+        let deserialized: EncoderState = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.channel_states.len(), state.channel_states.len());
+        assert!(deserialized.global.contains_key("test_key"));
+    }
+
+    #[test]
+    fn test_encoder_export_serialization() {
+        let params = EncoderParams::level_crossing(4, 256.0, 0.1);
+        let export = EncoderExport::new(params).with_checksum();
+
+        let json = serde_json::to_string(&export).unwrap();
+        let deserialized: EncoderExport = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.schema_version, export.schema_version);
+        assert_eq!(deserialized.checksum, export.checksum);
+    }
+
+    #[test]
+    fn test_channel_state_serialization() {
+        let mut state = ChannelState::default();
+        state.last_value = 1.5;
+        state.current_threshold = 0.1;
+        state.spike_count = 42;
+
+        let json = serde_json::to_string(&state).unwrap();
+        let deserialized: ChannelState = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.last_value, state.last_value);
+        assert_eq!(deserialized.current_threshold, state.current_threshold);
+        assert_eq!(deserialized.spike_count, state.spike_count);
+    }
+}

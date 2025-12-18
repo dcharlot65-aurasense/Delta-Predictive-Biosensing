@@ -1,0 +1,154 @@
+# Cargo configuration for Delta-Predictive Biosensing
+# Includes RISC-V embedded target configurations
+
+# =============================================================================
+# RISC-V Target Configurations
+# =============================================================================
+
+# RISC-V 32-bit IMC (Integer, Multiplication, Compressed) - Common embedded
+[target.riscv32imc-unknown-none-elf]
+runner = "qemu-system-riscv32 -machine virt -cpu rv32 -semihosting-config enable=on,target=native -kernel"
+rustflags = [
+    "-C", "link-arg=-Tlink.x",
+    "-C", "opt-level=z",
+    "-C", "panic=abort",
+]
+
+# RISC-V 32-bit IMAC (with Atomic) - ESP32-C3 compatible
+[target.riscv32imac-unknown-none-elf]
+runner = "qemu-system-riscv32 -machine virt -cpu rv32 -semihosting-config enable=on,target=native -kernel"
+rustflags = [
+    "-C", "link-arg=-Tlink.x",
+    "-C", "opt-level=z",
+    "-C", "panic=abort",
+]
+
+# RISC-V 32-bit IMAFC (with Floating Point, Compressed) - ESP32-S3 compatible
+[target.riscv32imafc-unknown-none-elf]
+runner = "qemu-system-riscv32 -machine virt -cpu rv32 -semihosting-config enable=on,target=native -kernel"
+rustflags = [
+    "-C", "link-arg=-Tlink.x",
+    "-C", "opt-level=z",
+    "-C", "panic=abort",
+    "-C", "target-feature=+f,+c",
+]
+
+# RISC-V 64-bit GC (General purpose) - SiFive/StarFive boards
+[target.riscv64gc-unknown-none-elf]
+runner = "qemu-system-riscv64 -machine virt -cpu rv64 -semihosting-config enable=on,target=native -kernel"
+rustflags = [
+    "-C", "link-arg=-Tlink.x",
+    "-C", "opt-level=z",
+    "-C", "panic=abort",
+]
+
+# RISC-V 64-bit GC Linux (for Linux-based boards like VisionFive 2)
+[target.riscv64gc-unknown-linux-gnu]
+linker = "riscv64-linux-gnu-gcc"
+rustflags = [
+    "-C", "target-feature=+crt-static",
+]
+
+# =============================================================================
+# ARM Cortex-M Target Configurations
+# =============================================================================
+
+# ARM Cortex-M0/M0+ (ARMv6-M)
+[target.thumbv6m-none-eabi]
+runner = "probe-run --chip STM32F030F4"
+rustflags = [
+    "-C", "link-arg=-Tlink.x",
+    "-C", "opt-level=z",
+    "-C", "panic=abort",
+]
+
+# ARM Cortex-M3 (ARMv7-M)
+[target.thumbv7m-none-eabi]
+runner = "probe-run --chip STM32F103C8"
+rustflags = [
+    "-C", "link-arg=-Tlink.x",
+    "-C", "opt-level=z",
+    "-C", "panic=abort",
+]
+
+# ARM Cortex-M4/M7 with FPU (ARMv7E-M)
+[target.thumbv7em-none-eabihf]
+runner = "probe-run --chip STM32F407VG"
+rustflags = [
+    "-C", "link-arg=-Tlink.x",
+    "-C", "opt-level=z",
+    "-C", "panic=abort",
+]
+
+# ARM Cortex-M33 (ARMv8-M)
+[target.thumbv8m.main-none-eabihf]
+runner = "probe-run --chip STM32L552ZE"
+rustflags = [
+    "-C", "link-arg=-Tlink.x",
+    "-C", "opt-level=z",
+    "-C", "panic=abort",
+]
+
+# =============================================================================
+# WebAssembly Target Configuration
+# =============================================================================
+
+[target.wasm32-unknown-unknown]
+rustflags = [
+    "-C", "opt-level=z",
+    "-C", "panic=abort",
+]
+
+# =============================================================================
+# Build Settings
+# =============================================================================
+
+[build]
+# Number of parallel jobs (adjust based on system)
+# jobs = 8
+
+[profile.release-embedded]
+inherits = "release"
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+debug = false
+
+[profile.release-optimized]
+inherits = "release"
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[profile.bench-accurate]
+inherits = "bench"
+opt-level = 3
+debug = true
+lto = false
+
+# =============================================================================
+# Alias Commands
+# =============================================================================
+
+[alias]
+# Build for specific targets
+build-riscv32 = "build --target riscv32imc-unknown-none-elf"
+build-riscv64 = "build --target riscv64gc-unknown-none-elf"
+build-cortexm4 = "build --target thumbv7em-none-eabihf"
+build-wasm = "build --target wasm32-unknown-unknown"
+
+# Run tests
+test-all = "test --all-features"
+test-fast = "test --lib"
+
+# Benchmarks
+bench-all = "bench --all-features"
+
+# Documentation
+doc-all = "doc --all-features --no-deps"
+
+# Check for all targets
+check-embedded = "check --target thumbv7em-none-eabihf"
+check-wasm = "check --target wasm32-unknown-unknown"

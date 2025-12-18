@@ -39,11 +39,13 @@ use wasm_bindgen::prelude::*;
 pub mod timeseries;
 pub mod spiketrain;
 pub mod encoders;
+pub mod webgpu;
 mod utils;
 
 pub use timeseries::WasmTimeSeries;
 pub use spiketrain::WasmSpikeTrain;
 pub use encoders::{WasmLevelCrossingEncoder, WasmDeltaEncoder};
+pub use webgpu::{GpuEncoder, GpuEncoderConfig};
 
 /// Initialize the WASM module.
 /// Called automatically when the module loads.

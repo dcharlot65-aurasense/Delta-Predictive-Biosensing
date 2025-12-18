@@ -1,0 +1,30 @@
+[package]
+name = "dpb-clinical"
+version = "0.1.0"
+edition = "2021"
+authors = ["AuraSense Tech Corporation"]
+description = "Clinical utilities for DPB Framework: normative data, treatment response, comorbidity modeling"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aurasense/delta-predictive-biosensing"
+keywords = ["clinical", "normative", "biosignal", "treatment-response"]
+categories = ["science", "algorithms"]
+
+[features]
+default = []
+statistics = ["dep:statrs"]
+plotting = []
+full = ["statistics", "plotting"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+rand = "0.8"
+
+# Optional
+statrs = { version = "0.16", optional = true }
+
+[dev-dependencies]
+tempfile = "3.0"

@@ -312,3 +312,266 @@ impl ChannelInfo {
         Self::new(label, "", "Marker")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_stream_info_new_success() {
+        let info = StreamInfo::new(
+            "TestStream",
+            "EEG",
+            8,
+            256.0,
+            ChannelFormat::Float32,
+            "test_source",
+        );
+        assert!(info.is_ok());
+        let info = info.unwrap();
+        assert_eq!(info.name(), "TestStream");
+        assert_eq!(info.stream_type(), "EEG");
+        assert_eq!(info.channel_count(), 8);
+        assert_eq!(info.nominal_srate(), 256.0);
+        assert_eq!(info.channel_format(), ChannelFormat::Float32);
+        assert_eq!(info.source_id(), "test_source");
+    }
+
+    #[test]
+    fn test_stream_info_empty_name_error() {
+        let result = StreamInfo::new("", "EEG", 8, 256.0, ChannelFormat::Float32, "source");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("empty"));
+    }
+
+    #[test]
+    fn test_stream_info_zero_channels_error() {
+        let result = StreamInfo::new("Test", "EEG", 0, 256.0, ChannelFormat::Float32, "source");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("positive"));
+    }
+
+    #[test]
+    fn test_stream_info_negative_sample_rate_error() {
+        let result = StreamInfo::new("Test", "EEG", 8, -1.0, ChannelFormat::Float32, "source");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("negative"));
+    }
+
+    #[test]
+    fn test_stream_info_irregular_rate() {
+        let info =
+            StreamInfo::new("Markers", "Markers", 1, 0.0, ChannelFormat::String, "source").unwrap();
+        assert!(info.is_irregular_rate());
+
+        let info = StreamInfo::new("EEG", "EEG", 8, 256.0, ChannelFormat::Float32, "source").unwrap();
+        assert!(!info.is_irregular_rate());
+    }
+
+    #[test]
+    fn test_stream_info_with_session_id() {
+        let info = StreamInfo::new("Test", "EEG", 8, 256.0, ChannelFormat::Float32, "source")
+            .unwrap()
+            .with_session_id("session_123");
+        assert_eq!(info.session_id(), Some("session_123"));
+    }
+
+    #[test]
+    fn test_stream_info_with_xml_desc() {
+        let xml = r#"<desc><manufacturer>TestCorp</manufacturer></desc>"#;
+        let info = StreamInfo::new("Test", "EEG", 8, 256.0, ChannelFormat::Float32, "source")
+            .unwrap()
+            .with_xml_desc(xml);
+        assert_eq!(info.xml_desc(), Some(xml));
+    }
+
+    #[test]
+    fn test_stream_info_bytes_per_sample() {
+        let info =
+            StreamInfo::new("Test", "EEG", 8, 256.0, ChannelFormat::Float32, "source").unwrap();
+        assert_eq!(info.bytes_per_sample(), 32); // 8 channels * 4 bytes
+
+        let info =
+            StreamInfo::new("Test", "EEG", 4, 256.0, ChannelFormat::Float64, "source").unwrap();
+        assert_eq!(info.bytes_per_sample(), 32); // 4 channels * 8 bytes
+    }
+
+    #[test]
+    fn test_stream_info_from_resolved() {
+        let info = StreamInfo::from_resolved(
+            "Resolved".to_string(),
+            "EEG".to_string(),
+            16,
+            512.0,
+            ChannelFormat::Float32,
+            "resolved_source".to_string(),
+            Some("remote_host".to_string()),
+        );
+        assert_eq!(info.name(), "Resolved");
+        assert_eq!(info.hostname(), Some("remote_host"));
+        assert_eq!(info.version(), 1);
+    }
+
+    #[test]
+    fn test_stream_info_version() {
+        let info =
+            StreamInfo::new("Test", "EEG", 8, 256.0, ChannelFormat::Float32, "source").unwrap();
+        assert_eq!(info.version(), 1);
+    }
+
+    #[test]
+    fn test_stream_info_hostname_none() {
+        let info =
+            StreamInfo::new("Test", "EEG", 8, 256.0, ChannelFormat::Float32, "source").unwrap();
+        assert_eq!(info.hostname(), None);
+    }
+
+    #[test]
+    fn test_stream_info_builder_success() {
+        let info = StreamInfoBuilder::new()
+            .name("BuilderStream")
+            .stream_type("ECG")
+            .channel_count(4)
+            .nominal_srate(512.0)
+            .channel_format(ChannelFormat::Float32)
+            .source_id("builder_source")
+            .session_id("session_456")
+            .build();
+
+        assert!(info.is_ok());
+        let info = info.unwrap();
+        assert_eq!(info.name(), "BuilderStream");
+        assert_eq!(info.stream_type(), "ECG");
+        assert_eq!(info.channel_count(), 4);
+        assert_eq!(info.nominal_srate(), 512.0);
+        assert_eq!(info.session_id(), Some("session_456"));
+    }
+
+    #[test]
+    fn test_stream_info_builder_missing_name() {
+        let result = StreamInfoBuilder::new()
+            .stream_type("EEG")
+            .channel_count(8)
+            .build();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("name"));
+    }
+
+    #[test]
+    fn test_stream_info_builder_missing_type() {
+        let result = StreamInfoBuilder::new()
+            .name("Test")
+            .channel_count(8)
+            .build();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("type"));
+    }
+
+    #[test]
+    fn test_stream_info_builder_missing_channel_count() {
+        let result = StreamInfoBuilder::new()
+            .name("Test")
+            .stream_type("EEG")
+            .build();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Channel count"));
+    }
+
+    #[test]
+    fn test_stream_info_builder_defaults() {
+        let info = StreamInfoBuilder::new()
+            .name("Test")
+            .stream_type("EEG")
+            .channel_count(8)
+            .build()
+            .unwrap();
+
+        // Should use defaults
+        assert_eq!(info.nominal_srate(), 0.0); // Default irregular rate
+        assert_eq!(info.channel_format(), ChannelFormat::Float32); // Default format
+        assert_eq!(info.source_id(), ""); // Default empty source ID
+    }
+
+    #[test]
+    fn test_stream_info_builder_with_xml() {
+        let xml = "<desc><channels/></desc>";
+        let info = StreamInfoBuilder::new()
+            .name("Test")
+            .stream_type("EEG")
+            .channel_count(8)
+            .xml_desc(xml)
+            .build()
+            .unwrap();
+
+        assert_eq!(info.xml_desc(), Some(xml));
+    }
+
+    #[test]
+    fn test_channel_info_new() {
+        let ch = ChannelInfo::new("Fp1", "µV", "EEG");
+        assert_eq!(ch.label, "Fp1");
+        assert_eq!(ch.unit, "µV");
+        assert_eq!(ch.channel_type, "EEG");
+    }
+
+    #[test]
+    fn test_channel_info_eeg() {
+        let ch = ChannelInfo::eeg("Cz");
+        assert_eq!(ch.label, "Cz");
+        assert_eq!(ch.unit, "µV");
+        assert_eq!(ch.channel_type, "EEG");
+    }
+
+    #[test]
+    fn test_channel_info_ecg() {
+        let ch = ChannelInfo::ecg("Lead II");
+        assert_eq!(ch.label, "Lead II");
+        assert_eq!(ch.unit, "mV");
+        assert_eq!(ch.channel_type, "ECG");
+    }
+
+    #[test]
+    fn test_channel_info_marker() {
+        let ch = ChannelInfo::marker("Event");
+        assert_eq!(ch.label, "Event");
+        assert_eq!(ch.unit, "");
+        assert_eq!(ch.channel_type, "Marker");
+    }
+
+    #[test]
+    fn test_stream_info_serialization() {
+        let info =
+            StreamInfo::new("SerialTest", "EEG", 8, 256.0, ChannelFormat::Float32, "source")
+                .unwrap()
+                .with_session_id("session");
+
+        let json = serde_json::to_string(&info).unwrap();
+        assert!(json.contains("SerialTest"));
+        assert!(json.contains("EEG"));
+
+        let deserialized: StreamInfo = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.name(), info.name());
+        assert_eq!(deserialized.channel_count(), info.channel_count());
+    }
+
+    #[test]
+    fn test_channel_info_serialization() {
+        let ch = ChannelInfo::eeg("Fp1");
+        let json = serde_json::to_string(&ch).unwrap();
+        let deserialized: ChannelInfo = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.label, ch.label);
+        assert_eq!(deserialized.unit, ch.unit);
+        assert_eq!(deserialized.channel_type, ch.channel_type);
+    }
+
+    #[test]
+    fn test_stream_info_clone() {
+        let info =
+            StreamInfo::new("Original", "EEG", 8, 256.0, ChannelFormat::Float32, "source").unwrap();
+        let cloned = info.clone();
+
+        assert_eq!(info.name(), cloned.name());
+        assert_eq!(info.channel_count(), cloned.channel_count());
+    }
+}

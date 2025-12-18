@@ -1,0 +1,327 @@
+# Performance Regression Benchmarks CI/CD
+# Runs on every push to main and on PRs to detect performance regressions
+
+name: Performance Benchmarks
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      full_benchmark:
+        description: 'Run full benchmark suite (slower)'
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-C target-cpu=native"
+
+jobs:
+  # Quick benchmarks on every push/PR
+  quick-benchmarks:
+    name: Quick Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run Quick Benchmarks
+        run: |
+          cargo bench --bench signal_processing -- --warm-up-time 1 --measurement-time 3 --sample-size 10
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: quick-benchmark-results
+          path: target/criterion/
+
+  # Full benchmark suite (triggered manually or on main)
+  full-benchmarks:
+    name: Full Benchmark Suite
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_benchmark == 'true' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-bench-full-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install criterion-compare
+        run: cargo install critcmp || true
+
+      - name: Download baseline benchmarks
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-baseline
+          path: target/criterion-baseline/
+        continue-on-error: true
+
+      - name: Run Full Benchmarks
+        run: |
+          cargo bench --all-features -- --save-baseline current
+
+      - name: Compare with baseline
+        if: success()
+        run: |
+          if [ -d "target/criterion-baseline" ]; then
+            critcmp target/criterion-baseline target/criterion/current || true
+          fi
+        continue-on-error: true
+
+      - name: Save baseline for future comparisons
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-baseline
+          path: target/criterion/current/
+
+      - name: Upload full benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-benchmark-results
+          path: target/criterion/
+
+  # Encoder performance benchmarks
+  encoder-benchmarks:
+    name: Encoder Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-encoder-bench-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run Encoder Benchmarks
+        run: |
+          cargo bench -p dpb-encoders -- --warm-up-time 2 --measurement-time 5
+
+      - name: Generate Performance Report
+        run: |
+          echo "# Encoder Performance Report" > encoder-report.md
+          echo "" >> encoder-report.md
+          echo "Generated: $(date -u)" >> encoder-report.md
+          echo "" >> encoder-report.md
+          echo "## Summary" >> encoder-report.md
+          for dir in target/criterion/*/new; do
+            if [ -f "$dir/estimates.json" ]; then
+              bench_name=$(dirname $dir | xargs basename)
+              echo "- **$bench_name**: $(cat $dir/estimates.json | jq -r '.mean.point_estimate / 1e6 | . * 100 | floor / 100') ms" >> encoder-report.md
+            fi
+          done
+
+      - name: Upload Encoder Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: encoder-benchmark-report
+          path: encoder-report.md
+
+  # Memory and throughput profiling
+  memory-benchmarks:
+    name: Memory Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Install valgrind
+        run: sudo apt-get update && sudo apt-get install -y valgrind
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-memory-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build release binary
+        run: cargo build --release -p dpb-bench
+
+      - name: Run memory profile
+        run: |
+          if [ -f "target/release/dpb-bench" ]; then
+            valgrind --tool=massif --massif-out-file=massif.out ./target/release/dpb-bench memory || true
+            ms_print massif.out > memory-profile.txt || true
+          fi
+        continue-on-error: true
+
+      - name: Upload Memory Profile
+        uses: actions/upload-artifact@v4
+        with:
+          name: memory-profile
+          path: memory-profile.txt
+        if: success()
+        continue-on-error: true
+
+  # Regression detection
+  regression-check:
+    name: Regression Check
+    runs-on: ubuntu-latest
+    needs: [quick-benchmarks]
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download current benchmarks
+        uses: actions/download-artifact@v4
+        with:
+          name: quick-benchmark-results
+          path: current-benchmarks/
+
+      - name: Download baseline
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-baseline
+          path: baseline-benchmarks/
+        continue-on-error: true
+
+      - name: Check for regressions
+        run: |
+          echo "## Performance Regression Check" > regression-report.md
+          echo "" >> regression-report.md
+
+          # Simple check: compare mean times
+          # In production, use proper statistical analysis
+
+          if [ ! -d "baseline-benchmarks" ]; then
+            echo "No baseline found - skipping regression check" >> regression-report.md
+            exit 0
+          fi
+
+          REGRESSION_FOUND=0
+          THRESHOLD=1.10  # 10% regression threshold
+
+          for bench in current-benchmarks/*/new/estimates.json; do
+            bench_name=$(dirname $bench | xargs dirname | xargs basename)
+            baseline_file="baseline-benchmarks/$bench_name/new/estimates.json"
+
+            if [ -f "$baseline_file" ]; then
+              current=$(jq '.mean.point_estimate' $bench)
+              baseline=$(jq '.mean.point_estimate' $baseline_file)
+              ratio=$(echo "$current / $baseline" | bc -l)
+
+              if (( $(echo "$ratio > $THRESHOLD" | bc -l) )); then
+                echo "⚠️ **$bench_name**: ${ratio}x slower (${current}ns vs ${baseline}ns baseline)" >> regression-report.md
+                REGRESSION_FOUND=1
+              else
+                echo "✅ **$bench_name**: ${ratio}x (within threshold)" >> regression-report.md
+              fi
+            fi
+          done
+
+          if [ $REGRESSION_FOUND -eq 1 ]; then
+            echo "" >> regression-report.md
+            echo "**Warning: Performance regression detected!**" >> regression-report.md
+          fi
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('regression-report.md', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+        continue-on-error: true
+
+  # Benchmark report generation
+  generate-report:
+    name: Generate Report
+    runs-on: ubuntu-latest
+    needs: [quick-benchmarks, encoder-benchmarks]
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Generate combined report
+        run: |
+          echo "# DPB Performance Benchmark Report" > benchmark-report.md
+          echo "" >> benchmark-report.md
+          echo "**Date:** $(date -u)" >> benchmark-report.md
+          echo "**Commit:** ${{ github.sha }}" >> benchmark-report.md
+          echo "**Branch:** ${{ github.ref_name }}" >> benchmark-report.md
+          echo "" >> benchmark-report.md
+
+          echo "## Quick Benchmarks" >> benchmark-report.md
+          if [ -d "artifacts/quick-benchmark-results" ]; then
+            echo "✅ Completed" >> benchmark-report.md
+          else
+            echo "⏭️ Skipped or failed" >> benchmark-report.md
+          fi
+          echo "" >> benchmark-report.md
+
+          echo "## Encoder Benchmarks" >> benchmark-report.md
+          if [ -f "artifacts/encoder-benchmark-report/encoder-report.md" ]; then
+            cat artifacts/encoder-benchmark-report/encoder-report.md >> benchmark-report.md
+          else
+            echo "⏭️ Skipped or failed" >> benchmark-report.md
+          fi
+
+      - name: Upload Combined Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-report
+          path: benchmark-report.md

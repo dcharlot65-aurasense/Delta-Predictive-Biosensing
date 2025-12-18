@@ -16,6 +16,8 @@ members = [
     "crates/dpb-wasm",
     "crates/dpb-lsl",
     "crates/dpb-export",
+    "crates/dpb-clinical",
+    "crates/dpb-federated",
 ]
 
 [workspace.package]
@@ -84,6 +86,8 @@ dpb-viz = { path = "crates/dpb-viz" }
 dpb-wasm = { path = "crates/dpb-wasm" }
 dpb-lsl = { path = "crates/dpb-lsl" }
 dpb-export = { path = "crates/dpb-export" }
+dpb-clinical = { path = "crates/dpb-clinical" }
+dpb-federated = { path = "crates/dpb-federated" }
 
 [profile.release]
 lto = true
