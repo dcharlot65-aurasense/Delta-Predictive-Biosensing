@@ -4,6 +4,7 @@ pub mod eeg;
 pub mod eda;
 pub mod emg;
 pub mod eye;
+pub mod fatigue;
 pub mod fft;
 pub mod filter;
 pub mod ppg;
@@ -28,6 +29,15 @@ pub use eye::{EyeAnalyzer, Saccade, Fixation, Blink, SmoothPursuitMetrics, Pupil
 
 // Voice analysis exports
 pub use voice::{VoiceAnalyzer, F0Metrics, JitterMetrics, ShimmerMetrics, VoiceQualityMetrics, SpectralVoiceFeatures, SpeechTimingMetrics};
+
+// Fatigue detection exports
+pub use fatigue::{
+    EmgFatigueAnalyzer, EmgFatigueMetrics,
+    ForceFatigueAnalyzer, ForceFatigueMetrics,
+    CognitiveFatigueAnalyzer, CognitiveFatigueMetrics,
+    IntegratedFatigueMetrics, FatigueType, FatigueSeverity,
+    integrate_fatigue,
+};
 
 use crate::error::{DpbError, Result};
 use ndarray::{Array1, ArrayView1, ArrayView2};
