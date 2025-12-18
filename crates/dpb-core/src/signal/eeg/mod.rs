@@ -5,6 +5,7 @@
 
 pub mod artifacts;
 pub mod bands;
+pub mod erp;
 
 pub use artifacts::{
     apply_notch_filter, detect_artifacts, remove_dc_offset, remove_trend, ArtifactSegment,
@@ -14,3 +15,4 @@ pub use bands::{
     alpha_asymmetry, compute_band_powers, extract_band_power, relative_band_power,
     theta_beta_ratio, BandPowers, EegBands,
 };
+pub use erp::{Erp, ErpAnalyzer, ErpComponent, ErpGenerator, OddballData};
