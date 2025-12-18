@@ -1,683 +1,1169 @@
-# Delta Predictive Biosensing (DPB) System Catalog
+# Delta-Predictive Biosensing (DPB) System Catalog v5.0.0
 
-> **Authoritative reference for the DPB neuromorphic biosignal processing framework**
-> Version: 0.3.0 | Edition: Rust 2024 | License: MIT OR Apache-2.0
+> **Last Updated:** December 2025
+> **Framework Version:** 0.4.0
+> **Total Modules:** 290+ | **Encoders:** 77+ | **Generators:** 200+ | **Decoders:** 48+
+> **Language Bindings:** 6 (Python, Julia, MATLAB, R, LabVIEW, C/C++)
+> **Platform Targets:** 8 (Native, iOS, Android, WASM, Loihi, SpiNNaker, BrainScaleS, LSL)
 
 ---
 
 ## Table of Contents
 
-1. [Framework Overview](#1-framework-overview)
-2. [Capability → Implementation](#2-capability--implementation)
-3. [Implementation → Capabilities](#3-implementation--capabilities)
-4. [Dependency Graph](#4-dependency-graph)
-5. [Gap Analysis](#5-gap-analysis)
-6. [Quick Reference](#6-quick-reference)
+1. [Executive Summary](#1-executive-summary)
+2. [Capability → Implementation Map](#2-capability--implementation-map)
+3. [Implementation → Capabilities Map](#3-implementation--capabilities-map)
+4. [Cross-Platform Integration](#4-cross-platform-integration)
+5. [Dependency Graph](#5-dependency-graph)
+6. [Gap Analysis](#6-gap-analysis)
+7. [Quick Reference Tables](#7-quick-reference-tables)
+8. [Learning Resources](#8-learning-resources)
 
 ---
 
-## 1. Framework Overview
+## 1. Executive Summary
 
-The Delta Predictive Biosensing Framework is a comprehensive neuromorphic signal processing system for biosignal analysis. It provides:
+The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic biosignal processing library providing end-to-end capabilities from signal acquisition to clinical deployment.
 
-- **Event-based encoding** of continuous biosignals into spike trains
-- **Spiking Neural Networks (SNNs)** for efficient, low-power inference
-- **Synthetic data generation** with clinical ground truth
-- **Normative databases** for population-based comparison
-- **Multi-modal fusion** for integrated assessments
+### 1.1 System Metrics
 
-### Crate Architecture
+| Metric | Count |
+|--------|-------|
+| Crates | 17 |
+| Neuron Models | 19 + Reservoir + Multi-Compartment |
+| Event Encoders | 77+ |
+| Population Templates | 61+ |
+| Synthetic Generators | 200+ |
+| Output Decoders | 48+ |
+| Signal Augmentations | 13 |
+| Calibration Methods | 4 |
+| Explainability Tools | 8 |
+| Clinical Metrics | 100+ |
+| Data Formats | 10 (WFDB, EDF, GDF, BDF, XDF, BIDS, FHIR + auto-detect) |
+| GPU Backends | 2 (CUDA, Metal) |
+| Neuromorphic Targets | 3 (Loihi, SpiNNaker, BrainScaleS) |
+| Export Formats | 5 (ONNX, TFLite, JSON, Binary, Mobile) |
+| Visualization Types | 6 |
+| Normative Databases | Age/Sex stratified (Pediatric/Adult/Geriatric) |
+| Learning Resources | 5 Books, 8 Notebooks, 5 Video Scripts |
+| **Language Bindings** | 6 (Python, Julia, MATLAB, R, LabVIEW, C/C++) |
+| **Web/Streaming** | 2 (WebAssembly, Lab Streaming Layer) |
+
+### 1.2 Crate Overview
+
+| Crate | Purpose | LOC (approx) |
+|-------|---------|--------------|
+| **dpb-core** | Types, traits, signal processing, pipelines, I/O (10 formats) | 45,000+ |
+| **dpb-encoders** | Event-based encoders, population templates | 12,000+ |
+| **dpb-neurons** | 19+ neuron models, surrogates, reservoir, dendritic | 15,000+ |
+| **dpb-snn** | Architectures, training, calibration, explainability, GPU, distributed, distillation, neuromorphic, neuromodulation | 65,000+ |
+| **dpb-synth** | 200+ generators, augmentation, cohorts, pathology | 30,000+ |
+| **dpb-norms** | Normative databases (adult, pediatric, geriatric), longitudinal | 10,000+ |
+| **dpb-viz** | Dashboards, raster plots, heatmaps, network graphs, timeline | 4,500+ |
+| **dpb-mobile** | iOS/Android runtime, FFI, optimization, benchmarking | 4,000+ |
+| **dpb-cognitive** | Cognitive assessment paradigms | 4,000+ |
+| **dpb-python** | PyO3 Python bindings | 3,000+ |
+| **dpb-ffi** | C-compatible FFI | 1,500+ |
+| **dpb-bench** | Benchmarking suite | 2,500+ |
+| **dpb-wasm** ✅ NEW | WebAssembly bindings, browser deployment | 1,500+ |
+| **dpb-lsl** ✅ NEW | Lab Streaming Layer integration, real-time streaming | 2,500+ |
+| **dpb-export** ✅ NEW | ONNX, JSON, Binary export, model metadata | 2,000+ |
+
+### 1.3 Language Bindings Overview
+
+| Binding | Location | Interface | Status |
+|---------|----------|-----------|--------|
+| **Python** | `crates/dpb-python/` | PyO3 native extension | ✅ Complete |
+| **Julia** | `bindings/julia/` | C FFI via CBinding.jl | ✅ Complete |
+| **MATLAB** | `bindings/matlab/` | MEX functions | ✅ Complete |
+| **R** ✅ NEW | `bindings/r/` | R6 classes via .Call() | ✅ Complete |
+| **LabVIEW** ✅ NEW | `bindings/labview/` | Call Library Function Nodes | ✅ Complete |
+| **C/C++** | `crates/dpb-ffi/` | cbindgen C headers | ✅ Complete |
+| **JavaScript/WASM** ✅ NEW | `crates/dpb-wasm/` | wasm-bindgen | ✅ Complete |
+
+---
+
+## 2. Capability → Implementation Map
+
+This section answers: **"I want to do X, where is it implemented?"**
+
+### 2.1 Signal Acquisition & I/O
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **Read PhysioNet files** | `WfdbReader` | `dpb-core/io/wfdb.rs` | .dat, .hea, annotations |
+| **Read EDF/EDF+ files** | `EdfReader` | `dpb-core/io/edf.rs` | Standard polysomnography |
+| **Read GDF files** | `GdfReader` | `dpb-core/io/gdf.rs` | General Data Format 1.x/2.x |
+| **Read BDF files** | `BdfReader` | `dpb-core/io/bdf.rs` | 24-bit BioSemi |
+| **Read XDF files** | `XdfFile` | `dpb-core/io/xdf.rs` | Lab Streaming Layer, multi-stream |
+| **Read BIDS datasets** | `BidsDataset` | `dpb-core/io/bids/dataset.rs` | Brain Imaging Data Structure |
+| **BIDS EEG extension** | `BidsEeg` | `dpb-core/io/bids/eeg.rs` | EEG-BIDS v1.8+ |
+| **BIDS validation** | `BidsValidator` | `dpb-core/io/bids/validation.rs` | Schema compliance |
+| **HL7 FHIR resources** | `FhirObservation`, `FhirBundle` | `dpb-core/io/fhir/` | Healthcare interoperability |
+| **FHIR client** | `FhirClient` | `dpb-core/io/fhir/client.rs` | REST API integration |
+| **Auto-detect format** | `UnifiedReader`, `detect_format` | `dpb-core/io/format_detect.rs` | Magic byte detection |
+| **Write signals** | `WfdbWriter`, `EdfWriter`, etc. | `dpb-core/io/*.rs` | Multi-format export |
+
+### 2.2 Signal Processing
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **FFT/Spectral Analysis** | `FftProcessor`, `Stft` | `dpb-core/signal/fft.rs` | Forward/inverse FFT |
+| **Filtering (FIR/IIR)** | `FirFilter`, `IirFilter` | `dpb-core/signal/filter.rs` | Bandpass, notch, custom |
+| **Resampling** | `downsample`, `upsample` | `dpb-core/signal/resample.rs` | Linear, polyphase |
+| **Wavelet Transform** | `ContinuousWaveletTransform`, `DiscreteWaveletTransform` | `dpb-core/signal/wavelet.rs` | Morlet, Daubechies |
+| **Hilbert Transform** | `hilbert_transform`, `AnalyticSignal` | `dpb-core/signal/hilbert.rs` | Instantaneous phase/freq |
+| **ICA** | `FastICA` | `dpb-core/signal/ica.rs` | Blind source separation |
+| **EMD/EEMD** | `EmpiricalModeDecomposition`, `EemdDecomposition` | `dpb-core/signal/emd.rs` | Nonlinear decomposition |
+| **CEEMDAN** | `CeemdanDecomposition` | `dpb-core/signal/emd.rs` | Complete ensemble EMD |
+| **VMD** | `VariationalModeDecomposition` | `dpb-core/signal/emd.rs` | Variational decomposition |
+| **Hilbert-Huang Transform** | `hilbert_huang_transform` | `dpb-core/signal/emd.rs` | Time-frequency from IMFs |
+
+### 2.3 Domain-Specific Analysis
+
+| Domain | Capability | Implementation | Location |
+|--------|------------|----------------|----------|
+| **ECG** | R-Peak Detection | `PanTompkinsDetector` | `dpb-core/signal/ecg.rs` |
+| **ECG** | QRS Morphology | `QrsMorphology`, `BeatType` | `dpb-core/signal/ecg.rs` |
+| **ECG** | Arrhythmia Detection | `ArrhythmiaDetector` | `dpb-core/signal/ecg.rs` |
+| **HRV** | Time-Domain | `HrvTimeDomain` (SDNN, RMSSD, pNN50) | `dpb-core/signal/hrv.rs` |
+| **HRV** | Frequency-Domain | `HrvFrequencyDomain` (VLF, LF, HF) | `dpb-core/signal/hrv.rs` |
+| **EEG** | Band Power | `compute_band_powers`, `EegBands` | `dpb-core/signal/eeg/bands.rs` |
+| **EEG** | Artifact Detection | `detect_artifacts` | `dpb-core/signal/eeg/artifacts.rs` |
+| **EEG** | Seizure Detection | `SeizureDetector` | `dpb-core/signal/eeg/seizure.rs` |
+| **EEG** | ERP Analysis | `ErpAnalyzer` | `dpb-core/signal/eeg/erp.rs` |
+| **PPG** | Pulse Analysis | `PpgAnalyzer`, `SpO2Result` | `dpb-core/signal/ppg.rs` |
+| **EDA** | Decomposition | `EdaDecomposition` | `dpb-core/signal/eda.rs` |
+| **EMG** | Burst Detection | `EmgBurst`, `FatigueMetrics` | `dpb-core/signal/emg.rs` |
+| **Voice** | Acoustic Features | `F0Metrics`, `JitterMetrics` | `dpb-core/signal/voice.rs` |
+| **Eye** | Saccade/Fixation | `Saccade`, `Fixation` | `dpb-core/signal/eye.rs` |
+| **Respiratory** | Breath/Apnea | `BreathEvent`, `ApneaEvent` | `dpb-core/signal/respiratory.rs` |
+| **Fatigue** | Multi-modal | `IntegratedFatigueMetrics` | `dpb-core/signal/fatigue.rs` |
+
+### 2.4 Neural Network Models
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **Point Neurons (19)** | LIF, ALIF, ELIF, Izhikevich, AdEx, HH, etc. | `dpb-neurons/models/*.rs` | Single-compartment |
+| **Reservoir Computing** | `EchoStateNetwork`, `LiquidStateMachine` | `dpb-neurons/reservoir.rs` | Echo state, liquid state |
+| **Surrogate Gradients** | FastSigmoid, Arctan, SuperSpike, etc. | `dpb-neurons/surrogates.rs` | 6 gradient functions |
+| **Multi-Compartment** | `MultiCompartmentNeuron` | `dpb-neurons/dendritic/multi_compartment.rs` | Biologically detailed |
+| **Dendritic Morphology** | `DendriticMorphology`, `Segment` | `dpb-neurons/dendritic/morphology.rs` | Soma, axon, dendrite |
+| **Ion Channels** | `IonChannel`, `HodgkinHuxleyChannel` | `dpb-neurons/dendritic/channels.rs` | Na, K, Ca, leak |
+| **Dendritic Synapses** | `DendriticSynapse`, `SpineCompartment` | `dpb-neurons/dendritic/synapse.rs` | Location-dependent |
+| **Dendritic Plasticity** | `DendriticPlasticity`, `BranchSTDP` | `dpb-neurons/dendritic/plasticity.rs` | Branch-specific learning |
+| **Cable Equation** | `CableIntegrator` | `dpb-neurons/dendritic/integration.rs` | Multi-scale integration |
+
+### 2.5 Spiking Neural Network Layers & Architectures
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **Spiking Layers** | SpikingLinear, SpikingConv1d/2d | `dpb-snn/layers/*.rs` | Basic building blocks |
+| **Recurrent Layers** | SpikingRNN, SpikingLSTM | `dpb-snn/layers/*.rs` | Temporal processing |
+| **Architectures** | Feedforward, Conv, Recurrent, Transformer | `dpb-snn/architectures/*.rs` | Pre-built networks |
+| **Multi-Modal Fusion** | Early, Late, Cross-Modal, Gated | `dpb-snn/fusion/*.rs` | 8 fusion types |
+| **ANN-to-SNN** | `ANNToSNNConverter` | `dpb-snn/conversion/*.rs` | Weight normalization |
+
+### 2.6 Training & Learning
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **Backprop Through Time** | BPTT trainer | `dpb-snn/training/*.rs` | Standard training |
+| **Online Training** | OTTT, SLTT | `dpb-snn/training/*.rs` | Real-time learning |
+| **Hebbian Learning** | `STDP`, `BCMRule`, `OjasRule` | `dpb-snn/learning/hebbian.rs` | Unsupervised |
+| **Network Pruning** | `NetworkPruner`, `PruningStrategy` | `dpb-snn/optimization/pruning.rs` | Model compression |
+| **Knowledge Distillation** | `TeacherStudentTrainer` | `dpb-snn/distillation/teacher_student.rs` | Model compression |
+| **Spike Distillation** | `SpikeDistillation` | `dpb-snn/distillation/spike_distillation.rs` | Temporal knowledge |
+| **Distillation Losses** | KL, MSE, Temporal, Rate | `dpb-snn/distillation/losses.rs` | Loss functions |
+| **Self-Distillation** | `SelfDistillation` | `dpb-snn/distillation/self_distillation.rs` | Born-again networks |
+| **Compression Utils** | `CompressionAnalyzer` | `dpb-snn/distillation/compression.rs` | Size/speed metrics |
+| **Neuromodulation** | `NeuromodulatorSystem` | `dpb-snn/neuromodulation/modulators.rs` | DA, ACh, NE, 5-HT |
+| **Dopamine System** | `DopamineSystem`, `RPEComputer` | `dpb-snn/neuromodulation/dopamine.rs` | Reward prediction |
+| **Acetylcholine** | `AcetylcholineSystem` | `dpb-snn/neuromodulation/acetylcholine.rs` | Attention modulation |
+| **Reward Learning** | `RewardModulatedSTDP` | `dpb-snn/neuromodulation/reward.rs` | Three-factor learning |
+| **Neuromodulatory Gating** | `GatingNetwork` | `dpb-snn/neuromodulation/gating.rs` | Dynamic routing |
+| **Homeostasis** | `HomeostaticRegulator` | `dpb-snn/neuromodulation/homeostasis.rs` | Activity regulation |
+
+### 2.7 GPU & Distributed Computing
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **GPU Backend** | `Backend` enum, `GpuDevice` trait | `dpb-snn/gpu/mod.rs` | Abstraction layer |
+| **CUDA Support** | `CudaDevice`, `CudaBuffer` | `dpb-snn/gpu/cuda.rs` | NVIDIA GPUs |
+| **Metal Support** | `MetalDevice`, `MetalBuffer` | `dpb-snn/gpu/metal.rs` | Apple Silicon |
+| **GPU Kernels** | `SpikeKernel`, `WeightUpdateKernel` | `dpb-snn/gpu/kernels.rs` | Compute operations |
+| **Memory Management** | `MemoryPool`, `PinnedMemory` | `dpb-snn/gpu/memory.rs` | Efficient allocation |
+| **Distributed Config** | `DistributedConfig` | `dpb-snn/distributed/mod.rs` | MPI, Gloo, NCCL |
+| **Data Parallel** | `DataParallel` | `dpb-snn/distributed/partitioning.rs` | Batch splitting |
+| **Model Parallel** | `ModelParallel` | `dpb-snn/distributed/partitioning.rs` | Layer distribution |
+| **Pipeline Parallel** | `PipelineParallel` | `dpb-snn/distributed/partitioning.rs` | 1F1B scheduling |
+| **Fault Tolerance** | `CheckpointManager`, `ElasticTrainingManager` | `dpb-snn/distributed/fault_tolerance.rs` | Recovery, elasticity |
+
+### 2.8 Model Calibration & Explainability
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **Temperature Scaling** | `TemperatureScaling` | `dpb-snn/calibration/temperature.rs` | Post-hoc calibration |
+| **Platt Scaling** | `PlattScaling` | `dpb-snn/calibration/temperature.rs` | Binary classification |
+| **Isotonic Calibration** | `IsotonicCalibration` | `dpb-snn/calibration/isotonic.rs` | Non-parametric |
+| **Uncertainty** | `MCDropout`, `EnsembleUncertainty` | `dpb-snn/calibration/uncertainty.rs` | Epistemic/aleatoric |
+| **Calibration Metrics** | `expected_calibration_error`, `brier_score` | `dpb-snn/calibration/metrics.rs` | ECE, MCE, Brier |
+| **Spike Importance** | `SpikeImportance` | `dpb-snn/explain/importance.rs` | Per-spike scores |
+| **Attention Maps** | `TemporalAttention`, `SpatialAttention` | `dpb-snn/explain/attention.rs` | Focus visualization |
+| **Attribution** | `GradientAttribution`, `IntegratedGradients` | `dpb-snn/explain/attribution.rs` | Feature importance |
+| **SHAP** | `SpikeSHAP` | `dpb-snn/explain/attribution.rs` | Shapley values |
+
+### 2.9 Model Export & Deployment
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **ONNX Export** | `OnnxExporter` | `dpb-snn/export/onnx.rs` | Cross-platform |
+| **TFLite Export** | `TfLiteExporter` | `dpb-snn/export/tflite/exporter.rs` | Mobile deployment |
+| **TFLite Operators** | `TfLiteOperator`, custom ops | `dpb-snn/export/tflite/operators.rs` | SNN-specific ops |
+| **TFLite Quantization** | `TfLiteQuantizer` | `dpb-snn/export/tflite/quantization.rs` | Int8, Float16 |
+| **TFLite Metadata** | `TfLiteMetadata` | `dpb-snn/export/tflite/metadata.rs` | Model documentation |
+| **TFLite Validation** | `TfLiteValidator` | `dpb-snn/export/tflite/validation.rs` | Export verification |
+| **Neuromorphic: Loihi** | `LoihiExporter`, `LoihiNetwork` | `dpb-snn/neuromorphic/loihi.rs` | Intel Loihi |
+| **Neuromorphic: SpiNNaker** | `SpinnakerExporter` | `dpb-snn/neuromorphic/spinnaker.rs` | Manchester SpiNNaker |
+| **Neuromorphic: BrainScaleS** | `BrainscalesExporter` | `dpb-snn/neuromorphic/brainscales.rs` | Heidelberg BrainScaleS |
+| **Hardware Constraints** | `HardwareConstraints` | `dpb-snn/neuromorphic/constraints.rs` | Chip-specific limits |
+| **Network Partitioning** | `NetworkPartitioner` | `dpb-snn/neuromorphic/partitioning.rs` | Multi-chip mapping |
+| **Weight Quantization** | `NeuromorphicQuantizer` | `dpb-snn/neuromorphic/quantization.rs` | Fixed-point weights |
+| **Mobile Runtime** | `MobileRuntime` | `dpb-mobile/runtime.rs` | iOS/Android inference |
+| **Mobile FFI** | `dpb_runtime_create`, etc. | `dpb-mobile/ffi.rs` | C bindings |
+
+### 2.10 Visualization
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **Dashboard Server** | `DashboardServer` | `dpb-viz/dashboard.rs` | WebSocket, real-time |
+| **Spike Raster** | `RasterPlot`, `RasterPlot3D` | `dpb-viz/raster.rs` | Spike visualization |
+| **Network Graph** | `NetworkGraph` | `dpb-viz/network.rs` | Topology view |
+| **Heatmaps** | `WeightHeatmap`, `ActivationHeatmap` | `dpb-viz/heatmap.rs` | Matrix visualization |
+| **Timeline** | `EventTimeline` | `dpb-viz/timeline.rs` | Temporal events |
+| **Export** | `SvgExporter`, `PngExporter` | `dpb-viz/export.rs` | Multi-format |
+
+### 2.11 Synthetic Data & Augmentation
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **ECG Generation** | Normal, arrhythmias, pathology | `dpb-synth/ecg/*.rs` | 50+ variants |
+| **EEG Generation** | Normal, sleep, seizure, ERP | `dpb-synth/eeg/*.rs` | Multi-condition |
+| **EMG Generation** | Normal, fatigue, pathology | `dpb-synth/emg/*.rs` | Muscle signals |
+| **Virtual Cohorts** | `CohortGenerator`, `VirtualPatient` | `dpb-synth/cohort.rs` | Population simulation |
+| **Pathology Models** | ALS, MS, Stroke | `dpb-synth/pathology/*.rs` | Disease progression |
+| **Noise Augmentation** | Gaussian, Pink, Powerline | `dpb-synth/augmentation/noise.rs` | 5 noise types |
+| **Temporal Augmentation** | Warp, Shift, Crop | `dpb-synth/augmentation/temporal.rs` | 5 temporal |
+| **Spectral Augmentation** | Magnitude, Mask | `dpb-synth/augmentation/spectral.rs` | 3 spectral |
+
+### 2.12 Normative Data
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **Adult Norms** | Age/sex stratified | `dpb-norms/adult.rs` | 18-64 years |
+| **Pediatric Norms** | Developmental stages | `dpb-norms/pediatric.rs` | 0-17 years |
+| **Geriatric Norms** | Frailty adjustment | `dpb-norms/geriatric.rs` | 65+ years |
+| **Longitudinal** | MDC, RCI, change detection | `dpb-norms/longitudinal.rs` | Serial assessment |
+
+---
+
+## 3. Implementation → Capabilities Map
+
+This section answers: **"I found this code, what does it do?"**
+
+### 3.1 dpb-core (Signal Processing & I/O)
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              APPLICATIONS                                    │
-├─────────────────┬─────────────────┬─────────────────────────────────────────┤
-│   dpb-python    │    dpb-ffi      │              dpb-bench                  │
-│  (PyO3 bindings)│ (C/FFI bindings)│         (Benchmarking suite)            │
-├─────────────────┴─────────────────┴─────────────────────────────────────────┤
-│                           NEURAL NETWORKS                                    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                              dpb-snn                                         │
-│     (Layers, Architectures, Training, 48 Decoders, Fusion, Baselines)       │
-├────────────────────────────────┬────────────────────────────────────────────┤
-│          dpb-neurons           │              dpb-encoders                  │
-│    (19 neuron models, GPU)     │   (103+ encoders, 85+ templates)          │
-├────────────────────────────────┴────────────────────────────────────────────┤
-│                           DATA & VALIDATION                                  │
-├─────────────────────────────────┬───────────────────────────────────────────┤
-│           dpb-synth             │              dpb-norms                    │
-│   (210+ synthetic generators)   │  (Normative DB, 60 metrics populated)    │
-├─────────────────────────────────┴───────────────────────────────────────────┤
-│                             FOUNDATION                                       │
-├─────────────────────────────────┬───────────────────────────────────────────┤
-│           dpb-core              │           dpb-cognitive                   │
-│  (Types, Traits, Algorithms,    │     (Cognitive task paradigms)            │
-│   Signal Processing, Metrics)   │                                           │
-└─────────────────────────────────┴───────────────────────────────────────────┘
+dpb-core/
+├── signal/
+│   ├── mod.rs              → normalize, find_peaks, rms, envelope
+│   ├── fft.rs              → FFT, STFT, spectral analysis
+│   ├── filter.rs           → FIR/IIR filtering, bandpass, notch
+│   ├── resample.rs         → up/downsampling, interpolation
+│   ├── wavelet.rs          → CWT, DWT, multi-resolution analysis
+│   ├── hilbert.rs          → analytic signal, instantaneous features
+│   ├── ica.rs              → FastICA, blind source separation
+│   ├── emd.rs ✅ NEW       → EMD, EEMD, CEEMDAN, VMD, Hilbert-Huang
+│   ├── ecg.rs              → R-peak, QRS, arrhythmia detection
+│   ├── hrv.rs              → time/frequency domain HRV
+│   ├── ppg.rs              → pulse detection, SpO2
+│   ├── eda.rs              → tonic/phasic, SCR
+│   ├── emg.rs              → burst detection, fatigue
+│   ├── voice.rs            → F0, jitter, shimmer
+│   ├── eye.rs              → saccade, fixation, blink
+│   ├── respiratory.rs      → breath, apnea detection
+│   ├── fatigue.rs          → multi-modal fatigue
+│   └── eeg/
+│       ├── bands.rs        → band power analysis
+│       ├── artifacts.rs    → artifact detection/removal
+│       ├── seizure.rs      → seizure detection
+│       └── erp.rs          → ERP component analysis
+├── pipeline/
+│   ├── buffer.rs           → RingBuffer, SlidingWindow, OverlapBuffer
+│   ├── stage.rs            → PipelineStage trait, TimedStage
+│   └── executor.rs         → PipelineExecutor, latency tracking
+├── io/
+│   ├── wfdb.rs             → PhysioNet WFDB format
+│   ├── edf.rs              → EDF/EDF+ format
+│   ├── gdf.rs              → General Data Format
+│   ├── bdf.rs              → BioSemi 24-bit format
+│   ├── xdf.rs              → Lab Streaming Layer XDF
+│   ├── format_detect.rs    → auto-detection, UnifiedReader
+│   ├── bids/ ✅ NEW
+│   │   ├── mod.rs          → BIDS exports
+│   │   ├── dataset.rs      → BidsDataset, dataset_description.json
+│   │   ├── subject.rs      → Subject handling, participant info
+│   │   ├── session.rs      → Session management
+│   │   ├── eeg.rs          → EEG-BIDS extension
+│   │   ├── derivatives.rs  → Processed data handling
+│   │   └── validation.rs   → BIDS validator
+│   └── fhir/ ✅ NEW
+│       ├── mod.rs          → FHIR exports
+│       ├── resources.rs    → Patient, Observation, Device
+│       ├── observations.rs → Vital signs, waveforms
+│       ├── bundles.rs      → Transaction bundles
+│       ├── serialization.rs → JSON/XML serialization
+│       ├── client.rs       → FHIR REST client
+│       └── conversion.rs   → Signal-to-FHIR conversion
+└── types/                  → Core type definitions
+```
+
+### 3.2 dpb-neurons (Neuron Models)
+
+```
+dpb-neurons/
+├── models/
+│   ├── lif.rs              → Leaky Integrate-and-Fire
+│   ├── alif.rs             → Adaptive LIF
+│   ├── izhikevich.rs       → Izhikevich model (20+ behaviors)
+│   ├── adex.rs             → Adaptive Exponential IF
+│   ├── hh.rs               → Hodgkin-Huxley
+│   └── ...                 → 14+ more models
+├── reservoir.rs            → ESN, LSM reservoir computing
+├── surrogates.rs           → 6 surrogate gradient functions
+└── dendritic/ ✅ NEW
+    ├── mod.rs              → Dendritic computation exports
+    ├── compartment.rs      → Compartment struct, cable properties
+    ├── morphology.rs       → Tree structure, segment types
+    ├── channels.rs         → Ion channels (Na, K, Ca, HCN)
+    ├── synapse.rs          → Location-dependent synapses
+    ├── integration.rs      → Cable equation solver
+    ├── plasticity.rs       → Branch-specific STDP
+    └── multi_compartment.rs → Full multi-compartment neuron
+```
+
+### 3.3 dpb-snn (Network Training & Deployment)
+
+```
+dpb-snn/
+├── layers/                 → Spiking layers (Linear, Conv, RNN)
+├── architectures/          → Pre-built network architectures
+├── training/               → BPTT, OTTT, SLTT trainers
+├── decoders/               → Rate, temporal, clinical decoders
+├── fusion/                 → Multi-modal fusion (8 types)
+├── conversion/             → ANN-to-SNN conversion
+├── learning/
+│   └── hebbian.rs          → STDP, BCM, Oja unsupervised
+├── optimization/
+│   └── pruning.rs          → Magnitude, structured pruning
+├── calibration/
+│   ├── temperature.rs      → Temperature/Platt scaling
+│   ├── isotonic.rs         → Isotonic calibration
+│   ├── uncertainty.rs      → MC Dropout, ensemble
+│   └── metrics.rs          → ECE, Brier, reliability
+├── explain/
+│   ├── importance.rs       → Spike/neuron importance
+│   ├── attention.rs        → Temporal/spatial attention
+│   ├── attribution.rs      → Gradients, IG, SHAP
+│   └── visualization.rs    → Explanation export
+├── export/
+│   ├── onnx.rs             → ONNX graph export
+│   ├── weights.rs          → Weight serialization
+│   ├── config.rs           → Model configuration
+│   └── tflite/ ✅ NEW
+│       ├── mod.rs          → TFLite exports
+│       ├── exporter.rs     → TfLiteExporter main class
+│       ├── operators.rs    → TFLite operator mapping
+│       ├── tensors.rs      → Tensor serialization
+│       ├── quantization.rs → Int8/Float16 quantization
+│       ├── flatbuffer.rs   → FlatBuffer generation
+│       ├── metadata.rs     → Model metadata
+│       └── validation.rs   → Export validation
+├── gpu/
+│   ├── mod.rs              → Backend abstraction
+│   ├── cuda.rs             → CUDA implementation
+│   ├── metal.rs            → Metal implementation
+│   ├── kernels.rs          → Compute kernels
+│   └── memory.rs           → Memory management
+├── distributed/
+│   ├── mod.rs              → Distributed config
+│   ├── coordinator.rs      → Gradient aggregation
+│   ├── partitioning.rs     → Data/Model/Pipeline parallel
+│   ├── communication.rs    → Message passing
+│   ├── fault_tolerance.rs  → Checkpoints, elasticity
+│   └── metrics.rs          → Throughput metrics
+├── distillation/ ✅ NEW
+│   ├── mod.rs              → Knowledge distillation exports
+│   ├── teacher_student.rs  → Teacher-student training
+│   ├── losses.rs           → KL, MSE, temporal losses
+│   ├── spike_distillation.rs → Spike timing transfer
+│   ├── compression.rs      → Compression analysis
+│   └── self_distillation.rs → Born-again networks
+├── neuromorphic/ ✅ NEW
+│   ├── mod.rs              → Neuromorphic exports
+│   ├── loihi.rs            → Intel Loihi export
+│   ├── spinnaker.rs        → SpiNNaker export
+│   ├── brainscales.rs      → BrainScaleS export
+│   ├── constraints.rs      → Hardware constraints
+│   ├── partitioning.rs     → Multi-chip partitioning
+│   └── quantization.rs     → Fixed-point conversion
+└── neuromodulation/ ✅ NEW
+    ├── mod.rs              → Neuromodulation exports
+    ├── modulators.rs       → Generic modulator system
+    ├── dopamine.rs         → DA, reward prediction error
+    ├── acetylcholine.rs    → ACh, attention modulation
+    ├── reward.rs           → Reward-modulated STDP
+    ├── gating.rs           → Dynamic routing
+    ├── homeostasis.rs      → Activity regulation
+    └── integration.rs      → Multi-system integration
+```
+
+### 3.4 dpb-synth (Synthetic Data)
+
+```
+dpb-synth/
+├── ecg/                    → ECG generators (50+ variants)
+├── eeg/                    → EEG generators
+├── emg/                    → EMG generators
+├── tremor/                 → Tremor generators
+├── gait/                   → Gait generators
+├── voice/                  → Voice generators
+├── respiratory/            → Respiratory generators
+├── pathology/
+│   ├── als.rs              → ALS model, ALSFRS-R
+│   ├── ms.rs               → MS model, EDSS
+│   ├── stroke.rs           → Stroke model, NIHSS
+│   ├── progression.rs      → Disease trajectories
+│   └── medication.rs       → 12 medication classes
+├── augmentation/
+│   ├── noise.rs            → 5 noise augmentations
+│   ├── temporal.rs         → 5 temporal augmentations
+│   └── spectral.rs         → 3 spectral augmentations
+└── cohort.rs               → Virtual patient cohorts
+```
+
+### 3.5 Auxiliary Crates
+
+```
+dpb-viz/                    → Visualization (dashboard, raster, heatmap)
+dpb-mobile/                 → Mobile runtime (iOS, Android)
+dpb-norms/                  → Normative databases
+dpb-cognitive/              → Cognitive assessments
+dpb-encoders/               → Event-based encoders
+dpb-python/                 → Python bindings
+dpb-ffi/                    → C FFI
+dpb-bench/                  → Benchmarking
+dpb-wasm/ ✅ NEW            → WebAssembly bindings
+dpb-lsl/ ✅ NEW             → Lab Streaming Layer integration
+dpb-export/ ✅ NEW          → Model export (ONNX, JSON, Binary)
+```
+
+### 3.6 Cross-Platform Bindings ✅ NEW
+
+```
+bindings/
+├── r/ ✅ NEW
+│   ├── DESCRIPTION         → CRAN package metadata
+│   ├── NAMESPACE           → Export declarations
+│   ├── R/
+│   │   ├── dpb.R           → Package load, version, error handling
+│   │   ├── timeseries.R    → R6 TimeSeries class
+│   │   ├── spiketrain.R    → R6 SpikeTrain class
+│   │   └── encoders.R      → LevelCrossingEncoder, DeltaEncoder
+│   └── src/
+│       └── dpb_r.c         → C bridge to DPB FFI
+├── labview/ ✅ NEW
+│   └── README.md           → Integration guide, VI specifications
+├── julia/                  → Julia bindings (C FFI)
+└── matlab/                 → MATLAB MEX bindings
+```
+
+### 3.7 dpb-wasm (WebAssembly) ✅ NEW
+
+```
+dpb-wasm/
+├── Cargo.toml              → wasm-bindgen 0.2.93, optional WebGPU
+└── src/
+    ├── lib.rs              → Module init, PerformanceTimer
+    ├── timeseries.rs       → WasmTimeSeries (Float32Array interop)
+    ├── spiketrain.rs       → WasmSpikeTrain (event storage)
+    ├── encoders.rs         → Level crossing, Delta, Temporal contrast
+    └── utils.rs            → Panic hook, console logging
+```
+
+### 3.8 dpb-lsl (Lab Streaming Layer) ✅ NEW
+
+```
+dpb-lsl/
+├── Cargo.toml              → Optional async/tokio feature
+└── src/
+    ├── lib.rs              → ChannelFormat, stream_types constants
+    ├── error.rs            → LslError enum, Result type
+    ├── stream_info.rs      → StreamInfo, StreamInfoBuilder, ChannelInfo
+    ├── inlet.rs            → LslInlet, InletConfig, AsyncLslInlet
+    ├── outlet.rs           → LslOutlet, SpikeOutlet, OutletBuilder
+    ├── resolver.rs         → StreamResolver, StreamWatcher, queries
+    └── pipeline.rs         → EncodingPipeline, PipelineConfig, stats
+```
+
+### 3.9 dpb-export (Model Export) ✅ NEW
+
+```
+dpb-export/
+├── Cargo.toml              → Optional onnx, tensorflow, pytorch features
+└── src/
+    ├── lib.rs              → ExportFormat, ModelExporter
+    ├── error.rs            → ExportError enum
+    ├── metadata.rs         → ModelMetadata, TensorSpec, DataType
+    ├── encoder_export.rs   → EncoderParams, EncoderState, ExportableEncoder
+    ├── json.rs             → JsonExporter, PipelineConfig
+    ├── binary.rs           → BinaryExporter, BinaryImporter (embedded format)
+    └── onnx.rs             → OnnxExporter, computation graph generation
 ```
 
 ---
 
-## 2. Capability → Implementation
+## 4. Cross-Platform Integration
 
-### 2.1 Signal Acquisition & Preprocessing
+This section provides detailed documentation for all cross-platform integrations.
 
-| Capability | Crate | Module | Key Types |
-|------------|-------|--------|-----------|
-| Signal representation | dpb-core | `types` | `TimeSeries`, `SignalBuffer`, `Modality` |
-| IIR filtering (Butterworth) | dpb-core | `signal::filter` | `IirFilter`, `FilterType` |
-| Median filtering | dpb-core | `signal::filter` | `median_filter()` |
-| FFT/spectral analysis | dpb-core | `signal::fft` | `FftProcessor`, `Stft`, `WindowType` |
-| Signal normalization | dpb-core | `signal` | `normalize()`, `NormalizationType` |
-| Resampling | dpb-core | `signal::resample` | `downsample()`, `upsample()`, `resample_linear()` |
-| Peak/valley detection | dpb-core | `signal` | `find_peaks()`, `find_valleys()` |
-| Envelope extraction | dpb-core | `signal` | `envelope()`, `rms()` |
-| Artifact detection | dpb-core | `signal::eeg::artifacts` | `detect_artifacts()`, `ArtifactSegment` |
-
-### 2.2 Event-Based Encoding
-
-| Capability | Crate | Module | Key Types |
-|------------|-------|--------|-----------|
-| **Base Encoders** |
-| Level crossing encoding | dpb-encoders | `base` | `LevelCrossingEncoder` |
-| Template deviation encoding | dpb-encoders | `base` | `TemplateDeviationEncoder` |
-| Derivative encoding | dpb-encoders | `base` | `DerivativeEncoder` |
-| **Contact Biosignals** |
-| ECG R-peak encoding | dpb-encoders | `contact::ecg` | `EcgRPeakEncoder`, `EcgMorphologyEncoder` |
-| PPG pulse encoding | dpb-encoders | `contact::ppg` | `PpgPulseEncoder`, `PpgAmplitudeEncoder` |
-| EDA response encoding | dpb-encoders | `contact::eda` | `EdaScrEncoder`, `EdaTonicEncoder` |
-| EMG burst encoding | dpb-encoders | `contact::emg` | `EmgBurstEncoder`, `EmgFatigueEncoder` |
-| **Movement/Pose** |
-| Gait phase encoding | dpb-encoders | `pose` | `HeelStrikeEncoder`, `ToeOffEncoder`, `GaitPhaseEncoder` |
-| Hand movement encoding | dpb-encoders | `hand` | `TapOnsetEncoder`, `TapApertureEncoder` |
-| Eye movement encoding | dpb-encoders | `eye` | `SaccadeOnsetEncoder`, `FixationStabilityEncoder` |
-| Voice encoding | dpb-encoders | `voice` | `F0Encoder`, `JitterEncoder`, `FormantEncoder` |
-| **Balance Encoders** |
-| CoP sway encoding | dpb-encoders | `balance` | `CopSwayEncoder`, `SwayAreaTemplate` |
-| CoP velocity encoding | dpb-encoders | `balance` | `CopVelocityEncoder`, `SwayVelocityTemplate` |
-| Stability limits encoding | dpb-encoders | `balance` | `StabilityLimitEncoder`, `StabilityLimitTemplate` |
-| **Force Encoders** |
-| GRF phase encoding | dpb-encoders | `force` | `GrfPhaseEncoder`, `PeakGrfTemplate` |
-| Grip onset encoding | dpb-encoders | `force` | `GripOnsetEncoder`, `GripStrengthTemplate` |
-| RFD encoding | dpb-encoders | `force` | `RfdEncoder`, `RfdTemplate` |
-| **Vestibular Encoders** |
-| VOR gain encoding | dpb-encoders | `vestibular` | `VorGainEncoder`, `VorGainTemplate` |
-| Nystagmus encoding | dpb-encoders | `vestibular` | `NystagmusEncoder`, `NystagmusSPVTemplate` |
-| Caloric test encoding | dpb-encoders | `vestibular` | `CaloricEncoder`, `CaloricAsymmetryTemplate` |
-| **Pain Encoders** |
-| Pain threshold encoding | dpb-encoders | `pain` | `PainThresholdEncoder`, `PressurePainThresholdTemplate` |
-| Temporal summation encoding | dpb-encoders | `pain` | `TemporalSummationEncoder`, `WindUpRatioTemplate` |
-| CPM encoding | dpb-encoders | `pain` | `CpmEncoder` |
-| **Cardiopulmonary Encoders** |
-| HRV encoding | dpb-encoders | `cardiopulmonary` | `HrvEncoder`, `RmssdTemplate` |
-| Respiratory phase encoding | dpb-encoders | `cardiopulmonary` | `RespiratoryPhaseEncoder`, `RespiratoryRateTemplate` |
-| RSA encoding | dpb-encoders | `cardiopulmonary` | `RsaEncoder`, `RsaTemplate` |
-| **Cognitive Encoders** |
-| Reaction time encoding | dpb-encoders | `cognitive` | `ReactionTimeEncoder`, `SimpleRtTemplate` |
-| Error encoding | dpb-encoders | `cognitive` | `ErrorEncoder`, `AccuracyTemplate` |
-| Lapse encoding | dpb-encoders | `cognitive` | `LapseEncoder`, `LapseRateTemplate` |
-| **EEG Encoders** |
-| Alpha band power | dpb-encoders | `eeg` | `AlphaBandEncoder`, `AlphaPowerTemplate` |
-| Beta band power | dpb-encoders | `eeg` | `BetaBandEncoder`, `BetaPowerTemplate` |
-| Theta band power | dpb-encoders | `eeg` | `ThetaBandEncoder`, `ThetaPowerTemplate` |
-| Gamma band power | dpb-encoders | `eeg` | `GammaBandEncoder`, `GammaPowerTemplate` |
-| Delta band power | dpb-encoders | `eeg` | `DeltaBandEncoder`, `DeltaPowerTemplate` |
-| ERP detection | dpb-encoders | `eeg` | `ErpEncoder` (P300, N100) |
-| Sleep spindle detection | dpb-encoders | `eeg` | `SpindleEncoder` |
-| Artifact detection | dpb-encoders | `eeg` | `ArtifactEncoder` (blink, muscle, movement) |
-| **Templates** |
-| Population templates | dpb-encoders | `templates` | `TemplateRegistry` (85+ templates) |
-
-### 2.3 Spiking Neural Networks
-
-| Capability | Crate | Module | Key Types |
-|------------|-------|--------|-----------|
-| **Neuron Models (19)** |
-| Leaky integrate-and-fire | dpb-neurons | `lif` | `LifNeuron`, `AlifNeuron`, `ClifNeuron`, `ElifNeuron`, `QlifNeuron`, `GlifNeuron` |
-| Izhikevich | dpb-neurons | `izhikevich` | `IzhikevichNeuron` |
-| Adaptive exponential | dpb-neurons | `adex` | `AdexNeuron` |
-| Hodgkin-Huxley | dpb-neurons | `hodgkin_huxley` | `HodgkinHuxleyNeuron`, `FitzHughNagumoNeuron`, `MorrisLecarNeuron` |
-| Spike response model | dpb-neurons | `srm` | `SrmNeuron` |
-| Hardware-optimized | dpb-neurons | `hardware` | `XyloLifNeuron`, `PulsarLifNeuron`, `QuantizedLifNeuron` |
-| GPU-accelerated | dpb-neurons | `gpu` | `GpuLifNeuron`, `GpuAlifNeuron`, `GpuIzhikevichNeuron` |
-| **Surrogate Gradients (6)** |
-| Gradient functions | dpb-neurons | `surrogate` | `FastSigmoid`, `Arctan`, `Triangular`, `SuperSpike`, `MultiGaussian`, `STE` |
-| **Network Layers** |
-| Linear layers | dpb-snn | `layers::linear` | `SpikingLinear` |
-| Convolutional | dpb-snn | `layers::conv` | `SpikingConv1d`, `SpikingConv2d` |
-| Pooling | dpb-snn | `layers::pool` | `SpikingSumPool2d`, `SpikingMaxPool2d` |
-| Recurrent | dpb-snn | `layers::recurrent` | `SpikingRNN`, `SpikingLSTM` |
-| Attention | dpb-snn | `layers::attention` | `SpikingAttention` |
-| **Architectures (5)** |
-| Feedforward | dpb-snn | `architectures` | `FeedforwardSNN` |
-| Convolutional | dpb-snn | `architectures` | `ConvolutionalSNN` |
-| Recurrent | dpb-snn | `architectures` | `RecurrentSNN` |
-| Graph neural | dpb-snn | `architectures` | `SpikingGCN` |
-| Transformer | dpb-snn | `architectures` | `SpikingTransformer` |
-
-### 2.4 Clinical Decoders (48 total)
-
-| Category | Decoder | Output | Module |
-|----------|---------|--------|--------|
-| **Rate-Based (9)** |
-| Spike rate | `SpikeRateDecoder` | Hz | `decoders::rate` |
-| First spike | `FirstSpikeDecoder` | Time-to-first-spike | `decoders::rate` |
-| Population | `PopulationDecoder` | Vector code | `decoders::rate` |
-| Windowed | `WindowedRateDecoder` | Time-windowed rate | `decoders::rate` |
-| **Temporal (7)** |
-| Pattern | `TemporalPatternDecoder` | Pattern match | `decoders::temporal` |
-| Latency | `LatencyDecoder` | Response latency | `decoders::temporal` |
-| ISI | `ISIDecoder` | Inter-spike intervals | `decoders::temporal` |
-| Burst | `BurstDecoder` | Burst detection | `decoders::temporal` |
-| **Clinical Scales (23)** |
-| UPDRS | `UpdrsDecoder` | 0-199 (MDS-UPDRS) | `decoders::clinical` |
-| UPDRS-III | `UpdrsMotorDecoder` | 0-132 (motor) | `decoders::clinical` |
-| UPDRS Tremor | `UpdrsTremorDecoder` | Tremor subscale | `decoders::clinical` |
-| UPDRS Gait | `UpdrsGaitDecoder` | Gait/posture subscale | `decoders::clinical` |
-| Hoehn-Yahr | `HoehnYahrDecoder` | 0-5 stage | `decoders::clinical` |
-| TUG | `TugDecoder` | Seconds | `decoders::clinical` |
-| Berg Balance | `BergBalanceDecoder` | 0-56 | `decoders::clinical` |
-| Tinetti | `TinettiDecoder` | 0-28 | `decoders::clinical` |
-| MiniBEST | `MiniBESTDecoder` | 0-32 | `decoders::clinical` |
-| MoCA | `MocaDecoder` | 0-30 | `decoders::clinical` |
-| VoiceHD | `VoiceHdDecoder` | Voice disorder scale | `decoders::clinical` |
-| PDQ-39 | `Pdq39Decoder` | Quality of life | `decoders::clinical` |
-| SEADL | `SeadlDecoder` | ADL scale | `decoders::clinical` |
-| VAS Pain | `VasDecoder` | 0-100mm | `decoders::clinical` |
-| NRS Pain | `NrsDecoder` | 0-10 | `decoders::clinical` |
-| QST Phenotype | `QstPhenotypeDecoder` | Sensory phenotype | `decoders::clinical` |
-| VOR Gain | `VorGainDecoder` | Gain ratio | `decoders::clinical` |
-| Canal Paresis | `CanalParesisDecoder` | % asymmetry | `decoders::clinical` |
-| BPPV | `BppvDecoder` | Probability | `decoders::clinical` |
-| **Regression (10)** |
-| Heart rate | `HeartRateDecoder` | BPM | `decoders::regression` |
-| HRV | `HrvDecoder` | RMSSD (ms) | `decoders::regression` |
-| Tremor freq | `TremorFrequencyDecoder` | Hz | `decoders::regression` |
-| Tremor amp | `TremorAmplitudeDecoder` | mm | `decoders::regression` |
-| Gait velocity | `GaitVelocityDecoder` | m/s | `decoders::regression` |
-| Stride time | `StrideTimeDecoder` | seconds | `decoders::regression` |
-| Tapping freq | `TappingFrequencyDecoder` | Hz | `decoders::regression` |
-| Reaction time | `ReactionTimeDecoder` | ms | `decoders::regression` |
-| Speech rate | `SpeechRateDecoder` | syllables/s | `decoders::regression` |
-| **Classification (10)** |
-| Binary | `BinaryClassDecoder` | 0/1 | `decoders::classification` |
-| Multi-class | `MultiClassDecoder` | Class label | `decoders::classification` |
-| Tremor type | `TremorTypeDecoder` | Rest/postural/kinetic | `decoders::classification` |
-| Gait phase | `GaitPhaseDecoder` | Stance/swing | `decoders::classification` |
-| Sleep stage | `SleepStageDecoder` | W/N1/N2/N3/REM | `decoders::classification` |
-| Activity | `ActivityDecoder` | Activity type | `decoders::classification` |
-
-### 2.5 Multi-Modal Fusion
-
-| Capability | Crate | Module | Key Types |
-|------------|-------|--------|-----------|
-| Early fusion | dpb-snn | `fusion::early` | `EarlyFusionSNN` |
-| Late fusion | dpb-snn | `fusion::late` | `LateFusionSNN` |
-| Cross-modal attention | dpb-snn | `fusion::attention` | `CrossModalAttentionSNN` |
-| Hierarchical fusion | dpb-snn | `fusion::hierarchical` | `HierarchicalFusionSNN` |
-| Temporal alignment | dpb-snn | `fusion::temporal` | `TemporalAlignmentSNN` |
-| Gated fusion | dpb-snn | `fusion::gated` | `GatedFusionSNN` |
-| Cognitive-motor | dpb-snn | `fusion::cognitive_motor` | `CognitiveMotorFusionSNN` |
-
-### 2.6 Synthetic Data Generation
-
-| Domain | Crate | Module | Generators |
-|--------|-------|--------|------------|
-| **Contact Biosignals** |
-| ECG | dpb-synth | `contact::ecg` | `EcgMorphologyGenerator`, `EcgArrhythmiaGenerator` |
-| PPG | dpb-synth | `contact::ppg` | `PpgPulseGenerator`, `PpgRespiratoryGenerator` |
-| EDA | dpb-synth | `contact::eda` | `EdaTonicGenerator`, `EdaScrGenerator` |
-| EMG | dpb-synth | `contact::emg` | `EmgBurstGenerator`, `EmgFatigueGenerator` |
-| Tremor | dpb-synth | `contact::tremor` | `ParkinsonianTremorGenerator`, `PhysiologicalTremorGenerator` |
-| **Movement** |
-| Gait | dpb-synth | `pose::gait` | `GaitCycleGenerator`, `PathologicalGaitGenerator` |
-| Hand | dpb-synth | `hand` | `TappingGenerator`, `BradykineticTappingGenerator` |
-| Eye | dpb-synth | `eye` | `SaccadeGenerator`, `FixationGenerator`, `PursuitGenerator` |
-| **Voice** |
-| Phonation | dpb-synth | `voice::phonation` | `VoiceTremorGenerator`, `HypophoniaGenerator` |
-| Articulation | dpb-synth | `voice::articulation` | `DysarthriaGenerator` |
-| **Neural** |
-| EEG | dpb-synth | `neural::eeg` | `EegGenerator`, `EegArtifactGenerator` |
-| ERP | dpb-synth | `neural::erp` | `P300Generator`, `N100Generator` |
-| Sleep | dpb-synth | `neural::sleep` | `SpindleGenerator`, `KComplexGenerator` |
-| **Balance/Force** |
-| CoP | dpb-synth | `balance::cop` | `CopSwayGenerator`, `PathologicalSwayGenerator` |
-| GRF | dpb-synth | `force::grf` | `GrfGenerator`, `PathologicalGrfGenerator` |
-| Grip | dpb-synth | `force::grip` | `GripStrengthGenerator` |
-| **Vestibular** |
-| VOR | dpb-synth | `vestibular::vor` | `VorGainGenerator`, `VorAsymmetryGenerator` |
-| Nystagmus | dpb-synth | `vestibular::nystagmus` | `NystagmusGenerator`, `BppvGenerator` |
-| Caloric | dpb-synth | `vestibular::caloric` | `CaloricResponseGenerator` |
-| **Pain** |
-| QST | dpb-synth | `pain` | `PainThresholdGenerator`, `CpmGenerator` |
-| **Cardiopulmonary** |
-| HRV | dpb-synth | `cardiopulmonary` | `HrvGenerator` |
-| Respiratory | dpb-synth | `cardiopulmonary` | `RespiratoryGenerator` |
-| **Cognitive** |
-| Tasks | dpb-synth | `cognitive` | `ReactionTimeGenerator`, `NBackGenerator` |
-| **Multi-modal** |
-| Parkinson's | dpb-synth | `multimodal` | `FullPDSimulator`, `HealthyAgingSimulator` |
-| Coupling | dpb-synth | `multimodal` | `HandVoiceTremorCouplingGenerator`, `GaitSpeechRateCouplingGenerator` |
-| **Streaming (Real-time)** |
-| ECG | dpb-synth | `streaming` | `StreamingEcg`, `StreamingEcgParams` |
-| EEG | dpb-synth | `streaming` | `StreamingEeg`, `StreamingEegParams` |
-| PPG | dpb-synth | `streaming` | `StreamingPpg` |
-| EMG | dpb-synth | `streaming` | `StreamingEmg` |
-| EDA | dpb-synth | `streaming` | `StreamingEda` |
-| Respiratory | dpb-synth | `streaming` | `StreamingRespiratory` |
-| Pose | dpb-synth | `streaming` | `StreamingPose`, `StreamingClinicalPose` |
-| Hand | dpb-synth | `streaming` | `StreamingHand`, `StreamingClinicalHand` |
-| Gaze | dpb-synth | `streaming` | `StreamingGaze` |
-| Tremor | dpb-synth | `streaming` | `StreamingTremor` |
-
-### 2.7 Normative Comparison
-
-| Capability | Crate | Module | Key Types |
-|------------|-------|--------|-----------|
-| Demographics | dpb-norms | `demographics` | `Demographics`, `Sex`, `AgeGroup`, `Ethnicity` |
-| Metric types | dpb-norms | `metrics` | `MetricType` (60 types), `MetricDomain`, `MetricDirection` |
-| Normative stats | dpb-norms | `lib` | `NormativeStats`, `NormativeComparison` |
-| Database | dpb-norms | `database` | `NormativeDatabase`, `NormativeEntry`, `NormativeTable` |
-| Impairment levels | dpb-norms | `lib` | `ImpairmentLevel` (Normal → Severe) |
-
-#### 2.7.1 Populated Normative Metrics (60/60 = 100%)
-
-| Domain | Metrics |
-|--------|---------|
-| **Cognitive (15)** | SimpleReactionTime, ChoiceReactionTime, ReactionTimeVariability, NBackAccuracy, NBackDPrime, CptOmissions, CptCommissions, StroopInterference, TrailMakingA, TrailMakingB, TrailMakingBMinusA, DigitSpanForward, DigitSpanBackward, VerbalFluency, MocaTotal |
-| **Motor (13)** | GaitVelocity, StrideLength, StrideTimeVariability, DoubleSupportTime, Cadence, TimedUpAndGo, GripStrength, RateOfForceDevelopment, TappingFrequency, TappingVariability, TremorAmplitude, TremorFrequency, UpdrsMotor |
-| **Balance (8)** | SwayArea, SwayPathLength, SwayVelocity, RombergQuotient, BergBalanceScale, LosReactionTime, LosMaxExcursion, LosDirectionalControl |
-| **Physiological (10)** | HeartRate, HrvSdnn, HrvRmssd, HrvPnn50, HrvLfHf, RespiratoryRate, SpO2, BpSystolic, BpDiastolic |
-| **Sensory (5)** | PressurePainThreshold, PainTolerance, CpmEffect, VibrationThreshold, JointPositionError |
-| **Sleep (6)** | TotalSleepTime, SleepEfficiency, SleepOnsetLatency, WakeAfterSleepOnset, RemPercent, DeepSleepPercent |
-| **Composite (4)** | CognitiveComposite, MotorComposite, GlobalComposite, FrailtyIndex |
-
-### 2.8 Cognitive Assessment
-
-| Task Type | Crate | Module | Key Types |
-|-----------|-------|--------|-----------|
-| Reaction time | dpb-cognitive | `reaction_time` | `SimpleReactionTime`, `ChoiceReactionTime` |
-| Working memory | dpb-cognitive | `working_memory` | `NBackTask` |
-| Sustained attention | dpb-cognitive | `attention` | `ContinuousPerformanceTest` |
-| Selective attention | dpb-cognitive | `attention` | `StroopTask` |
-| Inhibition | dpb-cognitive | `executive` | `GoNoGoTask` |
-| Interference | dpb-cognitive | `executive` | `FlankerTask` |
-| Set shifting | dpb-cognitive | `executive` | `WisconsinCardSort` |
-| ADHD screening | dpb-cognitive | `adhd` | `QbTest`, `AdhdEyeTracking` |
-
----
-
-## 3. Implementation → Capabilities
-
-### 3.1 dpb-core
-
-**Purpose**: Foundation crate with core types, traits, and algorithms
-
-| Module | Capabilities |
-|--------|--------------|
-| `types` | `SpikeEvent`, `SpikeTrain`, `SignalBuffer`, `TimeSeries`, `Context`, `Modality` |
-| `traits` | `Signal`, `EventEncoder`, `PopulationTemplate`, `MembraneDynamics`, `SynapticModel`, `SpikingLayer`, `SNNNetwork`, `Dataset`, `Optimizer`, `LossFunction` |
-| `tensor` | `SpikeTensor` - batched spike operations with GPU acceleration |
-| `signal/filter` | Butterworth IIR, median filter, bandpass, highpass, lowpass |
-| `signal/fft` | FFT, STFT, power spectral density, band power extraction |
-| `signal/resample` | Upsampling, downsampling, linear interpolation |
-| `signal/eeg` | Band power (delta/theta/alpha/beta/gamma), artifact detection, ERP analysis |
-| `gpu` | WGPU-based GPU compute, buffer management, kernel execution |
-| `metrics` | Classification (accuracy, F1, ROC-AUC), regression (MSE, MAE, R²), clinical (sensitivity, specificity), efficiency (spike rate, energy) |
-| `validation` | Reliability (ICC, Cronbach's alpha), validity (ROC curves, MDC), convergence analysis |
-| `power` | Neuromorphic power estimation, synaptic operations, memory access |
-| `biomechanics` | GRF analysis, grip dynamics, RFD calculation, balance metrics |
-| `cardiopulmonary` | VO2 kinetics, ventilatory thresholds, gas exchange |
-| `pain` | QST analysis, pain scales, autonomic response |
-| `vestibular` | VOR analysis, posturography, canal function |
-| `sleep` | Sleep staging, spindle detection, sleep efficiency |
-| `viz` | Signal plotting, spike rasters, network visualization, training curves |
-
-### 3.2 dpb-encoders
-
-**Purpose**: Convert continuous biosignals to spike trains
-
-| Module | Capabilities |
-|--------|--------------|
-| `base` | Level crossing, template deviation, derivative, discrete event encoders |
-| `contact/ecg` | R-peak detection, morphology analysis, ST-segment, HRV features |
-| `contact/ppg` | Pulse detection, amplitude, transit time, respiratory modulation |
-| `contact/eda` | SCR detection, tonic level, phasic response |
-| `contact/emg` | Burst detection, amplitude envelope, fatigue tracking |
-| `pose/gait` | Heel strike, toe-off, gait phase, stride detection, asymmetry |
-| `hand/tapping` | Tap onset, aperture, frequency, decrement detection |
-| `eye/saccade` | Saccade onset, main sequence, latency |
-| `eye/fixation` | Fixation stability, microsaccades |
-| `eye/pupil` | Pupil response, light reflex |
-| `voice/phonation` | F0 tracking, jitter, shimmer, HNR |
-| `voice/articulation` | Formant tracking, vowel space |
-| `voice/prosody` | Speech rate, pause detection, intonation |
-| `balance` | CoP sway, velocity, stability limits |
-| `force` | GRF phases, grip onset, RFD |
-| `vestibular` | VOR gain, nystagmus SPV, caloric asymmetry |
-| `pain` | Pain threshold, temporal summation, CPM effect |
-| `cardiopulmonary` | HRV features, respiratory phase, RSA |
-| `cognitive` | Reaction time, error detection, lapse detection |
-| `eeg` | Alpha/beta/theta/gamma/delta power, ERP (P300/N100), spindles, artifacts |
-| `templates` | 85+ population templates with age/sex stratification |
-
-### 3.3 dpb-neurons
-
-**Purpose**: Spiking neuron models with GPU support
-
-| Module | Capabilities |
-|--------|--------------|
-| `lif` | 7 LIF variants: IF, LIF, CLIF, ALIF, ELIF, QLIF, GLIF |
-| `izhikevich` | Phenomenological model with various firing patterns |
-| `adex` | Adaptive exponential integrate-and-fire |
-| `hodgkin_huxley` | Conductance-based models: HH, FitzHugh-Nagumo, Morris-Lecar |
-| `srm` | Spike response model with adaptation |
-| `stochastic` | Stochastic LIF with noise |
-| `recurrent` | Self-connected neurons |
-| `hardware` | Xylo, Pulsar, Quantized LIF for hardware deployment |
-| `gpu` | GPU-accelerated LIF, ALIF, Izhikevich |
-| `surrogate` | 6 surrogate gradients for backpropagation |
-| `batch` | Batch processing layers, population statistics |
-
-### 3.4 dpb-snn
-
-**Purpose**: Complete SNN training, inference, and deployment
-
-| Module | Capabilities |
-|--------|--------------|
-| `layers` | Linear, Conv1d/2d, Pooling, RNN, LSTM, Attention layers |
-| `architectures` | Feedforward, Convolutional, Recurrent, GCN, Transformer SNNs |
-| `training` | BPTT, OTTT, SLTT; CrossEntropy, SpikeCount, SpikeTiming losses |
-| `decoders/rate` | 9 rate-based decoders |
-| `decoders/temporal` | 7 temporal pattern decoders |
-| `decoders/clinical` | 23 clinical scale decoders (UPDRS, Berg, MoCA, VAS, etc.) |
-| `decoders/regression` | 10 continuous value decoders |
-| `decoders/classification` | 10 classification decoders |
-| `fusion` | 8 multi-modal fusion strategies |
-| `baselines` | 44 ANN architectures for comparison |
-| `conversion` | ANN-to-SNN conversion with threshold balancing |
-| `analysis` | 25+ training analyzers (convergence, gradients, overfitting) |
-| `export` | Hardware export capabilities |
-
-### 3.5 dpb-synth
-
-**Purpose**: Synthetic biosignal generation with ground truth
-
-| Module | Capabilities |
-|--------|--------------|
-| `contact` | ECG, PPG, EDA, EMG, tremor generators |
-| `pose` | Gait cycle, pathological gait, variability generators |
-| `hand` | Tapping, tremor, movement generators |
-| `eye` | Saccade, fixation, pupil, pursuit generators |
-| `voice` | Phonation, articulation, prosody, pathological speech |
-| `neural` | EEG, ERP, sleep microstructure generators |
-| `force` | GRF, grip strength, RFD generators |
-| `balance` | CoP sway, perturbation, sensory integration |
-| `vestibular` | VOR, nystagmus, caloric response generators |
-| `pain` | Pain threshold, CPM, temporal summation |
-| `cardiopulmonary` | HRV, respiratory pattern generators |
-| `cognitive` | Reaction time, cognitive task generators |
-| `multimodal` | Full disease simulators (Parkinson's, healthy aging), cross-modal coupling |
-| `streaming` | Real-time streaming generators (ECG, EEG, PPG, EMG, EDA, Pose, Hand, Gaze, Tremor) |
-| `media` | Integration with Blender, MediaPipe, OpenSim, MuJoCo, etc. |
-| `level3` | Complex clinical simulations with video/audio |
-
-### 3.6 dpb-norms
-
-**Purpose**: Population-based normative comparison
-
-| Module | Capabilities |
-|--------|--------------|
-| `demographics` | Age, sex, ethnicity, handedness, education filtering |
-| `metrics` | 60 metric types across 7 domains with directions and units |
-| `database` | Normative lookup with age/sex stratification |
-| - | Percentile calculation, z-score computation |
-| - | Reference ranges (5th-95th percentile) |
-| - | Impairment classification (Normal → Severe) |
-| - | MDC (minimal detectable change) calculation |
-| - | ICC-based reliability metrics |
-
-### 3.7 dpb-cognitive
-
-**Purpose**: Computerized cognitive assessment tasks
-
-| Module | Capabilities |
-|--------|--------------|
-| `reaction_time` | Simple RT, choice RT with accuracy and variability |
-| `working_memory` | N-back task with d-prime calculation |
-| `attention` | CPT with hit/FA rates; Stroop with interference |
-| `executive` | Go/No-Go with inhibition; Flanker with congruity; WCST with perseveration |
-| `adhd` | QbTest integration, ADHD-specific eye tracking metrics |
-
----
-
-## 4. Dependency Graph
-
-### 4.1 Crate Dependencies
+### 4.1 Language Binding Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         APPLICATIONS                             │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                       │
-│  │dpb-python│  │ dpb-ffi  │  │dpb-bench │                       │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘                       │
-│       │             │             │                              │
-│       └──────┬──────┴─────────────┘                              │
-│              │                                                   │
-│              ▼                                                   │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │                         dpb-snn                            │  │
-│  │  (Layers, Architectures, Training, Decoders, Fusion)       │  │
-│  └───────────────────────┬───────────────────────────────────┘  │
-│                          │                                       │
-│         ┌────────────────┼────────────────┐                     │
-│         │                │                │                     │
-│         ▼                ▼                ▼                     │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐                │
-│  │dpb-encoders│  │dpb-neurons │  │ dpb-synth  │                │
-│  │(103+ enc.) │  │(19 models) │  │(210+ gen.) │                │
-│  └──────┬─────┘  └──────┬─────┘  └──────┬─────┘                │
-│         │               │               │                       │
-│         └───────────────┼───────────────┘                       │
-│                         │                                        │
-│                         ▼                                        │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │                        dpb-core                            │  │
-│  │  (Types, Traits, Signal Processing, GPU, Metrics, Viz)     │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  ┌────────────────┐  ┌────────────────┐                         │
-│  │   dpb-norms    │  │ dpb-cognitive  │  (Standalone modules)   │
-│  │ (60 metrics)   │  │  (8+ tasks)    │                         │
-│  └────────────────┘  └────────────────┘                         │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                            LANGUAGE BINDINGS ARCHITECTURE                            │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                      │
+│  Native Rust Crates                    FFI Layer                 Language Bindings  │
+│  ─────────────────                     ─────────                 ─────────────────  │
+│                                                                                      │
+│  ┌─────────────┐                   ┌─────────────┐            ┌─────────────────┐   │
+│  │ dpb-core    │──────────────────►│ dpb-ffi     │───────────►│ Python (PyO3)   │   │
+│  │ dpb-encoders│                   │ (C headers) │            │ Julia (CBinding)│   │
+│  │ dpb-neurons │                   └──────┬──────┘            │ MATLAB (MEX)    │   │
+│  │ dpb-snn     │                          │                   │ R (.Call())     │   │
+│  └─────────────┘                          │                   │ LabVIEW (CLFN)  │   │
+│                                           │                   │ C/C++ (direct)  │   │
+│                                           │                   └─────────────────┘   │
+│                                           │                                          │
+│                                           ▼                                          │
+│  ┌─────────────┐                   ┌─────────────┐            ┌─────────────────┐   │
+│  │ dpb-wasm    │◄──────────────────│ dpb-export  │───────────►│ ONNX Runtime    │   │
+│  │ (browser)   │                   │ (formats)   │            │ TensorFlow Lite │   │
+│  └──────┬──────┘                   └─────────────┘            │ Edge Devices    │   │
+│         │                                                     └─────────────────┘   │
+│         ▼                                                                            │
+│  ┌─────────────────┐               ┌─────────────┐            ┌─────────────────┐   │
+│  │ JavaScript/     │               │ dpb-lsl     │───────────►│ LSL Ecosystem   │   │
+│  │ TypeScript      │               │ (streaming) │            │ OpenBCI, Muse   │   │
+│  │ Web Apps        │               └─────────────┘            │ BrainVision     │   │
+│  └─────────────────┘                                          └─────────────────┘   │
+│                                                                                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 Signal Processing Pipeline
+### 4.2 R Bindings
 
+| Capability | Implementation | Notes |
+|------------|----------------|-------|
+| **TimeSeries** | `TimeSeries` R6 class | Matrix storage, FFI bridge |
+| **SpikeTrain** | `SpikeTrain` R6 class | Event-based storage |
+| **Level Crossing Encoder** | `LevelCrossingEncoder` R6 class | Threshold-based encoding |
+| **Delta Encoder** | `DeltaEncoder` R6 class | Change-based encoding |
+| **File I/O** | `timeseries_from_file()` | CSV, custom formats |
+| **Version Info** | `dpb_version()` | Library version |
+| **Error Handling** | `dpb_last_error()`, `dpb_clear_error()` | Thread-local errors |
+
+**Installation:**
+```r
+# From source
+install.packages("devtools")
+devtools::install_local("bindings/r")
+
+# Usage
+library(dpb)
+ts <- TimeSeries$new(data_matrix, sample_rate = 256)
+encoder <- LevelCrossingEncoder$new(threshold = 0.1, num_channels = 8)
+spikes <- encoder$encode(ts)
 ```
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│   Raw Signal │───▶│   Preprocess │───▶│   Encoder    │───▶│  SpikeTrain  │
-│   (analog)   │    │  (filter/FFT)│    │ (103+ types) │    │  (events)    │
-└──────────────┘    └──────────────┘    └──────────────┘    └──────┬───────┘
-                                                                   │
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐          │
-│   Clinical   │◀───│   Decoder    │◀───│     SNN      │◀─────────┘
-│    Score     │    │  (48 types)  │    │ (5 arch.)    │
-└──────────────┘    └──────────────┘    └──────────────┘
-       │
-       ▼
-┌──────────────┐
-│  Normative   │
-│  Comparison  │
-└──────────────┘
+
+### 4.3 LabVIEW Integration
+
+| Component | VI/Function | Description |
+|-----------|-------------|-------------|
+| **Library Loading** | Call Library Function Node | Load dpb_ffi.dll/.so/.dylib |
+| **TimeSeries** | DPB_TimeSeries_Create.vi | Create from 2D array |
+| **Encoding** | DPB_Encoder_Encode.vi | Generic encoder wrapper |
+| **Spike Output** | DPB_SpikeTrain_GetData.vi | Extract spike data |
+| **Error Handling** | DPB_GetLastError.vi | Thread-safe error messages |
+
+### 4.4 WebAssembly (WASM)
+
+| Capability | Implementation | Notes |
+|------------|----------------|-------|
+| **WasmTimeSeries** | `WasmTimeSeries` class | Float32Array integration |
+| **WasmSpikeTrain** | `WasmSpikeTrain` class | JavaScript event access |
+| **Level Crossing** | `WasmLevelCrossingEncoder` | Browser-side encoding |
+| **Delta Encoder** | `WasmDeltaEncoder` | Adaptive thresholds |
+| **Temporal Contrast** | `WasmTemporalContrastEncoder` | Event-based vision style |
+| **Performance Timer** | `PerformanceTimer` | Benchmarking utilities |
+
+**Usage:**
+```javascript
+import init, { WasmTimeSeries, WasmLevelCrossingEncoder } from 'dpb-wasm';
+
+await init();
+const ts = WasmTimeSeries.new(new Float32Array(data), numChannels, sampleRate);
+const encoder = WasmLevelCrossingEncoder.new(0.1, numChannels);
+const spikes = encoder.encode(ts);
+console.log(`Generated ${spikes.spikeCount()} spikes`);
 ```
 
-### 4.3 External Dependencies
+### 4.5 Lab Streaming Layer (LSL)
 
-| Category | Libraries |
-|----------|-----------|
-| **Numerics** | ndarray, nalgebra, num-complex, statrs |
-| **GPU** | wgpu, bytemuck |
-| **FFT** | rustfft |
-| **Serialization** | serde, serde_json, bincode |
-| **Async** | tokio, rayon |
-| **Random** | rand, rand_distr |
-| **Error Handling** | thiserror, anyhow |
-| **Logging** | tracing, tracing-subscriber |
-| **Python** | pyo3, numpy |
-| **Testing** | approx, criterion |
+| Capability | Implementation | Notes |
+|------------|----------------|-------|
+| **Stream Discovery** | `StreamResolver` | Find streams by name/type/property |
+| **Data Reception** | `LslInlet` | Pull samples/chunks |
+| **Data Transmission** | `LslOutlet` | Push samples/chunks |
+| **Spike Streaming** | `SpikeOutlet` | Specialized spike output |
+| **Real-time Pipeline** | `EncodingPipeline` | Live encoding with stats |
+| **Async Support** | `AsyncLslInlet` | Tokio integration |
 
----
-
-## 5. Gap Analysis
-
-### 5.1 Coverage Summary
-
-| Domain | Generators | Encoders | Analysis | Decoders | Norms |
-|--------|:----------:|:--------:|:--------:|:--------:|:-----:|
-| **ECG/Cardiac** | ✓ | ✓ | ✓ | ✓ | ✓ |
-| **PPG** | ✓ | ✓ | ○ | ✓ | ○ |
-| **EDA** | ✓ | ✓ | ○ | ○ | ○ |
-| **EMG** | ✓ | ✓ | ○ | ✓ | ○ |
-| **EEG** | ✓ | ✓ | ✓ | ✓ | ○ |
-| **Gait/Pose** | ✓ | ✓ | ○ | ✓ | ✓ |
-| **Hand/Tremor** | ✓ | ✓ | ○ | ✓ | ✓ |
-| **Eye Tracking** | ✓ | ✓ | ○ | ✓ | ○ |
-| **Voice** | ✓ | ✓ | ○ | ✓ | ○ |
-| **Force (GRF/Grip/RFD)** | ✓ | ✓ | ✓ | ○ | ✓ |
-| **Balance (CoP)** | ✓ | ✓ | ○ | ✓ | ✓ |
-| **Vestibular (VOR)** | ✓ | ✓ | ✓ | ✓ | ○ |
-| **Pain (QST)** | ✓ | ✓ | ✓ | ✓ | ✓ |
-| **Cardiopulmonary** | ✓ | ✓ | ✓ | ○ | ✓ |
-| **Cognitive** | ✓ | ✓ | ✓ | ○ | ✓ |
-
-**Legend:** ✓ = Complete | ○ = Partial/Stub | ✗ = Missing
-
-### 5.2 Completeness Metrics
-
-| Metric | Count | Target | Coverage |
-|--------|-------|--------|----------|
-| Neuron models | 19 | 20 | **95%** |
-| Event encoders | 103+ | 110 | **94%** |
-| Population templates | 85+ | 90 | **94%** |
-| Synthetic generators | 210+ | 220 | **95%** |
-| SNN decoders | 48 | 50 | **96%** |
-| ANN baselines | 44 | 50 | **88%** |
-| Normative metrics | 60 | 60 | **100%** |
-| Streaming generators | 12 | 15 | **80%** |
-
-### 5.3 Remaining Gaps
-
-#### Medium Priority
-
-| Gap | Domain | Impact | Recommended Implementation |
-|-----|--------|--------|---------------------------|
-| **Multi-modal norms** | Norms | Single-modality only | Add cross-modal normative comparisons |
-| **Fatigue detection** | Core | No fatigue-specific analysis | Add `FatigueDetector` for EMG/force/cognitive |
-| **Seizure detection** | Core | EEG seizure detection stub | Implement full seizure detection algorithm |
-| **Respiratory analysis** | Core | Limited respiratory analysis | Add breath detection, apnea detection |
-
-#### Low Priority
-
-| Gap | Domain | Impact | Recommended Implementation |
-|-----|--------|--------|---------------------------|
-| **Additional pathologies** | Synth | Some conditions not modeled | Add ALS, MS, stroke-specific patterns |
-| **Longitudinal modeling** | Synth | No disease progression | Add progressive disease models |
-| **Medication effects** | Synth | No pharmacological modeling | Add medication response generators |
-| **Hardware export** | SNN | Limited deployment targets | Add more neuromorphic hardware backends |
-| **Visualization tools** | Core | Basic plotting only | Add interactive visualization |
-
----
-
-## 6. Quick Reference
-
-### 6.1 Common Usage Patterns
-
+**Pipeline Example:**
 ```rust
-// 1. Encode a signal to spikes
-use dpb_encoders::prelude::*;
-let encoder = LevelCrossingEncoder::new();
-let config = LevelCrossingConfig::default();
-let spikes = encoder.encode(&signal, &config)?;
+use dpb_lsl::{EncodingPipeline, PipelineBuilder, EncoderType};
 
-// 2. Create a simple SNN
-use dpb_snn::prelude::*;
-let network = FeedforwardSNN::new(&[100, 64, 32, 10]);
-let output = network.forward(&spikes)?;
+let pipeline = PipelineBuilder::new()
+    .input_stream("MyEEG")
+    .input_type("EEG")
+    .output_name("DPB_Spikes")
+    .encoder(EncoderType::LevelCrossing)
+    .threshold(0.1)
+    .adaptive(true)
+    .build();
 
-// 3. Decode to clinical score
-use dpb_snn::decoders::clinical::*;
-let decoder = UpdrsMotorDecoder::new();
-let score = decoder.decode(&output)?;
-
-// 4. Compare to normative data
-use dpb_norms::prelude::*;
-let db = NormativeDatabase::with_defaults();
-let comparison = db.compare(MetricType::GaitVelocity, 0.95, &demographics)?;
-
-// 5. Generate synthetic EEG with streaming
-use dpb_synth::streaming::*;
-let generator = StreamingEeg;
-let params = StreamingEegParams::eyes_closed_rest();
-let mut state = generator.init_state(&params, 42);
-let sample = generator.next_sample(&mut state);
+pipeline.start(5.0)?;  // 5 second timeout
 ```
 
-### 6.2 Crate Feature Flags
+### 4.6 Model Export Formats
 
-| Crate | Feature | Description |
-|-------|---------|-------------|
-| dpb-core | `gpu` | Enable GPU acceleration |
-| dpb-core | `viz` | Enable visualization |
-| dpb-neurons | `gpu` | GPU neuron models |
-| dpb-snn | `training` | Enable training features |
-| dpb-synth | `media` | External tool integration |
-| dpb-synth | `level3` | Complex simulations |
+| Format | Exporter | Use Case |
+|--------|----------|----------|
+| **ONNX** | `OnnxExporter` | Universal deployment, cross-platform |
+| **JSON** | `JsonExporter` | Configuration, human-readable params |
+| **Binary** | `BinaryExporter` | Embedded systems, fast loading |
+| **TFLite** | (via dpb-snn) | Mobile deployment |
 
-### 6.3 CLI Commands
+**Export Example:**
+```rust
+use dpb_export::{ModelExporter, JsonExporter};
+
+let exporter = ModelExporter::new()
+    .with_name("ECG_Encoder")
+    .with_version("1.0.0")
+    .with_metadata("encoder_type", "level_crossing");
+
+exporter.export_json("model_config.json", &encoder)?;
+exporter.export_binary("model.dpb", &encoder)?;
+
+#[cfg(feature = "onnx")]
+exporter.export_onnx("model.onnx", &encoder)?;
+```
+
+---
+
+## 5. Dependency Graph
+
+### 5.1 Crate Dependencies
+
+```
+                         ┌─────────────────────────────────────────────────────────┐
+                         │               LANGUAGE BINDINGS LAYER                    │
+                         │  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌──────────┐ │
+                         │  │dpb-python │ │ dpb-ffi   │ │ dpb-wasm  │ │ R/LabVIEW│ │
+                         │  │  (PyO3)   │ │(C headers)│ │  (WASM)   │ │(bindings)│ │
+                         │  └─────┬─────┘ └─────┬─────┘ └─────┬─────┘ └────┬─────┘ │
+                         └────────┼─────────────┼─────────────┼────────────┼───────┘
+                                  │             │             │            │
+              ┌───────────────────┼─────────────┼─────────────┼────────────┼────────┐
+              │                   │             │             │            │        │
+              ▼                   ▼             ▼             ▼            ▼        │
+    ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
+    │   dpb-bench     │  │   dpb-snn       │  │   dpb-synth     │  │ dpb-export  │ │
+    └────────┬────────┘  │ ✅ +distillation │  └────────┬────────┘  │ ✅ NEW      │ │
+             │           │ ✅ +neuromorphic │           │           │ONNX/JSON/Bin│ │
+             │           │ ✅ +neuromodulat │           │           └──────┬──────┘ │
+             │           └────────┬────────┘           │                  │        │
+             │                    │                    │                  │        │
+             │           ┌────────┴────────┐           │                  │        │
+             │           │                 │           │                  │        │
+             │           ▼                 ▼           │                  │        │
+             │  ┌─────────────────┐ ┌─────────────────┐│                  │        │
+             │  │  dpb-neurons    │ │  dpb-encoders   ││                  │        │
+             │  │ ✅ +dendritic   │ └────────┬────────┘│                  │        │
+             │  └────────┬────────┘          │         │                  │        │
+             │           │                   │         │                  │        │
+             │           └─────────┬─────────┘         │                  │        │
+             │                     │                   │                  │        │
+             │                     ▼                   │                  │        │
+             │          ┌─────────────────┐            │                  │        │
+             │          │   dpb-norms     │◄───────────┤                  │        │
+             │          └────────┬────────┘            │                  │        │
+             │                   │                     │                  │        │
+             └───────────────────┼─────────────────────┼──────────────────┼────────┘
+                                 │                     │                  │
+           ┌─────────────────────┼─────────────────────┼──────────────────┘
+           │                     │                     │
+           ▼                     ▼                     ▼
+ ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+ │   dpb-viz       │  │   dpb-core      │  │   dpb-mobile    │  │   dpb-lsl       │
+ │                 │  │ ✅ +BIDS        │  │                 │  │ ✅ NEW          │
+ │                 │  │ ✅ +FHIR        │  │                 │  │ LSL streaming   │
+ │                 │  │ ✅ +EMD         │  │                 │  │                 │
+ └─────────────────┘  └─────────────────┘  └─────────────────┘  └─────────────────┘
+```
+
+### 5.2 Feature Flags
+
+```
+dpb-snn features:
+├── gpu                → GPU acceleration (base)
+│   ├── cuda           → NVIDIA CUDA support
+│   └── metal          → Apple Metal support
+├── distributed        → Multi-node training
+├── distillation       → Knowledge distillation
+├── neuromorphic       → Hardware export (Loihi, SpiNNaker, BrainScaleS)
+└── neuromodulation    → Neuromodulatory systems
+
+dpb-neurons features:
+└── dendritic          → Multi-compartment neurons
+
+dpb-core features:
+├── bids               → BIDS format support
+├── fhir               → HL7 FHIR support
+└── emd                → Empirical mode decomposition
+
+dpb-mobile features:
+├── ios                → iOS-specific (Metal, CoreML)
+├── android            → Android-specific (NNAPI, Vulkan)
+└── quantized          → Quantized inference
+
+dpb-snn/export features:
+├── onnx               → ONNX export
+└── tflite             → TensorFlow Lite export
+
+dpb-wasm features: ✅ NEW
+├── console_error_panic_hook → Better panic messages in browser
+└── webgpu             → WebGPU acceleration (experimental)
+
+dpb-lsl features: ✅ NEW
+└── async              → Tokio async runtime support
+
+dpb-export features: ✅ NEW
+├── onnx               → ONNX graph export
+├── tensorflow         → TensorFlow export (planned)
+├── pytorch            → PyTorch export (planned)
+└── full               → All export formats
+```
+
+### 5.3 Data Flow Pipeline
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                              COMPLETE DATA FLOW v5.0                                     │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                          │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐             │
+│  │     I/O      │──►│   Signal     │──►│   Encoders   │──►│     SNN      │             │
+│  │ WFDB/EDF/GDF │   │  Processing  │   │   (77+)      │   │  Training    │             │
+│  │ BDF/XDF/BIDS │   │  ECG/EEG/EMG │   │              │   │GPU/Dist/Neuro│             │
+│  │ FHIR         │   │  EMD/Wavelet │   │              │   │  modulation  │             │
+│  └──────────────┘   └──────────────┘   └──────────────┘   └──────┬───────┘             │
+│         │                  │                  │                   │                     │
+│         │                  │                  │                   ▼                     │
+│         │                  │                  │           ┌──────────────┐              │
+│         │                  │                  │           │  Distillation│              │
+│         │                  │                  │           │  Pruning     │              │
+│         │                  │                  │           │  Compression │              │
+│         │                  │                  │           └──────┬───────┘              │
+│         │                  │                  │                   │                     │
+│         │                  │                  │                   ▼                     │
+│         │                  │                  │    ┌──────────────────────────────┐     │
+│         │                  │                  │    │         EXPORT               │     │
+│         │                  │                  │    ├──────────────────────────────┤     │
+│         │                  │                  │    │ ONNX  │ TFLite │ Neuromorphic│     │
+│         │                  │                  │    │       │        │Loihi/SpiNN/ │     │
+│         │                  │                  │    │       │        │BrainScaleS  │     │
+│         │                  │                  │    └──────────────────────────────┘     │
+│         │                  │                  │                   │                     │
+│         │                  │                  │                   ▼                     │
+│         │                  │                  │           ┌──────────────┐              │
+│         │                  │                  │           │   Decoders   │              │
+│         │                  │                  │           │ Rate/Temporal│              │
+│         │                  │                  │           │  Clinical    │              │
+│         │                  │                  │           └──────┬───────┘              │
+│         │                  │                  │                   │                     │
+│         │                  │                  │     ┌─────────────┼─────────────┐       │
+│         │                  │                  │     │             │             │       │
+│         │                  │                  │     ▼             ▼             ▼       │
+│         │                  │                  │ ┌────────┐  ┌──────────┐  ┌──────────┐ │
+│         │                  │                  │ │Calibrate│  │ Explain  │  │   Viz    │ │
+│         │                  │                  │ │Uncertain│  │ SHAP/IG  │  │Dashboard │ │
+│         │                  │                  │ └────────┘  └──────────┘  └──────────┘ │
+│         │                  │                  │                                         │
+│         ▼                  ▼                  │                   │                     │
+│  ┌──────────────┐   ┌──────────────┐         │                   ▼                     │
+│  │    Synth     │   │    Norms     │         │           ┌──────────────┐              │
+│  │  Generators  │   │ Pediatric    │         │           │    Mobile    │              │
+│  │  Augment     │   │ Adult        │         │           │  iOS/Android │              │
+│  │  Cohorts     │   │ Geriatric    │         │           │   Runtime    │              │
+│  └──────────────┘   └──────────────┘         │           └──────────────┘              │
+│                                              │                                          │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 6. Gap Analysis
+
+This section answers: **"What's needed but missing?"**
+
+### 6.1 Implementation Status Matrix
+
+| Category | Feature | Status | Priority |
+|----------|---------|--------|----------|
+| **Signal Processing** | FFT/Filtering/Resampling | ✅ Complete | - |
+| **Signal Processing** | Wavelet/Hilbert/ICA | ✅ Complete | - |
+| **Signal Processing** | EMD/EEMD/CEEMDAN/VMD | ✅ Complete | - |
+| **Signal Processing** | ECG/HRV/EEG Analysis | ✅ Complete | - |
+| **Data Formats** | WFDB/EDF/GDF/BDF/XDF | ✅ Complete | - |
+| **Data Formats** | BIDS | ✅ Complete | - |
+| **Data Formats** | HL7 FHIR | ✅ Complete | - |
+| **Neural Networks** | Point Neurons (19+) | ✅ Complete | - |
+| **Neural Networks** | Reservoir Computing | ✅ Complete | - |
+| **Neural Networks** | Multi-Compartment/Dendritic | ✅ Complete | - |
+| **Training** | BPTT/OTTT/SLTT | ✅ Complete | - |
+| **Training** | Hebbian (STDP/BCM/Oja) | ✅ Complete | - |
+| **Training** | Knowledge Distillation | ✅ Complete | - |
+| **Training** | Neuromodulation | ✅ Complete | - |
+| **Infrastructure** | GPU (CUDA/Metal) | ✅ Complete | - |
+| **Infrastructure** | Distributed Training | ✅ Complete | - |
+| **Calibration** | Temperature/Isotonic | ✅ Complete | - |
+| **Explainability** | Importance/Attention/SHAP | ✅ Complete | - |
+| **Export** | ONNX | ✅ Complete | - |
+| **Export** | TensorFlow Lite | ✅ Complete | - |
+| **Export** | Neuromorphic Hardware | ✅ Complete | - |
+| **Export** | JSON/Binary (dpb-export) | ✅ Complete | - |
+| **Visualization** | Dashboard/Raster/Heatmap | ✅ Complete | - |
+| **Mobile** | iOS/Android Runtime | ✅ Complete | - |
+| **Normative** | Pediatric/Adult/Geriatric | ✅ Complete | - |
+| **Learning** | Books/Notebooks/Videos | ✅ Complete | - |
+| **Bindings** | Python (PyO3) | ✅ Complete | - |
+| **Bindings** | Julia (C FFI) | ✅ Complete | - |
+| **Bindings** | MATLAB (MEX) | ✅ Complete | - |
+| **Bindings** | R (.Call/R6) | ✅ Complete | - |
+| **Bindings** | LabVIEW (CLFN) | ✅ Complete | - |
+| **Bindings** | C/C++ (cbindgen) | ✅ Complete | - |
+| **Web** | WebAssembly (dpb-wasm) | ✅ Complete | - |
+| **Streaming** | Lab Streaming Layer (dpb-lsl) | ✅ Complete | - |
+
+### 6.2 Remaining Gaps
+
+#### HIGH Priority
+
+| Gap | Description | Effort | Impact |
+|-----|-------------|--------|--------|
+| **HIPAA/PHI Tools** | Data anonymization, de-identification utilities | Medium | Critical for clinical use |
+| **Clinical Validation** | Tests against MIT-BIH, CHB-MIT, PhysioNet datasets | Medium | Regulatory compliance |
+| **Unit Test Coverage** | Comprehensive test coverage for all new modules | Medium | Quality assurance |
+
+#### MEDIUM Priority
+
+| Gap | Description | Effort | Impact |
+|-----|-------------|--------|--------|
+| **Ethnic Stratification** | Population-specific normative data | Medium | Equity in clinical tools |
+| **Treatment Response** | Pre/post intervention modeling | Medium | Clinical utility |
+| **Performance Regression** | Automated CI/CD benchmarks | Low | Development velocity |
+| **Federated Learning** | Privacy-preserving distributed training | High | Multi-site collaboration |
+| **liblsl Integration** | Complete liblsl C library bindings | Medium | Full LSL support |
+
+#### LOW Priority
+
+| Gap | Description | Effort | Impact |
+|-----|-------------|--------|--------|
+| **Comorbidity Modeling** | Multi-disease simulation | Medium | Research utility |
+| **Practice Effects** | Serial testing corrections | Low | Longitudinal accuracy |
+| **Additional Hardware** | Intel Gaudi, Graphcore IPU | High | Hardware diversity |
+| **WebGPU Acceleration** | GPU compute in browser via dpb-wasm | Medium | Browser performance |
+| **RISC-V Targets** | Embedded microcontroller support | Medium | IoT deployment |
+
+### 6.3 Module Completeness
+
+| Module | Core | Tests | Docs | Examples |
+|--------|:----:|:-----:|:----:|:--------:|
+| dpb-core/signal | ✅ | ✅ | ✅ | ✅ |
+| dpb-core/io (all formats) | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-core/io/bids | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-core/io/fhir | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-neurons/dendritic | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-snn/distillation | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-snn/neuromorphic | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-snn/neuromodulation | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-snn/export/tflite | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-snn/gpu | ✅ | ✅ | ✅ | ✅ |
+| dpb-snn/distributed | ✅ | ✅ | ✅ | ✅ |
+| dpb-viz | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-mobile | ✅ | ✅ | ✅ | ✅ |
+| **dpb-wasm** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
+| **dpb-lsl** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
+| **dpb-export** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
+| **bindings/r** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
+| **bindings/labview** ✅ NEW | ✅ | - | ✅ | ⚠️ |
+
+Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
+
+### 6.4 Recommended Next Steps
+
+1. **Immediate (Consolidation)**
+   - Add unit tests for dpb-wasm, dpb-lsl, dpb-export, R bindings
+   - Create integration examples for all new cross-platform modules
+   - Run validation against public datasets
+   - Test R package on CRAN check infrastructure
+
+2. **Short-term (Clinical Readiness)**
+   - Implement HIPAA/PHI de-identification utilities
+   - Add clinical validation test suite
+   - Create regulatory documentation templates
+   - Complete liblsl C library bindings for dpb-lsl
+
+3. **Medium-term (Advanced Features)**
+   - Federated learning for multi-site studies
+   - WebGPU acceleration for dpb-wasm
+   - RISC-V embedded targets
+   - LabVIEW example VIs and palettes
+
+---
+
+## 7. Quick Reference Tables
+
+### 7.1 Signal Processing Quick Reference
+
+| Task | Function/Type | Location |
+|------|---------------|----------|
+| R-peak detection | `PanTompkinsDetector::detect()` | `dpb-core/signal/ecg.rs` |
+| HRV analysis | `HrvAnalyzer::analyze()` | `dpb-core/signal/hrv.rs` |
+| Band power | `compute_band_powers()` | `dpb-core/signal/eeg/bands.rs` |
+| EMD decomposition | `EmpiricalModeDecomposition::decompose()` | `dpb-core/signal/emd.rs` |
+| Wavelet transform | `ContinuousWaveletTransform::transform()` | `dpb-core/signal/wavelet.rs` |
+| ICA | `FastICA::fit_transform()` | `dpb-core/signal/ica.rs` |
+
+### 7.2 Data Format Quick Reference
+
+| Format | Read | Write | Key Types |
+|--------|------|-------|-----------|
+| WFDB | `WfdbReader` | `WfdbWriter` | `WfdbSignal`, `WfdbAnnotation` |
+| EDF | `EdfReader` | `EdfWriter` | `EdfSignal`, `EdfHeader` |
+| GDF | `GdfReader` | `GdfWriter` | `GdfHeader` |
+| BDF | `BdfReader` | `BdfWriter` | 24-bit signals |
+| XDF | `XdfFile` | - | `XdfStream`, clock sync |
+| BIDS | `BidsDataset` | `BidsWriter` | `BidsSubject`, `BidsSession` |
+| FHIR | `FhirClient` | `FhirBundle` | `FhirObservation`, `FhirPatient` |
+| Auto | `UnifiedReader` | - | Magic byte detection |
+
+### 7.3 Neural Network Quick Reference
+
+| Model Type | Class | Key Methods |
+|------------|-------|-------------|
+| LIF | `LeakyIntegrateFire` | `forward()`, `reset()` |
+| Adaptive LIF | `AdaptiveLIF` | `forward()`, `get_threshold()` |
+| Izhikevich | `IzhikevichNeuron` | `forward()`, `set_mode()` |
+| Multi-compartment | `MultiCompartmentNeuron` | `step()`, `inject_current()` |
+| ESN | `EchoStateNetwork` | `forward()`, `train_readout()` |
+| LSM | `LiquidStateMachine` | `forward()`, `get_state()` |
+
+### 7.4 Training Quick Reference
+
+| Method | Class | When to Use |
+|--------|-------|-------------|
+| BPTT | `BPTTTrainer` | Standard supervised training |
+| OTTT | `OTTTTrainer` | Online/streaming data |
+| STDP | `STDP` | Unsupervised, local learning |
+| Distillation | `TeacherStudentTrainer` | Model compression |
+| Reward STDP | `RewardModulatedSTDP` | Reinforcement learning |
+
+### 7.5 Export Quick Reference
+
+| Target | Exporter | Output |
+|--------|----------|--------|
+| Cross-platform | `OnnxExporter` | `.onnx` file |
+| Mobile | `TfLiteExporter` | `.tflite` file |
+| Intel Loihi | `LoihiExporter` | Loihi configuration |
+| SpiNNaker | `SpinnakerExporter` | PyNN-compatible |
+| BrainScaleS | `BrainscalesExporter` | BrainScaleS mapping |
+| iOS/Android | `MobileRuntime` | Native runtime |
+| **JSON** ✅ NEW | `JsonExporter` | `.json` config |
+| **Binary** ✅ NEW | `BinaryExporter` | `.dpb` embedded |
+
+### 7.6 Neuromodulation Quick Reference
+
+| System | Class | Effect |
+|--------|-------|--------|
+| Dopamine | `DopamineSystem` | Reward prediction, motivation |
+| Acetylcholine | `AcetylcholineSystem` | Attention, learning rate |
+| Norepinephrine | `NorepinephrineSystem` | Arousal, gain modulation |
+| Serotonin | `SerotoninSystem` | Mood, temporal discounting |
+
+### 7.7 Cross-Platform Quick Reference ✅ NEW
+
+| Platform | Crate/Binding | Key Types/Classes | Build Command |
+|----------|---------------|-------------------|---------------|
+| **Python** | `dpb-python` | `TimeSeries`, `SpikeTrain`, encoders | `maturin build` |
+| **R** | `bindings/r` | `TimeSeries`, `SpikeTrain` R6 classes | `R CMD INSTALL` |
+| **Julia** | `bindings/julia` | `DPB.TimeSeries`, `DPB.encode` | Load via `include()` |
+| **MATLAB** | `bindings/matlab` | `dpb_timeseries`, `dpb_encode` | MEX compile |
+| **LabVIEW** | `bindings/labview` | Call Library Function Nodes | NI LabVIEW |
+| **JavaScript** | `dpb-wasm` | `WasmTimeSeries`, `WasmLevelCrossingEncoder` | `wasm-pack build` |
+| **LSL** | `dpb-lsl` | `LslInlet`, `LslOutlet`, `EncodingPipeline` | `cargo build -p dpb-lsl` |
+
+### 7.8 LSL Stream Types Quick Reference ✅ NEW
+
+| Constant | Type | Description |
+|----------|------|-------------|
+| `stream_types::EEG` | `"EEG"` | Electroencephalography |
+| `stream_types::ECG` | `"ECG"` | Electrocardiography |
+| `stream_types::EMG` | `"EMG"` | Electromyography |
+| `stream_types::PPG` | `"PPG"` | Photoplethysmography |
+| `stream_types::EDA` | `"EDA"` | Electrodermal activity |
+| `stream_types::RESP` | `"Respiration"` | Respiratory signals |
+| `stream_types::MARKERS` | `"Markers"` | Event markers |
+| `stream_types::SPIKES` | `"Spikes"` | DPB spike trains |
+
+---
+
+## 8. Learning Resources
+
+### 8.1 Documentation Structure
+
+```
+docs/learning/
+├── DOCUMENTATION_PLAN.md       → Master plan, writing guidelines
+├── books/
+│   ├── 01_foundations/         → History of biosignal measurement (7 chapters)
+│   ├── 02_signals/             → Signal types explained (8 chapters)
+│   ├── 03_analysis/            → Processing techniques (8 chapters)
+│   ├── 04_intelligence/        → AI and ML concepts (8 chapters)
+│   └── 05_practice/            → Real-world applications (8 chapters)
+├── notebooks/
+│   ├── beginner/               → First steps (3 notebooks)
+│   ├── intermediate/           → Building skills (3 notebooks)
+│   └── advanced/               → Expert techniques (2 notebooks)
+├── reference/
+│   ├── glossary.md             → 105 terms defined
+│   └── quick_cards/            → 5 quick reference cards
+└── media/
+    └── video_scripts/          → 5 episode scripts (~38 min total)
+```
+
+### 8.2 Learning Path
+
+| Level | Content | Time |
+|-------|---------|------|
+| **Beginner** | Book 1-2, Notebooks 01-03 | ~8 hours |
+| **Intermediate** | Book 3-4, Notebooks 04-06 | ~12 hours |
+| **Advanced** | Book 5, Notebooks 07-08 | ~8 hours |
+| **Video Series** | Episodes 1-5 | ~40 minutes |
+
+### 8.3 Quick Cards Available
+
+1. **Signal Types** - ECG, EEG, EMG, PPG, EDA at a glance
+2. **Normal vs Abnormal** - Reference ranges and warning signs
+3. **Analysis Steps** - Standard processing workflow
+4. **Code Cheatsheet** - Common operations in code
+5. **Troubleshooting** - Common problems and solutions
+
+---
+
+## Appendix A: Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| v1.0.0 | Dec 2025 | Initial catalog |
+| v2.0.0 | Dec 2025 | ECG/HRV, transforms, pipeline, calibration, explainability |
+| v3.0.0 | Dec 2025 | GPU, distributed, dpb-viz, GDF/BDF/XDF, dpb-mobile |
+| v4.0.0 | Dec 2025 | Knowledge distillation, BIDS, FHIR, neuromorphic export, TFLite, EMD/EEMD, dendritic computation, neuromodulation, learning library |
+| v5.0.0 | Dec 2025 | **R bindings**, **LabVIEW bindings**, **dpb-wasm** (WebAssembly), **dpb-lsl** (Lab Streaming Layer), **dpb-export** (ONNX/JSON/Binary), cross-platform integration |
+
+---
+
+## Appendix B: Build Commands
 
 ```bash
+# Standard build
+cargo build --all-features
+
+# With new features
+cargo build -p dpb-core --features bids,fhir,emd
+cargo build -p dpb-neurons --features dendritic
+cargo build -p dpb-snn --features distillation,neuromorphic,neuromodulation
+cargo build -p dpb-snn --features tflite
+
+# GPU features
+cargo build -p dpb-snn --features cuda
+cargo build -p dpb-snn --features metal
+
+# Mobile builds
+cargo build -p dpb-mobile --target aarch64-apple-ios --features ios
+cargo ndk --target aarch64-linux-android -- build -p dpb-mobile --features android
+
+# Cross-platform builds (NEW)
+cargo build -p dpb-wasm --target wasm32-unknown-unknown
+wasm-pack build crates/dpb-wasm --target web
+cargo build -p dpb-lsl --features async
+cargo build -p dpb-export --features onnx
+
+# R package build
+R CMD INSTALL bindings/r
+
 # Run all tests
-cargo test --workspace
+cargo test --all
 
-# Run benchmarks
-cargo bench -p dpb-bench
-
-# Build documentation
-cargo doc --workspace --no-deps --open
-
-# Check code coverage
-cargo tarpaulin --workspace
+# Generate documentation
+cargo doc --no-deps --all-features --open
 ```
-
-### 6.4 Key Traits Summary
-
-| Trait | Purpose | Key Methods |
-|-------|---------|-------------|
-| `Signal` | Time-series data | `samples()`, `sample_rate()`, `channels()` |
-| `EventEncoder` | Signal → Spikes | `encode()`, `name()` |
-| `PopulationTemplate` | Clinical norms | `expected_value()`, `variance()` |
-| `MembraneDynamics` | Neuron state | `membrane_potential()`, `rest_potential()` |
-| `NeuronModel` | Spike generation | `update()`, `reset()`, `threshold()` |
-| `SurrogateGradient` | Backprop | `forward()`, `backward()` |
-| `Decoder` | Spikes → Output | `decode()`, `output_dim()` |
-| `SyntheticGenerator` | Data generation | `generate()`, `validate_params()` |
-| `StreamingGenerator` | Real-time | `next_sample()`, `init_state()` |
-
-### 6.5 Module Quick Links
-
-| Need | Crate | Module |
-|------|-------|--------|
-| Encode ECG to spikes | dpb-encoders | `contact::ecg` |
-| Encode EEG band power | dpb-encoders | `eeg` |
-| Generate synthetic gait | dpb-synth | `pose::gait` |
-| Stream real-time EEG | dpb-synth | `streaming` |
-| Build feedforward SNN | dpb-snn | `architectures` |
-| Decode UPDRS score | dpb-snn | `decoders::clinical` |
-| Compare to norms | dpb-norms | `database` |
-| Run cognitive task | dpb-cognitive | `reaction_time` |
 
 ---
 
-*Last updated: 2025-12-18 | Catalog version: 0.3.0*
+## Appendix C: File Counts by Module (v5.0.0)
+
+| Module | Files | Approx LOC |
+|--------|-------|------------|
+| dpb-core/signal | 25+ | 15,000 |
+| dpb-core/io (inc. BIDS, FHIR) | 20+ | 12,000 |
+| dpb-neurons (inc. dendritic) | 25+ | 15,000 |
+| dpb-snn (all features) | 60+ | 65,000 |
+| dpb-synth | 40+ | 30,000 |
+| dpb-norms | 5 | 10,000 |
+| dpb-viz | 7 | 4,500 |
+| dpb-mobile | 8 | 4,000 |
+| docs/learning | 55+ | 25,000 |
+| **dpb-wasm** ✅ NEW | 5 | 1,500 |
+| **dpb-lsl** ✅ NEW | 7 | 2,500 |
+| **dpb-export** ✅ NEW | 7 | 2,000 |
+| **bindings/r** ✅ NEW | 11 | 1,500 |
+| **bindings/labview** ✅ NEW | 1 | 500 |
+| **Total** | **290+** | **~188,000** |
+
+---
+
+*End of System Catalog v5.0.0*
