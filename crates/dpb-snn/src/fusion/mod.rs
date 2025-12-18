@@ -10,6 +10,7 @@ pub mod hierarchical;
 pub mod temporal;
 pub mod gated;
 pub mod neuroplay;
+pub mod cognitive_motor;
 
 pub use early::EarlyFusionSNN;
 pub use late::LateFusionSNN;
@@ -18,6 +19,12 @@ pub use hierarchical::HierarchicalFusionSNN;
 pub use temporal::TemporalAlignmentSNN;
 pub use gated::GatedFusionSNN;
 pub use neuroplay::NeuroPlaySNN;
+pub use cognitive_motor::{
+    CognitiveMotorFusion, CognitiveMotorFusionConfig, CognitiveMotorFusionSNN,
+    CognitiveProfile, MotorProfile, IntegratedAssessment,
+    DissociationPattern, DissociationType, ChangeMetrics, ChangeDirection,
+    RiskCategory, DomainZScores,
+};
 
 use crate::{SpikeTensor, SNNResult, SNNError};
 use ndarray::Array3;
