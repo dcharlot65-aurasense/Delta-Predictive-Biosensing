@@ -1,13 +1,33 @@
 //! Signal processing utilities for biosensor data.
 
 pub mod eeg;
+pub mod eda;
+pub mod emg;
+pub mod eye;
 pub mod fft;
 pub mod filter;
+pub mod ppg;
 pub mod resample;
+pub mod voice;
 
 pub use fft::{FftProcessor, Stft, WindowType, create_window, fft_frequencies, stft_times};
 pub use filter::{FirFilter, IirFilter, FilterType, median_filter};
 pub use resample::{downsample, resample_linear, resample_to_length, upsample};
+
+// PPG analysis exports
+pub use ppg::{PpgAnalyzer, PulseWaveFeatures, SpO2Result, PrvMetrics};
+
+// EDA analysis exports
+pub use eda::{EdaAnalyzer, EdaDecomposition, EdaMetrics, ScrEvent};
+
+// EMG analysis exports
+pub use emg::{EmgAnalyzer, EmgBurst, EmgTimeMetrics, EmgFrequencyMetrics, FatigueMetrics};
+
+// Eye tracking analysis exports
+pub use eye::{EyeAnalyzer, Saccade, Fixation, Blink, SmoothPursuitMetrics, PupilMetrics, GazePatternSummary};
+
+// Voice analysis exports
+pub use voice::{VoiceAnalyzer, F0Metrics, JitterMetrics, ShimmerMetrics, VoiceQualityMetrics, SpectralVoiceFeatures, SpeechTimingMetrics};
 
 use crate::error::{DpbError, Result};
 use ndarray::{Array1, ArrayView1, ArrayView2};

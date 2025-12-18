@@ -1327,6 +1327,865 @@ impl Decoder for BppvDecoder {
     }
 }
 
+// ============================================================================
+// Force Decoders (Gap Fill)
+// ============================================================================
+
+/// Ground Reaction Force (GRF) decoder
+/// Decodes vertical GRF, loading rate, and symmetry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GrfDecoder {
+    pub num_neurons: usize,
+}
+
+impl GrfDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for GrfDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        // Output: peak force (normalized), loading rate, unloading rate, symmetry index
+        let mut output = Array2::zeros((batch_size, 4));
+
+        let half = rates.shape()[1] / 2;
+
+        for b in 0..batch_size {
+            // Left leg neurons (first half)
+            let left_mean: f32 = rates.slice(s![b, 0..half]).mean().unwrap_or(0.0);
+            // Right leg neurons (second half)
+            let right_mean: f32 = rates.slice(s![b, half..]).mean().unwrap_or(0.0);
+
+            // Peak force estimation (normalized to body weight)
+            let peak_force = (left_mean + right_mean) * 2.0; // Scale to ~1-2x body weight
+
+            // Loading rate from spike rate variance
+            let variance = rates.row(b).var(0.0);
+            let loading_rate = variance * 100.0; // BW/s approximation
+
+            // Symmetry index
+            let symmetry = if left_mean + right_mean > 0.01 {
+                (left_mean - right_mean).abs() / (left_mean + right_mean) * 100.0
+            } else {
+                0.0
+            };
+
+            output[[b, 0]] = peak_force.max(0.0).min(3.0);
+            output[[b, 1]] = loading_rate.max(0.0).min(200.0);
+            output[[b, 2]] = loading_rate * 0.8; // Unloading typically slower
+            output[[b, 3]] = symmetry.max(0.0).min(100.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        4 // peak force, loading rate, unloading rate, symmetry
+    }
+}
+
+/// Grip Strength decoder
+/// Decodes maximum grip force and fatigue metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GripStrengthDecoder {
+    pub num_neurons: usize,
+    /// Expected max grip (kg) for normalization
+    pub normalization_max: f32,
+}
+
+impl GripStrengthDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self {
+            num_neurons,
+            normalization_max: 50.0, // Typical adult max
+        }
+    }
+
+    pub fn with_normalization(num_neurons: usize, max_grip: f32) -> Self {
+        Self {
+            num_neurons,
+            normalization_max: max_grip,
+        }
+    }
+}
+
+impl Decoder for GripStrengthDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let spike_dense = spikes.to_dense();
+        let (batch_size, num_steps, _) = (
+            spike_dense.shape()[0],
+            spike_dense.shape()[1],
+            spike_dense.shape()[2],
+        );
+
+        // Output: max grip (kg), time to max, fatigue index, grip variability
+        let mut output = Array2::zeros((batch_size, 4));
+
+        for b in 0..batch_size {
+            let mut max_activity = 0.0_f32;
+            let mut time_to_max = 0;
+            let mut activities = Vec::new();
+
+            for t in 0..num_steps {
+                let activity: f32 = spike_dense.slice(s![b, t, ..]).mean().unwrap_or(0.0);
+                activities.push(activity);
+                if activity > max_activity {
+                    max_activity = activity;
+                    time_to_max = t;
+                }
+            }
+
+            // Max grip in kg
+            let max_grip = max_activity * self.normalization_max;
+
+            // Fatigue index: (initial - final) / initial
+            let initial = activities.iter().take(num_steps / 4).sum::<f32>()
+                / (num_steps / 4) as f32;
+            let final_val = activities.iter().skip(3 * num_steps / 4).sum::<f32>()
+                / (num_steps / 4) as f32;
+            let fatigue = if initial > 0.01 {
+                ((initial - final_val) / initial * 100.0).max(0.0)
+            } else {
+                0.0
+            };
+
+            // Variability (coefficient of variation)
+            let mean_activity = activities.iter().sum::<f32>() / activities.len() as f32;
+            let variance = activities.iter().map(|x| (x - mean_activity).powi(2)).sum::<f32>()
+                / activities.len() as f32;
+            let cv = if mean_activity > 0.01 {
+                variance.sqrt() / mean_activity * 100.0
+            } else {
+                0.0
+            };
+
+            output[[b, 0]] = max_grip.max(0.0);
+            output[[b, 1]] = (time_to_max as f32 / num_steps as f32) * 100.0; // % of duration
+            output[[b, 2]] = fatigue.min(100.0);
+            output[[b, 3]] = cv.min(100.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        4 // max grip, time to max, fatigue, variability
+    }
+}
+
+/// Rate of Force Development (RFD) decoder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RfdDecoder {
+    pub num_neurons: usize,
+    pub sample_rate: f32, // Hz
+}
+
+impl RfdDecoder {
+    pub fn new(num_neurons: usize, sample_rate: f32) -> Self {
+        Self {
+            num_neurons,
+            sample_rate,
+        }
+    }
+}
+
+impl Decoder for RfdDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let spike_dense = spikes.to_dense();
+        let (batch_size, num_steps, _) = (
+            spike_dense.shape()[0],
+            spike_dense.shape()[1],
+            spike_dense.shape()[2],
+        );
+
+        // Output: RFD at 50ms, 100ms, 200ms, peak RFD
+        let mut output = Array2::zeros((batch_size, 4));
+
+        let samples_50ms = (0.05 * self.sample_rate) as usize;
+        let samples_100ms = (0.1 * self.sample_rate) as usize;
+        let samples_200ms = (0.2 * self.sample_rate) as usize;
+
+        for b in 0..batch_size {
+            let mut activities: Vec<f32> = Vec::new();
+            for t in 0..num_steps {
+                activities.push(spike_dense.slice(s![b, t, ..]).mean().unwrap_or(0.0));
+            }
+
+            // Find onset (first significant activity)
+            let threshold = 0.1_f32;
+            let onset = activities.iter().position(|&x| x > threshold).unwrap_or(0);
+
+            // Calculate RFD at different time points
+            let rfd_50 = if onset + samples_50ms < num_steps {
+                (activities[onset + samples_50ms] - activities[onset]) / 0.05
+            } else {
+                0.0
+            };
+
+            let rfd_100 = if onset + samples_100ms < num_steps {
+                (activities[onset + samples_100ms] - activities[onset]) / 0.1
+            } else {
+                0.0
+            };
+
+            let rfd_200 = if onset + samples_200ms < num_steps {
+                (activities[onset + samples_200ms] - activities[onset]) / 0.2
+            } else {
+                0.0
+            };
+
+            // Peak RFD (max instantaneous rate)
+            let mut peak_rfd = 0.0_f32;
+            for i in 1..activities.len() {
+                let instant_rfd = (activities[i] - activities[i - 1]) * self.sample_rate;
+                if instant_rfd > peak_rfd {
+                    peak_rfd = instant_rfd;
+                }
+            }
+
+            output[[b, 0]] = rfd_50.max(0.0) * 1000.0; // Scale to N/s
+            output[[b, 1]] = rfd_100.max(0.0) * 1000.0;
+            output[[b, 2]] = rfd_200.max(0.0) * 1000.0;
+            output[[b, 3]] = peak_rfd.max(0.0) * 1000.0;
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        4 // RFD at 50ms, 100ms, 200ms, peak
+    }
+}
+
+// ============================================================================
+// Cardiopulmonary Decoders (Gap Fill)
+// ============================================================================
+
+/// HRV (Heart Rate Variability) decoder
+/// Decodes RMSSD, SDNN, and LF/HF ratio
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HrvDecoder {
+    pub num_neurons: usize,
+}
+
+impl HrvDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for HrvDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let spike_dense = spikes.to_dense();
+        let (batch_size, num_steps, num_neurons) = (
+            spike_dense.shape()[0],
+            spike_dense.shape()[1],
+            spike_dense.shape()[2],
+        );
+
+        // Output: mean HR, RMSSD, SDNN, pNN50, LF/HF ratio
+        let mut output = Array2::zeros((batch_size, 5));
+
+        for b in 0..batch_size {
+            // Find spike times (representing R-peaks)
+            let mut intervals = Vec::new();
+
+            for n in 0..num_neurons {
+                let mut last_spike = None;
+                for t in 0..num_steps {
+                    if spike_dense[[b, t, n]] > 0.5 {
+                        if let Some(last) = last_spike {
+                            intervals.push((t - last) as f32);
+                        }
+                        last_spike = Some(t);
+                    }
+                }
+            }
+
+            if intervals.len() < 2 {
+                continue;
+            }
+
+            // Mean heart rate (assuming 1000Hz sampling -> intervals in ms)
+            let mean_interval = intervals.iter().sum::<f32>() / intervals.len() as f32;
+            let mean_hr = if mean_interval > 0.0 { 60000.0 / mean_interval } else { 0.0 };
+
+            // SDNN (standard deviation of intervals)
+            let variance = intervals.iter()
+                .map(|&x| (x - mean_interval).powi(2))
+                .sum::<f32>() / intervals.len() as f32;
+            let sdnn = variance.sqrt();
+
+            // RMSSD (root mean square of successive differences)
+            let successive_diffs: Vec<f32> = intervals.windows(2)
+                .map(|w| (w[1] - w[0]).powi(2))
+                .collect();
+            let rmssd = if !successive_diffs.is_empty() {
+                (successive_diffs.iter().sum::<f32>() / successive_diffs.len() as f32).sqrt()
+            } else {
+                0.0
+            };
+
+            // pNN50 (percentage of successive differences > 50ms)
+            let nn50_count = intervals.windows(2)
+                .filter(|w| (w[1] - w[0]).abs() > 50.0)
+                .count();
+            let pnn50 = if intervals.len() > 1 {
+                nn50_count as f32 / (intervals.len() - 1) as f32 * 100.0
+            } else {
+                0.0
+            };
+
+            // LF/HF ratio (simplified - based on interval variability)
+            let lf_hf = if rmssd > 0.0 { sdnn / rmssd } else { 1.0 };
+
+            output[[b, 0]] = mean_hr.max(30.0).min(200.0);
+            output[[b, 1]] = rmssd.max(0.0).min(300.0);
+            output[[b, 2]] = sdnn.max(0.0).min(300.0);
+            output[[b, 3]] = pnn50.max(0.0).min(100.0);
+            output[[b, 4]] = lf_hf.max(0.0).min(10.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        5 // mean HR, RMSSD, SDNN, pNN50, LF/HF
+    }
+}
+
+/// Respiratory decoder
+/// Decodes respiratory rate, tidal volume, and variability
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RespiratoryDecoder {
+    pub num_neurons: usize,
+    pub sample_rate: f32,
+}
+
+impl RespiratoryDecoder {
+    pub fn new(num_neurons: usize, sample_rate: f32) -> Self {
+        Self { num_neurons, sample_rate }
+    }
+}
+
+impl Decoder for RespiratoryDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let spike_dense = spikes.to_dense();
+        let (batch_size, num_steps, _) = (
+            spike_dense.shape()[0],
+            spike_dense.shape()[1],
+            spike_dense.shape()[2],
+        );
+
+        // Output: respiratory rate, inspiratory time, expiratory time, I:E ratio, variability
+        let mut output = Array2::zeros((batch_size, 5));
+
+        for b in 0..batch_size {
+            // Sum activity over time to get respiratory pattern
+            let mut pattern: Vec<f32> = Vec::new();
+            for t in 0..num_steps {
+                pattern.push(spike_dense.slice(s![b, t, ..]).sum());
+            }
+
+            // Find peaks (inspiration) and valleys (expiration)
+            let mean_activity = pattern.iter().sum::<f32>() / pattern.len() as f32;
+            let mut peaks = Vec::new();
+            let mut valleys = Vec::new();
+
+            for i in 1..pattern.len() - 1 {
+                if pattern[i] > pattern[i - 1] && pattern[i] > pattern[i + 1] && pattern[i] > mean_activity {
+                    peaks.push(i);
+                }
+                if pattern[i] < pattern[i - 1] && pattern[i] < pattern[i + 1] && pattern[i] < mean_activity {
+                    valleys.push(i);
+                }
+            }
+
+            // Respiratory rate from peak-to-peak intervals
+            let breath_intervals: Vec<f32> = peaks.windows(2)
+                .map(|w| (w[1] - w[0]) as f32 / self.sample_rate)
+                .collect();
+
+            let mean_breath_time = if !breath_intervals.is_empty() {
+                breath_intervals.iter().sum::<f32>() / breath_intervals.len() as f32
+            } else {
+                4.0 // Default 15 breaths/min
+            };
+
+            let rr = if mean_breath_time > 0.0 { 60.0 / mean_breath_time } else { 0.0 };
+
+            // Inspiratory and expiratory times (simplified)
+            let ti = mean_breath_time * 0.4; // Typical I:E ratio ~1:1.5
+            let te = mean_breath_time * 0.6;
+            let ie_ratio = if te > 0.0 { ti / te } else { 0.0 };
+
+            // Variability (CV of breath intervals)
+            let variance = if !breath_intervals.is_empty() {
+                breath_intervals.iter()
+                    .map(|x| (x - mean_breath_time).powi(2))
+                    .sum::<f32>() / breath_intervals.len() as f32
+            } else {
+                0.0
+            };
+            let cv = if mean_breath_time > 0.0 {
+                variance.sqrt() / mean_breath_time * 100.0
+            } else {
+                0.0
+            };
+
+            output[[b, 0]] = rr.max(4.0).min(60.0);
+            output[[b, 1]] = ti.max(0.0).min(5.0);
+            output[[b, 2]] = te.max(0.0).min(10.0);
+            output[[b, 3]] = ie_ratio.max(0.0).min(3.0);
+            output[[b, 4]] = cv.max(0.0).min(100.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        5 // RR, Ti, Te, I:E, variability
+    }
+}
+
+/// VO2 (Oxygen Consumption) decoder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Vo2Decoder {
+    pub num_neurons: usize,
+    pub max_vo2: f32, // Expected max VO2 for normalization
+}
+
+impl Vo2Decoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self {
+            num_neurons,
+            max_vo2: 45.0, // ml/kg/min, typical adult
+        }
+    }
+}
+
+impl Decoder for Vo2Decoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        // Output: VO2 (ml/kg/min), VCO2, RER, VE
+        let mut output = Array2::zeros((batch_size, 4));
+
+        let quarter = (rates.shape()[1] / 4).max(1);
+
+        for b in 0..batch_size {
+            // VO2 from first quarter of neurons
+            let vo2_activity: f32 = rates.slice(s![b, 0..quarter]).mean().unwrap_or(0.0);
+            let vo2 = vo2_activity * self.max_vo2;
+
+            // VCO2 from second quarter
+            let vco2_activity: f32 = rates.slice(s![b, quarter..quarter*2]).mean().unwrap_or(0.0);
+            let vco2 = vco2_activity * self.max_vo2 * 0.9; // Typically slightly less
+
+            // RER = VCO2/VO2
+            let rer = if vo2 > 0.1 { vco2 / vo2 } else { 0.85 };
+
+            // VE from third quarter
+            let ve_activity: f32 = rates.slice(s![b, quarter*2..quarter*3]).mean().unwrap_or(0.0);
+            let ve = ve_activity * 150.0; // L/min
+
+            output[[b, 0]] = vo2.max(0.0).min(80.0);
+            output[[b, 1]] = vco2.max(0.0).min(80.0);
+            output[[b, 2]] = rer.max(0.5).min(1.5);
+            output[[b, 3]] = ve.max(0.0).min(200.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        4 // VO2, VCO2, RER, VE
+    }
+}
+
+// ============================================================================
+// Cognitive Decoders (Gap Fill)
+// ============================================================================
+
+/// Cognitive Reaction Time decoder (with variability metrics)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CognitiveRtDecoder {
+    pub num_neurons: usize,
+    pub sample_rate: f32,
+}
+
+impl CognitiveRtDecoder {
+    pub fn new(num_neurons: usize, sample_rate: f32) -> Self {
+        Self { num_neurons, sample_rate }
+    }
+}
+
+impl Decoder for CognitiveRtDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let spike_dense = spikes.to_dense();
+        let (batch_size, num_steps, _) = (
+            spike_dense.shape()[0],
+            spike_dense.shape()[1],
+            spike_dense.shape()[2],
+        );
+
+        // Output: mean RT, RT variability, fastest RT, slowest RT
+        let mut output = Array2::zeros((batch_size, 4));
+
+        for b in 0..batch_size {
+            // Find response onsets
+            let mut reaction_times = Vec::new();
+            let threshold = 0.3_f32;
+            let mut in_response = false;
+
+            for t in 0..num_steps {
+                let activity: f32 = spike_dense.slice(s![b, t, ..]).mean().unwrap_or(0.0);
+
+                if activity > threshold && !in_response {
+                    reaction_times.push(t as f32 / self.sample_rate * 1000.0); // Convert to ms
+                    in_response = true;
+                } else if activity < threshold * 0.5 {
+                    in_response = false;
+                }
+            }
+
+            if reaction_times.is_empty() {
+                reaction_times.push(500.0); // Default if no response detected
+            }
+
+            let mean_rt = reaction_times.iter().sum::<f32>() / reaction_times.len() as f32;
+            let variance = reaction_times.iter()
+                .map(|x| (x - mean_rt).powi(2))
+                .sum::<f32>() / reaction_times.len() as f32;
+            let rt_sd = variance.sqrt();
+
+            let min_rt = reaction_times.iter().cloned().fold(f32::INFINITY, f32::min);
+            let max_rt = reaction_times.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+
+            output[[b, 0]] = mean_rt.max(100.0).min(2000.0);
+            output[[b, 1]] = rt_sd.max(0.0).min(500.0);
+            output[[b, 2]] = min_rt.max(100.0).min(2000.0);
+            output[[b, 3]] = max_rt.max(100.0).min(2000.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        4 // mean RT, SD, min, max
+    }
+}
+
+/// Attention/CPT (Continuous Performance Test) decoder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AttentionDecoder {
+    pub num_neurons: usize,
+}
+
+impl AttentionDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for AttentionDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        // Output: d-prime, omission rate, commission rate, mean RT, RT variability
+        let mut output = Array2::zeros((batch_size, 5));
+
+        let half = rates.shape()[1] / 2;
+
+        for b in 0..batch_size {
+            // Hit rate from first half of neurons (target detection)
+            let hit_activity: f32 = rates.slice(s![b, 0..half]).mean().unwrap_or(0.0);
+            let hit_rate = hit_activity.clamp(0.01, 0.99);
+
+            // False alarm rate from second half (false positives)
+            let fa_activity: f32 = rates.slice(s![b, half..]).mean().unwrap_or(0.0);
+            let fa_rate = fa_activity.clamp(0.01, 0.99);
+
+            // d-prime = Z(hit_rate) - Z(false_alarm_rate)
+            // Using approximation: Z(p) ≈ 5.0 * (p - 0.5) for simple estimation
+            let z_hit = 5.0 * (hit_rate - 0.5);
+            let z_fa = 5.0 * (fa_rate - 0.5);
+            let d_prime = (z_hit - z_fa).clamp(-4.0, 4.0);
+
+            // Omission rate (1 - hit rate)
+            let omission_rate = (1.0 - hit_rate) * 100.0;
+
+            // Commission rate (false alarm rate)
+            let commission_rate = fa_rate * 100.0;
+
+            // RT from activity variance
+            let variance = rates.row(b).var(0.0);
+            let mean_rt = 300.0 + (1.0 - hit_activity) * 300.0; // 300-600ms range
+            let rt_variability = variance * 100.0;
+
+            output[[b, 0]] = d_prime;
+            output[[b, 1]] = omission_rate.max(0.0).min(100.0);
+            output[[b, 2]] = commission_rate.max(0.0).min(100.0);
+            output[[b, 3]] = mean_rt.max(200.0).min(1000.0);
+            output[[b, 4]] = rt_variability.max(0.0).min(200.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        5 // d-prime, omission, commission, mean RT, RT variability
+    }
+}
+
+/// Working Memory decoder (N-back performance)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkingMemoryDecoder {
+    pub num_neurons: usize,
+    pub n_back_level: usize,
+}
+
+impl WorkingMemoryDecoder {
+    pub fn new(num_neurons: usize, n_back_level: usize) -> Self {
+        Self { num_neurons, n_back_level }
+    }
+}
+
+impl Decoder for WorkingMemoryDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        // Output: accuracy, d-prime, capacity estimate
+        let mut output = Array2::zeros((batch_size, 3));
+
+        for b in 0..batch_size {
+            let mean_rate: f32 = rates.row(b).mean().unwrap_or(0.0);
+            let variance = rates.row(b).var(0.0);
+
+            // Accuracy estimation
+            let accuracy = mean_rate * 100.0;
+
+            // d-prime from signal-to-noise
+            let d_prime = if variance > 0.01 {
+                mean_rate / variance.sqrt()
+            } else {
+                mean_rate * 3.0
+            }.clamp(-4.0, 4.0);
+
+            // Working memory capacity (Cowan's K approximation)
+            // K = (hit_rate - false_alarm_rate) * set_size
+            let capacity = mean_rate * (self.n_back_level as f32 + 2.0);
+
+            output[[b, 0]] = accuracy.max(0.0).min(100.0);
+            output[[b, 1]] = d_prime;
+            output[[b, 2]] = capacity.max(0.0).min(7.0); // Miller's 7±2
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        3 // accuracy, d-prime, capacity
+    }
+}
+
+// ============================================================================
+// EDA (Electrodermal Activity) Decoders (Gap Fill)
+// ============================================================================
+
+/// SCR (Skin Conductance Response) decoder
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScrDecoder {
+    pub num_neurons: usize,
+    pub sample_rate: f32,
+}
+
+impl ScrDecoder {
+    pub fn new(num_neurons: usize, sample_rate: f32) -> Self {
+        Self { num_neurons, sample_rate }
+    }
+}
+
+impl Decoder for ScrDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let spike_dense = spikes.to_dense();
+        let (batch_size, num_steps, _) = (
+            spike_dense.shape()[0],
+            spike_dense.shape()[1],
+            spike_dense.shape()[2],
+        );
+
+        // Output: SCR count, mean amplitude, sum amplitude, mean rise time, latency
+        let mut output = Array2::zeros((batch_size, 5));
+
+        for b in 0..batch_size {
+            // Sum activity to get EDA-like signal
+            let mut signal: Vec<f32> = Vec::new();
+            for t in 0..num_steps {
+                signal.push(spike_dense.slice(s![b, t, ..]).sum());
+            }
+
+            // Detect SCR peaks
+            let mean_level = signal.iter().sum::<f32>() / signal.len() as f32;
+            let threshold = mean_level * 1.5;
+
+            let mut scr_count = 0;
+            let mut amplitudes = Vec::new();
+            let mut in_scr = false;
+            let mut scr_start = 0;
+            let mut first_latency = None;
+
+            for (t, &val) in signal.iter().enumerate() {
+                if val > threshold && !in_scr {
+                    in_scr = true;
+                    scr_start = t;
+                    if first_latency.is_none() {
+                        first_latency = Some(t);
+                    }
+                } else if val <= threshold && in_scr {
+                    in_scr = false;
+                    scr_count += 1;
+
+                    // Find peak in this SCR
+                    let peak = signal[scr_start..t].iter().cloned().fold(0.0f32, f32::max);
+                    amplitudes.push(peak - mean_level);
+                }
+            }
+
+            let mean_amp = if !amplitudes.is_empty() {
+                amplitudes.iter().sum::<f32>() / amplitudes.len() as f32
+            } else {
+                0.0
+            };
+
+            let sum_amp = amplitudes.iter().sum::<f32>();
+            let latency = first_latency.map(|t| t as f32 / self.sample_rate * 1000.0).unwrap_or(0.0);
+
+            output[[b, 0]] = scr_count as f32;
+            output[[b, 1]] = mean_amp.max(0.0);
+            output[[b, 2]] = sum_amp.max(0.0);
+            output[[b, 3]] = 1500.0; // Typical rise time in ms (simplified)
+            output[[b, 4]] = latency.max(0.0).min(5000.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        5 // count, mean amp, sum amp, rise time, latency
+    }
+}
+
+/// SCL (Skin Conductance Level) decoder - tonic component
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SclDecoder {
+    pub num_neurons: usize,
+}
+
+impl SclDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for SclDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        // Output: mean SCL, SCL range, SCL slope
+        let mut output = Array2::zeros((batch_size, 3));
+
+        for b in 0..batch_size {
+            let row = rates.row(b);
+            let mean_scl = row.mean().unwrap_or(0.0) * 10.0; // Scale to microSiemens
+
+            let min_scl = row.iter().cloned().fold(f32::INFINITY, f32::min);
+            let max_scl = row.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+            let scl_range = (max_scl - min_scl) * 10.0;
+
+            // Slope (linear trend)
+            let n = row.len() as f32;
+            let x_mean = (n - 1.0) / 2.0;
+            let y_mean = mean_scl / 10.0;
+
+            let mut num = 0.0_f32;
+            let mut den = 0.0_f32;
+            for (i, &y) in row.iter().enumerate() {
+                let x = i as f32;
+                num += (x - x_mean) * (y - y_mean);
+                den += (x - x_mean).powi(2);
+            }
+
+            let slope = if den > 0.0 { num / den * 1000.0 } else { 0.0 }; // microS/s
+
+            output[[b, 0]] = mean_scl.max(0.0).min(30.0);
+            output[[b, 1]] = scl_range.max(0.0).min(20.0);
+            output[[b, 2]] = slope.clamp(-5.0, 5.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        3 // mean SCL, range, slope
+    }
+}
+
+/// Stress Index decoder from EDA
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StressIndexDecoder {
+    pub num_neurons: usize,
+}
+
+impl StressIndexDecoder {
+    pub fn new(num_neurons: usize) -> Self {
+        Self { num_neurons }
+    }
+}
+
+impl Decoder for StressIndexDecoder {
+    fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
+        let rates = spikes.spike_rate();
+        let batch_size = rates.shape()[0];
+
+        // Output: stress index (0-100), arousal level, SNS activity
+        let mut output = Array2::zeros((batch_size, 3));
+
+        for b in 0..batch_size {
+            let mean_rate: f32 = rates.row(b).mean().unwrap_or(0.0);
+            let variance = rates.row(b).var(0.0);
+
+            // Stress index based on activity level and variability
+            // Higher activity + higher variability = higher stress
+            let stress_index = ((mean_rate * 50.0) + (variance.sqrt() * 50.0)).min(100.0);
+
+            // Arousal level (0-10 scale)
+            let arousal = mean_rate * 10.0;
+
+            // SNS activity estimate
+            let sns_activity = (mean_rate * 0.6 + variance.sqrt() * 0.4) * 100.0;
+
+            output[[b, 0]] = stress_index.max(0.0);
+            output[[b, 1]] = arousal.max(0.0).min(10.0);
+            output[[b, 2]] = sns_activity.max(0.0).min(100.0);
+        }
+
+        Ok(output)
+    }
+
+    fn output_dim(&self) -> usize {
+        3 // stress index, arousal, SNS activity
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

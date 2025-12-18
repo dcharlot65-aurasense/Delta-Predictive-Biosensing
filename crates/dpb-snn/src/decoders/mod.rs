@@ -19,7 +19,7 @@ pub use temporal::{
     LastSpikeDecoder, PhaseDecoder, RankOrderDecoder,
 };
 
-// Clinical score decoders (15 original + 8 new = 23 total)
+// Clinical score decoders (15 original + 8 phase E + 16 gap fill = 39 total)
 pub use clinical::{
     // Original clinical decoders
     UPDRSDecoder, TremorSeverityDecoder, GaitScoreDecoder,
@@ -33,6 +33,14 @@ pub use clinical::{
     VasDecoder, NrsDecoder, QstPhenotypeDecoder,
     // Phase E: Vestibular decoders
     VorGainDecoder, CanalParesisDecoder, BppvDecoder,
+    // Force decoders
+    GrfDecoder, GripStrengthDecoder, RfdDecoder,
+    // Cardiopulmonary decoders
+    HrvDecoder, RespiratoryDecoder, Vo2Decoder,
+    // Cognitive decoders
+    CognitiveRtDecoder, AttentionDecoder, WorkingMemoryDecoder,
+    // EDA decoders
+    ScrDecoder, SclDecoder, StressIndexDecoder,
 };
 
 // Regression decoders (10 total)

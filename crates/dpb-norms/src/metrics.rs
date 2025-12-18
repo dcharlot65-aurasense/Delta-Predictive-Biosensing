@@ -30,6 +30,18 @@ pub enum MetricDomain {
     Sleep,
     /// Composite/integrated measures
     Composite,
+    /// PPG/cardiovascular waveform
+    Ppg,
+    /// Electrodermal activity
+    Eda,
+    /// EEG brain activity
+    Eeg,
+    /// Eye tracking/oculomotor
+    Eye,
+    /// Voice/speech
+    Voice,
+    /// Vestibular function
+    Vestibular,
 }
 
 /// All supported metric types
@@ -168,6 +180,98 @@ pub enum MetricType {
     GlobalComposite,
     /// Frailty index
     FrailtyIndex,
+
+    // === PPG Metrics ===
+    /// Pulse Transit Time (ms)
+    PulseTransitTime,
+    /// Pulse Wave Velocity (m/s)
+    PulseWaveVelocity,
+    /// Augmentation Index (%)
+    AugmentationIndex,
+    /// Stiffness Index (m/s)
+    StiffnessIndex,
+    /// Perfusion Index (%)
+    PerfusionIndex,
+    /// Pulse Rate Variability SDNN (ms)
+    PrvSdnn,
+
+    // === EDA Metrics ===
+    /// Skin Conductance Level (μS)
+    SkinConductanceLevel,
+    /// SCR Frequency (events/min)
+    ScrFrequency,
+    /// SCR Amplitude (μS)
+    ScrAmplitude,
+    /// Non-specific SCR count (events/5min)
+    NsScrCount,
+    /// EDA Recovery Time (s)
+    EdaRecoveryTime,
+
+    // === EEG Band Power Metrics ===
+    /// Delta Power (0.5-4 Hz, μV²)
+    EegDeltaPower,
+    /// Theta Power (4-8 Hz, μV²)
+    EegThetaPower,
+    /// Alpha Power (8-13 Hz, μV²)
+    EegAlphaPower,
+    /// Beta Power (13-30 Hz, μV²)
+    EegBetaPower,
+    /// Gamma Power (30-100 Hz, μV²)
+    EegGammaPower,
+    /// Alpha/Theta Ratio
+    EegAlphaThetaRatio,
+    /// Alpha Asymmetry (frontal)
+    EegAlphaAsymmetry,
+
+    // === Eye Tracking Metrics ===
+    /// Saccade Peak Velocity (°/s)
+    SaccadePeakVelocity,
+    /// Saccade Amplitude (°)
+    SaccadeAmplitude,
+    /// Saccade Latency (ms)
+    SaccadeLatency,
+    /// Fixation Duration (ms)
+    FixationDuration,
+    /// Fixation Count (per minute)
+    FixationCount,
+    /// Pupil Diameter (mm)
+    PupilDiameter,
+    /// Pupil Response Latency (ms)
+    PupilResponseLatency,
+    /// Smooth Pursuit Gain
+    SmoothPursuitGain,
+    /// Blink Rate (per minute)
+    BlinkRate,
+
+    // === Voice Metrics ===
+    /// Fundamental Frequency F0 (Hz)
+    VoiceF0,
+    /// F0 Variability (semitones)
+    VoiceF0Variability,
+    /// Jitter (%)
+    VoiceJitter,
+    /// Shimmer (%)
+    VoiceShimmer,
+    /// Harmonics to Noise Ratio (dB)
+    VoiceHnr,
+    /// Speech Rate (syllables/s)
+    SpeechRate,
+    /// Voice Onset Time (ms)
+    VoiceOnsetTime,
+    /// Maximum Phonation Time (s)
+    MaxPhonationTime,
+
+    // === Vestibular Metrics ===
+    /// VOR Gain
+    VorGain,
+    /// Canal Paresis (%)
+    CanalParesis,
+    /// DVA Score Loss (logMAR)
+    DvaScoreLoss,
+    /// Subjective Visual Vertical Error (°)
+    SvvError,
+    /// Head Impulse Gain
+    HeadImpulseGain,
 }
 
 impl MetricType {
@@ -247,6 +351,58 @@ impl MetricType {
             | MetricType::MotorComposite
             | MetricType::GlobalComposite
             | MetricType::FrailtyIndex => MetricDomain::Composite,
+
+            // PPG
+            MetricType::PulseTransitTime
+            | MetricType::PulseWaveVelocity
+            | MetricType::AugmentationIndex
+            | MetricType::StiffnessIndex
+            | MetricType::PerfusionIndex
+            | MetricType::PrvSdnn => MetricDomain::Ppg,
+
+            // EDA
+            MetricType::SkinConductanceLevel
+            | MetricType::ScrFrequency
+            | MetricType::ScrAmplitude
+            | MetricType::NsScrCount
+            | MetricType::EdaRecoveryTime => MetricDomain::Eda,
+
+            // EEG
+            MetricType::EegDeltaPower
+            | MetricType::EegThetaPower
+            | MetricType::EegAlphaPower
+            | MetricType::EegBetaPower
+            | MetricType::EegGammaPower
+            | MetricType::EegAlphaThetaRatio
+            | MetricType::EegAlphaAsymmetry => MetricDomain::Eeg,
+
+            // Eye
+            MetricType::SaccadePeakVelocity
+            | MetricType::SaccadeAmplitude
+            | MetricType::SaccadeLatency
+            | MetricType::FixationDuration
+            | MetricType::FixationCount
+            | MetricType::PupilDiameter
+            | MetricType::PupilResponseLatency
+            | MetricType::SmoothPursuitGain
+            | MetricType::BlinkRate => MetricDomain::Eye,
+
+            // Voice
+            MetricType::VoiceF0
+            | MetricType::VoiceF0Variability
+            | MetricType::VoiceJitter
+            | MetricType::VoiceShimmer
+            | MetricType::VoiceHnr
+            | MetricType::SpeechRate
+            | MetricType::VoiceOnsetTime
+            | MetricType::MaxPhonationTime => MetricDomain::Voice,
+
+            // Vestibular
+            MetricType::VorGain
+            | MetricType::CanalParesis
+            | MetricType::DvaScoreLoss
+            | MetricType::SvvError
+            | MetricType::HeadImpulseGain => MetricDomain::Vestibular,
         }
     }
 
@@ -280,7 +436,25 @@ impl MetricType {
             | MetricType::JointPositionError
             | MetricType::SleepOnsetLatency
             | MetricType::WakeAfterSleepOnset
-            | MetricType::FrailtyIndex => MetricDirection::LowerIsBetter,
+            | MetricType::FrailtyIndex
+            // PPG - lower is better
+            | MetricType::PulseWaveVelocity
+            | MetricType::AugmentationIndex
+            | MetricType::StiffnessIndex
+            // EDA - lower arousal (generally)
+            | MetricType::ScrFrequency
+            | MetricType::NsScrCount
+            // Eye - lower latency/variability
+            | MetricType::SaccadeLatency
+            | MetricType::PupilResponseLatency
+            // Voice - lower jitter/shimmer
+            | MetricType::VoiceJitter
+            | MetricType::VoiceShimmer
+            | MetricType::VoiceOnsetTime
+            // Vestibular - lower error/paresis
+            | MetricType::CanalParesis
+            | MetricType::DvaScoreLoss
+            | MetricType::SvvError => MetricDirection::LowerIsBetter,
 
             // Higher is better (performance scores, physiological capacity)
             MetricType::NBackAccuracy
@@ -311,13 +485,51 @@ impl MetricType {
             | MetricType::DeepSleepPercent
             | MetricType::CognitiveComposite
             | MetricType::MotorComposite
-            | MetricType::GlobalComposite => MetricDirection::HigherIsBetter,
+            | MetricType::GlobalComposite
+            // PPG - higher is better
+            | MetricType::PerfusionIndex
+            | MetricType::PrvSdnn
+            // EDA - context dependent but recovery is good
+            | MetricType::EdaRecoveryTime
+            // EEG - higher alpha is generally better
+            | MetricType::EegAlphaPower
+            | MetricType::EegAlphaThetaRatio
+            // Eye - higher gain/velocity
+            | MetricType::SaccadePeakVelocity
+            | MetricType::SmoothPursuitGain
+            // Voice - higher HNR, phonation
+            | MetricType::VoiceHnr
+            | MetricType::SpeechRate
+            | MetricType::MaxPhonationTime
+            // Vestibular - higher gain
+            | MetricType::VorGain
+            | MetricType::HeadImpulseGain => MetricDirection::HigherIsBetter,
 
             // Neutral (depends on context)
             MetricType::HeartRate
             | MetricType::RespiratoryRate
             | MetricType::BpSystolic
-            | MetricType::BpDiastolic => MetricDirection::LowerIsBetter, // Generally lower resting is better
+            | MetricType::BpDiastolic
+            // PPG - pulse transit time context-dependent
+            | MetricType::PulseTransitTime
+            // EDA - SCL is arousal, context-dependent
+            | MetricType::SkinConductanceLevel
+            | MetricType::ScrAmplitude
+            // EEG - band powers context-dependent
+            | MetricType::EegDeltaPower
+            | MetricType::EegThetaPower
+            | MetricType::EegBetaPower
+            | MetricType::EegGammaPower
+            | MetricType::EegAlphaAsymmetry
+            // Eye - context dependent
+            | MetricType::SaccadeAmplitude
+            | MetricType::FixationDuration
+            | MetricType::FixationCount
+            | MetricType::PupilDiameter
+            | MetricType::BlinkRate
+            // Voice - F0 is person-specific
+            | MetricType::VoiceF0
+            | MetricType::VoiceF0Variability => MetricDirection::LowerIsBetter, // Default to lower
         }
     }
 
@@ -390,6 +602,58 @@ impl MetricType {
             | MetricType::CognitiveComposite
             | MetricType::MotorComposite
             | MetricType::GlobalComposite => "score",
+
+            // PPG
+            MetricType::PulseTransitTime
+            | MetricType::PrvSdnn => "ms",
+            MetricType::PulseWaveVelocity
+            | MetricType::StiffnessIndex => "m/s",
+            MetricType::AugmentationIndex
+            | MetricType::PerfusionIndex => "%",
+
+            // EDA
+            MetricType::SkinConductanceLevel
+            | MetricType::ScrAmplitude => "μS",
+            MetricType::ScrFrequency => "events/min",
+            MetricType::NsScrCount => "events",
+            MetricType::EdaRecoveryTime => "s",
+
+            // EEG
+            MetricType::EegDeltaPower
+            | MetricType::EegThetaPower
+            | MetricType::EegAlphaPower
+            | MetricType::EegBetaPower
+            | MetricType::EegGammaPower => "μV²",
+            MetricType::EegAlphaThetaRatio => "ratio",
+            MetricType::EegAlphaAsymmetry => "score",
+
+            // Eye
+            MetricType::SaccadePeakVelocity => "°/s",
+            MetricType::SaccadeAmplitude
+            | MetricType::SvvError => "°",
+            MetricType::SaccadeLatency
+            | MetricType::FixationDuration
+            | MetricType::PupilResponseLatency => "ms",
+            MetricType::FixationCount
+            | MetricType::BlinkRate => "/min",
+            MetricType::PupilDiameter => "mm",
+            MetricType::SmoothPursuitGain
+            | MetricType::VorGain
+            | MetricType::HeadImpulseGain => "gain",
+
+            // Voice
+            MetricType::VoiceF0 => "Hz",
+            MetricType::VoiceF0Variability => "semitones",
+            MetricType::VoiceJitter
+            | MetricType::VoiceShimmer
+            | MetricType::CanalParesis => "%",
+            MetricType::VoiceHnr => "dB",
+            MetricType::SpeechRate => "syllables/s",
+            MetricType::VoiceOnsetTime => "ms",
+            MetricType::MaxPhonationTime => "s",
+
+            // Vestibular
+            MetricType::DvaScoreLoss => "logMAR",
         }
     }
 
@@ -456,6 +720,52 @@ impl MetricType {
             MetricType::MotorComposite => "Motor Composite",
             MetricType::GlobalComposite => "Global Composite",
             MetricType::FrailtyIndex => "Frailty Index",
+            // PPG
+            MetricType::PulseTransitTime => "Pulse Transit Time",
+            MetricType::PulseWaveVelocity => "Pulse Wave Velocity",
+            MetricType::AugmentationIndex => "Augmentation Index",
+            MetricType::StiffnessIndex => "Stiffness Index",
+            MetricType::PerfusionIndex => "Perfusion Index",
+            MetricType::PrvSdnn => "PRV SDNN",
+            // EDA
+            MetricType::SkinConductanceLevel => "Skin Conductance Level",
+            MetricType::ScrFrequency => "SCR Frequency",
+            MetricType::ScrAmplitude => "SCR Amplitude",
+            MetricType::NsScrCount => "NS-SCR Count",
+            MetricType::EdaRecoveryTime => "EDA Recovery Time",
+            // EEG
+            MetricType::EegDeltaPower => "EEG Delta Power",
+            MetricType::EegThetaPower => "EEG Theta Power",
+            MetricType::EegAlphaPower => "EEG Alpha Power",
+            MetricType::EegBetaPower => "EEG Beta Power",
+            MetricType::EegGammaPower => "EEG Gamma Power",
+            MetricType::EegAlphaThetaRatio => "EEG Alpha/Theta Ratio",
+            MetricType::EegAlphaAsymmetry => "EEG Alpha Asymmetry",
+            // Eye
+            MetricType::SaccadePeakVelocity => "Saccade Peak Velocity",
+            MetricType::SaccadeAmplitude => "Saccade Amplitude",
+            MetricType::SaccadeLatency => "Saccade Latency",
+            MetricType::FixationDuration => "Fixation Duration",
+            MetricType::FixationCount => "Fixation Count",
+            MetricType::PupilDiameter => "Pupil Diameter",
+            MetricType::PupilResponseLatency => "Pupil Response Latency",
+            MetricType::SmoothPursuitGain => "Smooth Pursuit Gain",
+            MetricType::BlinkRate => "Blink Rate",
+            // Voice
+            MetricType::VoiceF0 => "Voice F0",
+            MetricType::VoiceF0Variability => "Voice F0 Variability",
+            MetricType::VoiceJitter => "Voice Jitter",
+            MetricType::VoiceShimmer => "Voice Shimmer",
+            MetricType::VoiceHnr => "Voice HNR",
+            MetricType::SpeechRate => "Speech Rate",
+            MetricType::VoiceOnsetTime => "Voice Onset Time",
+            MetricType::MaxPhonationTime => "Max Phonation Time",
+            // Vestibular
+            MetricType::VorGain => "VOR Gain",
+            MetricType::CanalParesis => "Canal Paresis",
+            MetricType::DvaScoreLoss => "DVA Score Loss",
+            MetricType::SvvError => "SVV Error",
+            MetricType::HeadImpulseGain => "Head Impulse Gain",
         }
     }
 
@@ -474,7 +784,8 @@ impl MetricType {
 }
 
 /// All metric types for iteration
-const ALL_METRICS: [MetricType; 60] = [
+const ALL_METRICS: [MetricType; 100] = [
+    // Cognitive (15)
     MetricType::SimpleReactionTime,
     MetricType::ChoiceReactionTime,
     MetricType::ReactionTimeVariability,
@@ -490,6 +801,7 @@ const ALL_METRICS: [MetricType; 60] = [
     MetricType::DigitSpanBackward,
     MetricType::VerbalFluency,
     MetricType::MocaTotal,
+    // Motor (13)
     MetricType::GaitVelocity,
     MetricType::StrideLength,
     MetricType::StrideTimeVariability,
@@ -503,6 +815,7 @@ const ALL_METRICS: [MetricType; 60] = [
     MetricType::TremorAmplitude,
     MetricType::TremorFrequency,
     MetricType::UpdrsMotor,
+    // Balance (8)
     MetricType::SwayArea,
     MetricType::SwayPathLength,
     MetricType::SwayVelocity,
@@ -511,6 +824,7 @@ const ALL_METRICS: [MetricType; 60] = [
     MetricType::LosReactionTime,
     MetricType::LosMaxExcursion,
     MetricType::LosDirectionalControl,
+    // Physiological (9)
     MetricType::HeartRate,
     MetricType::HrvSdnn,
     MetricType::HrvRmssd,
@@ -520,21 +834,70 @@ const ALL_METRICS: [MetricType; 60] = [
     MetricType::SpO2,
     MetricType::BpSystolic,
     MetricType::BpDiastolic,
+    // Sensory (5)
     MetricType::PressurePainThreshold,
     MetricType::PainTolerance,
     MetricType::CpmEffect,
     MetricType::VibrationThreshold,
     MetricType::JointPositionError,
+    // Sleep (6)
     MetricType::TotalSleepTime,
     MetricType::SleepEfficiency,
     MetricType::SleepOnsetLatency,
     MetricType::WakeAfterSleepOnset,
     MetricType::RemPercent,
     MetricType::DeepSleepPercent,
+    // Composite (4)
     MetricType::CognitiveComposite,
     MetricType::MotorComposite,
     MetricType::GlobalComposite,
     MetricType::FrailtyIndex,
+    // PPG (6)
+    MetricType::PulseTransitTime,
+    MetricType::PulseWaveVelocity,
+    MetricType::AugmentationIndex,
+    MetricType::StiffnessIndex,
+    MetricType::PerfusionIndex,
+    MetricType::PrvSdnn,
+    // EDA (5)
+    MetricType::SkinConductanceLevel,
+    MetricType::ScrFrequency,
+    MetricType::ScrAmplitude,
+    MetricType::NsScrCount,
+    MetricType::EdaRecoveryTime,
+    // EEG (7)
+    MetricType::EegDeltaPower,
+    MetricType::EegThetaPower,
+    MetricType::EegAlphaPower,
+    MetricType::EegBetaPower,
+    MetricType::EegGammaPower,
+    MetricType::EegAlphaThetaRatio,
+    MetricType::EegAlphaAsymmetry,
+    // Eye (9)
+    MetricType::SaccadePeakVelocity,
+    MetricType::SaccadeAmplitude,
+    MetricType::SaccadeLatency,
+    MetricType::FixationDuration,
+    MetricType::FixationCount,
+    MetricType::PupilDiameter,
+    MetricType::PupilResponseLatency,
+    MetricType::SmoothPursuitGain,
+    MetricType::BlinkRate,
+    // Voice (8)
+    MetricType::VoiceF0,
+    MetricType::VoiceF0Variability,
+    MetricType::VoiceJitter,
+    MetricType::VoiceShimmer,
+    MetricType::VoiceHnr,
+    MetricType::SpeechRate,
+    MetricType::VoiceOnsetTime,
+    MetricType::MaxPhonationTime,
+    // Vestibular (5)
+    MetricType::VorGain,
+    MetricType::CanalParesis,
+    MetricType::DvaScoreLoss,
+    MetricType::SvvError,
+    MetricType::HeadImpulseGain,
 ];
 
 #[cfg(test)]
@@ -577,6 +940,22 @@ mod tests {
     #[test]
     fn test_all_metrics() {
         let all = MetricType::all();
-        assert_eq!(all.len(), 60);
+        assert_eq!(all.len(), 100);
+    }
+
+    #[test]
+    fn test_new_domain_metrics() {
+        // PPG domain
+        assert_eq!(MetricType::PulseWaveVelocity.domain(), MetricDomain::Ppg);
+        // EDA domain
+        assert_eq!(MetricType::SkinConductanceLevel.domain(), MetricDomain::Eda);
+        // EEG domain
+        assert_eq!(MetricType::EegAlphaPower.domain(), MetricDomain::Eeg);
+        // Eye domain
+        assert_eq!(MetricType::SaccadePeakVelocity.domain(), MetricDomain::Eye);
+        // Voice domain
+        assert_eq!(MetricType::VoiceF0.domain(), MetricDomain::Voice);
+        // Vestibular domain
+        assert_eq!(MetricType::VorGain.domain(), MetricDomain::Vestibular);
     }
 }

@@ -21,10 +21,16 @@
 pub mod database;
 pub mod demographics;
 pub mod metrics;
+pub mod multimodal;
 
 pub use database::{NormativeDatabase, NormativeEntry, NormativeTable};
 pub use demographics::{Demographics, DemographicsFilter, Sex, Ethnicity, Handedness, EducationLevel, AgeGroup, Side};
 pub use metrics::{MetricType, MetricDomain, MetricDirection};
+pub use multimodal::{
+    MultiModalAssessment, MultiModalAssessor, MultiModalProfile,
+    DomainSummary, DomainClassification, ProfileClassification,
+    Dissociation, DissociationType, generate_report,
+};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
