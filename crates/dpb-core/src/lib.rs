@@ -64,6 +64,7 @@ pub mod somatosensory;
 pub mod tensor;
 pub mod traits;
 pub mod types;
+pub mod validation;
 pub mod vestibular;
 pub mod viz;
 
