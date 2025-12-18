@@ -41,6 +41,8 @@ pub mod onnx;
 pub mod json;
 pub mod binary;
 pub mod encoder_export;
+pub mod fpga;
+pub mod neuromorphic;
 
 pub use error::{ExportError, Result};
 pub use metadata::{ModelMetadata, ModelInfo};

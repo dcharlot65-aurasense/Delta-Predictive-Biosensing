@@ -40,12 +40,14 @@ pub mod timeseries;
 pub mod spiketrain;
 pub mod encoders;
 pub mod webgpu;
+pub mod webnn;
 mod utils;
 
 pub use timeseries::WasmTimeSeries;
 pub use spiketrain::WasmSpikeTrain;
 pub use encoders::{WasmLevelCrossingEncoder, WasmDeltaEncoder};
 pub use webgpu::{GpuEncoder, GpuEncoderConfig};
+pub use webnn::{WebNNEncoder, WebNNConfig, WebNNDeviceType, WebNNFeatures};
 
 /// Initialize the WASM module.
 /// Called automatically when the module loads.

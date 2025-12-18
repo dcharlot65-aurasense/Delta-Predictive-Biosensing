@@ -1,0 +1,254 @@
+// DPB Level Crossing Detection CUDA Kernel
+// Compiled PTX for sm_80+ (Ampere and newer)
+//
+// This kernel detects level crossings in multi-channel biosignals.
+// Each thread processes one sample across all channels.
+
+.version 7.0
+.target sm_80
+.address_size 64
+
+// Kernel: level_crossing_detect
+// Detects positive level crossings (signal crosses threshold from below)
+//
+// Parameters:
+//   input       - Input signal buffer (float32, interleaved channels)
+//   output      - Output spike indices (uint32)
+//   spike_count - Atomic counter for number of spikes found
+//   threshold   - Crossing threshold value
+//   num_samples - Total number of samples
+//   num_channels - Number of channels
+
+.visible .entry level_crossing_detect(
+    .param .u64 input,
+    .param .u64 output,
+    .param .u64 spike_count,
+    .param .f32 threshold,
+    .param .u32 num_samples,
+    .param .u32 num_channels
+)
+{
+    // Register declarations
+    .reg .pred %p<4>;
+    .reg .f32 %f<8>;
+    .reg .b32 %r<16>;
+    .reg .b64 %rd<16>;
+
+    // Get global thread ID
+    mov.u32 %r1, %tid.x;
+    mov.u32 %r2, %ntid.x;
+    mov.u32 %r3, %ctaid.x;
+    mad.lo.s32 %r4, %r3, %r2, %r1;  // global_idx = blockIdx.x * blockDim.x + threadIdx.x
+
+    // Load parameters
+    ld.param.u32 %r5, [num_samples];
+    ld.param.u32 %r6, [num_channels];
+
+    // Bounds check: if global_idx >= num_samples, exit
+    setp.ge.u32 %p1, %r4, %r5;
+    @%p1 bra EXIT;
+
+    // Skip first sample (no previous to compare)
+    setp.eq.u32 %p2, %r4, 0;
+    @%p2 bra EXIT;
+
+    // Load input pointer and threshold
+    ld.param.u64 %rd1, [input];
+    ld.param.f32 %f1, [threshold];
+
+    // Calculate offset for current sample: offset = global_idx * num_channels * sizeof(float)
+    mul.lo.u32 %r7, %r4, %r6;
+    cvt.u64.u32 %rd2, %r7;
+    shl.b64 %rd3, %rd2, 2;          // * 4 (sizeof float)
+    add.u64 %rd4, %rd1, %rd3;       // current sample address
+
+    // Calculate offset for previous sample
+    sub.u32 %r8, %r4, 1;
+    mul.lo.u32 %r9, %r8, %r6;
+    cvt.u64.u32 %rd5, %r9;
+    shl.b64 %rd6, %rd5, 2;
+    add.u64 %rd7, %rd1, %rd6;       // previous sample address
+
+    // Process each channel
+    mov.u32 %r10, 0;                // channel counter
+
+CHANNEL_LOOP:
+    // Check if done with channels
+    setp.ge.u32 %p3, %r10, %r6;
+    @%p3 bra EXIT;
+
+    // Load current and previous values for this channel
+    cvt.u64.u32 %rd8, %r10;
+    shl.b64 %rd9, %rd8, 2;
+
+    add.u64 %rd10, %rd4, %rd9;
+    ld.global.f32 %f2, [%rd10];     // current value
+
+    add.u64 %rd11, %rd7, %rd9;
+    ld.global.f32 %f3, [%rd11];     // previous value
+
+    // Check for positive crossing: prev < threshold AND current >= threshold
+    setp.lt.f32 %p1, %f3, %f1;      // prev < threshold
+    setp.ge.f32 %p2, %f2, %f1;      // current >= threshold
+    and.pred %p3, %p1, %p2;         // crossing detected
+
+    @!%p3 bra NEXT_CHANNEL;
+
+    // Crossing detected - record spike
+    // Atomic increment spike counter and get index
+    ld.param.u64 %rd12, [spike_count];
+    atom.global.add.u32 %r11, [%rd12], 1;
+
+    // Store spike info: (sample_index << 16) | channel
+    shl.b32 %r12, %r4, 16;
+    or.b32 %r13, %r12, %r10;
+
+    // Write to output buffer
+    ld.param.u64 %rd13, [output];
+    cvt.u64.u32 %rd14, %r11;
+    shl.b64 %rd15, %rd14, 2;
+    add.u64 %rd13, %rd13, %rd15;
+    st.global.u32 [%rd13], %r13;
+
+NEXT_CHANNEL:
+    add.u32 %r10, %r10, 1;
+    bra CHANNEL_LOOP;
+
+EXIT:
+    ret;
+}
+
+// Kernel: delta_modulation_encode
+// Delta modulation encoding for spike-based signal representation
+//
+// Parameters:
+//   input       - Input signal buffer (float32)
+//   output      - Output spike train (int8: +1, 0, -1)
+//   threshold   - Delta threshold
+//   num_samples - Total number of samples
+
+.visible .entry delta_modulation_encode(
+    .param .u64 input,
+    .param .u64 output,
+    .param .f32 threshold,
+    .param .u32 num_samples
+)
+{
+    .reg .pred %p<4>;
+    .reg .f32 %f<8>;
+    .reg .b32 %r<12>;
+    .reg .b64 %rd<8>;
+
+    // Get global thread ID
+    mov.u32 %r1, %tid.x;
+    mov.u32 %r2, %ntid.x;
+    mov.u32 %r3, %ctaid.x;
+    mad.lo.s32 %r4, %r3, %r2, %r1;
+
+    // Bounds check
+    ld.param.u32 %r5, [num_samples];
+    setp.ge.u32 %p1, %r4, %r5;
+    @%p1 bra DELTA_EXIT;
+
+    // Load input pointer
+    ld.param.u64 %rd1, [input];
+    ld.param.f32 %f1, [threshold];
+    neg.f32 %f2, %f1;               // -threshold
+
+    // Calculate addresses
+    cvt.u64.u32 %rd2, %r4;
+    shl.b64 %rd3, %rd2, 2;
+    add.u64 %rd4, %rd1, %rd3;
+
+    // Load current value
+    ld.global.f32 %f3, [%rd4];
+
+    // Determine spike: +1 if > threshold, -1 if < -threshold, 0 otherwise
+    mov.s32 %r6, 0;                 // default: no spike
+
+    setp.gt.f32 %p2, %f3, %f1;
+    @%p2 mov.s32 %r6, 1;
+
+    setp.lt.f32 %p3, %f3, %f2;
+    @%p3 mov.s32 %r6, -1;
+
+    // Store result
+    ld.param.u64 %rd5, [output];
+    add.u64 %rd6, %rd5, %rd2;       // byte offset (int8)
+    st.global.s8 [%rd6], %r6;
+
+DELTA_EXIT:
+    ret;
+}
+
+// Kernel: temporal_contrast_encode
+// Temporal contrast encoding based on derivative
+//
+// Parameters:
+//   input       - Input signal buffer (float32)
+//   output      - Output spike train (int8)
+//   threshold   - Contrast threshold
+//   num_samples - Total number of samples
+
+.visible .entry temporal_contrast_encode(
+    .param .u64 input,
+    .param .u64 output,
+    .param .f32 threshold,
+    .param .u32 num_samples
+)
+{
+    .reg .pred %p<4>;
+    .reg .f32 %f<8>;
+    .reg .b32 %r<12>;
+    .reg .b64 %rd<12>;
+
+    // Get global thread ID
+    mov.u32 %r1, %tid.x;
+    mov.u32 %r2, %ntid.x;
+    mov.u32 %r3, %ctaid.x;
+    mad.lo.s32 %r4, %r3, %r2, %r1;
+
+    // Bounds check (skip first sample)
+    ld.param.u32 %r5, [num_samples];
+    setp.ge.u32 %p1, %r4, %r5;
+    @%p1 bra TC_EXIT;
+    setp.eq.u32 %p2, %r4, 0;
+    @%p2 bra TC_EXIT;
+
+    // Load pointers
+    ld.param.u64 %rd1, [input];
+    ld.param.f32 %f1, [threshold];
+    neg.f32 %f2, %f1;
+
+    // Current and previous addresses
+    cvt.u64.u32 %rd2, %r4;
+    shl.b64 %rd3, %rd2, 2;
+    add.u64 %rd4, %rd1, %rd3;
+
+    sub.u32 %r6, %r4, 1;
+    cvt.u64.u32 %rd5, %r6;
+    shl.b64 %rd6, %rd5, 2;
+    add.u64 %rd7, %rd1, %rd6;
+
+    // Load values and compute derivative
+    ld.global.f32 %f3, [%rd4];      // current
+    ld.global.f32 %f4, [%rd7];      // previous
+    sub.f32 %f5, %f3, %f4;          // derivative
+
+    // Encode based on derivative magnitude
+    mov.s32 %r7, 0;
+
+    setp.gt.f32 %p3, %f5, %f1;
+    @%p3 mov.s32 %r7, 1;
+
+    setp.lt.f32 %p1, %f5, %f2;
+    @%p1 mov.s32 %r7, -1;
+
+    // Store result
+    ld.param.u64 %rd8, [output];
+    add.u64 %rd9, %rd8, %rd2;
+    st.global.s8 [%rd9], %r7;
+
+TC_EXIT:
+    ret;
+}

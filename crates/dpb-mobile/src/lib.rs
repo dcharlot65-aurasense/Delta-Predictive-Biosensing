@@ -75,6 +75,7 @@ pub mod model;
 pub mod ffi;
 pub mod optimization;
 pub mod benchmark;
+pub mod npu;
 
 #[cfg(target_os = "ios")]
 pub mod ios;
