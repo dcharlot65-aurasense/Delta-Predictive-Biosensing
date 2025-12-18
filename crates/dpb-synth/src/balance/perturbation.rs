@@ -215,7 +215,7 @@ impl PerturbationGenerator {
         let noise_dist = Normal::new(0.0, self.config.noise_level * 0.01).unwrap();
 
         // Response parameters
-        let response_latency = 0.100 + self.rng.gen::<f64>() * 0.050; // 100-150ms
+        let response_latency = 0.100 + self.rng.r#gen::<f64>() * 0.050; // 100-150ms
         let time_constant = 0.3; // Recovery time constant
 
         let mut peak_disp = 0.0_f64;
@@ -606,8 +606,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = PerturbationGenerator::new(config);
-        let output = gen.generate_translation_response(
+        let mut generator = PerturbationGenerator::new(config);
+        let output = generator.generate_translation_response(
             PerturbationDirection::Posterior,
             0.3,
             0.05,
@@ -624,8 +624,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = PerturbationGenerator::new(config);
-        let output = gen.generate_rotation_response(true, 8.0, 50.0);
+        let mut generator = PerturbationGenerator::new(config);
+        let output = generator.generate_rotation_response(true, 8.0, 50.0);
 
         assert!(!output.com_ap.is_empty());
         assert!(output.ground_truth.recovery_successful);
@@ -637,8 +637,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = PerturbationGenerator::new(config);
-        let output = gen.generate_push_response(
+        let mut generator = PerturbationGenerator::new(config);
+        let output = generator.generate_push_response(
             PerturbationDirection::Anterior,
             50.0,
             0.1,
@@ -654,8 +654,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = PerturbationGenerator::new(config);
-        let output = gen.generate_translation_response(
+        let mut generator = PerturbationGenerator::new(config);
+        let output = generator.generate_translation_response(
             PerturbationDirection::Posterior,
             0.5,
             0.25, // Large perturbation

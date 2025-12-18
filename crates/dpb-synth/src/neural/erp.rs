@@ -469,7 +469,7 @@ impl ErpGenerator {
         let noise_dist = Normal::new(0.0, 1.0).unwrap();
 
         // Alpha band (8-13 Hz)
-        let alpha_freq = 10.0 + self.rng.gen::<f64>() * 2.0;
+        let alpha_freq = 10.0 + self.rng.r#gen::<f64>() * 2.0;
         let alpha_amp = self.config.background_amplitude * 0.4;
 
         // Pink noise component
@@ -642,8 +642,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = ErpGenerator::new(config);
-        let output = gen.generate_visual_oddball(true, 1.0);
+        let mut generator = ErpGenerator::new(config);
+        let output = generator.generate_visual_oddball(true, 1.0);
 
         assert!(!output.signal[0].is_empty());
         // Target should have P300
@@ -656,8 +656,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = ErpGenerator::new(config);
-        let output = gen.generate_visual_oddball(false, 1.0);
+        let mut generator = ErpGenerator::new(config);
+        let output = generator.generate_visual_oddball(false, 1.0);
 
         // Standard should NOT have P300
         assert!(!output.ground_truth.components.iter().any(|c| c.component == ErpComponentType::P300));
@@ -669,8 +669,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = ErpGenerator::new(config);
-        let output = gen.generate_auditory_oddball(false, true, 1.0);
+        let mut generator = ErpGenerator::new(config);
+        let output = generator.generate_auditory_oddball(false, true, 1.0);
 
         // Deviant should have MMN
         assert!(output.ground_truth.components.iter().any(|c| c.component == ErpComponentType::MMN));
@@ -682,10 +682,10 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = ErpGenerator::new(config);
+        let mut generator = ErpGenerator::new(config);
 
-        let error = gen.generate_error_monitoring(true, 1.0);
-        let correct = gen.generate_error_monitoring(false, 1.0);
+        let error = generator.generate_error_monitoring(true, 1.0);
+        let correct = generator.generate_error_monitoring(false, 1.0);
 
         // Error trial should have larger ERN
         let error_ern = error.ground_truth.components.iter()
@@ -707,10 +707,10 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = ErpGenerator::new(config);
+        let mut generator = ErpGenerator::new(config);
 
-        let related = gen.generate_semantic_priming(true, 1.0);
-        let unrelated = gen.generate_semantic_priming(false, 1.0);
+        let related = generator.generate_semantic_priming(true, 1.0);
+        let unrelated = generator.generate_semantic_priming(false, 1.0);
 
         // Unrelated should have larger N400
         let related_n400 = related.ground_truth.components.iter()

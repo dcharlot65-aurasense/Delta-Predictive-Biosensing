@@ -744,8 +744,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = GripGenerator::new(config);
-        let output = gen.generate_mvc_trial(5.0);
+        let mut generator = GripGenerator::new(config);
+        let output = generator.generate_mvc_trial(5.0);
 
         assert!(!output.force.is_empty());
         assert!(output.ground_truth.peak_force > 0.0);
@@ -759,8 +759,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = GripGenerator::new(config);
-        let output = gen.generate_sustained_grip(30.0, 0.5);
+        let mut generator = GripGenerator::new(config);
+        let output = generator.generate_sustained_grip(30.0, 0.5);
 
         assert!(!output.force.is_empty());
         assert!(output.ground_truth.fatigue_index >= 0.0);
@@ -772,8 +772,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = GripGenerator::new(config);
-        let output = gen.generate_rapid_sequence(10, 0.5);
+        let mut generator = GripGenerator::new(config);
+        let output = generator.generate_rapid_sequence(10, 0.5);
 
         assert!(!output.force.is_empty());
         assert!(output.ground_truth.force_variability >= 0.0);
@@ -786,8 +786,8 @@ mod tests {
             dominance_factor: 1.1,
             ..Default::default()
         };
-        let mut gen = GripGenerator::new(config);
-        let (dominant, non_dominant) = gen.generate_bilateral_mvc(5.0);
+        let mut generator = GripGenerator::new(config);
+        let (dominant, non_dominant) = generator.generate_bilateral_mvc(5.0);
 
         // Dominant hand should be stronger
         assert!(dominant.ground_truth.peak_force > non_dominant.ground_truth.peak_force * 0.95);
@@ -799,10 +799,10 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = GripGenerator::new(config);
+        let mut generator = GripGenerator::new(config);
 
-        let normal = gen.generate_mvc_trial(5.0);
-        let weak = gen.generate_pathological(
+        let normal = generator.generate_mvc_trial(5.0);
+        let weak = generator.generate_pathological(
             PathologicalGrip::Weakness { severity: 0.5 },
             5.0,
         );
@@ -817,9 +817,9 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = GripGenerator::new(config);
+        let mut generator = GripGenerator::new(config);
 
-        let tremor = gen.generate_pathological(
+        let tremor = generator.generate_pathological(
             PathologicalGrip::Tremor {
                 frequency: 6.0,
                 amplitude: 0.1,

@@ -163,7 +163,7 @@ impl VorGenerator {
         let mut eye_position = Vec::with_capacity(n_samples);
 
         let gain = self.config.normal_gain;
-        let phase_deg = -5.0; // Slight phase lead is normal
+        let phase_deg: f64 = -5.0; // Slight phase lead is normal
         let phase_rad = phase_deg.to_radians();
 
         let noise_dist = Normal::new(0.0, self.config.noise_level * amplitude_deg_s).unwrap();
@@ -250,7 +250,7 @@ impl VorGenerator {
             let trial_start = trial as f64 * trial_duration;
 
             // Vary peak velocity slightly between trials
-            let trial_peak = peak_velocity * (0.9 + self.rng.gen::<f64>() * 0.2);
+            let trial_peak = peak_velocity * (0.9 + self.rng.r#gen::<f64>() * 0.2);
 
             let samples_per_trial = (trial_duration * self.config.sample_rate) as usize;
 
@@ -464,7 +464,7 @@ impl VorGenerator {
 
         for trial in 0..n_trials {
             let trial_start = trial as f64 * trial_duration;
-            let trial_peak = peak_velocity * (0.9 + self.rng.gen::<f64>() * 0.2);
+            let trial_peak = peak_velocity * (0.9 + self.rng.r#gen::<f64>() * 0.2);
             let samples_per_trial = (trial_duration * self.config.sample_rate) as usize;
 
             let mut trial_catch_up_saccades = Vec::new();
@@ -581,8 +581,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = VorGenerator::new(config);
-        let output = gen.generate_sinusoidal(0.5, 60.0, 10.0);
+        let mut generator = VorGenerator::new(config);
+        let output = generator.generate_sinusoidal(0.5, 60.0, 10.0);
 
         assert!(!output.eye_velocity.is_empty());
         assert!((output.ground_truth.gain.overall - 0.95).abs() < 0.1);
@@ -594,8 +594,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = VorGenerator::new(config);
-        let output = gen.generate_head_impulse(150.0, true, 5);
+        let mut generator = VorGenerator::new(config);
+        let output = generator.generate_head_impulse(150.0, true, 5);
 
         assert!(output.ground_truth.hit_results.is_some());
         assert_eq!(output.ground_truth.hit_results.as_ref().unwrap().len(), 5);
@@ -607,8 +607,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = VorGenerator::new(config);
-        let output = gen.generate_pathological(
+        let mut generator = VorGenerator::new(config);
+        let output = generator.generate_pathological(
             VorPathology::UnilateralLoss {
                 affected_side: true,
                 severity: 0.7,
@@ -628,8 +628,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = VorGenerator::new(config);
-        let output = gen.generate_pathological_hit(
+        let mut generator = VorGenerator::new(config);
+        let output = generator.generate_pathological_hit(
             VorPathology::UnilateralLoss {
                 affected_side: true,
                 severity: 0.8,

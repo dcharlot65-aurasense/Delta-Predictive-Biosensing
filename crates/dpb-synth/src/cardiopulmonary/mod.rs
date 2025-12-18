@@ -346,7 +346,7 @@ impl CardiopulmonaryGenerator {
                 // Add premature beats
                 let n_pvcs = (output.rr_intervals.len() as f64 * frequency / 100.0) as usize;
                 for _ in 0..n_pvcs {
-                    let idx = self.rng.gen_range(1..output.rr_intervals.len() - 1);
+                    let idx = self.rng.r#gen_range(1..output.rr_intervals.len() - 1);
                     output.rr_intervals[idx] *= 0.7; // Short coupling interval
                     output.rr_intervals[idx + 1] *= 1.3; // Compensatory pause
                 }
@@ -496,8 +496,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = CardiopulmonaryGenerator::new(config);
-        let output = gen.generate_resting(60.0);
+        let mut generator = CardiopulmonaryGenerator::new(config);
+        let output = generator.generate_resting(60.0);
 
         assert!(!output.rr_intervals.is_empty());
         assert!(output.ground_truth.hrv_metrics.sdnn > 0.0);
@@ -509,8 +509,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = CardiopulmonaryGenerator::new(config);
-        let output = gen.generate_exercise(300.0, 80.0);
+        let mut generator = CardiopulmonaryGenerator::new(config);
+        let output = generator.generate_exercise(300.0, 80.0);
 
         // Peak HR should be higher than resting
         let peak_hr = output.heart_rate.iter().cloned().fold(0.0_f64, f64::max);
@@ -523,10 +523,10 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = CardiopulmonaryGenerator::new(config);
+        let mut generator = CardiopulmonaryGenerator::new(config);
 
-        let normal = gen.generate_resting(60.0);
-        let afib = gen.generate_pathological(CardiopulmonaryPathology::AtrialFibrillation, 60.0);
+        let normal = generator.generate_resting(60.0);
+        let afib = generator.generate_pathological(CardiopulmonaryPathology::AtrialFibrillation, 60.0);
 
         // AFib should have higher variability
         assert!(afib.ground_truth.hrv_metrics.sdnn > normal.ground_truth.hrv_metrics.sdnn * 0.5);
@@ -538,10 +538,10 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = CardiopulmonaryGenerator::new(config);
+        let mut generator = CardiopulmonaryGenerator::new(config);
 
-        let normal = gen.generate_resting(60.0);
-        let reduced = gen.generate_pathological(
+        let normal = generator.generate_resting(60.0);
+        let reduced = generator.generate_pathological(
             CardiopulmonaryPathology::ReducedHrv { reduction: 0.7 },
             60.0,
         );

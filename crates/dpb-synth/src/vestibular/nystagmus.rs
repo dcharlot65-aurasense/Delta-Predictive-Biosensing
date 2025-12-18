@@ -465,8 +465,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = NystagmusGenerator::new(config);
-        let output = gen.generate_spontaneous(NystagmusDirection::Right, 10.0, 10.0);
+        let mut generator = NystagmusGenerator::new(config);
+        let output = generator.generate_spontaneous(NystagmusDirection::Right, 10.0, 10.0);
 
         assert!(!output.horizontal_position.is_empty());
         assert!(!output.ground_truth.beats.is_empty());
@@ -479,14 +479,14 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = NystagmusGenerator::new(config);
+        let mut generator = NystagmusGenerator::new(config);
 
         // Below threshold - no nystagmus
-        let output_low = gen.generate_gaze_evoked(15.0, 5.0);
+        let output_low = generator.generate_gaze_evoked(15.0, 5.0);
         assert!(output_low.ground_truth.slow_phase_velocity < 1.0);
 
         // Above threshold - nystagmus present
-        let output_high = gen.generate_gaze_evoked(35.0, 5.0);
+        let output_high = generator.generate_gaze_evoked(35.0, 5.0);
         assert!(output_high.ground_truth.slow_phase_velocity > 0.0);
     }
 
@@ -496,8 +496,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = NystagmusGenerator::new(config);
-        let output = gen.generate_bppv(BppvCanal::PosteriorRight, 60.0);
+        let mut generator = NystagmusGenerator::new(config);
+        let output = generator.generate_bppv(BppvCanal::PosteriorRight, 60.0);
 
         assert_eq!(output.ground_truth.nystagmus_type, NystagmusType::Positional);
         assert!(output.ground_truth.slow_phase_velocity > 0.0);
@@ -509,8 +509,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = NystagmusGenerator::new(config);
-        let output = gen.generate_optokinetic(30.0, 10.0);
+        let mut generator = NystagmusGenerator::new(config);
+        let output = generator.generate_optokinetic(30.0, 10.0);
 
         // OKN should have high SPV following stimulus
         assert!(output.ground_truth.slow_phase_velocity > 20.0);

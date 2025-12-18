@@ -172,8 +172,8 @@ impl CaloricGenerator {
         let mut eye_position = Vec::with_capacity(n_samples);
 
         // Caloric response characteristics
-        let latency = 20.0 + self.rng.gen::<f64>() * 10.0; // 20-30s latency
-        let time_to_peak = 60.0 + self.rng.gen::<f64>() * 20.0; // 60-80s to peak
+        let latency = 20.0 + self.rng.r#gen::<f64>() * 10.0; // 20-30s latency
+        let time_to_peak = 60.0 + self.rng.r#gen::<f64>() * 20.0; // 60-80s to peak
         let response_duration = 120.0;
 
         // Temperature effect: deviation from body temp (37°C)
@@ -394,8 +394,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = CaloricGenerator::new(config);
-        let output = gen.generate_response(CaloricStimulus::warm_right());
+        let mut generator = CaloricGenerator::new(config);
+        let output = generator.generate_response(CaloricStimulus::warm_right());
 
         assert!(output.ground_truth.response.present);
         assert!(output.ground_truth.peak_spv > 0.0);
@@ -408,8 +408,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = CaloricGenerator::new(config);
-        let output = gen.generate_response(CaloricStimulus::cold_right());
+        let mut generator = CaloricGenerator::new(config);
+        let output = generator.generate_response(CaloricStimulus::cold_right());
 
         // Cold right should produce left-beating nystagmus (COWS)
         assert_eq!(output.ground_truth.direction, NystagmusDirection::Left);
@@ -421,8 +421,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = CaloricGenerator::new(config);
-        let results = gen.generate_bithermal();
+        let mut generator = CaloricGenerator::new(config);
+        let results = generator.generate_bithermal();
 
         // Normal subject should have low canal paresis
         assert!(results.canal_paresis_percent.abs() < 25.0);
@@ -435,10 +435,10 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = CaloricGenerator::new(config);
+        let mut generator = CaloricGenerator::new(config);
 
-        let normal = gen.generate_response(CaloricStimulus::warm_right());
-        let pathological = gen.generate_pathological(
+        let normal = generator.generate_response(CaloricStimulus::warm_right());
+        let pathological = generator.generate_pathological(
             CaloricStimulus::warm_right(),
             CaloricPathology::UnilateralLoss {
                 affected_side: true,

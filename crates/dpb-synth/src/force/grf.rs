@@ -484,14 +484,14 @@ impl GrfGenerator {
         // Double-hump pattern using sum of Gaussians
         let peak1_pos = 0.20;
         let peak1_amp = 1.1;
-        let peak1_width = 0.08;
+        let peak1_width: f64 = 0.08;
 
         let valley_pos = 0.45;
         let valley_depth = 0.15;
 
         let peak2_pos = 0.75;
         let peak2_amp = 1.15;
-        let peak2_width = 0.10;
+        let peak2_width: f64 = 0.10;
 
         let mut force = 0.0;
 
@@ -540,7 +540,7 @@ impl GrfGenerator {
     fn single_peak_grf(&self, phase: f64, peak: f64) -> f64 {
         // Single Gaussian peak for running
         let peak_pos = 0.35;
-        let width = 0.15;
+        let width: f64 = 0.15;
 
         let force = peak * (-(phase - peak_pos).powi(2) / (2.0 * width.powi(2))).exp();
 
@@ -567,7 +567,7 @@ impl GrfGenerator {
             let noise_amplitude = max_val * self.config.noise_level;
 
             for sample in signal.iter_mut() {
-                *sample += self.rng.gen::<f64>() * 2.0 * noise_amplitude - noise_amplitude;
+                *sample += self.rng.r#gen::<f64>() * 2.0 * noise_amplitude - noise_amplitude;
             }
         }
     }
@@ -778,8 +778,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = GrfGenerator::new(config);
-        let output = gen.generate_walking(5.0);
+        let mut generator = GrfGenerator::new(config);
+        let output = generator.generate_walking(5.0);
 
         // Check output dimensions
         assert_eq!(output.vertical.len(), 5000);
@@ -800,8 +800,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = GrfGenerator::new(config);
-        let output = gen.generate_running(3.0);
+        let mut generator = GrfGenerator::new(config);
+        let output = generator.generate_running(3.0);
 
         // Running has higher peak forces
         let max_fz = output.vertical.iter().cloned().fold(0.0, f64::max);
@@ -811,8 +811,8 @@ mod tests {
     #[test]
     fn test_grf_jump_landing() {
         let config = GrfConfig::default();
-        let mut gen = GrfGenerator::new(config);
-        let output = gen.generate_jump_landing(0.3); // 30cm jump
+        let mut generator = GrfGenerator::new(config);
+        let output = generator.generate_jump_landing(0.3); // 30cm jump
 
         // Landing should have impact event
         assert!(!output.events.is_empty());
@@ -826,8 +826,8 @@ mod tests {
     #[test]
     fn test_grf_standing() {
         let config = GrfConfig::default();
-        let mut gen = GrfGenerator::new(config);
-        let output = gen.generate_standing(10.0);
+        let mut generator = GrfGenerator::new(config);
+        let output = generator.generate_standing(10.0);
 
         // Standing should be approximately 1 BW
         let mean_fz: f64 = output.vertical.iter().sum::<f64>() / output.vertical.len() as f64;
@@ -844,8 +844,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = GrfGenerator::new(config);
-        let output = gen.generate_walking(5.0);
+        let mut generator = GrfGenerator::new(config);
+        let output = generator.generate_walking(5.0);
 
         // Symmetry index should reflect asymmetry
         assert!(output.ground_truth.symmetry_index > 0.1);

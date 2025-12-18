@@ -405,8 +405,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = PainGenerator::new(config);
-        let output = gen.generate_pain_ramp(30.0, 10.0);
+        let mut generator = PainGenerator::new(config);
+        let output = generator.generate_pain_ramp(30.0, 10.0);
 
         assert!(!output.pain_rating.is_empty());
         assert!(output.ground_truth.threshold > 0.0);
@@ -418,8 +418,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = PainGenerator::new(config);
-        let output = gen.generate_temporal_summation(10, 1.0, 7.0);
+        let mut generator = PainGenerator::new(config);
+        let output = generator.generate_temporal_summation(10, 1.0, 7.0);
 
         // Should show summation
         assert!(output.ground_truth.temporal_summation >= 1.0);
@@ -431,8 +431,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = PainGenerator::new(config);
-        let (baseline, conditioned) = gen.generate_cpm(8.0);
+        let mut generator = PainGenerator::new(config);
+        let (baseline, conditioned) = generator.generate_cpm(8.0);
 
         // Conditioned should have higher threshold (less pain)
         assert!(conditioned.ground_truth.cpm_effect > 0.0);
@@ -444,8 +444,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = PainGenerator::new(config);
-        let qst = gen.generate_qst_battery();
+        let mut generator = PainGenerator::new(config);
+        let qst = generator.generate_qst_battery();
 
         assert_eq!(qst.len(), 8);
     }
@@ -456,10 +456,10 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = PainGenerator::new(config);
+        let mut generator = PainGenerator::new(config);
 
-        let normal = gen.generate_pain_ramp(30.0, 10.0);
-        let hyperalgesia = gen.generate_pathological(
+        let normal = generator.generate_pain_ramp(30.0, 10.0);
+        let hyperalgesia = generator.generate_pathological(
             PainPathology::PrimaryHyperalgesia { threshold_reduction: 0.3 },
             30.0,
         );

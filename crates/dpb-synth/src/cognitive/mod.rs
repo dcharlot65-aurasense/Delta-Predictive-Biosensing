@@ -237,11 +237,11 @@ impl CognitiveGenerator {
 
             // Ex-Gaussian RT
             let gaussian_part: f64 = self.rng.sample(gaussian);
-            let exponential_part = -tau * self.rng.gen::<f64>().ln();
+            let exponential_part = -tau * self.rng.r#gen::<f64>().ln();
             let rt = (gaussian_part + exponential_part).max(100.0);
 
             // Accuracy (simple RT typically has high accuracy)
-            let is_correct = self.rng.gen::<f64>() < self.config.accuracy;
+            let is_correct = self.rng.r#gen::<f64>() < self.config.accuracy;
 
             if is_correct {
                 reaction_time.push(rt);
@@ -249,7 +249,7 @@ impl CognitiveGenerator {
                 response.push(ResponseType::Hit);
             } else {
                 // Miss or anticipation
-                if self.rng.gen::<bool>() {
+                if self.rng.r#gen::<bool>() {
                     reaction_time.push(rt * 0.5); // Anticipation
                     correct.push(false);
                     response.push(ResponseType::FalseAlarm);
@@ -301,7 +301,7 @@ impl CognitiveGenerator {
         for i in 0..n_trials {
             trial.push(i);
 
-            let is_congruent = self.rng.gen::<f64>() < congruent_proportion;
+            let is_congruent = self.rng.r#gen::<f64>() < congruent_proportion;
             let (stim_type, base_rt, base_acc) = if is_congruent {
                 (StimulusType::Congruent, congruent_rt, congruent_acc)
             } else {
@@ -317,7 +317,7 @@ impl CognitiveGenerator {
             reaction_time.push(rt);
 
             // Accuracy
-            let is_correct = self.rng.gen::<f64>() < base_acc;
+            let is_correct = self.rng.r#gen::<f64>() < base_acc;
             correct.push(is_correct);
 
             response.push(if is_correct {
@@ -367,12 +367,12 @@ impl CognitiveGenerator {
         for i in 0..n_trials {
             trial.push(i);
 
-            let is_go = self.rng.gen::<f64>() < go_proportion;
+            let is_go = self.rng.r#gen::<f64>() < go_proportion;
             stimulus.push(if is_go { StimulusType::Target } else { StimulusType::NonTarget });
 
             if is_go {
                 // Go trial
-                let responded = self.rng.gen::<f64>() < self.config.accuracy;
+                let responded = self.rng.r#gen::<f64>() < self.config.accuracy;
                 if responded {
                     let rt = self.rng.sample(rt_dist).max(100.0);
                     reaction_time.push(rt);
@@ -385,7 +385,7 @@ impl CognitiveGenerator {
                 }
             } else {
                 // No-Go trial
-                let false_alarm = self.rng.gen::<f64>() > self.config.accuracy * 0.9; // Higher FA on no-go
+                let false_alarm = self.rng.r#gen::<f64>() > self.config.accuracy * 0.9; // Higher FA on no-go
                 if false_alarm {
                     let rt = self.rng.sample(rt_dist).max(100.0) * 0.9; // Faster for impulsive responses
                     reaction_time.push(rt);
@@ -444,11 +444,11 @@ impl CognitiveGenerator {
         for i in 0..n_trials {
             trial.push(i);
 
-            let is_target = self.rng.gen::<f64>() < target_proportion;
+            let is_target = self.rng.r#gen::<f64>() < target_proportion;
             stimulus.push(if is_target { StimulusType::Target } else { StimulusType::NonTarget });
 
             if is_target {
-                let hit = self.rng.gen::<f64>() < nback_accuracy;
+                let hit = self.rng.r#gen::<f64>() < nback_accuracy;
                 if hit {
                     reaction_time.push(self.rng.sample(rt_dist).max(100.0));
                     correct.push(true);
@@ -459,7 +459,7 @@ impl CognitiveGenerator {
                     response.push(ResponseType::Miss);
                 }
             } else {
-                let fa = self.rng.gen::<f64>() > nback_accuracy;
+                let fa = self.rng.r#gen::<f64>() > nback_accuracy;
                 if fa {
                     reaction_time.push(self.rng.sample(rt_dist).max(100.0));
                     correct.push(false);
@@ -569,8 +569,8 @@ impl CognitiveGenerator {
         // Filter valid RTs (exclude timeouts)
         let valid_rts: Vec<f64> = reaction_time.iter()
             .zip(correct.iter())
-            .filter(|(&rt, &c)| c && rt < 2500.0 && rt > 0.0)
-            .map(|(&rt, _)| rt)
+            .filter(|(rt, c)| **c && **rt < 2500.0 && **rt > 0.0)
+            .map(|(rt, _)| *rt)
             .collect();
 
         let mean_rt = if !valid_rts.is_empty() {
@@ -628,17 +628,17 @@ impl CognitiveGenerator {
         let congruent_rts: Vec<f64> = reaction_time.iter()
             .zip(stimulus.iter())
             .zip(correct.iter())
-            .filter(|((_, &s), &c)| s == StimulusType::Congruent && c)
-            .map(|((&rt, _), _)| rt)
-            .filter(|&rt| rt > 0.0 && rt < 2500.0)
+            .filter(|((_, s), c)| **s == StimulusType::Congruent && **c)
+            .map(|((rt, _), _)| *rt)
+            .filter(|rt| *rt > 0.0 && *rt < 2500.0)
             .collect();
 
         let incongruent_rts: Vec<f64> = reaction_time.iter()
             .zip(stimulus.iter())
             .zip(correct.iter())
-            .filter(|((_, &s), &c)| s == StimulusType::Incongruent && c)
-            .map(|((&rt, _), _)| rt)
-            .filter(|&rt| rt > 0.0 && rt < 2500.0)
+            .filter(|((_, s), c)| **s == StimulusType::Incongruent && **c)
+            .map(|((rt, _), _)| *rt)
+            .filter(|rt| *rt > 0.0 && *rt < 2500.0)
             .collect();
 
         let congruency_effect = if !congruent_rts.is_empty() && !incongruent_rts.is_empty() {
@@ -759,8 +759,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = CognitiveGenerator::new(config);
-        let output = gen.generate_simple_rt(100);
+        let mut generator = CognitiveGenerator::new(config);
+        let output = generator.generate_simple_rt(100);
 
         assert_eq!(output.trial.len(), 100);
         assert!(output.ground_truth.metrics.mean_rt > 0.0);
@@ -773,8 +773,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = CognitiveGenerator::new(config);
-        let output = gen.generate_flanker(200, 0.5);
+        let mut generator = CognitiveGenerator::new(config);
+        let output = generator.generate_flanker(200, 0.5);
 
         // Should have congruency effect
         assert!(output.ground_truth.metrics.congruency_effect.is_some());
@@ -788,8 +788,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = CognitiveGenerator::new(config);
-        let output = gen.generate_go_nogo(200, 0.7);
+        let mut generator = CognitiveGenerator::new(config);
+        let output = generator.generate_go_nogo(200, 0.7);
 
         // Should have hits and correct rejections
         let hits = output.response.iter().filter(|&&r| r == ResponseType::Hit).count();
@@ -804,10 +804,10 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = CognitiveGenerator::new(config);
+        let mut generator = CognitiveGenerator::new(config);
 
-        let nback_1 = gen.generate_nback(100, 1, 0.3);
-        let nback_2 = gen.generate_nback(100, 2, 0.3);
+        let nback_1 = generator.generate_nback(100, 1, 0.3);
+        let nback_2 = generator.generate_nback(100, 2, 0.3);
 
         // 2-back should be harder (lower d-prime or slower)
         assert!(nback_2.ground_truth.metrics.mean_rt >= nback_1.ground_truth.metrics.mean_rt * 0.9);
@@ -819,10 +819,10 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = CognitiveGenerator::new(config);
+        let mut generator = CognitiveGenerator::new(config);
 
-        let normal = gen.generate_simple_rt(100);
-        let adhd = gen.generate_pathological(
+        let normal = generator.generate_simple_rt(100);
+        let adhd = generator.generate_pathological(
             CognitiveTask::SimpleRt,
             CognitivePathology::Adhd {
                 variability_increase: 0.5,

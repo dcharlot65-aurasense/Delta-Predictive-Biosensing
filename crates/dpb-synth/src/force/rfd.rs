@@ -676,8 +676,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = RfdGenerator::new(config);
-        let output = gen.generate_isometric_rapid(2.0);
+        let mut generator = RfdGenerator::new(config);
+        let output = generator.generate_isometric_rapid(2.0);
 
         assert!(!output.force.is_empty());
         assert!(output.ground_truth.peak_force > 0.0);
@@ -691,8 +691,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = RfdGenerator::new(config);
-        let output = gen.generate_cmj(70.0);
+        let mut generator = RfdGenerator::new(config);
+        let output = generator.generate_cmj(70.0);
 
         assert!(!output.force.is_empty());
         // CMJ should have flight phase (zero force)
@@ -705,8 +705,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = RfdGenerator::new(config);
-        let output = gen.generate_squat_jump(70.0);
+        let mut generator = RfdGenerator::new(config);
+        let output = generator.generate_squat_jump(70.0);
 
         assert!(!output.force.is_empty());
         assert_eq!(output.ground_truth.task_type, RfdTaskType::SquatJump);
@@ -718,8 +718,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = RfdGenerator::new(config);
-        let output = gen.generate_drop_jump(70.0, 0.3);
+        let mut generator = RfdGenerator::new(config);
+        let output = generator.generate_drop_jump(70.0, 0.3);
 
         assert!(!output.force.is_empty());
         // Drop jump should have high impact forces
@@ -733,8 +733,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = RfdGenerator::new(config);
-        let series = gen.generate_fatigue_series(5, 1.0);
+        let mut generator = RfdGenerator::new(config);
+        let series = generator.generate_fatigue_series(5, 1.0);
 
         assert_eq!(series.len(), 5);
         // Later trials should show reduced peak force
@@ -747,10 +747,10 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = RfdGenerator::new(config);
+        let mut generator = RfdGenerator::new(config);
 
-        let normal = gen.generate_isometric_rapid(2.0);
-        let delayed = gen.generate_pathological(
+        let normal = generator.generate_isometric_rapid(2.0);
+        let delayed = generator.generate_pathological(
             PathologicalRfd::DelayedOnset { delay_ms: 50.0 },
             2.0,
         );
@@ -765,10 +765,10 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = RfdGenerator::new(config);
+        let mut generator = RfdGenerator::new(config);
 
-        let normal = gen.generate_isometric_rapid(2.0);
-        let reduced = gen.generate_pathological(
+        let normal = generator.generate_isometric_rapid(2.0);
+        let reduced = generator.generate_pathological(
             PathologicalRfd::ReducedEarlyRfd { reduction: 0.5 },
             2.0,
         );
@@ -784,8 +784,8 @@ mod tests {
             sample_rate: 2000.0,
             ..Default::default()
         };
-        let mut gen = RfdGenerator::new(config);
-        let output = gen.generate_isometric_rapid(2.0);
+        let mut generator = RfdGenerator::new(config);
+        let output = generator.generate_isometric_rapid(2.0);
 
         // All RFD windows should be positive for normal trial
         assert!(output.ground_truth.rfd_0_50 >= 0.0);

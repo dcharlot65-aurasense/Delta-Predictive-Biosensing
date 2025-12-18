@@ -144,8 +144,8 @@ impl SensoryManipulationGenerator {
         // Frequency components
         let base_freqs = [0.1, 0.2, 0.35, 0.5, 0.8, 1.2];
         let freqs: Vec<f64> = base_freqs.iter().map(|f| f * freq_shift).collect();
-        let phases_ap: Vec<f64> = freqs.iter().map(|_| self.rng.gen::<f64>() * 2.0 * PI).collect();
-        let phases_ml: Vec<f64> = freqs.iter().map(|_| self.rng.gen::<f64>() * 2.0 * PI).collect();
+        let phases_ap: Vec<f64> = freqs.iter().map(|_| self.rng.r#gen::<f64>() * 2.0 * PI).collect();
+        let phases_ml: Vec<f64> = freqs.iter().map(|_| self.rng.r#gen::<f64>() * 2.0 * PI).collect();
         let amps = [0.35, 0.25, 0.18, 0.12, 0.07, 0.03];
 
         // Add condition-specific effects
@@ -407,8 +407,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = SensoryManipulationGenerator::new(config);
-        let output = gen.generate(SensoryCondition::FirmEyesOpen, 30.0);
+        let mut generator = SensoryManipulationGenerator::new(config);
+        let output = generator.generate(SensoryCondition::FirmEyesOpen, 30.0);
 
         assert!(!output.cop_ap.is_empty());
         assert!(output.ground_truth.sway_area > 0.0);
@@ -421,10 +421,10 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = SensoryManipulationGenerator::new(config);
+        let mut generator = SensoryManipulationGenerator::new(config);
 
-        let firm = gen.generate(SensoryCondition::FirmEyesOpen, 30.0);
-        let foam = gen.generate(SensoryCondition::FoamEyesOpen, 30.0);
+        let firm = generator.generate(SensoryCondition::FirmEyesOpen, 30.0);
+        let foam = generator.generate(SensoryCondition::FoamEyesOpen, 30.0);
 
         assert!(foam.ground_truth.rms_ap > firm.ground_truth.rms_ap);
     }
@@ -435,10 +435,10 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = SensoryManipulationGenerator::new(config);
+        let mut generator = SensoryManipulationGenerator::new(config);
 
-        let eo = gen.generate(SensoryCondition::FirmEyesOpen, 30.0);
-        let ec = gen.generate(SensoryCondition::FirmEyesClosed, 30.0);
+        let eo = generator.generate(SensoryCondition::FirmEyesOpen, 30.0);
+        let ec = generator.generate(SensoryCondition::FirmEyesClosed, 30.0);
 
         assert!(ec.ground_truth.rms_ap > eo.ground_truth.rms_ap * 0.9);
     }
@@ -449,8 +449,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = SensoryManipulationGenerator::new(config);
-        let outputs = gen.generate_mctsib(30.0);
+        let mut generator = SensoryManipulationGenerator::new(config);
+        let outputs = generator.generate_mctsib(30.0);
 
         assert_eq!(outputs.len(), 4);
         // Condition 2 should have Romberg ratio
@@ -463,8 +463,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = SensoryManipulationGenerator::new(config);
-        let outputs = gen.generate_sot(20.0);
+        let mut generator = SensoryManipulationGenerator::new(config);
+        let outputs = generator.generate_sot(20.0);
 
         assert_eq!(outputs.len(), 6);
         // Condition 6 should have highest sway
@@ -480,8 +480,8 @@ mod tests {
             seed: Some(42),
             ..Default::default()
         };
-        let mut gen = SensoryManipulationGenerator::new(config);
-        let output = gen.generate(
+        let mut generator = SensoryManipulationGenerator::new(config);
+        let output = generator.generate(
             SensoryCondition::GalvanicStimulation { current_ma: 1.0 },
             10.0,
         );
