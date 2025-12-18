@@ -15,7 +15,19 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = ["console_error_panic_hook"]
 # Enable WebGPU compute support (experimental)
-webgpu = []
+webgpu = [
+    "web-sys/Gpu",
+    "web-sys/GpuAdapter",
+    "web-sys/GpuDevice",
+    "web-sys/GpuQueue",
+    "web-sys/GpuBuffer",
+    "web-sys/GpuShaderModule",
+    "web-sys/GpuComputePipeline",
+    "web-sys/GpuBindGroup",
+    "web-sys/GpuCommandEncoder",
+    "web-sys/GpuComputePassEncoder",
+    "web-sys/Navigator",
+]
 
 [dependencies]
 wasm-bindgen = "0.2.93"
@@ -27,6 +39,7 @@ web-sys = { version = "0.3.70", features = [
     "console",
     "Performance",
     "Window",
+    "Navigator",
 ]}
 
 # Better error messages in browser console

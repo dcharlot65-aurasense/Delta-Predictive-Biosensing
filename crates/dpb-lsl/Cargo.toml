@@ -11,8 +11,12 @@ categories = ["science", "asynchronous"]
 
 [features]
 default = []
+# Enable native liblsl bindings (requires liblsl installed)
+native = []
 # Enable async runtime support
 async = ["tokio"]
+# Full features
+full = ["native", "async"]
 
 [dependencies]
 # Error handling

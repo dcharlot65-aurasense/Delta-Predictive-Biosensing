@@ -1,0 +1,38 @@
+[package]
+name = "dpb-federated"
+version = "0.1.0"
+edition = "2021"
+authors = ["AuraSense Tech Corporation"]
+description = "Privacy-preserving federated learning for DPB Framework"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aurasense/delta-predictive-biosensing"
+keywords = ["federated-learning", "privacy", "biosignal", "distributed"]
+categories = ["science", "algorithms"]
+
+[features]
+default = []
+differential-privacy = ["dep:opendp"]
+secure-aggregation = ["dep:curve25519-dalek", "dep:sha2"]
+compression = ["dep:zstd"]
+async = ["dep:tokio"]
+full = ["differential-privacy", "secure-aggregation", "compression", "async"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+rand = "0.8"
+rand_distr = "0.4"
+
+# Optional dependencies
+opendp = { version = "0.9", optional = true }
+curve25519-dalek = { version = "4.0", optional = true }
+sha2 = { version = "0.10", optional = true }
+zstd = { version = "0.13", optional = true }
+tokio = { version = "1.0", features = ["full"], optional = true }
+
+[dev-dependencies]
+tempfile = "3.0"

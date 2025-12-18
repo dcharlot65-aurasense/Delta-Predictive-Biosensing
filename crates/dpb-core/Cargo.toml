@@ -6,6 +6,15 @@ authors.workspace = true
 license.workspace = true
 description = "Core types, traits, and GPU infrastructure for DPB Framework"
 
+[features]
+default = []
+# Intel Gaudi AI accelerator support
+intel-gaudi = []
+# Graphcore IPU accelerator support
+graphcore-ipu = []
+# All hardware accelerators
+hardware-accelerators = ["intel-gaudi", "graphcore-ipu"]
+
 [dependencies]
 wgpu.workspace = true
 bytemuck.workspace = true

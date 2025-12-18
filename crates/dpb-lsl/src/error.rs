@@ -68,6 +68,21 @@ pub enum LslError {
     /// Feature not supported.
     #[error("Feature not supported: {0}")]
     NotSupported(String),
+
+    /// Generic timeout error.
+    #[error("Timeout during {operation} after {timeout_sec}s")]
+    Timeout {
+        operation: String,
+        timeout_sec: f64,
+    },
+
+    /// Connection lost during operation.
+    #[error("Connection lost: {0}")]
+    ConnectionLost(String),
+
+    /// Configuration error.
+    #[error("Configuration error: {0}")]
+    Configuration(String),
 }
 
 impl LslError {
@@ -75,7 +90,7 @@ impl LslError {
     pub fn is_timeout(&self) -> bool {
         matches!(
             self,
-            LslError::ConnectionTimeout(_) | LslError::PullTimeout(_)
+            LslError::ConnectionTimeout(_) | LslError::PullTimeout(_) | LslError::Timeout { .. }
         )
     }
 

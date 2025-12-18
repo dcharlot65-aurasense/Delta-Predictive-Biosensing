@@ -49,6 +49,7 @@ pub mod inlet;
 pub mod outlet;
 pub mod resolver;
 pub mod pipeline;
+pub mod ffi;
 
 pub use error::{LslError, Result};
 pub use stream_info::StreamInfo;
@@ -57,8 +58,10 @@ pub use outlet::LslOutlet;
 pub use resolver::StreamResolver;
 pub use pipeline::{EncodingPipeline, PipelineConfig};
 
+use serde::{Deserialize, Serialize};
+
 /// LSL channel format types.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChannelFormat {
     Float32,
     Float64,

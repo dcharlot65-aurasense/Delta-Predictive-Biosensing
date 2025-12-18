@@ -1,10 +1,10 @@
-# Delta-Predictive Biosensing (DPB) System Catalog v5.0.0
+# Delta-Predictive Biosensing (DPB) System Catalog v5.1.0
 
 > **Last Updated:** December 2025
-> **Framework Version:** 0.4.0
-> **Total Modules:** 290+ | **Encoders:** 77+ | **Generators:** 200+ | **Decoders:** 48+
+> **Framework Version:** 0.5.0
+> **Total Modules:** 320+ | **Encoders:** 77+ | **Generators:** 200+ | **Decoders:** 48+
 > **Language Bindings:** 6 (Python, Julia, MATLAB, R, LabVIEW, C/C++)
-> **Platform Targets:** 8 (Native, iOS, Android, WASM, Loihi, SpiNNaker, BrainScaleS, LSL)
+> **Platform Targets:** 10 (Native, iOS, Android, WASM, Loihi, SpiNNaker, BrainScaleS, LSL, RISC-V, WebGPU)
 
 ---
 
@@ -29,7 +29,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 
 | Metric | Count |
 |--------|-------|
-| Crates | 17 |
+| Crates | 19 |
 | Neuron Models | 19 + Reservoir + Multi-Compartment |
 | Event Encoders | 77+ |
 | Population Templates | 61+ |
@@ -65,9 +65,11 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **dpb-python** | PyO3 Python bindings | 3,000+ |
 | **dpb-ffi** | C-compatible FFI | 1,500+ |
 | **dpb-bench** | Benchmarking suite | 2,500+ |
-| **dpb-wasm** ✅ NEW | WebAssembly bindings, browser deployment | 1,500+ |
-| **dpb-lsl** ✅ NEW | Lab Streaming Layer integration, real-time streaming | 2,500+ |
-| **dpb-export** ✅ NEW | ONNX, JSON, Binary export, model metadata | 2,000+ |
+| **dpb-wasm** | WebAssembly bindings, browser deployment, WebGPU | 2,000+ |
+| **dpb-lsl** | Lab Streaming Layer integration, liblsl FFI, real-time streaming | 3,000+ |
+| **dpb-export** | ONNX, JSON, Binary export, model metadata | 2,000+ |
+| **dpb-federated** ✅ NEW | Privacy-preserving distributed training, FedAvg, differential privacy | 3,500+ |
+| **dpb-clinical** ✅ NEW | Clinical utilities, ethnic stratification, treatment response, comorbidity | 2,500+ |
 
 ### 1.3 Language Bindings Overview
 
