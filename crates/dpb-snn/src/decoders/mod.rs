@@ -19,13 +19,20 @@ pub use temporal::{
     LastSpikeDecoder, PhaseDecoder, RankOrderDecoder,
 };
 
-// Clinical score decoders (12 total)
+// Clinical score decoders (15 original + 8 new = 23 total)
 pub use clinical::{
+    // Original clinical decoders
     UPDRSDecoder, TremorSeverityDecoder, GaitScoreDecoder,
     UPDRSMotorDecoder, UPDRSTremorDecoder, UPDRSBradykinesiaDecoder,
     UPDRSRigidityDecoder, UPDRSGaitDecoder, TUGDecoder,
     BergBalanceDecoder, MoCADecoder, VoiceHDDecoder,
     PDQ39Decoder, HoehnYahrDecoder, SEADLDecoder,
+    // Phase E: Balance decoders
+    TinettiDecoder, MiniBESTDecoder,
+    // Phase E: Pain decoders
+    VasDecoder, NrsDecoder, QstPhenotypeDecoder,
+    // Phase E: Vestibular decoders
+    VorGainDecoder, CanalParesisDecoder, BppvDecoder,
 };
 
 // Regression decoders (10 total)
