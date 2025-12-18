@@ -1,7 +1,7 @@
 # Delta Predictive Biosensing (DPB) System Catalog
 
 > **Authoritative reference for the DPB neuromorphic biosignal processing framework**
-> Version: 0.2.0 | Edition: Rust 2024 | License: MIT OR Apache-2.0
+> Version: 0.3.0 | Edition: Rust 2024 | License: MIT OR Apache-2.0
 
 ---
 
@@ -38,15 +38,15 @@ The Delta Predictive Biosensing Framework is a comprehensive neuromorphic signal
 │                           NEURAL NETWORKS                                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                              dpb-snn                                         │
-│     (Layers, Architectures, Training, 40 Decoders, Fusion, Baselines)       │
+│     (Layers, Architectures, Training, 48 Decoders, Fusion, Baselines)       │
 ├────────────────────────────────┬────────────────────────────────────────────┤
 │          dpb-neurons           │              dpb-encoders                  │
-│    (19 neuron models, GPU)     │   (95+ encoders, 79+ templates)           │
+│    (19 neuron models, GPU)     │   (103+ encoders, 85+ templates)          │
 ├────────────────────────────────┴────────────────────────────────────────────┤
 │                           DATA & VALIDATION                                  │
 ├─────────────────────────────────┬───────────────────────────────────────────┤
 │           dpb-synth             │              dpb-norms                    │
-│   (200+ synthetic generators)   │  (Normative DB, 40+ metrics populated)   │
+│   (210+ synthetic generators)   │  (Normative DB, 60 metrics populated)    │
 ├─────────────────────────────────┴───────────────────────────────────────────┤
 │                             FOUNDATION                                       │
 ├─────────────────────────────────┬───────────────────────────────────────────┤
@@ -92,205 +92,218 @@ The Delta Predictive Biosensing Framework is a comprehensive neuromorphic signal
 | Hand movement encoding | dpb-encoders | `hand` | `TapOnsetEncoder`, `TapApertureEncoder` |
 | Eye movement encoding | dpb-encoders | `eye` | `SaccadeOnsetEncoder`, `FixationStabilityEncoder` |
 | Voice encoding | dpb-encoders | `voice` | `F0Encoder`, `JitterEncoder`, `FormantEncoder` |
-| **Balance Encoders** *(NEW)* |
+| **Balance Encoders** |
 | CoP sway encoding | dpb-encoders | `balance` | `CopSwayEncoder`, `SwayAreaTemplate` |
 | CoP velocity encoding | dpb-encoders | `balance` | `CopVelocityEncoder`, `SwayVelocityTemplate` |
 | Stability limits encoding | dpb-encoders | `balance` | `StabilityLimitEncoder`, `StabilityLimitTemplate` |
-| **Force Encoders** *(NEW)* |
+| **Force Encoders** |
 | GRF phase encoding | dpb-encoders | `force` | `GrfPhaseEncoder`, `PeakGrfTemplate` |
 | Grip onset encoding | dpb-encoders | `force` | `GripOnsetEncoder`, `GripStrengthTemplate` |
 | RFD encoding | dpb-encoders | `force` | `RfdEncoder`, `RfdTemplate` |
-| **Vestibular Encoders** *(NEW)* |
+| **Vestibular Encoders** |
 | VOR gain encoding | dpb-encoders | `vestibular` | `VorGainEncoder`, `VorGainTemplate` |
 | Nystagmus encoding | dpb-encoders | `vestibular` | `NystagmusEncoder`, `NystagmusSPVTemplate` |
 | Caloric test encoding | dpb-encoders | `vestibular` | `CaloricEncoder`, `CaloricAsymmetryTemplate` |
-| **Pain Encoders** *(NEW)* |
+| **Pain Encoders** |
 | Pain threshold encoding | dpb-encoders | `pain` | `PainThresholdEncoder`, `PressurePainThresholdTemplate` |
 | Temporal summation encoding | dpb-encoders | `pain` | `TemporalSummationEncoder`, `WindUpRatioTemplate` |
 | CPM encoding | dpb-encoders | `pain` | `CpmEncoder` |
-| **Cardiopulmonary Encoders** *(NEW)* |
+| **Cardiopulmonary Encoders** |
 | HRV encoding | dpb-encoders | `cardiopulmonary` | `HrvEncoder`, `RmssdTemplate` |
 | Respiratory phase encoding | dpb-encoders | `cardiopulmonary` | `RespiratoryPhaseEncoder`, `RespiratoryRateTemplate` |
 | RSA encoding | dpb-encoders | `cardiopulmonary` | `RsaEncoder`, `RsaTemplate` |
-| **Cognitive Encoders** *(NEW)* |
+| **Cognitive Encoders** |
 | Reaction time encoding | dpb-encoders | `cognitive` | `ReactionTimeEncoder`, `SimpleRtTemplate` |
 | Error encoding | dpb-encoders | `cognitive` | `ErrorEncoder`, `AccuracyTemplate` |
 | Lapse encoding | dpb-encoders | `cognitive` | `LapseEncoder`, `LapseRateTemplate` |
+| **EEG Encoders** |
+| Alpha band power | dpb-encoders | `eeg` | `AlphaBandEncoder`, `AlphaPowerTemplate` |
+| Beta band power | dpb-encoders | `eeg` | `BetaBandEncoder`, `BetaPowerTemplate` |
+| Theta band power | dpb-encoders | `eeg` | `ThetaBandEncoder`, `ThetaPowerTemplate` |
+| Gamma band power | dpb-encoders | `eeg` | `GammaBandEncoder`, `GammaPowerTemplate` |
+| Delta band power | dpb-encoders | `eeg` | `DeltaBandEncoder`, `DeltaPowerTemplate` |
+| ERP detection | dpb-encoders | `eeg` | `ErpEncoder` (P300, N100) |
+| Sleep spindle detection | dpb-encoders | `eeg` | `SpindleEncoder` |
+| Artifact detection | dpb-encoders | `eeg` | `ArtifactEncoder` (blink, muscle, movement) |
 | **Templates** |
-| Population templates | dpb-encoders | `templates` | `TemplateRegistry` (79+ templates) |
+| Population templates | dpb-encoders | `templates` | `TemplateRegistry` (85+ templates) |
 
 ### 2.3 Spiking Neural Networks
 
 | Capability | Crate | Module | Key Types |
 |------------|-------|--------|-----------|
-| **Tensor Operations** |
-| Spike tensor operations | dpb-snn | `tensor` | `SpikeTensor`, `SpikeRepresentation` |
-| **Layers** |
-| Linear spiking layers | dpb-snn | `layers` | `SpikingLinear` |
-| Convolutional spiking layers | dpb-snn | `layers` | `SpikingConv1d`, `SpikingConv2d` |
-| Pooling layers | dpb-snn | `layers` | `SpikingSumPool2d`, `SpikingMaxPool2d` |
-| Recurrent spiking layers | dpb-snn | `layers` | `SpikingRNN`, `SpikingLSTM` |
-| Attention mechanisms | dpb-snn | `layers` | `SpikingAttention` |
-| **Architectures** |
-| Feedforward architectures | dpb-snn | `architectures` | `FeedforwardSNN` |
-| Convolutional architectures | dpb-snn | `architectures` | `ConvolutionalSNN` |
-| Recurrent architectures | dpb-snn | `architectures` | `RecurrentSNN` |
-| Graph neural networks | dpb-snn | `architectures` | `SpikingGCN` |
-| Transformer architectures | dpb-snn | `architectures` | `SpikingTransformer` |
-| **Training** |
-| BPTT training | dpb-snn | `training` | `BPTT`, `SurrogateGradient` |
-| Online training | dpb-snn | `training` | `OTTT`, `SLTT` |
-| Loss functions | dpb-snn | `training` | `SpikingCrossEntropy`, `SpikeCountLoss`, `SpikeTimingLoss` |
-| ANN→SNN conversion | dpb-snn | `conversion` | `ANNToSNNConverter`, `WeightNormalization` |
-| **Decoders (40 types)** |
-| Rate decoders | dpb-snn | `decoders::rate` | `RateDecoder`, `PopulationDecoder`, `SoftmaxDecoder` |
-| Temporal decoders | dpb-snn | `decoders::temporal` | `LatencyDecoder`, `ISIDecoder`, `PhaseDecoder` |
-| Motor decoders | dpb-snn | `decoders::clinical` | `UpdrsDecoder`, `BradykinesiaDecoder` |
-| Balance decoders *(NEW)* | dpb-snn | `decoders::clinical` | `BergBalanceDecoder`, `TinettiDecoder`, `MiniBESTDecoder` |
-| Pain decoders *(NEW)* | dpb-snn | `decoders::clinical` | `VasDecoder`, `NrsDecoder`, `QstPhenotypeDecoder` |
-| Vestibular decoders *(NEW)* | dpb-snn | `decoders::clinical` | `VorGainDecoder`, `CanalParesisDecoder`, `BppvDecoder` |
-| Regression decoders | dpb-snn | `decoders::regression` | `LinearRegDecoder`, `MLPRegDecoder` |
-| **Fusion** |
-| Multi-modal fusion | dpb-snn | `fusion` | `EarlyFusionSNN`, `LateFusionSNN`, `HierarchicalFusionSNN` |
-
-### 2.4 Neuron Models
-
-| Capability | Crate | Module | Key Types |
-|------------|-------|--------|-----------|
-| Integrate-and-fire neurons | dpb-neurons | `lif` | `IfNeuron`, `LifNeuron`, `ClifNeuron`, `AlifNeuron`, `ElifNeuron`, `QlifNeuron`, `GlifNeuron` |
-| Phenomenological models | dpb-neurons | `izhikevich` | `IzhikevichNeuron` (with presets) |
-| Adaptive exponential | dpb-neurons | `adex` | `AdExNeuron` |
-| Calcium-based adaptation | dpb-neurons | `calcium` | `CalciumNeuron` |
-| Biophysical models | dpb-neurons | `hodgkin_huxley` | `HodgkinHuxleyNeuron`, `FitzHughNagumoNeuron`, `MorrisLecarNeuron` |
-| Spike response models | dpb-neurons | `srm` | `SrmNeuron` |
-| Stochastic neurons | dpb-neurons | `stochastic` | `StochasticLifNeuron` |
+| **Neuron Models (19)** |
+| Leaky integrate-and-fire | dpb-neurons | `lif` | `LifNeuron`, `AlifNeuron`, `ClifNeuron`, `ElifNeuron`, `QlifNeuron`, `GlifNeuron` |
+| Izhikevich | dpb-neurons | `izhikevich` | `IzhikevichNeuron` |
+| Adaptive exponential | dpb-neurons | `adex` | `AdexNeuron` |
+| Hodgkin-Huxley | dpb-neurons | `hodgkin_huxley` | `HodgkinHuxleyNeuron`, `FitzHughNagumoNeuron`, `MorrisLecarNeuron` |
+| Spike response model | dpb-neurons | `srm` | `SrmNeuron` |
 | Hardware-optimized | dpb-neurons | `hardware` | `XyloLifNeuron`, `PulsarLifNeuron`, `QuantizedLifNeuron` |
-| Surrogate gradients | dpb-neurons | `surrogate` | `FastSigmoid`, `Arctan`, `SuperSpike`, `MultiGaussian` |
-| GPU acceleration | dpb-neurons | `gpu` | `GpuLifNeuron`, `GpuAlifNeuron`, `GpuIzhikevichNeuron` |
+| GPU-accelerated | dpb-neurons | `gpu` | `GpuLifNeuron`, `GpuAlifNeuron`, `GpuIzhikevichNeuron` |
+| **Surrogate Gradients (6)** |
+| Gradient functions | dpb-neurons | `surrogate` | `FastSigmoid`, `Arctan`, `Triangular`, `SuperSpike`, `MultiGaussian`, `STE` |
+| **Network Layers** |
+| Linear layers | dpb-snn | `layers::linear` | `SpikingLinear` |
+| Convolutional | dpb-snn | `layers::conv` | `SpikingConv1d`, `SpikingConv2d` |
+| Pooling | dpb-snn | `layers::pool` | `SpikingSumPool2d`, `SpikingMaxPool2d` |
+| Recurrent | dpb-snn | `layers::recurrent` | `SpikingRNN`, `SpikingLSTM` |
+| Attention | dpb-snn | `layers::attention` | `SpikingAttention` |
+| **Architectures (5)** |
+| Feedforward | dpb-snn | `architectures` | `FeedforwardSNN` |
+| Convolutional | dpb-snn | `architectures` | `ConvolutionalSNN` |
+| Recurrent | dpb-snn | `architectures` | `RecurrentSNN` |
+| Graph neural | dpb-snn | `architectures` | `SpikingGCN` |
+| Transformer | dpb-snn | `architectures` | `SpikingTransformer` |
 
-### 2.5 Synthetic Data Generation
+### 2.4 Clinical Decoders (48 total)
+
+| Category | Decoder | Output | Module |
+|----------|---------|--------|--------|
+| **Rate-Based (9)** |
+| Spike rate | `SpikeRateDecoder` | Hz | `decoders::rate` |
+| First spike | `FirstSpikeDecoder` | Time-to-first-spike | `decoders::rate` |
+| Population | `PopulationDecoder` | Vector code | `decoders::rate` |
+| Windowed | `WindowedRateDecoder` | Time-windowed rate | `decoders::rate` |
+| **Temporal (7)** |
+| Pattern | `TemporalPatternDecoder` | Pattern match | `decoders::temporal` |
+| Latency | `LatencyDecoder` | Response latency | `decoders::temporal` |
+| ISI | `ISIDecoder` | Inter-spike intervals | `decoders::temporal` |
+| Burst | `BurstDecoder` | Burst detection | `decoders::temporal` |
+| **Clinical Scales (23)** |
+| UPDRS | `UpdrsDecoder` | 0-199 (MDS-UPDRS) | `decoders::clinical` |
+| UPDRS-III | `UpdrsMotorDecoder` | 0-132 (motor) | `decoders::clinical` |
+| UPDRS Tremor | `UpdrsTremorDecoder` | Tremor subscale | `decoders::clinical` |
+| UPDRS Gait | `UpdrsGaitDecoder` | Gait/posture subscale | `decoders::clinical` |
+| Hoehn-Yahr | `HoehnYahrDecoder` | 0-5 stage | `decoders::clinical` |
+| TUG | `TugDecoder` | Seconds | `decoders::clinical` |
+| Berg Balance | `BergBalanceDecoder` | 0-56 | `decoders::clinical` |
+| Tinetti | `TinettiDecoder` | 0-28 | `decoders::clinical` |
+| MiniBEST | `MiniBESTDecoder` | 0-32 | `decoders::clinical` |
+| MoCA | `MocaDecoder` | 0-30 | `decoders::clinical` |
+| VoiceHD | `VoiceHdDecoder` | Voice disorder scale | `decoders::clinical` |
+| PDQ-39 | `Pdq39Decoder` | Quality of life | `decoders::clinical` |
+| SEADL | `SeadlDecoder` | ADL scale | `decoders::clinical` |
+| VAS Pain | `VasDecoder` | 0-100mm | `decoders::clinical` |
+| NRS Pain | `NrsDecoder` | 0-10 | `decoders::clinical` |
+| QST Phenotype | `QstPhenotypeDecoder` | Sensory phenotype | `decoders::clinical` |
+| VOR Gain | `VorGainDecoder` | Gain ratio | `decoders::clinical` |
+| Canal Paresis | `CanalParesisDecoder` | % asymmetry | `decoders::clinical` |
+| BPPV | `BppvDecoder` | Probability | `decoders::clinical` |
+| **Regression (10)** |
+| Heart rate | `HeartRateDecoder` | BPM | `decoders::regression` |
+| HRV | `HrvDecoder` | RMSSD (ms) | `decoders::regression` |
+| Tremor freq | `TremorFrequencyDecoder` | Hz | `decoders::regression` |
+| Tremor amp | `TremorAmplitudeDecoder` | mm | `decoders::regression` |
+| Gait velocity | `GaitVelocityDecoder` | m/s | `decoders::regression` |
+| Stride time | `StrideTimeDecoder` | seconds | `decoders::regression` |
+| Tapping freq | `TappingFrequencyDecoder` | Hz | `decoders::regression` |
+| Reaction time | `ReactionTimeDecoder` | ms | `decoders::regression` |
+| Speech rate | `SpeechRateDecoder` | syllables/s | `decoders::regression` |
+| **Classification (10)** |
+| Binary | `BinaryClassDecoder` | 0/1 | `decoders::classification` |
+| Multi-class | `MultiClassDecoder` | Class label | `decoders::classification` |
+| Tremor type | `TremorTypeDecoder` | Rest/postural/kinetic | `decoders::classification` |
+| Gait phase | `GaitPhaseDecoder` | Stance/swing | `decoders::classification` |
+| Sleep stage | `SleepStageDecoder` | W/N1/N2/N3/REM | `decoders::classification` |
+| Activity | `ActivityDecoder` | Activity type | `decoders::classification` |
+
+### 2.5 Multi-Modal Fusion
 
 | Capability | Crate | Module | Key Types |
 |------------|-------|--------|-----------|
+| Early fusion | dpb-snn | `fusion::early` | `EarlyFusionSNN` |
+| Late fusion | dpb-snn | `fusion::late` | `LateFusionSNN` |
+| Cross-modal attention | dpb-snn | `fusion::attention` | `CrossModalAttentionSNN` |
+| Hierarchical fusion | dpb-snn | `fusion::hierarchical` | `HierarchicalFusionSNN` |
+| Temporal alignment | dpb-snn | `fusion::temporal` | `TemporalAlignmentSNN` |
+| Gated fusion | dpb-snn | `fusion::gated` | `GatedFusionSNN` |
+| Cognitive-motor | dpb-snn | `fusion::cognitive_motor` | `CognitiveMotorFusionSNN` |
+
+### 2.6 Synthetic Data Generation
+
+| Domain | Crate | Module | Generators |
+|--------|-------|--------|------------|
 | **Contact Biosignals** |
-| ECG synthesis | dpb-synth | `contact` | `StreamingEcg` (arrhythmias, HRV, RSA) |
-| PPG synthesis | dpb-synth | `contact` | `StreamingPpg` |
-| EDA synthesis | dpb-synth | `contact` | `StreamingEda` |
-| EMG synthesis | dpb-synth | `contact` | `StreamingEmg` |
-| Respiratory synthesis | dpb-synth | `contact` | `StreamingRespiratory` |
-| Temperature synthesis | dpb-synth | `contact` | `StreamingThermal` |
-| Tremor synthesis | dpb-synth | `contact` | `StreamingTremor` |
-| **Biomechanics** |
-| Ground reaction force | dpb-synth | `force` | `GrfGenerator` (walking, running, jumping) |
-| Grip strength | dpb-synth | `force` | `GripGenerator` (MVC, fatigue, pathologies) |
-| Rate of force development | dpb-synth | `force` | `RfdGenerator` (isometric, jumps) |
-| Center of pressure | dpb-synth | `balance` | `CopGenerator` (quiet standing, LOS) |
-| Perturbation responses | dpb-synth | `balance` | `PerturbationGenerator` |
-| Sensory organization | dpb-synth | `balance` | `SensoryManipulationGenerator` (SOT, mCTSIB) |
-| **Vestibular** |
-| VOR responses | dpb-synth | `vestibular` | `VorGenerator` (sinusoidal, HIT) |
-| Nystagmus patterns | dpb-synth | `vestibular` | `NystagmusGenerator` (BPPV, spontaneous) |
-| Caloric test | dpb-synth | `vestibular` | `CaloricGenerator` (bithermal) |
-| **Pain & Sensory** |
-| Pain protocols | dpb-synth | `pain` | `PainGenerator` (QST, CPM, temporal summation) |
-| **Cardiopulmonary** |
-| HRV/respiratory | dpb-synth | `cardiopulmonary` | `CardiopulmonaryGenerator` (resting, exercise) |
-| **Cognitive** |
-| Reaction time tasks | dpb-synth | `cognitive` | `CognitiveGenerator` (RT, Flanker, Go/NoGo, N-back) |
-| **Motion/Pose** |
-| Gait patterns | dpb-synth | `pose` | `StreamingPose`, `StreamingClinicalPose` |
-| Hand movements | dpb-synth | `hand` | `StreamingHand`, `StreamingClinicalHand` |
-| **Eye Tracking** |
-| Gaze patterns | dpb-synth | `eye` | `StreamingGaze` |
+| ECG | dpb-synth | `contact::ecg` | `EcgMorphologyGenerator`, `EcgArrhythmiaGenerator` |
+| PPG | dpb-synth | `contact::ppg` | `PpgPulseGenerator`, `PpgRespiratoryGenerator` |
+| EDA | dpb-synth | `contact::eda` | `EdaTonicGenerator`, `EdaScrGenerator` |
+| EMG | dpb-synth | `contact::emg` | `EmgBurstGenerator`, `EmgFatigueGenerator` |
+| Tremor | dpb-synth | `contact::tremor` | `ParkinsonianTremorGenerator`, `PhysiologicalTremorGenerator` |
+| **Movement** |
+| Gait | dpb-synth | `pose::gait` | `GaitCycleGenerator`, `PathologicalGaitGenerator` |
+| Hand | dpb-synth | `hand` | `TappingGenerator`, `BradykineticTappingGenerator` |
+| Eye | dpb-synth | `eye` | `SaccadeGenerator`, `FixationGenerator`, `PursuitGenerator` |
 | **Voice** |
-| Vowel production | dpb-synth | `voice` | `StreamingVowel`, `StreamingDdk` |
+| Phonation | dpb-synth | `voice::phonation` | `VoiceTremorGenerator`, `HypophoniaGenerator` |
+| Articulation | dpb-synth | `voice::articulation` | `DysarthriaGenerator` |
 | **Neural** |
-| EEG synthesis | dpb-synth | `neural` | EEG, ERP generators |
-
-### 2.6 Clinical Analysis Algorithms
-
-| Capability | Crate | Module | Key Types |
-|------------|-------|--------|-----------|
-| **EEG Analysis** |
-| Frequency band power | dpb-core | `signal::eeg::bands` | `EegBands`, `BandPowers`, `theta_beta_ratio()` |
-| ERP extraction | dpb-core | `signal::eeg::erp` | `ErpAnalyzer`, `ErpComponent` (P300, N400, MMN) |
-| Sleep staging | dpb-core | `sleep::staging` | `SleepStager`, `SleepArchitecture` |
-| Sleep microstructure | dpb-core | `sleep::features` | Spindle, K-complex, slow wave detection |
-| **Pain Assessment** |
-| QST analysis | dpb-core | `pain::qst` | `QstAnalyzer`, `SensoryPhenotype` |
-| Pressure pain threshold | dpb-core | `pain::threshold` | `PressurePainThreshold`, `ConditionedPainModulation` |
-| Pain autonomic response | dpb-core | `pain::autonomic` | `PainAutonomicAnalyzer` |
-| Pain scales | dpb-core | `pain::scales` | VAS, NRS, McGill, BPI, NPSI |
-| **Biomechanics** |
-| Grip analysis | dpb-core | `biomechanics::force::grip` | `GripStrengthAnalyzer`, `GripMetrics` |
-| GRF analysis | dpb-core | `biomechanics::force::grf` | `GroundReactionForceAnalyzer`, `GaitPhase` |
-| RFD analysis | dpb-core | `biomechanics::force::rfd` | `RfdAnalyzer`, `RfdMetrics` |
+| EEG | dpb-synth | `neural::eeg` | `EegGenerator`, `EegArtifactGenerator` |
+| ERP | dpb-synth | `neural::erp` | `P300Generator`, `N100Generator` |
+| Sleep | dpb-synth | `neural::sleep` | `SpindleGenerator`, `KComplexGenerator` |
+| **Balance/Force** |
+| CoP | dpb-synth | `balance::cop` | `CopSwayGenerator`, `PathologicalSwayGenerator` |
+| GRF | dpb-synth | `force::grf` | `GrfGenerator`, `PathologicalGrfGenerator` |
+| Grip | dpb-synth | `force::grip` | `GripStrengthGenerator` |
 | **Vestibular** |
-| VOR analysis | dpb-core | `vestibular::vor` | `VorAnalyzer`, `VorMetrics` |
-| Posturography | dpb-core | `vestibular::posturography` | `PosturographyAnalyzer`, `SotMetrics` |
-| **Somatosensory** |
-| Proprioception | dpb-core | `somatosensory::proprioception` | `JointPositionSense`, `JpsMetrics` |
-| Vibration sense | dpb-core | `somatosensory::vibration` | `VibrationSense`, `VptMetrics` |
+| VOR | dpb-synth | `vestibular::vor` | `VorGainGenerator`, `VorAsymmetryGenerator` |
+| Nystagmus | dpb-synth | `vestibular::nystagmus` | `NystagmusGenerator`, `BppvGenerator` |
+| Caloric | dpb-synth | `vestibular::caloric` | `CaloricResponseGenerator` |
+| **Pain** |
+| QST | dpb-synth | `pain` | `PainThresholdGenerator`, `CpmGenerator` |
 | **Cardiopulmonary** |
-| VO2 estimation | dpb-core | `cardiopulmonary::vo2` | `Vo2Estimator`, `ExerciseProtocol` |
-| Ventilatory threshold | dpb-core | `cardiopulmonary::ventilatory` | `VentilatoryThreshold`, `VtResult` |
-| Gas exchange | dpb-core | `cardiopulmonary::gas_exchange` | `GasExchange`, `RespiratoryQuotient` |
+| HRV | dpb-synth | `cardiopulmonary` | `HrvGenerator` |
+| Respiratory | dpb-synth | `cardiopulmonary` | `RespiratoryGenerator` |
+| **Cognitive** |
+| Tasks | dpb-synth | `cognitive` | `ReactionTimeGenerator`, `NBackGenerator` |
+| **Multi-modal** |
+| Parkinson's | dpb-synth | `multimodal` | `FullPDSimulator`, `HealthyAgingSimulator` |
+| Coupling | dpb-synth | `multimodal` | `HandVoiceTremorCouplingGenerator`, `GaitSpeechRateCouplingGenerator` |
+| **Streaming (Real-time)** |
+| ECG | dpb-synth | `streaming` | `StreamingEcg`, `StreamingEcgParams` |
+| EEG | dpb-synth | `streaming` | `StreamingEeg`, `StreamingEegParams` |
+| PPG | dpb-synth | `streaming` | `StreamingPpg` |
+| EMG | dpb-synth | `streaming` | `StreamingEmg` |
+| EDA | dpb-synth | `streaming` | `StreamingEda` |
+| Respiratory | dpb-synth | `streaming` | `StreamingRespiratory` |
+| Pose | dpb-synth | `streaming` | `StreamingPose`, `StreamingClinicalPose` |
+| Hand | dpb-synth | `streaming` | `StreamingHand`, `StreamingClinicalHand` |
+| Gaze | dpb-synth | `streaming` | `StreamingGaze` |
+| Tremor | dpb-synth | `streaming` | `StreamingTremor` |
 
 ### 2.7 Normative Comparison
 
 | Capability | Crate | Module | Key Types |
 |------------|-------|--------|-----------|
-| Normative database | dpb-norms | `database` | `NormativeDatabase`, `NormativeEntry` |
-| Z-score calculation | dpb-norms | `database` | `NormativeStats::z_score()` |
-| Percentile ranking | dpb-norms | `database` | `NormativeStats::percentile()` |
-| Impairment classification | dpb-norms | `database` | `ImpairmentLevel` (Normal→Severe) |
-| Demographic filtering | dpb-norms | `demographics` | `Demographics`, `DemographicsFilter` |
-| MDC calculation | dpb-norms | `database` | `mdc90`, `mdc95` |
+| Demographics | dpb-norms | `demographics` | `Demographics`, `Sex`, `AgeGroup`, `Ethnicity` |
+| Metric types | dpb-norms | `metrics` | `MetricType` (60 types), `MetricDomain`, `MetricDirection` |
+| Normative stats | dpb-norms | `lib` | `NormativeStats`, `NormativeComparison` |
+| Database | dpb-norms | `database` | `NormativeDatabase`, `NormativeEntry`, `NormativeTable` |
+| Impairment levels | dpb-norms | `lib` | `ImpairmentLevel` (Normal → Severe) |
 
-#### 2.7.1 Populated Normative Metrics *(40+ metrics)*
+#### 2.7.1 Populated Normative Metrics (60/60 = 100%)
 
-| Domain | Metrics | Stratification |
-|--------|---------|----------------|
-| **Cognitive** | SimpleReactionTime, ChoiceReactionTime, TrailMakingA, TrailMakingB, MocaTotal, DigitSpanForward, DigitSpanBackward, VerbalFluency, StroopInterference | Age |
-| **Motor** | GaitVelocity, TimedUpAndGo, GripStrength, RateOfForceDevelopment, TappingFrequency, StrideLength, Cadence | Age, Sex |
-| **Balance** | SwayArea, SwayVelocity, SwayPathLength, BergBalanceScale, LosMaxExcursion, LosReactionTime | Age |
-| **Physiological** | HrvSdnn, HrvRmssd, HrvPnn50, HeartRate, RespiratoryRate, SpO2, BpSystolic, BpDiastolic | Age |
-| **Pain/Sensory** | PressurePainThreshold, PainTolerance, CpmEffect, VibrationThreshold, JointPositionError | Age, Sex |
-| **Tremor** | TremorAmplitude, TremorFrequency | Age |
-| **Sleep** | TotalSleepTime, SleepEfficiency | Age |
+| Domain | Metrics |
+|--------|---------|
+| **Cognitive (15)** | SimpleReactionTime, ChoiceReactionTime, ReactionTimeVariability, NBackAccuracy, NBackDPrime, CptOmissions, CptCommissions, StroopInterference, TrailMakingA, TrailMakingB, TrailMakingBMinusA, DigitSpanForward, DigitSpanBackward, VerbalFluency, MocaTotal |
+| **Motor (13)** | GaitVelocity, StrideLength, StrideTimeVariability, DoubleSupportTime, Cadence, TimedUpAndGo, GripStrength, RateOfForceDevelopment, TappingFrequency, TappingVariability, TremorAmplitude, TremorFrequency, UpdrsMotor |
+| **Balance (8)** | SwayArea, SwayPathLength, SwayVelocity, RombergQuotient, BergBalanceScale, LosReactionTime, LosMaxExcursion, LosDirectionalControl |
+| **Physiological (10)** | HeartRate, HrvSdnn, HrvRmssd, HrvPnn50, HrvLfHf, RespiratoryRate, SpO2, BpSystolic, BpDiastolic |
+| **Sensory (5)** | PressurePainThreshold, PainTolerance, CpmEffect, VibrationThreshold, JointPositionError |
+| **Sleep (6)** | TotalSleepTime, SleepEfficiency, SleepOnsetLatency, WakeAfterSleepOnset, RemPercent, DeepSleepPercent |
+| **Composite (4)** | CognitiveComposite, MotorComposite, GlobalComposite, FrailtyIndex |
 
 ### 2.8 Cognitive Assessment
 
-| Capability | Crate | Module | Key Types |
-|------------|-------|--------|-----------|
-| Simple/choice RT | dpb-cognitive | `reaction_time` | `SimpleReactionTime`, `ChoiceReactionTime` |
-| Working memory (N-back) | dpb-cognitive | `working_memory` | `NBackTask`, `NBackMetrics` |
-| Attention (CPT) | dpb-cognitive | `attention` | `ContinuousPerformanceTest`, `CptMetrics` |
-| Stroop task | dpb-cognitive | `attention` | `StroopTask`, `StroopMetrics` |
-| Inhibition (Go/No-Go) | dpb-cognitive | `executive` | `GoNoGoTask`, `GoNoGoMetrics` |
-| Flanker task | dpb-cognitive | `executive` | `FlankerTask`, `FlankerMetrics` |
-| Set shifting (WCST) | dpb-cognitive | `executive` | `WisconsinCardSort`, `WcstMetrics` |
-| ADHD assessment | dpb-cognitive | `adhd` | `QbTest`, `AdhdEyeTracking` |
-
-### 2.9 Metrics & Evaluation
-
-| Capability | Crate | Module | Key Types |
-|------------|-------|--------|-----------|
-| Classification metrics | dpb-core | `metrics::classification` | `Accuracy`, `Precision`, `Recall`, `F1Score`, `AucRoc` |
-| Regression metrics | dpb-core | `metrics::regression` | `MSE`, `RMSE`, `MAE`, `R2Score` |
-| Signal quality | dpb-core | `metrics::signal` | `SNR`, `PSNR`, `THD`, `CrestFactor` |
-| Clinical validity | dpb-core | `metrics::clinical` | `Sensitivity`, `Specificity`, `LikelihoodRatio` |
-| SNN efficiency | dpb-core | `metrics::efficiency` | `SpikeCount`, `SynapticOperations` |
-| Power estimation | dpb-core | `power` | `PowerEstimator`, `PowerMetrics` |
-
-### 2.10 Integration & Deployment
-
-| Capability | Crate | Module | Key Types |
-|------------|-------|--------|-----------|
-| Python bindings | dpb-python | root | `dpb.*` (all submodules) |
-| C FFI | dpb-ffi | root | `dpb_*` functions, C header generation |
-| Benchmarking | dpb-bench | root | `TimeProfiler`, standard datasets |
-| GPU acceleration | dpb-core | `gpu` | WGPU context, compute buffers |
+| Task Type | Crate | Module | Key Types |
+|-----------|-------|--------|-----------|
+| Reaction time | dpb-cognitive | `reaction_time` | `SimpleReactionTime`, `ChoiceReactionTime` |
+| Working memory | dpb-cognitive | `working_memory` | `NBackTask` |
+| Sustained attention | dpb-cognitive | `attention` | `ContinuousPerformanceTest` |
+| Selective attention | dpb-cognitive | `attention` | `StroopTask` |
+| Inhibition | dpb-cognitive | `executive` | `GoNoGoTask` |
+| Interference | dpb-cognitive | `executive` | `FlankerTask` |
+| Set shifting | dpb-cognitive | `executive` | `WisconsinCardSort` |
+| ADHD screening | dpb-cognitive | `adhd` | `QbTest`, `AdhdEyeTracking` |
 
 ---
 
@@ -298,210 +311,143 @@ The Delta Predictive Biosensing Framework is a comprehensive neuromorphic signal
 
 ### 3.1 dpb-core
 
-```
-dpb-core/src/
-├── types.rs          → Signal representation, spike events, time series
-├── traits.rs         → Core interfaces (Signal, EventEncoder, SyntheticGenerator, etc.)
-├── error.rs          → Error handling (DpbError, Result)
-├── config.rs         → Framework configuration
-├── tensor.rs         → Batched spike tensor operations
-├── gpu/              → WGPU-based GPU acceleration
-├── signal/
-│   ├── mod.rs        → Normalization, peak detection, envelope, RMS
-│   ├── filter.rs     → IIR filtering (Butterworth LP/HP/BP/BS)
-│   ├── fft.rs        → FFT, STFT, PSD, spectra
-│   ├── resample.rs   → Up/downsampling, interpolation
-│   └── eeg/
-│       ├── bands.rs  → EEG frequency band analysis
-│       ├── erp.rs    → Event-related potential extraction
-│       └── artifacts.rs → Artifact detection/removal
-├── biomechanics/
-│   └── force/
-│       ├── grip.rs   → Grip strength analysis
-│       ├── grf.rs    → Ground reaction force analysis
-│       └── rfd.rs    → Rate of force development
-├── cardiopulmonary/
-│   ├── vo2.rs        → VO2max estimation
-│   ├── ventilatory.rs → Ventilatory threshold detection
-│   └── gas_exchange.rs → RER, gas exchange metrics
-├── pain/
-│   ├── qst.rs        → Quantitative sensory testing
-│   ├── threshold.rs  → PPT, CPM analysis
-│   ├── autonomic.rs  → Pain-autonomic coupling
-│   └── scales.rs     → VAS, NRS, McGill, BPI
-├── sleep/
-│   ├── staging.rs    → Sleep stage classification
-│   └── features.rs   → Spindle, K-complex detection
-├── somatosensory/
-│   ├── proprioception.rs → Joint position sense
-│   └── vibration.rs  → Vibration perception threshold
-├── vestibular/
-│   ├── vor.rs        → VOR gain/phase analysis
-│   └── posturography.rs → Dynamic balance assessment
-├── metrics/
-│   ├── classification.rs → Accuracy, F1, AUC
-│   ├── regression.rs → MSE, RMSE, R²
-│   ├── signal.rs     → SNR, THD
-│   ├── clinical.rs   → Sensitivity, specificity
-│   └── efficiency.rs → SNN spike/energy metrics
-├── power/            → Hardware power estimation
-├── validation/       → ROC analysis, reliability
-├── viz/              → Plotting utilities
-└── prelude.rs        → Convenience re-exports
-```
+**Purpose**: Foundation crate with core types, traits, and algorithms
+
+| Module | Capabilities |
+|--------|--------------|
+| `types` | `SpikeEvent`, `SpikeTrain`, `SignalBuffer`, `TimeSeries`, `Context`, `Modality` |
+| `traits` | `Signal`, `EventEncoder`, `PopulationTemplate`, `MembraneDynamics`, `SynapticModel`, `SpikingLayer`, `SNNNetwork`, `Dataset`, `Optimizer`, `LossFunction` |
+| `tensor` | `SpikeTensor` - batched spike operations with GPU acceleration |
+| `signal/filter` | Butterworth IIR, median filter, bandpass, highpass, lowpass |
+| `signal/fft` | FFT, STFT, power spectral density, band power extraction |
+| `signal/resample` | Upsampling, downsampling, linear interpolation |
+| `signal/eeg` | Band power (delta/theta/alpha/beta/gamma), artifact detection, ERP analysis |
+| `gpu` | WGPU-based GPU compute, buffer management, kernel execution |
+| `metrics` | Classification (accuracy, F1, ROC-AUC), regression (MSE, MAE, R²), clinical (sensitivity, specificity), efficiency (spike rate, energy) |
+| `validation` | Reliability (ICC, Cronbach's alpha), validity (ROC curves, MDC), convergence analysis |
+| `power` | Neuromorphic power estimation, synaptic operations, memory access |
+| `biomechanics` | GRF analysis, grip dynamics, RFD calculation, balance metrics |
+| `cardiopulmonary` | VO2 kinetics, ventilatory thresholds, gas exchange |
+| `pain` | QST analysis, pain scales, autonomic response |
+| `vestibular` | VOR analysis, posturography, canal function |
+| `sleep` | Sleep staging, spindle detection, sleep efficiency |
+| `viz` | Signal plotting, spike rasters, network visualization, training curves |
 
 ### 3.2 dpb-encoders
 
-```
-dpb-encoders/src/
-├── base.rs           → LevelCrossing, TemplateDeviation, Derivative encoders
-├── contact/
-│   ├── ecg.rs        → ECG encoders (R-peak, morphology, ST, HRV)
-│   ├── ppg.rs        → PPG encoders (pulse, amplitude, PTT)
-│   ├── eda.rs        → EDA encoders (level crossing, SCR, tonic)
-│   ├── emg.rs        → EMG encoders (burst, amplitude, fatigue)
-│   └── tremor.rs     → Tremor encoders (level crossing, frequency, amplitude)
-├── pose/             → Gait encoders (heel strike, toe off, phase, asymmetry)
-├── hand/             → Hand encoders (tap onset, aperture, frequency, decrement)
-├── eye/              → Eye encoders (saccade, fixation, microsaccade, pupil)
-├── voice/
-│   ├── phonation.rs  → F0, jitter, shimmer, HNR encoders
-│   ├── articulation.rs → Formant, vowel space encoders
-│   └── prosody.rs    → Speech rate, pause, intonation encoders
-├── balance.rs        → (NEW) CoP sway, velocity, stability limit encoders
-├── force.rs          → (NEW) GRF phase, grip onset, RFD encoders
-├── vestibular.rs     → (NEW) VOR gain, nystagmus, caloric encoders
-├── pain.rs           → (NEW) Pain threshold, temporal summation, CPM encoders
-├── cardiopulmonary.rs → (NEW) HRV, respiratory phase, RSA encoders
-├── cognitive.rs      → (NEW) Reaction time, error, lapse encoders
-└── templates/        → Population template registry (79+ templates)
-```
+**Purpose**: Convert continuous biosignals to spike trains
+
+| Module | Capabilities |
+|--------|--------------|
+| `base` | Level crossing, template deviation, derivative, discrete event encoders |
+| `contact/ecg` | R-peak detection, morphology analysis, ST-segment, HRV features |
+| `contact/ppg` | Pulse detection, amplitude, transit time, respiratory modulation |
+| `contact/eda` | SCR detection, tonic level, phasic response |
+| `contact/emg` | Burst detection, amplitude envelope, fatigue tracking |
+| `pose/gait` | Heel strike, toe-off, gait phase, stride detection, asymmetry |
+| `hand/tapping` | Tap onset, aperture, frequency, decrement detection |
+| `eye/saccade` | Saccade onset, main sequence, latency |
+| `eye/fixation` | Fixation stability, microsaccades |
+| `eye/pupil` | Pupil response, light reflex |
+| `voice/phonation` | F0 tracking, jitter, shimmer, HNR |
+| `voice/articulation` | Formant tracking, vowel space |
+| `voice/prosody` | Speech rate, pause detection, intonation |
+| `balance` | CoP sway, velocity, stability limits |
+| `force` | GRF phases, grip onset, RFD |
+| `vestibular` | VOR gain, nystagmus SPV, caloric asymmetry |
+| `pain` | Pain threshold, temporal summation, CPM effect |
+| `cardiopulmonary` | HRV features, respiratory phase, RSA |
+| `cognitive` | Reaction time, error detection, lapse detection |
+| `eeg` | Alpha/beta/theta/gamma/delta power, ERP (P300/N100), spindles, artifacts |
+| `templates` | 85+ population templates with age/sex stratification |
 
 ### 3.3 dpb-neurons
 
-```
-dpb-neurons/src/
-├── lif/              → 7 LIF variants (IF, LIF, CLIF, ALIF, ELIF, QLIF, GLIF)
-├── izhikevich.rs     → Izhikevich model with presets
-├── adex.rs           → Adaptive exponential IF
-├── calcium.rs        → Calcium-dependent adaptation
-├── hodgkin_huxley/   → HH, FitzHugh-Nagumo, Morris-Lecar
-├── srm.rs            → Spike response model
-├── stochastic.rs     → Stochastic LIF
-├── recurrent.rs      → Recurrent dynamics
-├── hardware/         → Xylo, Pulsar, Quantized neurons
-├── surrogate/        → 6 surrogate gradient functions
-├── batch/            → Batch processing layers
-├── gpu/              → GPU-accelerated neurons + shaders
-└── traits.rs         → NeuronModel, MembraneDynamics, SynapticInput
-```
+**Purpose**: Spiking neuron models with GPU support
+
+| Module | Capabilities |
+|--------|--------------|
+| `lif` | 7 LIF variants: IF, LIF, CLIF, ALIF, ELIF, QLIF, GLIF |
+| `izhikevich` | Phenomenological model with various firing patterns |
+| `adex` | Adaptive exponential integrate-and-fire |
+| `hodgkin_huxley` | Conductance-based models: HH, FitzHugh-Nagumo, Morris-Lecar |
+| `srm` | Spike response model with adaptation |
+| `stochastic` | Stochastic LIF with noise |
+| `recurrent` | Self-connected neurons |
+| `hardware` | Xylo, Pulsar, Quantized LIF for hardware deployment |
+| `gpu` | GPU-accelerated LIF, ALIF, Izhikevich |
+| `surrogate` | 6 surrogate gradients for backpropagation |
+| `batch` | Batch processing layers, population statistics |
 
 ### 3.4 dpb-snn
 
-```
-dpb-snn/src/
-├── tensor.rs         → SpikeTensor batched operations
-├── layers/           → SpikingLinear, Conv1d/2d, Pool, RNN, LSTM, Attention
-├── architectures/    → Feedforward, Conv, Recurrent, GCN, Transformer SNNs
-├── training/         → BPTT, OTTT, SLTT, loss functions, optimizers
-├── conversion/       → ANN→SNN conversion, weight normalization
-├── decoders/
-│   ├── rate.rs       → Rate-based decoders
-│   ├── temporal.rs   → Temporal pattern decoders
-│   ├── clinical.rs   → Clinical scale decoders (UPDRS, Berg, Tinetti, MiniBEST, VAS, NRS, VOR, etc.)
-│   └── regression.rs → Continuous value decoders
-├── fusion/           → Early, Late, Hierarchical, Cross-modal, Gated fusion
-├── analysis/         → Convergence analysis, plateau detection, early stopping
-├── baselines/        → 44 ANN baseline architectures
-└── export/           → Model export for deployment
-```
+**Purpose**: Complete SNN training, inference, and deployment
+
+| Module | Capabilities |
+|--------|--------------|
+| `layers` | Linear, Conv1d/2d, Pooling, RNN, LSTM, Attention layers |
+| `architectures` | Feedforward, Convolutional, Recurrent, GCN, Transformer SNNs |
+| `training` | BPTT, OTTT, SLTT; CrossEntropy, SpikeCount, SpikeTiming losses |
+| `decoders/rate` | 9 rate-based decoders |
+| `decoders/temporal` | 7 temporal pattern decoders |
+| `decoders/clinical` | 23 clinical scale decoders (UPDRS, Berg, MoCA, VAS, etc.) |
+| `decoders/regression` | 10 continuous value decoders |
+| `decoders/classification` | 10 classification decoders |
+| `fusion` | 8 multi-modal fusion strategies |
+| `baselines` | 44 ANN architectures for comparison |
+| `conversion` | ANN-to-SNN conversion with threshold balancing |
+| `analysis` | 25+ training analyzers (convergence, gradients, overfitting) |
+| `export` | Hardware export capabilities |
 
 ### 3.5 dpb-synth
 
-```
-dpb-synth/src/
-├── contact/          → ECG, PPG, EMG, EDA, respiratory, thermal, tremor
-├── pose/             → Gait, pathological gait, variability
-├── hand/             → Hand movement, tapping, tremor
-├── eye/              → Saccade, pursuit, fixation, pupil
-├── voice/            → Phonation, articulation, prosody, pathological
-├── neural/           → EEG, ERP, sleep microstructure
-├── force/
-│   ├── grf.rs        → Ground reaction force (walking, running, jumping, pathologies)
-│   ├── grip.rs       → Grip strength (MVC, sustained, fatigue, pathologies)
-│   └── rfd.rs        → Rate of force development (isometric, CMJ, SJ, DJ)
-├── balance/
-│   ├── cop.rs        → Center of pressure (quiet standing, LOS, pathologies)
-│   ├── perturbation.rs → Balance perturbation responses
-│   └── sensory.rs    → Sensory manipulation (SOT, mCTSIB)
-├── vestibular/
-│   ├── vor.rs        → VOR (sinusoidal, head impulse, pathologies)
-│   ├── nystagmus.rs  → Nystagmus patterns (BPPV, spontaneous, gaze-evoked)
-│   └── caloric.rs    → Caloric test responses
-├── pain/             → Pain ramp, temporal summation, CPM, QST battery
-├── cardiopulmonary/  → HRV, respiratory, BP (resting, exercise, pathologies)
-├── cognitive/        → RT, Flanker, Go/NoGo, N-back (ADHD, MCI, TBI patterns)
-├── multimodal/       → Combined modality streaming
-├── level3/           → Audio world, SMPL skeleton, style transfer, video
-├── media/            → BARK audio processing
-├── streaming/        → StreamingGenerator trait, ring buffers
-└── traits.rs         → SyntheticGenerator, GroundTruth, ParameterSpace
-```
+**Purpose**: Synthetic biosignal generation with ground truth
+
+| Module | Capabilities |
+|--------|--------------|
+| `contact` | ECG, PPG, EDA, EMG, tremor generators |
+| `pose` | Gait cycle, pathological gait, variability generators |
+| `hand` | Tapping, tremor, movement generators |
+| `eye` | Saccade, fixation, pupil, pursuit generators |
+| `voice` | Phonation, articulation, prosody, pathological speech |
+| `neural` | EEG, ERP, sleep microstructure generators |
+| `force` | GRF, grip strength, RFD generators |
+| `balance` | CoP sway, perturbation, sensory integration |
+| `vestibular` | VOR, nystagmus, caloric response generators |
+| `pain` | Pain threshold, CPM, temporal summation |
+| `cardiopulmonary` | HRV, respiratory pattern generators |
+| `cognitive` | Reaction time, cognitive task generators |
+| `multimodal` | Full disease simulators (Parkinson's, healthy aging), cross-modal coupling |
+| `streaming` | Real-time streaming generators (ECG, EEG, PPG, EMG, EDA, Pose, Hand, Gaze, Tremor) |
+| `media` | Integration with Blender, MediaPipe, OpenSim, MuJoCo, etc. |
+| `level3` | Complex clinical simulations with video/audio |
 
 ### 3.6 dpb-norms
 
-```
-dpb-norms/src/
-├── database.rs       → NormativeDatabase with 40+ populated metrics (age/sex-stratified)
-├── demographics.rs   → Demographics, Sex, Ethnicity, AgeGroup, filters
-└── metrics.rs        → MetricType (60 variants), MetricDomain, MetricDirection
-```
+**Purpose**: Population-based normative comparison
+
+| Module | Capabilities |
+|--------|--------------|
+| `demographics` | Age, sex, ethnicity, handedness, education filtering |
+| `metrics` | 60 metric types across 7 domains with directions and units |
+| `database` | Normative lookup with age/sex stratification |
+| - | Percentile calculation, z-score computation |
+| - | Reference ranges (5th-95th percentile) |
+| - | Impairment classification (Normal → Severe) |
+| - | MDC (minimal detectable change) calculation |
+| - | ICC-based reliability metrics |
 
 ### 3.7 dpb-cognitive
 
-```
-dpb-cognitive/src/
-├── reaction_time.rs  → Simple RT, Choice RT
-├── working_memory.rs → N-back task
-├── attention.rs      → CPT, Stroop
-├── executive.rs      → Go/No-Go, Flanker, WCST
-└── adhd.rs           → QbTest, ADHD eye tracking
-```
+**Purpose**: Computerized cognitive assessment tasks
 
-### 3.8 dpb-python
-
-```
-dpb-python/src/
-├── encoders/         → Python encoder wrappers
-├── neurons/          → Python neuron model wrappers
-├── snn/              → Python SNN layer/architecture wrappers
-├── training/         → Python training infrastructure
-├── synth/            → Python synthetic generator wrappers
-├── metrics/          → Python metric wrappers
-└── gpu/              → Python GPU management
-```
-
-### 3.9 dpb-ffi
-
-```
-dpb-ffi/src/
-├── lib.rs            → C-compatible API entry points
-├── types.rs          → C wrapper types (DpbTimeSeries, DpbSpikeTrain, DpbEncoder)
-├── timeseries.rs     → Time series FFI functions
-├── spiketrain.rs     → Spike train FFI functions
-└── encoder.rs        → Encoder FFI functions
-```
-
-### 3.10 dpb-bench
-
-```
-dpb-bench/src/
-├── datasets/         → Standard synthetic datasets
-├── baselines/        → ANN comparison baselines
-├── profiling/        → Time, memory, spike, energy profiling
-├── reports/          → JSON, CSV, Markdown export
-└── scenarios/        → Pre-configured benchmark scenarios
-```
+| Module | Capabilities |
+|--------|--------------|
+| `reaction_time` | Simple RT, choice RT with accuracy and variability |
+| `working_memory` | N-back task with d-prime calculation |
+| `attention` | CPT with hit/FA rates; Stroop with interference |
+| `executive` | Go/No-Go with inhibition; Flanker with congruity; WCST with perseveration |
+| `adhd` | QbTest integration, ADHD-specific eye tracking metrics |
 
 ---
 
@@ -510,62 +456,73 @@ dpb-bench/src/
 ### 4.1 Crate Dependencies
 
 ```
-                    ┌─────────────────┐
-                    │  dpb-cognitive  │  (standalone)
-                    └─────────────────┘
-
-                    ┌─────────────────┐
-                    │    dpb-core     │  (foundation)
-                    └────────┬────────┘
-                             │
-         ┌───────────────────┼───────────────────┐
-         │                   │                   │
-         ▼                   ▼                   ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│  dpb-encoders   │ │  dpb-neurons    │ │   dpb-synth     │
-└────────┬────────┘ └────────┬────────┘ └────────┬────────┘
-         │                   │                   │
-         │         ┌─────────────────┐           │
-         └────────►│    dpb-snn      │◄──────────┘
-                   └────────┬────────┘
-                            │
-                   ┌─────────────────┐
-                   │   dpb-norms     │
-                   └────────┬────────┘
-                            │
-    ┌───────────────────────┼───────────────────────┐
-    │                       │                       │
-    ▼                       ▼                       ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│  dpb-python     │ │    dpb-ffi      │ │   dpb-bench     │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                         APPLICATIONS                             │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐                       │
+│  │dpb-python│  │ dpb-ffi  │  │dpb-bench │                       │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘                       │
+│       │             │             │                              │
+│       └──────┬──────┴─────────────┘                              │
+│              │                                                   │
+│              ▼                                                   │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │                         dpb-snn                            │  │
+│  │  (Layers, Architectures, Training, Decoders, Fusion)       │  │
+│  └───────────────────────┬───────────────────────────────────┘  │
+│                          │                                       │
+│         ┌────────────────┼────────────────┐                     │
+│         │                │                │                     │
+│         ▼                ▼                ▼                     │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐                │
+│  │dpb-encoders│  │dpb-neurons │  │ dpb-synth  │                │
+│  │(103+ enc.) │  │(19 models) │  │(210+ gen.) │                │
+│  └──────┬─────┘  └──────┬─────┘  └──────┬─────┘                │
+│         │               │               │                       │
+│         └───────────────┼───────────────┘                       │
+│                         │                                        │
+│                         ▼                                        │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │                        dpb-core                            │  │
+│  │  (Types, Traits, Signal Processing, GPU, Metrics, Viz)     │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  ┌────────────────┐  ┌────────────────┐                         │
+│  │   dpb-norms    │  │ dpb-cognitive  │  (Standalone modules)   │
+│  │ (60 metrics)   │  │  (8+ tasks)    │                         │
+│  └────────────────┘  └────────────────┘                         │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 Dependency Matrix
+### 4.2 Signal Processing Pipeline
 
-| Crate | dpb-core | dpb-encoders | dpb-neurons | dpb-snn | dpb-synth | dpb-norms | dpb-cognitive |
-|-------|:--------:|:------------:|:-----------:|:-------:|:---------:|:---------:|:-------------:|
-| dpb-core | - | | | | | | |
-| dpb-encoders | ✓ | - | | | | | |
-| dpb-neurons | ✓ | | - | | | | |
-| dpb-synth | ✓ | | | | - | | |
-| dpb-snn | ✓ | ✓ | ✓ | - | | | |
-| dpb-norms | ✓ | | | | | - | |
-| dpb-cognitive | | | | | | | - |
-| dpb-python | ✓ | ✓ | ✓ | ✓ | ✓ | | |
-| dpb-ffi | ✓ | ✓ | | | ✓ | | |
-| dpb-bench | ✓ | ✓ | ✓ | ✓ | ✓ | | |
+```
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│   Raw Signal │───▶│   Preprocess │───▶│   Encoder    │───▶│  SpikeTrain  │
+│   (analog)   │    │  (filter/FFT)│    │ (103+ types) │    │  (events)    │
+└──────────────┘    └──────────────┘    └──────────────┘    └──────┬───────┘
+                                                                   │
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐          │
+│   Clinical   │◀───│   Decoder    │◀───│     SNN      │◀─────────┘
+│    Score     │    │  (48 types)  │    │ (5 arch.)    │
+└──────────────┘    └──────────────┘    └──────────────┘
+       │
+       ▼
+┌──────────────┐
+│  Normative   │
+│  Comparison  │
+└──────────────┘
+```
 
 ### 4.3 External Dependencies
 
-| Category | Dependencies |
-|----------|--------------|
-| **Linear Algebra** | nalgebra, ndarray, glam |
+| Category | Libraries |
+|----------|-----------|
+| **Numerics** | ndarray, nalgebra, num-complex, statrs |
 | **GPU** | wgpu, bytemuck |
-| **FFT** | rustfft, num-complex |
-| **Statistics** | statrs, rand, rand_distr |
+| **FFT** | rustfft |
 | **Serialization** | serde, serde_json, bincode |
-| **Async/Parallel** | tokio, rayon, crossbeam |
+| **Async** | tokio, rayon |
+| **Random** | rand, rand_distr |
 | **Error Handling** | thiserror, anyhow |
 | **Logging** | tracing, tracing-subscriber |
 | **Python** | pyo3, numpy |
@@ -583,7 +540,7 @@ dpb-bench/src/
 | **PPG** | ✓ | ✓ | ○ | ✓ | ○ |
 | **EDA** | ✓ | ✓ | ○ | ○ | ○ |
 | **EMG** | ✓ | ✓ | ○ | ✓ | ○ |
-| **EEG** | ✓ | ○ | ✓ | ✓ | ○ |
+| **EEG** | ✓ | ✓ | ✓ | ✓ | ○ |
 | **Gait/Pose** | ✓ | ✓ | ○ | ✓ | ✓ |
 | **Hand/Tremor** | ✓ | ✓ | ○ | ✓ | ✓ |
 | **Eye Tracking** | ✓ | ✓ | ○ | ✓ | ○ |
@@ -597,57 +554,31 @@ dpb-bench/src/
 
 **Legend:** ✓ = Complete | ○ = Partial/Stub | ✗ = Missing
 
-### 5.2 Completed Implementations *(Since v0.1.0)*
+### 5.2 Completeness Metrics
 
-#### Phase D - Encoders (18 new encoders)
-
-| Module | Encoders | Templates |
-|--------|----------|-----------|
-| `balance.rs` | CopSwayEncoder, CopVelocityEncoder, StabilityLimitEncoder | SwayAreaTemplate, SwayVelocityTemplate, StabilityLimitTemplate |
-| `force.rs` | GrfPhaseEncoder, GripOnsetEncoder, RfdEncoder | PeakGrfTemplate, GripStrengthTemplate, RfdTemplate |
-| `vestibular.rs` | VorGainEncoder, NystagmusEncoder, CaloricEncoder | VorGainTemplate, NystagmusSPVTemplate, CaloricAsymmetryTemplate |
-| `pain.rs` | PainThresholdEncoder, TemporalSummationEncoder, CpmEncoder | PressurePainThresholdTemplate, WindUpRatioTemplate |
-| `cardiopulmonary.rs` | HrvEncoder, RespiratoryPhaseEncoder, RsaEncoder | RmssdTemplate, RespiratoryRateTemplate, RsaTemplate |
-| `cognitive.rs` | ReactionTimeEncoder, ErrorEncoder, LapseEncoder | SimpleRtTemplate, AccuracyTemplate, LapseRateTemplate |
-
-#### Phase E - Decoders (8 new clinical decoders)
-
-| Category | Decoders | Output Scale |
-|----------|----------|--------------|
-| Balance | TinettiDecoder | 0-28 (Tinetti scale) |
-| Balance | MiniBESTDecoder | 0-32 (MiniBEST) |
-| Pain | VasDecoder | 0-100mm (Visual Analog Scale) |
-| Pain | NrsDecoder | 0-10 (Numeric Rating Scale) |
-| Pain | QstPhenotypeDecoder | Sensory phenotype classification |
-| Vestibular | VorGainDecoder | VOR gain ratio |
-| Vestibular | CanalParesisDecoder | Unilateral weakness % |
-| Vestibular | BppvDecoder | BPPV probability |
-
-#### Phase F - Normative Data (25+ new metrics)
-
-| Domain | Metrics Added |
-|--------|---------------|
-| Pain/Sensory | PressurePainThreshold, PainTolerance, CpmEffect, VibrationThreshold, JointPositionError |
-| Balance | SwayVelocity, SwayPathLength, LosMaxExcursion, LosReactionTime |
-| Motor | RateOfForceDevelopment, TappingFrequency, StrideLength, Cadence |
-| Physiological | HeartRate, RespiratoryRate, SpO2, BpSystolic, BpDiastolic, HrvPnn50 |
-| Cognitive | DigitSpanForward, DigitSpanBackward, VerbalFluency, StroopInterference |
-| Tremor | TremorAmplitude, TremorFrequency |
+| Metric | Count | Target | Coverage |
+|--------|-------|--------|----------|
+| Neuron models | 19 | 20 | **95%** |
+| Event encoders | 103+ | 110 | **94%** |
+| Population templates | 85+ | 90 | **94%** |
+| Synthetic generators | 210+ | 220 | **95%** |
+| SNN decoders | 48 | 50 | **96%** |
+| ANN baselines | 44 | 50 | **88%** |
+| Normative metrics | 60 | 60 | **100%** |
+| Streaming generators | 12 | 15 | **80%** |
 
 ### 5.3 Remaining Gaps
 
-#### Medium Priority Gaps
+#### Medium Priority
 
 | Gap | Domain | Impact | Recommended Implementation |
 |-----|--------|--------|---------------------------|
-| **EEG encoders** | Encoders | Missing frequency band encoders | Add `AlphaPowerEncoder`, `ThetaBetaRatioEncoder`, `SpindleEncoder` |
 | **Multi-modal norms** | Norms | Single-modality only | Add cross-modal normative comparisons |
-| **Real-time streaming analysis** | Core | Batch processing only | Add streaming analysis pipelines |
-| **Fatigue detection algorithms** | Core | No fatigue-specific analysis | Add `FatigueDetector` for EMG/force/cognitive |
+| **Fatigue detection** | Core | No fatigue-specific analysis | Add `FatigueDetector` for EMG/force/cognitive |
 | **Seizure detection** | Core | EEG seizure detection stub | Implement full seizure detection algorithm |
 | **Respiratory analysis** | Core | Limited respiratory analysis | Add breath detection, apnea detection |
 
-#### Low Priority Gaps
+#### Low Priority
 
 | Gap | Domain | Impact | Recommended Implementation |
 |-----|--------|--------|---------------------------|
@@ -657,130 +588,96 @@ dpb-bench/src/
 | **Hardware export** | SNN | Limited deployment targets | Add more neuromorphic hardware backends |
 | **Visualization tools** | Core | Basic plotting only | Add interactive visualization |
 
-### 5.4 Completeness Metrics
-
-| Metric | Previous | Current | Target | Coverage |
-|--------|----------|---------|--------|----------|
-| Neuron models | 19 | 19 | 20 | 95% |
-| Event encoders | 77 | **95+** | 100 | **95%** |
-| Population templates | 61 | **79+** | 80 | **99%** |
-| Synthetic generators | 200+ | 200+ | 200 | 100% |
-| SNN decoders | 32 | **40** | 50 | **80%** |
-| ANN baselines | 44 | 44 | 50 | 88% |
-| Normative metrics | ~15 | **40+** | 60 | **67%** |
-| Unit tests | 419 | 500+ | 500 | **100%** |
-
-### 5.5 Recommended Development Priorities
-
-1. **Phase G - EEG Encoders**
-   - Alpha/theta/beta power encoders
-   - Spindle/K-complex encoders
-   - Seizure-related encoders
-
-2. **Phase H - Real-time Streaming**
-   - Streaming analysis pipelines
-   - Online adaptation
-   - Real-time feedback
-
-3. **Phase I - Multi-modal Integration**
-   - Cross-modal normative comparisons
-   - Integrated assessment batteries
-   - Composite score generation
-
 ---
 
 ## 6. Quick Reference
 
-### 6.1 Common Use Cases
+### 6.1 Common Usage Patterns
 
-| Use Case | Crates | Key Functions |
-|----------|--------|---------------|
-| Encode ECG to spikes | dpb-encoders | `EcgRPeakEncoder::encode()` |
-| Encode balance to spikes | dpb-encoders | `CopSwayEncoder::encode()` |
-| Encode pain response | dpb-encoders | `PainThresholdEncoder::encode()` |
-| Train SNN classifier | dpb-snn | `FeedforwardSNN::forward()`, `BPTT::step()` |
-| Generate synthetic ECG | dpb-synth | `StreamingEcg::generate()` |
-| Compare to norms | dpb-norms | `NormativeDatabase::compare()` |
-| Decode balance scale | dpb-snn | `TinettiDecoder::decode()` |
-| Decode pain scale | dpb-snn | `VasDecoder::decode()` |
-| Analyze VOR | dpb-core | `VorAnalyzer::analyze_vhit()` |
-| Detect sleep stages | dpb-core | `SleepStager::stage_from_eeg()` |
-| Assess pain | dpb-core | `QstAnalyzer::analyze_modality()` |
-| Run cognitive task | dpb-cognitive | `NBackTask::run_trial()` |
+```rust
+// 1. Encode a signal to spikes
+use dpb_encoders::prelude::*;
+let encoder = LevelCrossingEncoder::new();
+let config = LevelCrossingConfig::default();
+let spikes = encoder.encode(&signal, &config)?;
 
-### 6.2 Type Quick Reference
+// 2. Create a simple SNN
+use dpb_snn::prelude::*;
+let network = FeedforwardSNN::new(&[100, 64, 32, 10]);
+let output = network.forward(&spikes)?;
 
-| Type | Crate | Purpose |
-|------|-------|---------|
-| `SpikeEvent` | dpb-core | Single spike (timestamp, channel, polarity) |
-| `SpikeTrain` | dpb-core | Collection of spikes |
-| `TimeSeries` | dpb-core | Multi-channel continuous signal |
-| `GroundTruth` | dpb-core | Reference labels/values |
-| `SpikeTensor` | dpb-snn | Batched spike representation |
-| `NormativeStats` | dpb-norms | Normative statistics with Z-score |
-| `Demographics` | dpb-norms | Age, sex, population filters |
+// 3. Decode to clinical score
+use dpb_snn::decoders::clinical::*;
+let decoder = UpdrsMotorDecoder::new();
+let score = decoder.decode(&output)?;
 
-### 6.3 Trait Quick Reference
+// 4. Compare to normative data
+use dpb_norms::prelude::*;
+let db = NormativeDatabase::with_defaults();
+let comparison = db.compare(MetricType::GaitVelocity, 0.95, &demographics)?;
 
-| Trait | Crate | Implementors |
-|-------|-------|-------------|
-| `EventEncoder` | dpb-core | All encoders in dpb-encoders (95+) |
-| `PopulationTemplate` | dpb-core | All templates (79+) |
-| `NeuronModel` | dpb-core | All neurons in dpb-neurons |
-| `SyntheticGenerator` | dpb-core | All generators in dpb-synth |
-| `Metric` | dpb-core | All metrics in dpb-core/metrics |
-| `SpikingLayer` | dpb-core | All layers in dpb-snn/layers |
-| `Decoder` | dpb-snn | All decoders (40) |
+// 5. Generate synthetic EEG with streaming
+use dpb_synth::streaming::*;
+let generator = StreamingEeg;
+let params = StreamingEegParams::eyes_closed_rest();
+let mut state = generator.init_state(&params, 42);
+let sample = generator.next_sample(&mut state);
+```
 
-### 6.4 Configuration Quick Reference
+### 6.2 Crate Feature Flags
 
-| Config | Crate | Configures |
-|--------|-------|------------|
-| `LifConfig` | dpb-neurons | LIF neuron parameters |
-| `SNNConfig` | dpb-snn | SNN architecture parameters |
-| `StreamingConfig` | dpb-synth | Streaming generator parameters |
-| `GrfConfig` | dpb-synth | GRF generator parameters |
-| `Demographics` | dpb-norms | Normative comparison filters |
-| `CopSwayConfig` | dpb-encoders | Balance encoder parameters |
-| `PainThresholdConfig` | dpb-encoders | Pain encoder parameters |
-| `HrvConfig` | dpb-encoders | HRV encoder parameters |
+| Crate | Feature | Description |
+|-------|---------|-------------|
+| dpb-core | `gpu` | Enable GPU acceleration |
+| dpb-core | `viz` | Enable visualization |
+| dpb-neurons | `gpu` | GPU neuron models |
+| dpb-snn | `training` | Enable training features |
+| dpb-synth | `media` | External tool integration |
+| dpb-synth | `level3` | Complex simulations |
 
-### 6.5 New Encoder Quick Reference
+### 6.3 CLI Commands
 
-| Encoder | Module | Input Signal | Output Events |
-|---------|--------|--------------|---------------|
-| `CopSwayEncoder` | balance | CoP trajectory | Sway area exceedance |
-| `CopVelocityEncoder` | balance | CoP trajectory | Velocity threshold crossings |
-| `StabilityLimitEncoder` | balance | LOS task | Limit exceedance events |
-| `GrfPhaseEncoder` | force | GRF waveform | Heel strike, toe-off, peaks |
-| `GripOnsetEncoder` | force | Grip force | Force onset, peak, release |
-| `RfdEncoder` | force | Force-time curve | RFD threshold events |
-| `VorGainEncoder` | vestibular | Head/eye velocity | Gain deviation events |
-| `NystagmusEncoder` | vestibular | Eye velocity | Nystagmus beats |
-| `CaloricEncoder` | vestibular | Caloric response | Asymmetry events |
-| `PainThresholdEncoder` | pain | Pressure/stimulus | Threshold crossings |
-| `TemporalSummationEncoder` | pain | Pain ratings | Wind-up events |
-| `CpmEncoder` | pain | CPM response | Modulation events |
-| `HrvEncoder` | cardiopulmonary | RR intervals | HRV feature events |
-| `RespiratoryPhaseEncoder` | cardiopulmonary | Respiratory signal | Inspiration/expiration |
-| `RsaEncoder` | cardiopulmonary | RR + respiratory | RSA events |
-| `ReactionTimeEncoder` | cognitive | RT data | Fast/slow RT events |
-| `ErrorEncoder` | cognitive | Response accuracy | Error events |
-| `LapseEncoder` | cognitive | Attention data | Lapse events |
+```bash
+# Run all tests
+cargo test --workspace
 
----
+# Run benchmarks
+cargo bench -p dpb-bench
 
-## Document Information
+# Build documentation
+cargo doc --workspace --no-deps --open
 
-| Field | Value |
-|-------|-------|
-| Version | 2.0.0 |
-| Last Updated | 2025-12-18 |
-| Generated By | System catalog analysis |
-| Framework Version | 0.2.0 |
-| Rust Edition | 2024 |
-| Changes Since v1.0 | +18 encoders, +8 decoders, +25 normative metrics |
+# Check code coverage
+cargo tarpaulin --workspace
+```
+
+### 6.4 Key Traits Summary
+
+| Trait | Purpose | Key Methods |
+|-------|---------|-------------|
+| `Signal` | Time-series data | `samples()`, `sample_rate()`, `channels()` |
+| `EventEncoder` | Signal → Spikes | `encode()`, `name()` |
+| `PopulationTemplate` | Clinical norms | `expected_value()`, `variance()` |
+| `MembraneDynamics` | Neuron state | `membrane_potential()`, `rest_potential()` |
+| `NeuronModel` | Spike generation | `update()`, `reset()`, `threshold()` |
+| `SurrogateGradient` | Backprop | `forward()`, `backward()` |
+| `Decoder` | Spikes → Output | `decode()`, `output_dim()` |
+| `SyntheticGenerator` | Data generation | `generate()`, `validate_params()` |
+| `StreamingGenerator` | Real-time | `next_sample()`, `init_state()` |
+
+### 6.5 Module Quick Links
+
+| Need | Crate | Module |
+|------|-------|--------|
+| Encode ECG to spikes | dpb-encoders | `contact::ecg` |
+| Encode EEG band power | dpb-encoders | `eeg` |
+| Generate synthetic gait | dpb-synth | `pose::gait` |
+| Stream real-time EEG | dpb-synth | `streaming` |
+| Build feedforward SNN | dpb-snn | `architectures` |
+| Decode UPDRS score | dpb-snn | `decoders::clinical` |
+| Compare to norms | dpb-norms | `database` |
+| Run cognitive task | dpb-cognitive | `reaction_time` |
 
 ---
 
-*This document serves as the authoritative reference for the Delta Predictive Biosensing framework. For implementation details, refer to the source code and inline documentation.*
+*Last updated: 2025-12-18 | Catalog version: 0.3.0*
