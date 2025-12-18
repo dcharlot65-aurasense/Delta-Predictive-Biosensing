@@ -5,6 +5,7 @@
 //! - ALS (Amyotrophic Lateral Sclerosis)
 //! - MS (Multiple Sclerosis)
 //! - Stroke (Cerebrovascular Accident)
+//! - Medication effects on biosignals
 //!
 //! Each disease model captures the characteristic signatures across:
 //! - Motor function (EMG, force, gait)
@@ -16,11 +17,16 @@ pub mod als;
 pub mod ms;
 pub mod stroke;
 pub mod progression;
+pub mod medication;
 
 pub use als::{AlsModel, AlsStage, AlsFunctionalRating, AlsEmgSignature, AlsRespiratoryStatus};
 pub use ms::{MsModel, MsType, MsRelapse, MsSymptomProfile, EdssScore};
 pub use stroke::{StrokeModel, StrokeType, StrokeLocation, StrokeSeverity, RecoveryPhase};
 pub use progression::{DiseaseProgression, ProgressionRate, ProgressionPattern, TimePoint};
+pub use medication::{
+    Medication, MedicationClass, MedicationEffect, PolypharmacyProfile,
+    DrugInteraction, InteractionType, InteractionSeverity,
+};
 
 use serde::{Deserialize, Serialize};
 
