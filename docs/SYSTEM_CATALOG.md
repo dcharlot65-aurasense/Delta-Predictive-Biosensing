@@ -2,9 +2,9 @@
 
 > **Last Updated:** December 2025
 > **Framework Version:** 0.5.0
-> **Total Modules:** 320+ | **Encoders:** 77+ | **Generators:** 200+ | **Decoders:** 48+
+> **Total Modules:** 340+ | **Encoders:** 77+ | **Generators:** 200+ | **Decoders:** 48+
 > **Language Bindings:** 6 (Python, Julia, MATLAB, R, LabVIEW, C/C++)
-> **Platform Targets:** 10 (Native, iOS, Android, WASM, Loihi, SpiNNaker, BrainScaleS, LSL, RISC-V, WebGPU)
+> **Platform Targets:** 12 (Native, iOS, Android, WASM, Loihi, SpiNNaker, BrainScaleS, LSL, RISC-V, WebGPU, Intel Gaudi, Graphcore IPU)
 
 ---
 
@@ -29,7 +29,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 
 | Metric | Count |
 |--------|-------|
-| Crates | 19 |
+| Crates | 21 |
 | Neuron Models | 19 + Reservoir + Multi-Compartment |
 | Event Encoders | 77+ |
 | Population Templates | 61+ |
@@ -68,8 +68,8 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **dpb-wasm** | WebAssembly bindings, browser deployment, WebGPU | 2,000+ |
 | **dpb-lsl** | Lab Streaming Layer integration, liblsl FFI, real-time streaming | 3,000+ |
 | **dpb-export** | ONNX, JSON, Binary export, model metadata | 2,000+ |
-| **dpb-federated** ✅ NEW | Privacy-preserving distributed training, FedAvg, differential privacy | 3,500+ |
-| **dpb-clinical** ✅ NEW | Clinical utilities, ethnic stratification, treatment response, comorbidity | 2,500+ |
+| **dpb-federated** ✅ NEW | Privacy-preserving distributed training, FedAvg, differential privacy, gradient compression | 3,500+ |
+| **dpb-clinical** ✅ NEW | Clinical utilities, ethnic stratification, treatment response, comorbidity, practice effects | 2,500+ |
 
 ### 1.3 Language Bindings Overview
 
@@ -266,6 +266,66 @@ This section answers: **"I want to do X, where is it implemented?"**
 | **Pediatric Norms** | Developmental stages | `dpb-norms/pediatric.rs` | 0-17 years |
 | **Geriatric Norms** | Frailty adjustment | `dpb-norms/geriatric.rs` | 65+ years |
 | **Longitudinal** | MDC, RCI, change detection | `dpb-norms/longitudinal.rs` | Serial assessment |
+
+### 2.13 Federated Learning ✅ NEW
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **FedAvg Aggregation** | `FedAvgAggregator` | `dpb-federated/aggregation.rs` | Federated averaging |
+| **Weighted Averaging** | `WeightedAverageAggregator` | `dpb-federated/aggregation.rs` | Sample-count weighted |
+| **Median Aggregation** | `MedianAggregator` | `dpb-federated/aggregation.rs` | Byzantine-resistant |
+| **Trimmed Mean** | `TrimmedMeanAggregator` | `dpb-federated/aggregation.rs` | Outlier-robust |
+| **Differential Privacy** | `DifferentialPrivacy`, `PrivacyAccountant` | `dpb-federated/privacy.rs` | Gaussian/Laplace noise |
+| **Local DP** | `LocalDP` | `dpb-federated/privacy.rs` | Client-side privacy |
+| **Gradient Compression** | `GradientCompressor` | `dpb-federated/compression.rs` | TopK, RandomK, SignSGD |
+| **Sparse Tensors** | `SparseTensor` | `dpb-federated/compression.rs` | Compressed communication |
+| **Federated Client** | `FederatedClient` | `dpb-federated/client.rs` | Client-side training |
+| **Federated Server** | `FederatedServer` | `dpb-federated/server.rs` | Aggregation coordinator |
+| **Model Weights** | `ModelWeights`, `Tensor` | `dpb-federated/model.rs` | Weight representation |
+| **Fed Config** | `FedConfig`, `FedConfigBuilder` | `dpb-federated/config.rs` | Configuration builder |
+
+### 2.14 Clinical Utilities ✅ NEW
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **Demographics** | `Demographics`, `Sex`, `Ethnicity` | `dpb-clinical/demographics.rs` | Patient demographics |
+| **Normative Database** | `NormativeDatabase` | `dpb-clinical/normative.rs` | Population norms with stratification |
+| **Population Norms** | `PopulationNorms` | `dpb-clinical/normative.rs` | Mean, SD by demographics |
+| **Z-Score Calculation** | `calculate_z_score()` | `dpb-clinical/normative.rs` | Standardized scores |
+| **Reliable Change Index** | `ReliableChangeIndex` | `dpb-clinical/normative.rs` | RCI calculation |
+| **Treatment Response** | `TreatmentResponse` | `dpb-clinical/treatment.rs` | Pre/post intervention |
+| **Effect Size** | `EffectSize` (Cohen's d, Hedges' g, Glass's delta) | `dpb-clinical/treatment.rs` | Standardized effect sizes |
+| **Intervention Model** | `InterventionModel` | `dpb-clinical/treatment.rs` | Multi-timepoint modeling |
+| **Comorbidity Model** | `ComorbidityModel` | `dpb-clinical/comorbidity.rs` | Multi-disease simulation |
+| **Condition Interactions** | `Interaction` (synergistic/antagonistic) | `dpb-clinical/comorbidity.rs` | Disease interactions |
+| **Practice Effects** | `PracticeEffectCorrector` | `dpb-clinical/practice_effects.rs` | Serial testing correction |
+| **SRB Calculator** | `SRBCalculator` | `dpb-clinical/practice_effects.rs` | Standardized regression-based change |
+
+### 2.15 Hardware Accelerators ✅ NEW
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **Accelerator Trait** | `Accelerator` trait | `dpb-core/accelerators.rs` | Hardware abstraction |
+| **CPU Fallback** | `CpuAccelerator` | `dpb-core/accelerators.rs` | Reference implementation |
+| **Intel Gaudi** | `IntelGaudiAccelerator` | `dpb-core/accelerators.rs` | AI accelerator (stub) |
+| **Graphcore IPU** | `GraphcoreIpuAccelerator` | `dpb-core/accelerators.rs` | IPU accelerator (stub) |
+| **Capabilities Query** | `AcceleratorCapabilities` | `dpb-core/accelerators.rs` | Feature detection |
+| **WebGPU Browser** | `GpuEncoder` | `dpb-wasm/webgpu.rs` | Browser GPU compute |
+| **WGSL Shaders** | Level crossing, delta modulation | `dpb-wasm/webgpu.rs` | Compute shaders |
+
+### 2.16 Embedded Targets ✅ NEW
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **RISC-V 32-bit IMC** | `riscv32imc-unknown-none-elf` | `.cargo/config.toml` | Common embedded |
+| **RISC-V 32-bit IMAC** | `riscv32imac-unknown-none-elf` | `.cargo/config.toml` | ESP32-C3 compatible |
+| **RISC-V 32-bit IMAFC** | `riscv32imafc-unknown-none-elf` | `.cargo/config.toml` | ESP32-S3, with FPU |
+| **RISC-V 64-bit GC** | `riscv64gc-unknown-none-elf` | `.cargo/config.toml` | SiFive/StarFive |
+| **ARM Cortex-M0/M0+** | `thumbv6m-none-eabi` | `.cargo/config.toml` | ARMv6-M |
+| **ARM Cortex-M3** | `thumbv7m-none-eabi` | `.cargo/config.toml` | ARMv7-M |
+| **ARM Cortex-M4/M7** | `thumbv7em-none-eabihf` | `.cargo/config.toml` | ARMv7E-M with FPU |
+| **ARM Cortex-M33** | `thumbv8m.main-none-eabihf` | `.cargo/config.toml` | ARMv8-M |
+| **Embedded Profile** | `release-embedded` | `.cargo/config.toml` | Size-optimized builds |
 
 ---
 
@@ -533,6 +593,122 @@ dpb-export/
     └── onnx.rs             → OnnxExporter, computation graph generation
 ```
 
+### 3.10 dpb-federated (Federated Learning) ✅ NEW
+
+```
+dpb-federated/
+├── Cargo.toml              → Features: differential-privacy, secure-aggregation, compression, async
+└── src/
+    ├── lib.rs              → Module exports, architecture diagram
+    ├── error.rs            → FederatedError enum
+    ├── config.rs           → FedConfig, FedConfigBuilder, AggregationStrategy
+    ├── model.rs            → ModelWeights, Tensor, ParameterDelta
+    ├── privacy.rs          → DifferentialPrivacy, PrivacyAccountant, LocalDP
+    │                         ├── NoiseType (Gaussian, Laplace)
+    │                         ├── PrivacyBudget, epsilon/delta tracking
+    │                         └── clip_and_add_noise(), compose_privacy()
+    ├── aggregation.rs      → Aggregator trait, implementations
+    │                         ├── FedAvgAggregator (Federated Averaging)
+    │                         ├── WeightedAverageAggregator
+    │                         ├── MedianAggregator (Byzantine-resistant)
+    │                         └── TrimmedMeanAggregator (outlier-robust)
+    ├── client.rs           → FederatedClient, ClientState
+    │                         ├── train_local_model()
+    │                         ├── compute_update()
+    │                         └── apply_privacy()
+    ├── server.rs           → FederatedServer, ServerState
+    │                         ├── aggregate_updates()
+    │                         ├── broadcast_global_model()
+    │                         └── coordinate_round()
+    └── compression.rs      → Gradient compression
+                              ├── GradientCompressor (TopK, RandomK, SignSGD)
+                              ├── SparseTensor representation
+                              └── ErrorFeedback accumulation
+```
+
+### 3.11 dpb-clinical (Clinical Utilities) ✅ NEW
+
+```
+dpb-clinical/
+├── Cargo.toml              → Clinical analysis dependencies
+└── src/
+    ├── lib.rs              → Module exports
+    ├── error.rs            → ClinicalError enum
+    │                         ├── MissingNormativeData
+    │                         ├── InvalidConfiguration
+    │                         └── InsufficientData
+    ├── demographics.rs     → Demographics struct
+    │                         ├── Sex (Male, Female, Other)
+    │                         ├── Ethnicity (10+ categories)
+    │                         ├── AgeGroup (Pediatric, Adult, Geriatric)
+    │                         └── Handedness (Right, Left, Ambidextrous)
+    ├── normative.rs        → Normative databases
+    │                         ├── NormativeDatabase (lookup by demographics)
+    │                         ├── NormativeReference (metric/measure definitions)
+    │                         ├── PopulationNorms (mean, std, percentiles)
+    │                         ├── calculate_z_score(), percentile_rank()
+    │                         └── ReliableChangeIndex (RCI calculation)
+    ├── treatment.rs        → Treatment response modeling
+    │                         ├── TreatmentResponse (pre/post analysis)
+    │                         ├── EffectSize variants:
+    │                         │   ├── CohensD (standardized mean difference)
+    │                         │   ├── HedgesG (small-sample corrected)
+    │                         │   └── GlassDelta (control-referenced)
+    │                         ├── InterventionModel (multi-timepoint)
+    │                         └── clinical_significance()
+    ├── comorbidity.rs      → Multi-disease modeling
+    │                         ├── ComorbidityModel (disease interactions)
+    │                         ├── Condition (name, severity, onset)
+    │                         ├── Interaction (synergistic, antagonistic)
+    │                         └── CombinedEffect (composite impact)
+    └── practice_effects.rs → Serial testing corrections
+                              ├── PracticeEffectCorrector
+                              ├── SRBCalculator (standardized regression-based)
+                              ├── SerialAssessment (multi-timepoint tracking)
+                              └── estimate_learning_effect()
+```
+
+### 3.12 dpb-core/accelerators ✅ NEW
+
+```
+dpb-core/accelerators.rs
+├── Accelerator trait       → Generic hardware abstraction
+│   ├── name() -> &str
+│   ├── capabilities() -> AcceleratorCapabilities
+│   ├── compute_fft() -> Result
+│   ├── compute_conv() -> Result
+│   └── compute_matmul() -> Result
+├── AcceleratorCapabilities → Feature detection
+│   ├── has_fft: bool
+│   ├── has_conv: bool
+│   ├── has_sparse: bool
+│   ├── max_batch_size: usize
+│   └── memory_bytes: usize
+├── CpuAccelerator          → Reference implementation (always available)
+├── IntelGaudiAccelerator   → Intel Gaudi (behind feature flag)
+└── GraphcoreIpuAccelerator → Graphcore IPU (behind feature flag)
+```
+
+### 3.13 dpb-wasm/webgpu ✅ NEW
+
+```
+dpb-wasm/src/webgpu.rs
+├── GpuEncoder              → Browser-side GPU encoding
+│   ├── new() -> Promise<GpuEncoder>
+│   ├── encode_level_crossing() -> WasmSpikeTrain
+│   └── encode_delta() -> WasmSpikeTrain
+├── GpuEncoderConfig        → GPU configuration
+│   ├── workgroup_size: u32
+│   └── max_spikes: u32
+├── WGSL Compute Shaders:
+│   ├── level_crossing_shader → Threshold-based spike detection
+│   └── delta_modulation_shader → Change-based encoding
+└── Internal:
+    ├── create_device() → WebGPU device setup
+    ├── create_pipeline() → Compute pipeline
+    └── execute_shader() → GPU dispatch
+```
+
 ---
 
 ## 4. Cross-Platform Integration
@@ -690,50 +866,67 @@ exporter.export_onnx("model.onnx", &encoder)?;
 ### 5.1 Crate Dependencies
 
 ```
-                         ┌─────────────────────────────────────────────────────────┐
-                         │               LANGUAGE BINDINGS LAYER                    │
-                         │  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌──────────┐ │
-                         │  │dpb-python │ │ dpb-ffi   │ │ dpb-wasm  │ │ R/LabVIEW│ │
-                         │  │  (PyO3)   │ │(C headers)│ │  (WASM)   │ │(bindings)│ │
-                         │  └─────┬─────┘ └─────┬─────┘ └─────┬─────┘ └────┬─────┘ │
-                         └────────┼─────────────┼─────────────┼────────────┼───────┘
+                         ┌───────────────────────────────────────────────────────────────┐
+                         │                   LANGUAGE BINDINGS LAYER                      │
+                         │  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌──────────┐       │
+                         │  │dpb-python │ │ dpb-ffi   │ │ dpb-wasm  │ │ R/LabVIEW│       │
+                         │  │  (PyO3)   │ │(C headers)│ │(WASM+GPU) │ │(bindings)│       │
+                         │  └─────┬─────┘ └─────┬─────┘ └─────┬─────┘ └────┬─────┘       │
+                         └────────┼─────────────┼─────────────┼────────────┼─────────────┘
                                   │             │             │            │
-              ┌───────────────────┼─────────────┼─────────────┼────────────┼────────┐
-              │                   │             │             │            │        │
-              ▼                   ▼             ▼             ▼            ▼        │
-    ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
-    │   dpb-bench     │  │   dpb-snn       │  │   dpb-synth     │  │ dpb-export  │ │
-    └────────┬────────┘  │ ✅ +distillation │  └────────┬────────┘  │ ✅ NEW      │ │
-             │           │ ✅ +neuromorphic │           │           │ONNX/JSON/Bin│ │
-             │           │ ✅ +neuromodulat │           │           └──────┬──────┘ │
-             │           └────────┬────────┘           │                  │        │
-             │                    │                    │                  │        │
-             │           ┌────────┴────────┐           │                  │        │
-             │           │                 │           │                  │        │
-             │           ▼                 ▼           │                  │        │
-             │  ┌─────────────────┐ ┌─────────────────┐│                  │        │
-             │  │  dpb-neurons    │ │  dpb-encoders   ││                  │        │
-             │  │ ✅ +dendritic   │ └────────┬────────┘│                  │        │
-             │  └────────┬────────┘          │         │                  │        │
-             │           │                   │         │                  │        │
-             │           └─────────┬─────────┘         │                  │        │
-             │                     │                   │                  │        │
-             │                     ▼                   │                  │        │
-             │          ┌─────────────────┐            │                  │        │
-             │          │   dpb-norms     │◄───────────┤                  │        │
-             │          └────────┬────────┘            │                  │        │
-             │                   │                     │                  │        │
-             └───────────────────┼─────────────────────┼──────────────────┼────────┘
-                                 │                     │                  │
-           ┌─────────────────────┼─────────────────────┼──────────────────┘
+              ┌───────────────────┼─────────────┼─────────────┼────────────┼──────────────┐
+              │                   │             │             │            │              │
+              ▼                   ▼             ▼             ▼            ▼              │
+    ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────────┐  │
+    │   dpb-bench     │  │   dpb-snn       │  │   dpb-synth     │  │ dpb-federated    │  │
+    └────────┬────────┘  │ ✅ +distillation │  └────────┬────────┘  │ ✅ NEW           │  │
+             │           │ ✅ +neuromorphic │           │           │ FedAvg, DP       │  │
+             │           │ ✅ +neuromodulat │           │           │ Compression      │  │
+             │           └────────┬────────┘           │           └────────┬─────────┘  │
+             │                    │                    │                    │            │
+             │           ┌────────┴────────┐           │                    │            │
+             │           │                 │           │                    │            │
+             │           ▼                 ▼           │                    │            │
+             │  ┌─────────────────┐ ┌─────────────────┐│                    │            │
+             │  │  dpb-neurons    │ │  dpb-encoders   ││                    │            │
+             │  │ ✅ +dendritic   │ └────────┬────────┘│                    │            │
+             │  └────────┬────────┘          │         │                    │            │
+             │           │                   │         │                    │            │
+             │           └─────────┬─────────┘         │                    │            │
+             │                     │                   │                    │            │
+             │                     ▼                   │                    │            │
+             │          ┌─────────────────┐            │                    │            │
+             │          │   dpb-norms     │◄───────────┤                    │            │
+             │          └────────┬────────┘            │                    │            │
+             │                   │                     │                    │            │
+             └───────────────────┼─────────────────────┼────────────────────┼────────────┘
+                                 │                     │                    │
+           ┌─────────────────────┼─────────────────────┼────────────────────┘
            │                     │                     │
            ▼                     ▼                     ▼
  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
  │   dpb-viz       │  │   dpb-core      │  │   dpb-mobile    │  │   dpb-lsl       │
- │                 │  │ ✅ +BIDS        │  │                 │  │ ✅ NEW          │
- │                 │  │ ✅ +FHIR        │  │                 │  │ LSL streaming   │
- │                 │  │ ✅ +EMD         │  │                 │  │                 │
+ │                 │  │ ✅ +BIDS/FHIR   │  │                 │  │ ✅ +liblsl FFI  │
+ │                 │  │ ✅ +EMD         │  │                 │  │ LSL streaming   │
+ │                 │  │ ✅ +accelerators│  │                 │  │                 │
  └─────────────────┘  └─────────────────┘  └─────────────────┘  └─────────────────┘
+           │                     │                     │                    │
+           │                     ▼                     │                    │
+           │          ┌─────────────────┐              │                    │
+           │          │  dpb-clinical   │◄─────────────┤                    │
+           │          │ ✅ NEW          │              │                    │
+           │          │ Norms, Tx resp  │              │                    │
+           │          │ Comorbidity     │              │                    │
+           │          └─────────────────┘              │                    │
+           │                     │                     │                    │
+           └─────────────────────┼─────────────────────┼────────────────────┘
+                                 │                     │
+                                 ▼                     ▼
+                      ┌─────────────────┐   ┌─────────────────┐
+                      │   dpb-export    │   │   CI/CD         │
+                      │ ONNX/JSON/Bin   │   │ benchmarks.yml  │
+                      └─────────────────┘   │ Regression      │
+                                            └─────────────────┘
 ```
 
 ### 5.2 Feature Flags
@@ -754,7 +947,10 @@ dpb-neurons features:
 dpb-core features:
 ├── bids               → BIDS format support
 ├── fhir               → HL7 FHIR support
-└── emd                → Empirical mode decomposition
+├── emd                → Empirical mode decomposition
+├── intel-gaudi        → Intel Gaudi accelerator (stub) ✅ NEW
+├── graphcore-ipu      → Graphcore IPU accelerator (stub) ✅ NEW
+└── hardware-accelerators → All hardware accelerators ✅ NEW
 
 dpb-mobile features:
 ├── ios                → iOS-specific (Metal, CoreML)
@@ -765,18 +961,25 @@ dpb-snn/export features:
 ├── onnx               → ONNX export
 └── tflite             → TensorFlow Lite export
 
-dpb-wasm features: ✅ NEW
+dpb-wasm features:
 ├── console_error_panic_hook → Better panic messages in browser
-└── webgpu             → WebGPU acceleration (experimental)
+└── webgpu             → WebGPU acceleration ✅ IMPLEMENTED
 
-dpb-lsl features: ✅ NEW
-└── async              → Tokio async runtime support
+dpb-lsl features:
+├── async              → Tokio async runtime support
+└── native             → Link against liblsl C library ✅ NEW
 
-dpb-export features: ✅ NEW
+dpb-export features:
 ├── onnx               → ONNX graph export
 ├── tensorflow         → TensorFlow export (planned)
 ├── pytorch            → PyTorch export (planned)
 └── full               → All export formats
+
+dpb-federated features: ✅ NEW
+├── differential-privacy → Gaussian/Laplace noise, privacy budget
+├── secure-aggregation → Cryptographic aggregation
+├── compression        → Gradient compression (TopK, RandomK, SignSGD)
+└── async              → Async/Tokio support
 ```
 
 ### 5.3 Data Flow Pipeline
@@ -880,7 +1083,22 @@ This section answers: **"What's needed but missing?"**
 | **Web** | WebAssembly (dpb-wasm) | ✅ Complete | - |
 | **Streaming** | Lab Streaming Layer (dpb-lsl) | ✅ Complete | - |
 
-### 6.2 Remaining Gaps
+### 6.2 Recently Completed ✅ (v5.1.0)
+
+| Feature | Implementation | Status |
+|---------|----------------|--------|
+| **Federated Learning** | `dpb-federated` crate - FedAvg, differential privacy, gradient compression, secure aggregation | ✅ Complete |
+| **Ethnic Stratification** | `dpb-clinical` - NormativeDatabase with demographic stratification (age/sex/ethnicity) | ✅ Complete |
+| **Treatment Response** | `dpb-clinical` - TreatmentResponse, EffectSize (Cohen's d, Hedges' g, Glass's delta) | ✅ Complete |
+| **Comorbidity Modeling** | `dpb-clinical` - ComorbidityModel with condition interactions | ✅ Complete |
+| **Practice Effects** | `dpb-clinical` - PracticeEffectCorrector, SRBCalculator | ✅ Complete |
+| **Performance Regression** | `.github/workflows/benchmarks.yml` - CI/CD benchmarks with regression detection | ✅ Complete |
+| **liblsl Integration** | `dpb-lsl/ffi.rs` - Complete liblsl C library bindings | ✅ Complete |
+| **Additional Hardware** | `dpb-core/accelerators.rs` - Intel Gaudi, Graphcore IPU abstractions | ✅ Complete |
+| **WebGPU Acceleration** | `dpb-wasm/webgpu.rs` - GPU compute shaders for spike encoding | ✅ Complete |
+| **RISC-V Targets** | `.cargo/config.toml` - riscv32imc, riscv32imac, riscv64gc configurations | ✅ Complete |
+
+### 6.3 Remaining Gaps
 
 #### HIGH Priority
 
@@ -894,23 +1112,18 @@ This section answers: **"What's needed but missing?"**
 
 | Gap | Description | Effort | Impact |
 |-----|-------------|--------|--------|
-| **Ethnic Stratification** | Population-specific normative data | Medium | Equity in clinical tools |
-| **Treatment Response** | Pre/post intervention modeling | Medium | Clinical utility |
-| **Performance Regression** | Automated CI/CD benchmarks | Low | Development velocity |
-| **Federated Learning** | Privacy-preserving distributed training | High | Multi-site collaboration |
-| **liblsl Integration** | Complete liblsl C library bindings | Medium | Full LSL support |
+| **Real liblsl Runtime** | Link against actual liblsl.so for production use | Low | Production deployment |
+| **WebGPU Browser Testing** | End-to-end browser testing for WebGPU features | Low | Browser compatibility |
 
 #### LOW Priority
 
 | Gap | Description | Effort | Impact |
 |-----|-------------|--------|--------|
-| **Comorbidity Modeling** | Multi-disease simulation | Medium | Research utility |
-| **Practice Effects** | Serial testing corrections | Low | Longitudinal accuracy |
-| **Additional Hardware** | Intel Gaudi, Graphcore IPU | High | Hardware diversity |
-| **WebGPU Acceleration** | GPU compute in browser via dpb-wasm | Medium | Browser performance |
-| **RISC-V Targets** | Embedded microcontroller support | Medium | IoT deployment |
+| **Intel Gaudi SDK** | Full Synapse AI SDK integration | High | Production hardware |
+| **Graphcore IPU SDK** | Full Poplar SDK integration | High | Production hardware |
+| **RISC-V HAL** | Hardware abstraction layer for embedded targets | Medium | Embedded deployment |
 
-### 6.3 Module Completeness
+### 6.4 Module Completeness
 
 | Module | Core | Tests | Docs | Examples |
 |--------|:----:|:-----:|:----:|:--------:|
@@ -918,6 +1131,7 @@ This section answers: **"What's needed but missing?"**
 | dpb-core/io (all formats) | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-core/io/bids | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-core/io/fhir | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-core/accelerators | ✅ | ⚠️ | ✅ | ⚠️ |
 | dpb-neurons/dendritic | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-snn/distillation | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-snn/neuromorphic | ✅ | ✅ | ✅ | ⚠️ |
@@ -927,32 +1141,34 @@ This section answers: **"What's needed but missing?"**
 | dpb-snn/distributed | ✅ | ✅ | ✅ | ✅ |
 | dpb-viz | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-mobile | ✅ | ✅ | ✅ | ✅ |
-| **dpb-wasm** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
-| **dpb-lsl** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
-| **dpb-export** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
-| **bindings/r** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
-| **bindings/labview** ✅ NEW | ✅ | - | ✅ | ⚠️ |
+| **dpb-wasm** | ✅ | ✅ | ✅ | ✅ |
+| **dpb-lsl** | ✅ | ✅ | ✅ | ✅ |
+| **dpb-export** | ✅ | ✅ | ✅ | ✅ |
+| **dpb-federated** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
+| **dpb-clinical** ✅ NEW | ✅ | ⚠️ | ✅ | ⚠️ |
+| **bindings/r** | ✅ | ✅ | ✅ | ✅ |
+| **bindings/labview** | ✅ | - | ✅ | ⚠️ |
 
 Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
 
-### 6.4 Recommended Next Steps
+### 6.5 Recommended Next Steps
 
-1. **Immediate (Consolidation)**
-   - Add unit tests for dpb-wasm, dpb-lsl, dpb-export, R bindings
-   - Create integration examples for all new cross-platform modules
-   - Run validation against public datasets
-   - Test R package on CRAN check infrastructure
+1. **Immediate (Testing & Validation)**
+   - Add unit tests for dpb-federated, dpb-clinical
+   - Run validation against public datasets (MIT-BIH, CHB-MIT, PhysioNet)
+   - End-to-end browser testing for WebGPU features
+   - Test federated learning with simulated multi-site setup
 
 2. **Short-term (Clinical Readiness)**
    - Implement HIPAA/PHI de-identification utilities
    - Add clinical validation test suite
    - Create regulatory documentation templates
-   - Complete liblsl C library bindings for dpb-lsl
+   - Link dpb-lsl against production liblsl.so
 
-3. **Medium-term (Advanced Features)**
-   - Federated learning for multi-site studies
-   - WebGPU acceleration for dpb-wasm
-   - RISC-V embedded targets
+3. **Medium-term (Hardware Production)**
+   - Integrate Intel Gaudi Synapse AI SDK
+   - Integrate Graphcore Poplar SDK
+   - RISC-V hardware abstraction layer
    - LabVIEW example VIs and palettes
 
 ---
@@ -1105,6 +1321,7 @@ docs/learning/
 | v3.0.0 | Dec 2025 | GPU, distributed, dpb-viz, GDF/BDF/XDF, dpb-mobile |
 | v4.0.0 | Dec 2025 | Knowledge distillation, BIDS, FHIR, neuromorphic export, TFLite, EMD/EEMD, dendritic computation, neuromodulation, learning library |
 | v5.0.0 | Dec 2025 | **R bindings**, **LabVIEW bindings**, **dpb-wasm** (WebAssembly), **dpb-lsl** (Lab Streaming Layer), **dpb-export** (ONNX/JSON/Binary), cross-platform integration |
+| v5.1.0 | Dec 2025 | **dpb-federated** (federated learning: FedAvg, differential privacy, gradient compression), **dpb-clinical** (ethnic stratification, treatment response, comorbidity modeling, practice effects), **Hardware accelerators** (Intel Gaudi, Graphcore IPU stubs), **WebGPU acceleration** (browser GPU compute), **RISC-V targets** (embedded microcontroller support), **liblsl FFI** (complete C bindings), **CI/CD benchmarks** (performance regression detection) |
 
 ---
 
@@ -1116,6 +1333,7 @@ cargo build --all-features
 
 # With new features
 cargo build -p dpb-core --features bids,fhir,emd
+cargo build -p dpb-core --features intel-gaudi,graphcore-ipu  # Hardware accelerators
 cargo build -p dpb-neurons --features dendritic
 cargo build -p dpb-snn --features distillation,neuromorphic,neuromodulation
 cargo build -p dpb-snn --features tflite
@@ -1128,11 +1346,21 @@ cargo build -p dpb-snn --features metal
 cargo build -p dpb-mobile --target aarch64-apple-ios --features ios
 cargo ndk --target aarch64-linux-android -- build -p dpb-mobile --features android
 
-# Cross-platform builds (NEW)
+# Cross-platform builds
 cargo build -p dpb-wasm --target wasm32-unknown-unknown
+cargo build -p dpb-wasm --features webgpu  # WebGPU acceleration
 wasm-pack build crates/dpb-wasm --target web
-cargo build -p dpb-lsl --features async
+cargo build -p dpb-lsl --features async,native  # With liblsl FFI
 cargo build -p dpb-export --features onnx
+
+# Federated learning and clinical builds (NEW)
+cargo build -p dpb-federated --features differential-privacy,compression
+cargo build -p dpb-clinical
+
+# Embedded/RISC-V builds (NEW)
+cargo build-riscv32  # Uses .cargo/config.toml alias
+cargo build-riscv64
+cargo build --target riscv32imc-unknown-none-elf --profile release-embedded
 
 # R package build
 R CMD INSTALL bindings/r
@@ -1140,18 +1368,22 @@ R CMD INSTALL bindings/r
 # Run all tests
 cargo test --all
 
+# Run CI/CD benchmarks
+cargo bench --bench signal_processing
+
 # Generate documentation
 cargo doc --no-deps --all-features --open
 ```
 
 ---
 
-## Appendix C: File Counts by Module (v5.0.0)
+## Appendix C: File Counts by Module (v5.1.0)
 
 | Module | Files | Approx LOC |
 |--------|-------|------------|
 | dpb-core/signal | 25+ | 15,000 |
 | dpb-core/io (inc. BIDS, FHIR) | 20+ | 12,000 |
+| dpb-core/accelerators ✅ NEW | 1 | 500 |
 | dpb-neurons (inc. dendritic) | 25+ | 15,000 |
 | dpb-snn (all features) | 60+ | 65,000 |
 | dpb-synth | 40+ | 30,000 |
@@ -1159,13 +1391,17 @@ cargo doc --no-deps --all-features --open
 | dpb-viz | 7 | 4,500 |
 | dpb-mobile | 8 | 4,000 |
 | docs/learning | 55+ | 25,000 |
-| **dpb-wasm** ✅ NEW | 5 | 1,500 |
-| **dpb-lsl** ✅ NEW | 7 | 2,500 |
-| **dpb-export** ✅ NEW | 7 | 2,000 |
-| **bindings/r** ✅ NEW | 11 | 1,500 |
-| **bindings/labview** ✅ NEW | 1 | 500 |
-| **Total** | **290+** | **~188,000** |
+| dpb-wasm (inc. WebGPU) | 6 | 2,000 |
+| dpb-lsl (inc. FFI) | 8 | 3,500 |
+| dpb-export | 7 | 2,000 |
+| **dpb-federated** ✅ NEW | 9 | 3,500 |
+| **dpb-clinical** ✅ NEW | 7 | 2,500 |
+| bindings/r | 11 | 1,500 |
+| bindings/labview | 1 | 500 |
+| .cargo/config.toml ✅ NEW | 1 | 150 |
+| .github/workflows ✅ NEW | 1 | 280 |
+| **Total** | **310+** | **~197,000** |
 
 ---
 
-*End of System Catalog v5.0.0*
+*End of System Catalog v5.1.0*
