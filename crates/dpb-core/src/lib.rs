@@ -44,6 +44,7 @@
 //! - [`math`] - Mathematical and statistical utilities
 //! - [`power`] - Power estimation models for neuromorphic and conventional hardware
 //! - [`viz`] - Visualization utilities for signals, spikes, networks, training, and analysis
+//! - [`io`] - I/O support for physiological data formats (WFDB, EDF)
 
 #![warn(missing_docs)]
 #![warn(clippy::all)]
@@ -54,6 +55,7 @@ pub mod cardiopulmonary;
 pub mod config;
 pub mod error;
 pub mod gpu;
+pub mod io;
 pub mod math;
 pub mod metrics;
 pub mod pain;

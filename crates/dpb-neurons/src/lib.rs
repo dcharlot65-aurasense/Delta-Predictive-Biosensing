@@ -114,6 +114,9 @@ pub mod stochastic;
 pub mod recurrent;
 pub mod hardware;
 
+// Reservoir computing
+pub mod reservoir;
+
 // Training support
 pub mod surrogate;
 
@@ -158,6 +161,9 @@ pub use gpu::{
     GpuAlifNeuron, GpuIzhikevichNeuron, GpuLifNeuron, GpuNeuronKernel, GpuSimParams,
     ALIF_SHADER, ELIF_SHADER, IZHIKEVICH_SHADER, LIF_SHADER,
 };
+
+// Re-export reservoir computing types
+pub use reservoir::{EchoStateNetwork, LiquidStateMachine, SparsityPattern};
 
 /// Prelude module for convenient imports.
 pub mod prelude {

@@ -23,6 +23,8 @@ pub mod export;
 pub mod fusion;
 pub mod analysis;
 pub mod baselines;
+pub mod learning;
+pub mod optimization;
 
 // Re-export commonly used types
 pub use tensor::{SpikeTensor, SpikeRepresentation};
@@ -115,6 +117,14 @@ pub use baselines::{
     WeightNormalizationMethod, ThresholdBalancingStrategy,
     convert_model_to_snn,
 };
+
+// Re-export learning types
+pub use learning::{
+    BCMRule, CovarianceRule, HebbianLayer, HebbianRule, OjasRule, SynapticTrace, STDP,
+};
+
+// Re-export optimization types
+pub use optimization::{NetworkPruner, PruningMask, PruningSchedule, PruningStats, PruningStrategy};
 
 use dpb_core::error::{DpbError, Result};
 use ndarray::{Array, ArrayD};

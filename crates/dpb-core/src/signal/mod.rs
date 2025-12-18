@@ -1,5 +1,6 @@
 //! Signal processing utilities for biosensor data.
 
+pub mod ecg;
 pub mod eeg;
 pub mod eda;
 pub mod emg;
@@ -7,14 +8,41 @@ pub mod eye;
 pub mod fatigue;
 pub mod fft;
 pub mod filter;
+pub mod hilbert;
+pub mod hrv;
+pub mod ica;
 pub mod ppg;
 pub mod resample;
 pub mod respiratory;
 pub mod voice;
+pub mod wavelet;
 
 pub use fft::{FftProcessor, Stft, WindowType, create_window, fft_frequencies, stft_times};
 pub use filter::{FirFilter, IirFilter, FilterType, median_filter};
 pub use resample::{downsample, resample_linear, resample_to_length, upsample};
+
+// Wavelet transform exports
+pub use wavelet::{
+    WaveletFamily, ContinuousWaveletTransform, DiscreteWaveletTransform, DwtResult,
+};
+
+// Hilbert transform exports
+pub use hilbert::{
+    hilbert_transform, analytic_signal, instantaneous_phase,
+    instantaneous_frequency, AnalyticSignal,
+};
+
+// ICA exports
+pub use ica::{FastICA, ICAResult, NonlinearFunction};
+
+// ECG analysis exports
+pub use ecg::{
+    PanTompkinsDetector, RPeak, QrsMorphology, QrsTemplate, BeatType,
+    ArrhythmiaDetector, ArrhythmiaAnalysis,
+};
+
+// HRV analysis exports
+pub use hrv::{HrvTimeDomain, HrvFrequencyDomain, HrvAnalyzer, HrvMetrics};
 
 // PPG analysis exports
 pub use ppg::{PpgAnalyzer, PulseWaveFeatures, SpO2Result, PrvMetrics};
