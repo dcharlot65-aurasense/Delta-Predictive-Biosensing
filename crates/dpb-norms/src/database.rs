@@ -1123,6 +1123,516 @@ impl NormativeDatabase {
             ],
         );
         self.set_reliability(MetricType::FrailtyIndex, 0.88);
+
+        // === PPG Metrics ===
+
+        // Pulse Transit Time (ms) - increases with arterial stiffness/age
+        self.add_age_sex_norms(
+            MetricType::PulseTransitTime,
+            &[
+                ((18, 29), None, 280.0, 40.0, 300),
+                ((30, 39), None, 260.0, 38.0, 280),
+                ((40, 49), None, 240.0, 35.0, 260),
+                ((50, 59), None, 220.0, 32.0, 250),
+                ((60, 69), None, 200.0, 30.0, 240),
+                ((70, 79), None, 180.0, 28.0, 200),
+                ((80, 89), None, 160.0, 25.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::PulseTransitTime, 0.85);
+
+        // Pulse Wave Velocity (m/s) - increases with age/arterial stiffness
+        self.add_age_sex_norms(
+            MetricType::PulseWaveVelocity,
+            &[
+                ((18, 29), None, 6.5, 1.0, 300),
+                ((30, 39), None, 7.0, 1.1, 280),
+                ((40, 49), None, 7.8, 1.3, 260),
+                ((50, 59), None, 8.8, 1.5, 250),
+                ((60, 69), None, 10.0, 1.8, 240),
+                ((70, 79), None, 11.5, 2.2, 200),
+                ((80, 89), None, 13.0, 2.5, 150),
+            ],
+        );
+        self.set_reliability(MetricType::PulseWaveVelocity, 0.88);
+
+        // Augmentation Index (%) - increases with vascular aging
+        self.add_age_sex_norms(
+            MetricType::AugmentationIndex,
+            &[
+                ((18, 29), None, 5.0, 8.0, 300),
+                ((30, 39), None, 12.0, 9.0, 280),
+                ((40, 49), None, 20.0, 10.0, 260),
+                ((50, 59), None, 28.0, 10.0, 250),
+                ((60, 69), None, 32.0, 11.0, 240),
+                ((70, 79), None, 35.0, 12.0, 200),
+                ((80, 89), None, 38.0, 12.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::AugmentationIndex, 0.82);
+
+        // Stiffness Index (m/s)
+        self.add_age_sex_norms(
+            MetricType::StiffnessIndex,
+            &[
+                ((18, 29), None, 6.0, 1.2, 280),
+                ((30, 49), None, 7.0, 1.4, 300),
+                ((50, 69), None, 8.5, 1.8, 280),
+                ((70, 89), None, 10.5, 2.2, 180),
+            ],
+        );
+        self.set_reliability(MetricType::StiffnessIndex, 0.80);
+
+        // Perfusion Index (%)
+        self.add_age_sex_norms(
+            MetricType::PerfusionIndex,
+            &[
+                ((18, 39), None, 5.0, 3.0, 350),
+                ((40, 59), None, 4.0, 2.5, 320),
+                ((60, 79), None, 3.0, 2.0, 280),
+                ((80, 89), None, 2.0, 1.5, 150),
+            ],
+        );
+        self.set_reliability(MetricType::PerfusionIndex, 0.75);
+
+        // PRV SDNN (ms) - similar to HRV SDNN
+        self.add_age_sex_norms(
+            MetricType::PrvSdnn,
+            &[
+                ((18, 29), None, 135.0, 38.0, 350),
+                ((30, 39), None, 120.0, 36.0, 320),
+                ((40, 49), None, 105.0, 33.0, 300),
+                ((50, 59), None, 90.0, 30.0, 280),
+                ((60, 69), None, 75.0, 26.0, 260),
+                ((70, 79), None, 60.0, 22.0, 200),
+                ((80, 89), None, 48.0, 18.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::PrvSdnn, 0.84);
+
+        // === EDA Metrics ===
+
+        // Skin Conductance Level (μS) - baseline arousal
+        self.add_age_sex_norms(
+            MetricType::SkinConductanceLevel,
+            &[
+                ((18, 29), None, 5.0, 3.0, 300),
+                ((30, 49), None, 4.5, 2.8, 350),
+                ((50, 69), None, 3.5, 2.5, 320),
+                ((70, 89), None, 2.5, 2.0, 180),
+            ],
+        );
+        self.set_reliability(MetricType::SkinConductanceLevel, 0.75);
+
+        // SCR Frequency (events/min) - spontaneous responses
+        self.add_age_sex_norms(
+            MetricType::ScrFrequency,
+            &[
+                ((18, 29), None, 8.0, 5.0, 280),
+                ((30, 49), None, 6.0, 4.0, 320),
+                ((50, 69), None, 4.0, 3.0, 300),
+                ((70, 89), None, 2.5, 2.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::ScrFrequency, 0.72);
+
+        // SCR Amplitude (μS)
+        self.add_age_sex_norms(
+            MetricType::ScrAmplitude,
+            &[
+                ((18, 29), None, 0.5, 0.3, 280),
+                ((30, 49), None, 0.4, 0.25, 320),
+                ((50, 69), None, 0.3, 0.2, 300),
+                ((70, 89), None, 0.2, 0.15, 150),
+            ],
+        );
+        self.set_reliability(MetricType::ScrAmplitude, 0.78);
+
+        // NS-SCR Count (non-specific, per 5 min)
+        self.add_age_sex_norms(
+            MetricType::NsScrCount,
+            &[
+                ((18, 29), None, 25.0, 15.0, 250),
+                ((30, 49), None, 20.0, 12.0, 300),
+                ((50, 69), None, 12.0, 8.0, 280),
+                ((70, 89), None, 6.0, 5.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::NsScrCount, 0.70);
+
+        // EDA Recovery Time (s) - half-recovery
+        self.add_age_sex_norms(
+            MetricType::EdaRecoveryTime,
+            &[
+                ((18, 29), None, 3.0, 1.0, 250),
+                ((30, 49), None, 3.5, 1.2, 300),
+                ((50, 69), None, 4.5, 1.5, 280),
+                ((70, 89), None, 6.0, 2.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::EdaRecoveryTime, 0.75);
+
+        // === EEG Band Power Metrics ===
+
+        // Delta Power (μV²) - eyes closed resting
+        self.add_age_sex_norms(
+            MetricType::EegDeltaPower,
+            &[
+                ((18, 29), None, 15.0, 8.0, 250),
+                ((30, 49), None, 18.0, 10.0, 300),
+                ((50, 69), None, 22.0, 12.0, 280),
+                ((70, 89), None, 28.0, 15.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::EegDeltaPower, 0.80);
+
+        // Theta Power (μV²)
+        self.add_age_sex_norms(
+            MetricType::EegThetaPower,
+            &[
+                ((18, 29), None, 12.0, 6.0, 250),
+                ((30, 49), None, 14.0, 7.0, 300),
+                ((50, 69), None, 16.0, 8.0, 280),
+                ((70, 89), None, 20.0, 10.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::EegThetaPower, 0.78);
+
+        // Alpha Power (μV²) - dominant rhythm
+        self.add_age_sex_norms(
+            MetricType::EegAlphaPower,
+            &[
+                ((18, 29), None, 35.0, 18.0, 280),
+                ((30, 49), None, 32.0, 16.0, 320),
+                ((50, 69), None, 28.0, 14.0, 300),
+                ((70, 89), None, 22.0, 12.0, 180),
+            ],
+        );
+        self.set_reliability(MetricType::EegAlphaPower, 0.85);
+
+        // Beta Power (μV²)
+        self.add_age_sex_norms(
+            MetricType::EegBetaPower,
+            &[
+                ((18, 29), None, 8.0, 4.0, 250),
+                ((30, 49), None, 10.0, 5.0, 300),
+                ((50, 69), None, 12.0, 6.0, 280),
+                ((70, 89), None, 10.0, 5.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::EegBetaPower, 0.78);
+
+        // Gamma Power (μV²)
+        self.add_age_sex_norms(
+            MetricType::EegGammaPower,
+            &[
+                ((18, 29), None, 2.0, 1.2, 200),
+                ((30, 49), None, 2.5, 1.5, 250),
+                ((50, 69), None, 2.2, 1.3, 220),
+                ((70, 89), None, 1.8, 1.0, 120),
+            ],
+        );
+        self.set_reliability(MetricType::EegGammaPower, 0.72);
+
+        // Alpha/Theta Ratio
+        self.add_age_sex_norms(
+            MetricType::EegAlphaThetaRatio,
+            &[
+                ((18, 29), None, 3.0, 1.2, 250),
+                ((30, 49), None, 2.5, 1.0, 300),
+                ((50, 69), None, 2.0, 0.8, 280),
+                ((70, 89), None, 1.5, 0.6, 150),
+            ],
+        );
+        self.set_reliability(MetricType::EegAlphaThetaRatio, 0.80);
+
+        // Alpha Asymmetry (F4-F3, frontal)
+        self.add_age_sex_norms(
+            MetricType::EegAlphaAsymmetry,
+            &[
+                ((18, 39), None, 0.0, 0.15, 300),
+                ((40, 59), None, 0.0, 0.18, 320),
+                ((60, 89), None, 0.0, 0.20, 200),
+            ],
+        );
+        self.set_reliability(MetricType::EegAlphaAsymmetry, 0.75);
+
+        // === Eye Tracking Metrics ===
+
+        // Saccade Peak Velocity (°/s)
+        self.add_age_sex_norms(
+            MetricType::SaccadePeakVelocity,
+            &[
+                ((18, 29), None, 450.0, 60.0, 280),
+                ((30, 49), None, 420.0, 65.0, 320),
+                ((50, 69), None, 380.0, 70.0, 300),
+                ((70, 89), None, 320.0, 80.0, 180),
+            ],
+        );
+        self.set_reliability(MetricType::SaccadePeakVelocity, 0.88);
+
+        // Saccade Amplitude (°)
+        self.add_age_sex_norms(
+            MetricType::SaccadeAmplitude,
+            &[
+                ((18, 39), None, 8.0, 3.0, 300),
+                ((40, 59), None, 7.5, 3.0, 320),
+                ((60, 79), None, 7.0, 3.0, 280),
+                ((80, 89), None, 6.5, 3.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::SaccadeAmplitude, 0.82);
+
+        // Saccade Latency (ms)
+        self.add_age_sex_norms(
+            MetricType::SaccadeLatency,
+            &[
+                ((18, 29), None, 180.0, 30.0, 280),
+                ((30, 49), None, 195.0, 35.0, 320),
+                ((50, 69), None, 220.0, 45.0, 300),
+                ((70, 89), None, 260.0, 60.0, 180),
+            ],
+        );
+        self.set_reliability(MetricType::SaccadeLatency, 0.85);
+
+        // Fixation Duration (ms)
+        self.add_age_sex_norms(
+            MetricType::FixationDuration,
+            &[
+                ((18, 29), None, 250.0, 80.0, 280),
+                ((30, 49), None, 270.0, 90.0, 320),
+                ((50, 69), None, 300.0, 100.0, 300),
+                ((70, 89), None, 350.0, 120.0, 180),
+            ],
+        );
+        self.set_reliability(MetricType::FixationDuration, 0.80);
+
+        // Fixation Count (per minute)
+        self.add_age_sex_norms(
+            MetricType::FixationCount,
+            &[
+                ((18, 39), None, 180.0, 40.0, 280),
+                ((40, 59), None, 160.0, 45.0, 320),
+                ((60, 79), None, 140.0, 50.0, 280),
+                ((80, 89), None, 120.0, 50.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::FixationCount, 0.78);
+
+        // Pupil Diameter (mm) - baseline
+        self.add_age_sex_norms(
+            MetricType::PupilDiameter,
+            &[
+                ((18, 29), None, 4.5, 0.8, 300),
+                ((30, 49), None, 4.0, 0.8, 350),
+                ((50, 69), None, 3.5, 0.7, 320),
+                ((70, 89), None, 3.0, 0.6, 180),
+            ],
+        );
+        self.set_reliability(MetricType::PupilDiameter, 0.85);
+
+        // Pupil Response Latency (ms)
+        self.add_age_sex_norms(
+            MetricType::PupilResponseLatency,
+            &[
+                ((18, 29), None, 200.0, 30.0, 280),
+                ((30, 49), None, 220.0, 35.0, 320),
+                ((50, 69), None, 250.0, 45.0, 300),
+                ((70, 89), None, 300.0, 60.0, 180),
+            ],
+        );
+        self.set_reliability(MetricType::PupilResponseLatency, 0.82);
+
+        // Smooth Pursuit Gain
+        self.add_age_sex_norms(
+            MetricType::SmoothPursuitGain,
+            &[
+                ((18, 29), None, 0.95, 0.05, 280),
+                ((30, 49), None, 0.92, 0.06, 320),
+                ((50, 69), None, 0.88, 0.08, 300),
+                ((70, 89), None, 0.80, 0.10, 180),
+            ],
+        );
+        self.set_reliability(MetricType::SmoothPursuitGain, 0.85);
+
+        // Blink Rate (per minute)
+        self.add_age_sex_norms(
+            MetricType::BlinkRate,
+            &[
+                ((18, 39), None, 17.0, 6.0, 350),
+                ((40, 59), None, 18.0, 7.0, 380),
+                ((60, 89), None, 16.0, 6.0, 250),
+            ],
+        );
+        self.set_reliability(MetricType::BlinkRate, 0.75);
+
+        // === Voice Metrics ===
+
+        // Voice F0 (Hz) - sex-stratified
+        self.add_age_sex_norms(
+            MetricType::VoiceF0,
+            &[
+                ((18, 29), Some(crate::demographics::Sex::Male), 120.0, 20.0, 250),
+                ((18, 29), Some(crate::demographics::Sex::Female), 220.0, 25.0, 250),
+                ((30, 49), Some(crate::demographics::Sex::Male), 115.0, 20.0, 300),
+                ((30, 49), Some(crate::demographics::Sex::Female), 210.0, 25.0, 300),
+                ((50, 69), Some(crate::demographics::Sex::Male), 110.0, 22.0, 280),
+                ((50, 69), Some(crate::demographics::Sex::Female), 195.0, 28.0, 280),
+                ((70, 89), Some(crate::demographics::Sex::Male), 130.0, 25.0, 150),
+                ((70, 89), Some(crate::demographics::Sex::Female), 180.0, 30.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::VoiceF0, 0.90);
+
+        // Voice F0 Variability (semitones)
+        self.add_age_sex_norms(
+            MetricType::VoiceF0Variability,
+            &[
+                ((18, 39), None, 3.0, 1.0, 300),
+                ((40, 59), None, 3.5, 1.2, 350),
+                ((60, 79), None, 4.0, 1.5, 280),
+                ((80, 89), None, 5.0, 2.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::VoiceF0Variability, 0.82);
+
+        // Voice Jitter (%)
+        self.add_age_sex_norms(
+            MetricType::VoiceJitter,
+            &[
+                ((18, 39), None, 0.4, 0.2, 300),
+                ((40, 59), None, 0.6, 0.3, 350),
+                ((60, 79), None, 0.9, 0.4, 280),
+                ((80, 89), None, 1.3, 0.6, 150),
+            ],
+        );
+        self.set_reliability(MetricType::VoiceJitter, 0.85);
+
+        // Voice Shimmer (%)
+        self.add_age_sex_norms(
+            MetricType::VoiceShimmer,
+            &[
+                ((18, 39), None, 2.5, 1.2, 300),
+                ((40, 59), None, 3.5, 1.5, 350),
+                ((60, 79), None, 5.0, 2.0, 280),
+                ((80, 89), None, 7.0, 3.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::VoiceShimmer, 0.83);
+
+        // Voice HNR (dB)
+        self.add_age_sex_norms(
+            MetricType::VoiceHnr,
+            &[
+                ((18, 39), None, 22.0, 4.0, 300),
+                ((40, 59), None, 20.0, 4.5, 350),
+                ((60, 79), None, 17.0, 5.0, 280),
+                ((80, 89), None, 14.0, 5.5, 150),
+            ],
+        );
+        self.set_reliability(MetricType::VoiceHnr, 0.85);
+
+        // Speech Rate (syllables/s)
+        self.add_age_sex_norms(
+            MetricType::SpeechRate,
+            &[
+                ((18, 39), None, 5.0, 1.0, 350),
+                ((40, 59), None, 4.8, 1.0, 380),
+                ((60, 79), None, 4.2, 1.2, 300),
+                ((80, 89), None, 3.5, 1.2, 150),
+            ],
+        );
+        self.set_reliability(MetricType::SpeechRate, 0.80);
+
+        // Voice Onset Time (ms)
+        self.add_age_sex_norms(
+            MetricType::VoiceOnsetTime,
+            &[
+                ((18, 39), None, 25.0, 10.0, 280),
+                ((40, 59), None, 30.0, 12.0, 320),
+                ((60, 79), None, 40.0, 15.0, 280),
+                ((80, 89), None, 55.0, 20.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::VoiceOnsetTime, 0.78);
+
+        // Maximum Phonation Time (s)
+        self.add_age_sex_norms(
+            MetricType::MaxPhonationTime,
+            &[
+                ((18, 29), Some(crate::demographics::Sex::Male), 25.0, 8.0, 200),
+                ((18, 29), Some(crate::demographics::Sex::Female), 20.0, 6.0, 200),
+                ((30, 49), Some(crate::demographics::Sex::Male), 22.0, 7.0, 250),
+                ((30, 49), Some(crate::demographics::Sex::Female), 18.0, 6.0, 250),
+                ((50, 69), Some(crate::demographics::Sex::Male), 18.0, 7.0, 220),
+                ((50, 69), Some(crate::demographics::Sex::Female), 15.0, 5.0, 220),
+                ((70, 89), Some(crate::demographics::Sex::Male), 14.0, 6.0, 120),
+                ((70, 89), Some(crate::demographics::Sex::Female), 12.0, 5.0, 120),
+            ],
+        );
+        self.set_reliability(MetricType::MaxPhonationTime, 0.88);
+
+        // === Vestibular Metrics ===
+
+        // VOR Gain
+        self.add_age_sex_norms(
+            MetricType::VorGain,
+            &[
+                ((18, 39), None, 1.0, 0.08, 300),
+                ((40, 59), None, 0.95, 0.10, 350),
+                ((60, 79), None, 0.85, 0.12, 280),
+                ((80, 89), None, 0.75, 0.15, 150),
+            ],
+        );
+        self.set_reliability(MetricType::VorGain, 0.88);
+
+        // Canal Paresis (%) - asymmetry measure
+        self.add_age_sex_norms(
+            MetricType::CanalParesis,
+            &[
+                ((18, 39), None, 8.0, 5.0, 300),
+                ((40, 59), None, 10.0, 6.0, 350),
+                ((60, 79), None, 14.0, 8.0, 280),
+                ((80, 89), None, 18.0, 10.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::CanalParesis, 0.82);
+
+        // DVA Score Loss (logMAR)
+        self.add_age_sex_norms(
+            MetricType::DvaScoreLoss,
+            &[
+                ((18, 39), None, 0.05, 0.03, 280),
+                ((40, 59), None, 0.08, 0.04, 320),
+                ((60, 79), None, 0.12, 0.06, 280),
+                ((80, 89), None, 0.18, 0.08, 150),
+            ],
+        );
+        self.set_reliability(MetricType::DvaScoreLoss, 0.85);
+
+        // SVV Error (°)
+        self.add_age_sex_norms(
+            MetricType::SvvError,
+            &[
+                ((18, 39), None, 1.5, 1.0, 300),
+                ((40, 59), None, 2.0, 1.2, 350),
+                ((60, 79), None, 2.8, 1.5, 280),
+                ((80, 89), None, 4.0, 2.0, 150),
+            ],
+        );
+        self.set_reliability(MetricType::SvvError, 0.80);
+
+        // Head Impulse Gain
+        self.add_age_sex_norms(
+            MetricType::HeadImpulseGain,
+            &[
+                ((18, 39), None, 1.0, 0.08, 280),
+                ((40, 59), None, 0.95, 0.10, 320),
+                ((60, 79), None, 0.88, 0.12, 280),
+                ((80, 89), None, 0.78, 0.15, 150),
+            ],
+        );
+        self.set_reliability(MetricType::HeadImpulseGain, 0.85);
     }
 
     /// Helper to add multiple normative entries

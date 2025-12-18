@@ -10,6 +10,9 @@
 //! - Reference ranges (5th-95th percentile)
 //! - Minimal detectable change (MDC) values
 //! - Support for multiple metric types across cognitive and motor domains
+//! - **Pediatric norms** (0-17 years) with developmental stage stratification
+//! - **Geriatric norms** (65+ years) with frailty adjustments for 80+ populations
+//! - **Longitudinal change detection** with MDC and Reliable Change Index (RCI)
 //!
 //! ## Clinical Applications
 //!
@@ -17,14 +20,39 @@
 //! - Tracking longitudinal change with clinical significance thresholds
 //! - Risk stratification based on normative cut-offs
 //! - Research cohort characterization
+//! - Pediatric developmental screening and monitoring
+//! - Geriatric frailty assessment and fall risk prediction
+//! - Rehabilitation outcome evaluation
 
 pub mod database;
 pub mod demographics;
 pub mod metrics;
+pub mod multimodal;
+pub mod pediatric;
+pub mod geriatric;
+pub mod longitudinal;
 
 pub use database::{NormativeDatabase, NormativeEntry, NormativeTable};
 pub use demographics::{Demographics, DemographicsFilter, Sex, Ethnicity, Handedness, EducationLevel, AgeGroup, Side};
 pub use metrics::{MetricType, MetricDomain, MetricDirection};
+pub use multimodal::{
+    MultiModalAssessment, MultiModalAssessor, MultiModalProfile,
+    DomainSummary, DomainClassification, ProfileClassification,
+    Dissociation, DissociationType, generate_report,
+};
+pub use pediatric::{
+    PediatricNormativeDb, PediatricReference, PediatricAgeRange,
+    DevelopmentalStage, Percentiles,
+};
+pub use geriatric::{
+    GeriatricNormativeDb, GeriatricReference, GeriatricAgeGroup,
+    FrailtyAdjustment, FrailtyCategory,
+};
+pub use longitudinal::{
+    MinimalDetectableChange, ChangeStatus, ChangeAnalysis,
+    calculate_mdc, is_real_change, calculate_reliable_change_index,
+    rci_is_significant,
+};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
