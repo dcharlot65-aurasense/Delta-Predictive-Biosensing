@@ -35,6 +35,9 @@
 //! ```
 
 // Feature-gated submodules
+#[cfg(feature = "cuda")]
+pub mod cuda;
+
 #[cfg(feature = "intel-gaudi")]
 pub mod gaudi;
 

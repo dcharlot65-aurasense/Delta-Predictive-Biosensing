@@ -1,11 +1,12 @@
-# Delta-Predictive Biosensing (DPB) System Catalog v5.2.0
+# Delta-Predictive Biosensing (DPB) System Catalog v5.3.0
 
 > **Last Updated:** December 2025
-> **Framework Version:** 0.5.1
-> **Total Modules:** 350+ | **Encoders:** 77+ | **Generators:** 200+ | **Decoders:** 48+
-> **Language Bindings:** 6 (Python, Julia, MATLAB, R, LabVIEW, C/C++)
-> **Platform Targets:** 12 (Native, iOS, Android, WASM, Loihi, SpiNNaker, BrainScaleS, LSL, RISC-V, WebGPU, Intel Gaudi, Graphcore IPU)
+> **Framework Version:** 0.5.2
+> **Total Modules:** 380+ | **Encoders:** 77+ | **Generators:** 200+ | **Decoders:** 48+
+> **Language Bindings:** 7 (Python, Julia, MATLAB, R, LabVIEW, C/C++, JavaScript/WASM)
+> **Platform Targets:** 18 (Native, iOS, Android, WASM, Loihi 2, SpiNNaker 2, BrainScaleS-2, LSL, RISC-V, WebGPU, WebNN, CUDA, Intel Gaudi, Graphcore IPU, FPGA, Hexagon DSP, ARM Ethos-U, Apple ANE)
 > **HIPAA Compliance:** Safe Harbor, Limited Data Set, Research Pseudonymization
+> **Export Formats:** ONNX, TFLite, JSON, Binary, FPGA HLS (Xilinx/Intel), Neuromorphic (Lava/PyNN/hxtorch)
 
 ---
 
@@ -41,14 +42,16 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | Explainability Tools | 8 |
 | Clinical Metrics | 100+ |
 | Data Formats | 10 (WFDB, EDF, GDF, BDF, XDF, BIDS, FHIR + auto-detect) |
-| GPU Backends | 2 (CUDA, Metal) |
-| Neuromorphic Targets | 3 (Loihi, SpiNNaker, BrainScaleS) |
-| Export Formats | 5 (ONNX, TFLite, JSON, Binary, Mobile) |
+| **GPU Backends** | 4 (CUDA, Metal, Vulkan, WebGPU) |
+| **Neuromorphic Targets** | 3 (Loihi 2, SpiNNaker 2, BrainScaleS-2) |
+| **Export Formats** | 8 (ONNX, TFLite, JSON, Binary, Mobile, FPGA HLS, Lava, PyNN) |
 | Visualization Types | 6 |
 | Normative Databases | Age/Sex stratified (Pediatric/Adult/Geriatric) |
 | Learning Resources | 5 Books, 8 Notebooks, 5 Video Scripts |
-| **Language Bindings** | 6 (Python, Julia, MATLAB, R, LabVIEW, C/C++) |
-| **Web/Streaming** | 2 (WebAssembly, Lab Streaming Layer) |
+| **Language Bindings** | 7 (Python, Julia, MATLAB, R, LabVIEW, C/C++, JavaScript) |
+| **Web/Streaming** | 3 (WebAssembly, WebNN, Lab Streaming Layer) |
+| **Mobile NPUs** | 4 (Qualcomm Hexagon, ARM Ethos-U, Apple ANE, Samsung NPU) |
+| **FPGA Targets** | 3 (Xilinx Vitis HLS, Intel HLS, Generic C) |
 
 ### 1.2 Crate Overview
 
@@ -61,14 +64,14 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **dpb-synth** | 200+ generators, augmentation, cohorts, pathology | 30,000+ |
 | **dpb-norms** | Normative databases (adult, pediatric, geriatric), longitudinal | 10,000+ |
 | **dpb-viz** | Dashboards, raster plots, heatmaps, network graphs, timeline | 4,500+ |
-| **dpb-mobile** | iOS/Android runtime, FFI, optimization, benchmarking | 4,000+ |
+| **dpb-mobile** | iOS/Android runtime, FFI, optimization, benchmarking, NPU acceleration (Hexagon, Ethos-U, ANE) | 5,500+ |
 | **dpb-cognitive** | Cognitive assessment paradigms | 4,000+ |
 | **dpb-python** | PyO3 Python bindings | 3,000+ |
 | **dpb-ffi** | C-compatible FFI | 1,500+ |
 | **dpb-bench** | Benchmarking suite | 2,500+ |
-| **dpb-wasm** | WebAssembly bindings, browser deployment, WebGPU | 2,000+ |
+| **dpb-wasm** | WebAssembly bindings, browser deployment, WebGPU, WebNN ML inference | 3,000+ |
 | **dpb-lsl** | Lab Streaming Layer integration, liblsl FFI, real-time streaming | 3,000+ |
-| **dpb-export** | ONNX, JSON, Binary export, model metadata | 2,000+ |
+| **dpb-export** | ONNX, JSON, Binary, FPGA HLS, Neuromorphic (Lava/PyNN/hxtorch) export | 4,500+ |
 | **dpb-federated** ✅ NEW | Privacy-preserving distributed training, FedAvg, differential privacy, gradient compression | 3,500+ |
 | **dpb-clinical** ✅ NEW | Clinical utilities, ethnic stratification, treatment response, comorbidity, practice effects, HIPAA-compliant PHI de-identification | 4,000+ |
 
@@ -302,19 +305,84 @@ This section answers: **"I want to do X, where is it implemented?"**
 | **Practice Effects** | `PracticeEffectCorrector` | `dpb-clinical/practice_effects.rs` | Serial testing correction |
 | **SRB Calculator** | `SRBCalculator` | `dpb-clinical/practice_effects.rs` | Standardized regression-based change |
 
-### 2.15 Hardware Accelerators ✅ NEW
+### 2.15 Hardware Accelerators ✅ UPDATED v5.3.0
 
 | Capability | Implementation | Location | Notes |
 |------------|----------------|----------|-------|
 | **Accelerator Trait** | `Accelerator` trait | `dpb-core/accelerators.rs` | Hardware abstraction |
-| **CPU Fallback** | `CpuAccelerator` | `dpb-core/accelerators.rs` | Reference implementation |
-| **Intel Gaudi** | `IntelGaudiAccelerator` | `dpb-core/accelerators.rs` | AI accelerator (stub) |
-| **Graphcore IPU** | `GraphcoreIpuAccelerator` | `dpb-core/accelerators.rs` | IPU accelerator (stub) |
+| **CPU Fallback** | `CpuAccelerator` | `dpb-core/accelerators.rs` | AVX2/AVX-512 SIMD |
+| **Direct CUDA** ✅ NEW | `CudaAccelerator` | `dpb-core/accelerators/cuda.rs` | Native PTX kernels |
+| **CUDA Streams** | `CudaStream` | `dpb-core/accelerators/cuda.rs` | Async operations |
+| **CUDA Memory** | `CudaBuffer`, unified memory | `dpb-core/accelerators/cuda.rs` | GPU memory management |
+| **PTX Kernels** | Level crossing, delta modulation | `dpb-core/accelerators/kernels/*.ptx` | GPU compute kernels |
+| **Intel Gaudi** | `GaudiAccelerator` | `dpb-core/accelerators/gaudi.rs` | Synapse AI SDK, TPC kernels |
+| **Gaudi Graphs** | `GaudiGraph`, `GaudiKernel` | `dpb-core/accelerators/gaudi.rs` | Static graph compilation |
+| **Graphcore IPU** | `IpuAccelerator` | `dpb-core/accelerators/ipu.rs` | Poplar SDK, BSP model |
+| **IPU Vertices** | `IpuVertex`, `IpuGraph` | `dpb-core/accelerators/ipu.rs` | Tile-based computing |
+| **PopRT Inference** | `PopRTSession` | `dpb-core/accelerators/ipu.rs` | ONNX model inference |
+| **RISC-V HAL** | `RiscVHal` | `dpb-core/accelerators/riscv.rs` | Embedded RISC-V targets |
+| **Fixed-Point Q16** | `FixedPoint<FRAC_BITS>`, `Q16` | `dpb-core/accelerators/riscv.rs` | FPU-less arithmetic |
 | **Capabilities Query** | `AcceleratorCapabilities` | `dpb-core/accelerators.rs` | Feature detection |
 | **WebGPU Browser** | `GpuEncoder` | `dpb-wasm/webgpu.rs` | Browser GPU compute |
 | **WGSL Shaders** | Level crossing, delta modulation | `dpb-wasm/webgpu.rs` | Compute shaders |
 
-### 2.16 Embedded Targets ✅ NEW
+### 2.16 Browser ML Inference ✅ NEW v5.3.0
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **WebNN API** | `WebNNEncoder` | `dpb-wasm/webnn.rs` | W3C Web Neural Network API |
+| **Device Selection** | `WebNNDeviceType` (CPU/GPU/NPU) | `dpb-wasm/webnn.rs` | Backend selection |
+| **Power Preference** | `WebNNPowerPreference` | `dpb-wasm/webnn.rs` | Battery optimization |
+| **Graph Builder** | `WebNNGraphBuilder` | `dpb-wasm/webnn.rs` | Neural network operations |
+| **Feature Detection** | `WebNNFeatures` | `dpb-wasm/webnn.rs` | Browser capability checks |
+| **ONNX Loading** | `WebNNModelLoader` | `dpb-wasm/webnn.rs` | Model import |
+
+### 2.17 FPGA Export ✅ NEW v5.3.0
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **HLS Exporter** | `FpgaExporter` | `dpb-export/fpga.rs` | Multi-target export |
+| **Xilinx Vitis HLS** | `FpgaTarget::XilinxVitis` | `dpb-export/fpga.rs` | ap_fixed, HLS pragmas |
+| **Intel HLS** | `FpgaTarget::IntelHls` | `dpb-export/fpga.rs` | ac_fixed, ihc:: types |
+| **Generic HLS** | `FpgaTarget::GenericHls` | `dpb-export/fpga.rs` | Portable C (Catapult, LegUp) |
+| **Encoder Config** | `EncoderConfig` | `dpb-export/fpga.rs` | Level crossing, delta, temporal |
+| **AXI Stream** | AXI interface wrappers | `dpb-export/fpga.rs` | Streaming data interface |
+| **Fixed-Point Types** | `FpgaDataType` | `dpb-export/fpga.rs` | Q16.16, Q8.8, custom |
+| **Pipeline Pragmas** | `pipeline_ii`, `unroll_factor` | `dpb-export/fpga.rs` | Performance optimization |
+
+### 2.18 Mobile NPU Acceleration ✅ NEW v5.3.0
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **NPU Backend Detection** | `NpuBackend::detect()` | `dpb-mobile/npu.rs` | Auto-detect NPU |
+| **Qualcomm Hexagon DSP** | `NpuBackend::QualcommHexagon` | `dpb-mobile/npu.rs` | HVX vector extensions |
+| **Qualcomm HTP** | `NpuBackend::QualcommHtp` | `dpb-mobile/npu.rs` | Tensor processor |
+| **ARM Ethos-U55** | `NpuBackend::ArmEthosU55` | `dpb-mobile/npu.rs` | Cortex-M NPU, 32-256 MACs |
+| **ARM Ethos-U65** | `NpuBackend::ArmEthosU65` | `dpb-mobile/npu.rs` | Higher throughput, 256-512 MACs |
+| **Apple Neural Engine** | `NpuBackend::AppleAne` | `dpb-mobile/npu.rs` | M1/M2/A-series |
+| **Samsung NPU** | `NpuBackend::SamsungNpu` | `dpb-mobile/npu.rs` | Exynos devices |
+| **MediaTek APU** | `NpuBackend::MediaTekApu` | `dpb-mobile/npu.rs` | Dimensity devices |
+| **NPU Encoder** | `NpuEncoder` | `dpb-mobile/npu.rs` | Spike encoding on NPU |
+| **INT8 Quantization** | `quantize()`, `dequantize()` | `dpb-mobile/npu.rs` | Efficient inference |
+| **Hexagon Config** | `HexagonConfig`, `HvxMode` | `dpb-mobile/npu.rs` | DSP configuration |
+| **Ethos-U Config** | `EthosUConfig`, `EthosUVariant` | `dpb-mobile/npu.rs` | NPU configuration |
+
+### 2.19 Neuromorphic Hardware Export ✅ NEW v5.3.0
+
+| Capability | Implementation | Location | Notes |
+|------------|----------------|----------|-------|
+| **Neuromorphic Exporter** | `NeuromorphicExporter` | `dpb-export/neuromorphic.rs` | Multi-platform export |
+| **Intel Loihi 2** | `NeuromorphicTarget::Loihi2` | `dpb-export/neuromorphic.rs` | Lava framework export |
+| **SpiNNaker 2** | `NeuromorphicTarget::SpiNNaker2` | `dpb-export/neuromorphic.rs` | sPyNNaker export |
+| **BrainScaleS-2** | `NeuromorphicTarget::BrainScaleS2` | `dpb-export/neuromorphic.rs` | hxtorch export |
+| **Generic PyNN** | `NeuromorphicTarget::GenericPyNN` | `dpb-export/neuromorphic.rs` | NEST/Brian2/NEURON |
+| **Network Config** | `NetworkConfig` | `dpb-export/neuromorphic.rs` | Layers and connections |
+| **Layer Config** | `LayerConfig`, `NeuronParams` | `dpb-export/neuromorphic.rs` | Neuron model params |
+| **Connection Config** | `ConnectionConfig`, `ConnectionType` | `dpb-export/neuromorphic.rs` | Synaptic connections |
+| **Neuron Models** | `NeuronModel` (LIF, CUBA, COBA, AdEx) | `dpb-export/neuromorphic.rs` | Supported neuron types |
+| **Hardware Specs** | `HardwareSpecs` | `dpb-export/neuromorphic.rs` | Platform capabilities |
+
+### 2.20 Embedded Targets
 
 | Capability | Implementation | Location | Notes |
 |------------|----------------|----------|-------|
@@ -551,17 +619,24 @@ bindings/
 └── matlab/                 → MATLAB MEX bindings
 ```
 
-### 3.7 dpb-wasm (WebAssembly) ✅ NEW
+### 3.7 dpb-wasm (WebAssembly) ✅ UPDATED v5.3.0
 
 ```
 dpb-wasm/
-├── Cargo.toml              → wasm-bindgen 0.2.93, optional WebGPU
+├── Cargo.toml              → wasm-bindgen 0.2.93, WebGPU, WebNN features
 └── src/
     ├── lib.rs              → Module init, PerformanceTimer
     ├── timeseries.rs       → WasmTimeSeries (Float32Array interop)
     ├── spiketrain.rs       → WasmSpikeTrain (event storage)
     ├── encoders.rs         → Level crossing, Delta, Temporal contrast
-    └── utils.rs            → Panic hook, console logging
+    ├── utils.rs            → Panic hook, console logging
+    ├── webgpu.rs           → WebGPU compute shaders (WGSL)
+    └── webnn.rs ✅ NEW     → WebNN ML Inference
+                              ├── WebNNEncoder (browser ML API)
+                              ├── WebNNConfig (device, power preference)
+                              ├── WebNNDeviceType (Cpu, Gpu, Npu)
+                              ├── WebNNGraphBuilder (neural network graphs)
+                              └── feature_detect(), initialize_encoder()
 ```
 
 ### 3.8 dpb-lsl (Lab Streaming Layer) ✅ NEW
@@ -579,11 +654,11 @@ dpb-lsl/
     └── pipeline.rs         → EncodingPipeline, PipelineConfig, stats
 ```
 
-### 3.9 dpb-export (Model Export) ✅ NEW
+### 3.9 dpb-export (Model Export) ✅ UPDATED v5.3.0
 
 ```
 dpb-export/
-├── Cargo.toml              → Optional onnx, tensorflow, pytorch features
+├── Cargo.toml              → Features: onnx, tensorflow, pytorch, fpga, neuromorphic
 └── src/
     ├── lib.rs              → ExportFormat, ModelExporter
     ├── error.rs            → ExportError enum
@@ -591,7 +666,20 @@ dpb-export/
     ├── encoder_export.rs   → EncoderParams, EncoderState, ExportableEncoder
     ├── json.rs             → JsonExporter, PipelineConfig
     ├── binary.rs           → BinaryExporter, BinaryImporter (embedded format)
-    └── onnx.rs             → OnnxExporter, computation graph generation
+    ├── onnx.rs             → OnnxExporter, computation graph generation
+    ├── fpga.rs ✅ NEW      → FPGA HLS Export
+    │                         ├── FpgaExporter (multi-target)
+    │                         ├── FpgaTarget (XilinxVitis, IntelHls, GenericHls)
+    │                         ├── EncoderConfig (level_crossing, delta, temporal)
+    │                         ├── FpgaDataType (Float32, FixedQ16, FixedQ8)
+    │                         └── AXI Stream interface generation
+    └── neuromorphic.rs ✅ NEW → Neuromorphic Hardware Export
+                              ├── NeuromorphicExporter (multi-platform)
+                              ├── NeuromorphicTarget (Loihi2, SpiNNaker2, BrainScaleS2, PyNN)
+                              ├── NetworkConfig, LayerConfig, ConnectionConfig
+                              ├── NeuronModel (LIF, CUBA, COBA, ALIF, AdEx)
+                              ├── HardwareSpecs per platform
+                              └── Export formats: Lava, sPyNNaker, hxtorch, PyNN
 ```
 
 ### 3.10 dpb-federated (Federated Learning) ✅ NEW
@@ -669,25 +757,30 @@ dpb-clinical/
                               └── estimate_learning_effect()
 ```
 
-### 3.12 dpb-core/accelerators ✅ NEW
+### 3.12 dpb-core/accelerators ✅ UPDATED v5.3.0
 
 ```
-dpb-core/accelerators.rs
-├── Accelerator trait       → Generic hardware abstraction
-│   ├── name() -> &str
-│   ├── capabilities() -> AcceleratorCapabilities
-│   ├── compute_fft() -> Result
-│   ├── compute_conv() -> Result
-│   └── compute_matmul() -> Result
-├── AcceleratorCapabilities → Feature detection
-│   ├── has_fft: bool
-│   ├── has_conv: bool
-│   ├── has_sparse: bool
-│   ├── max_batch_size: usize
-│   └── memory_bytes: usize
-├── CpuAccelerator          → Reference implementation (always available)
-├── IntelGaudiAccelerator   → Intel Gaudi (behind feature flag)
-└── GraphcoreIpuAccelerator → Graphcore IPU (behind feature flag)
+dpb-core/accelerators/
+├── mod.rs                  → Module exports, Accelerator trait
+│   ├── Accelerator trait   → Generic hardware abstraction
+│   │   ├── name() -> &str
+│   │   ├── capabilities() -> AcceleratorCapabilities
+│   │   ├── compute_fft() -> Result
+│   │   ├── compute_conv() -> Result
+│   │   └── compute_matmul() -> Result
+│   └── AcceleratorCapabilities → Feature detection
+├── cpu.rs                  → CpuAccelerator (always available)
+├── gaudi.rs                → Intel Gaudi (Synapse AI SDK)
+├── ipu.rs                  → Graphcore IPU (Poplar SDK)
+├── riscv.rs                → RISC-V HAL (embedded, fixed-point)
+└── cuda.rs ✅ NEW          → Direct CUDA Support
+                              ├── CudaAccelerator (PTX kernel execution)
+                              ├── CudaModule (PTX module loading)
+                              ├── CudaKernel (kernel launch parameters)
+                              ├── CudaStream (async execution, events)
+                              ├── CudaBuffer (device memory)
+                              └── kernels/
+                                  └── level_crossing.ptx (spike detection)
 ```
 
 ### 3.13 dpb-wasm/webgpu ✅ NEW
@@ -708,6 +801,33 @@ dpb-wasm/src/webgpu.rs
     ├── create_device() → WebGPU device setup
     ├── create_pipeline() → Compute pipeline
     └── execute_shader() → GPU dispatch
+```
+
+### 3.14 dpb-mobile/npu ✅ NEW v5.3.0
+
+```
+dpb-mobile/src/npu.rs
+├── NpuBackend enum         → Backend selection
+│   ├── QualcommHexagon     → Hexagon DSP/HVX/HTP
+│   ├── ArmEthosU           → ARM Ethos-U55/U65
+│   ├── AppleAne            → Apple Neural Engine
+│   └── SamsungNpu          → Samsung Exynos NPU
+├── NpuEncoder              → Hardware-accelerated spike encoding
+│   ├── new(backend, config) -> Result<Self>
+│   ├── encode_level_crossing() -> Result<Vec<Spike>>
+│   ├── encode_delta() -> Result<Vec<Spike>>
+│   └── encode_temporal_contrast() -> Result<Vec<Spike>>
+├── HexagonConfig           → Qualcomm Hexagon settings
+│   ├── dsp_clock_mhz       → DSP clock speed
+│   ├── hvx_threads         → HVX vector threads
+│   └── power_level         → Power management
+├── EthosUConfig            → ARM Ethos-U settings
+│   ├── macs                → MAC operations/cycle
+│   ├── sram_kb             → Available SRAM
+│   └── burst_length        → Memory burst size
+└── AppleAneConfig          → Apple ANE settings
+    ├── use_fp16            → Half precision
+    └── batch_size          → Inference batch
 ```
 
 ---
@@ -949,14 +1069,19 @@ dpb-core features:
 ├── bids               → BIDS format support
 ├── fhir               → HL7 FHIR support
 ├── emd                → Empirical mode decomposition
-├── intel-gaudi        → Intel Gaudi accelerator (stub) ✅ NEW
-├── graphcore-ipu      → Graphcore IPU accelerator (stub) ✅ NEW
-└── hardware-accelerators → All hardware accelerators ✅ NEW
+├── cuda ✅ NEW        → Direct CUDA support (PTX kernels)
+├── intel-gaudi        → Intel Gaudi accelerator (Synapse AI)
+├── graphcore-ipu      → Graphcore IPU accelerator (Poplar)
+├── riscv              → RISC-V embedded HAL
+└── hardware-accelerators → All hardware accelerators
 
 dpb-mobile features:
 ├── ios                → iOS-specific (Metal, CoreML)
 ├── android            → Android-specific (NNAPI, Vulkan)
-└── quantized          → Quantized inference
+├── quantized          → Quantized inference
+├── hexagon ✅ NEW     → Qualcomm Hexagon DSP/HVX/HTP
+├── ethos-u ✅ NEW     → ARM Ethos-U55/U65 NPU
+└── apple-ane ✅ NEW   → Apple Neural Engine
 
 dpb-snn/export features:
 ├── onnx               → ONNX export
@@ -964,7 +1089,8 @@ dpb-snn/export features:
 
 dpb-wasm features:
 ├── console_error_panic_hook → Better panic messages in browser
-└── webgpu             → WebGPU acceleration ✅ IMPLEMENTED
+├── webgpu             → WebGPU compute shaders (WGSL)
+└── webnn ✅ NEW       → WebNN ML inference API
 
 dpb-lsl features:
 ├── async              → Tokio async runtime support
@@ -974,6 +1100,8 @@ dpb-export features:
 ├── onnx               → ONNX graph export
 ├── tensorflow         → TensorFlow export (planned)
 ├── pytorch            → PyTorch export (planned)
+├── fpga ✅ NEW        → FPGA HLS export (Xilinx Vitis, Intel HLS)
+├── neuromorphic ✅ NEW → Neuromorphic export (Lava, PyNN, hxtorch)
 └── full               → All export formats
 
 dpb-federated features: ✅ NEW
@@ -1083,8 +1211,25 @@ This section answers: **"What's needed but missing?"**
 | **Bindings** | C/C++ (cbindgen) | ✅ Complete | - |
 | **Web** | WebAssembly (dpb-wasm) | ✅ Complete | - |
 | **Streaming** | Lab Streaming Layer (dpb-lsl) | ✅ Complete | - |
+| **GPU** | Direct CUDA (PTX kernels) | ✅ Complete | - |
+| **Web ML** | WebNN Browser API | ✅ Complete | - |
+| **Export** | FPGA HLS (Xilinx/Intel) | ✅ Complete | - |
+| **Mobile** | NPU Acceleration (Hexagon/Ethos-U/ANE) | ✅ Complete | - |
+| **Export** | Neuromorphic (Lava/PyNN/hxtorch) | ✅ Complete | - |
 
-### 6.2 Recently Completed ✅ (v5.2.0)
+### 6.2 Recently Completed ✅ (v5.3.0)
+
+| Feature | Implementation | Status |
+|---------|----------------|--------|
+| **Direct CUDA Support** | `dpb-core/accelerators/cuda.rs` - PTX kernels, CudaAccelerator, CudaStream, CudaBuffer, CudaModule | ✅ Complete |
+| **WebNN ML Inference** | `dpb-wasm/webnn.rs` - Browser ML API, WebNNEncoder, device selection (CPU/GPU/NPU), graph builder | ✅ Complete |
+| **FPGA HLS Export** | `dpb-export/fpga.rs` - FpgaExporter (Xilinx Vitis, Intel HLS, Generic C), AXI Stream, fixed-point Q16.16 | ✅ Complete |
+| **Mobile NPU Acceleration** | `dpb-mobile/npu.rs` - NpuEncoder, Qualcomm Hexagon DSP/HVX/HTP, ARM Ethos-U55/U65, Apple ANE | ✅ Complete |
+| **Neuromorphic Export** | `dpb-export/neuromorphic.rs` - Lava (Loihi 2), sPyNNaker (SpiNNaker 2), hxtorch (BrainScaleS-2), PyNN | ✅ Complete |
+| **WebGL Deprecation Docs** | `docs/WEBGL_DEPRECATION.md` - Migration guide, browser compatibility matrix, fallback strategy | ✅ Complete |
+| **Deployment Guide** | `docs/DEPLOYMENT_GUIDE.md` - 18 platform targets, all deployment regimes documented | ✅ Complete |
+
+### 6.2.1 Previously Completed (v5.2.0)
 
 | Feature | Implementation | Status |
 |---------|----------------|--------|
@@ -1097,7 +1242,7 @@ This section answers: **"What's needed but missing?"**
 | **Graphcore IPU SDK** | `dpb-core/accelerators/ipu.rs` - Full Poplar SDK, BSP model, tile-based computing, PopRT inference | ✅ Complete |
 | **RISC-V HAL** | `dpb-core/accelerators/riscv.rs` - Embedded HAL, fixed-point Q16, DMA, interrupt-driven encoding | ✅ Complete |
 
-### 6.2.1 Previously Completed (v5.1.0)
+### 6.2.2 Previously Completed (v5.1.0)
 
 | Feature | Implementation | Status |
 |---------|----------------|--------|
@@ -1136,7 +1281,18 @@ This section answers: **"What's needed but missing?"**
 | **RISC-V Production Testing** | Testing on physical ESP32-C3, SiFive boards | Low | Hardware validation |
 | **WebGPU Safari Support** | Safari-specific WebGPU compatibility testing | Low | Browser coverage |
 
-### 6.3.1 Completed Gaps (v5.2.0)
+### 6.3.1 Completed Gaps (v5.3.0)
+
+| Previously Gap | Now Implementation | Status |
+|----------------|-------------------|--------|
+| ~~Direct CUDA Support~~ | `dpb-core/accelerators/cuda.rs` | ✅ Complete |
+| ~~WebNN Browser API~~ | `dpb-wasm/webnn.rs` | ✅ Complete |
+| ~~FPGA HLS Export~~ | `dpb-export/fpga.rs` | ✅ Complete |
+| ~~Mobile NPU Acceleration~~ | `dpb-mobile/npu.rs` | ✅ Complete |
+| ~~Neuromorphic Export~~ | `dpb-export/neuromorphic.rs` | ✅ Complete |
+| ~~WebGL Deprecation Docs~~ | `docs/WEBGL_DEPRECATION.md` | ✅ Complete |
+
+### 6.3.2 Completed Gaps (v5.2.0)
 
 | Previously Gap | Now Implementation | Status |
 |----------------|-------------------|--------|
@@ -1160,6 +1316,7 @@ This section answers: **"What's needed but missing?"**
 | dpb-core/accelerators/gaudi | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-core/accelerators/ipu | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-core/accelerators/riscv | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-core/accelerators/cuda | ✅ | ⚠️ | ✅ | ⚠️ |
 | dpb-neurons/dendritic | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-snn/distillation | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-snn/neuromorphic | ✅ | ✅ | ✅ | ⚠️ |
@@ -1175,7 +1332,11 @@ This section answers: **"What's needed but missing?"**
 | dpb-lsl | ✅ | ✅ | ✅ | ✅ |
 | dpb-lsl/native | ✅ | ⚠️ | ✅ | ⚠️ |
 | dpb-wasm | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-wasm/webnn | ✅ | ⚠️ | ✅ | ⚠️ |
+| dpb-mobile/npu | ✅ | ⚠️ | ✅ | ⚠️ |
 | dpb-export | ✅ | ✅ | ✅ | ✅ |
+| dpb-export/fpga | ✅ | ⚠️ | ✅ | ⚠️ |
+| dpb-export/neuromorphic | ✅ | ⚠️ | ✅ | ⚠️ |
 | bindings/r | ✅ | ✅ | ✅ | ✅ |
 | bindings/labview | ✅ | - | ✅ | ⚠️ |
 
@@ -1199,14 +1360,26 @@ Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
    - ~~Integrate Intel Gaudi Synapse AI SDK~~ ✅ Complete (`dpb-core/accelerators/gaudi.rs`)
    - ~~Integrate Graphcore Poplar SDK~~ ✅ Complete (`dpb-core/accelerators/ipu.rs`)
    - ~~RISC-V hardware abstraction layer~~ ✅ Complete (`dpb-core/accelerators/riscv.rs`)
+   - ~~Direct CUDA support~~ ✅ Complete (`dpb-core/accelerators/cuda.rs`)
+   - ~~Mobile NPU acceleration~~ ✅ Complete (`dpb-mobile/npu.rs`)
    - LabVIEW example VIs and palettes ⏳ Pending
 
-4. **Next Phase (v5.3.0)**
+4. **Deployment Expansion (v5.3.0)** ✅ Complete
+   - ~~FPGA HLS export path~~ ✅ Complete (`dpb-export/fpga.rs`)
+   - ~~Neuromorphic hardware export~~ ✅ Complete (`dpb-export/neuromorphic.rs`)
+   - ~~WebNN browser ML API~~ ✅ Complete (`dpb-wasm/webnn.rs`)
+   - ~~WebGL deprecation documentation~~ ✅ Complete (`docs/WEBGL_DEPRECATION.md`)
+   - ~~Deployment guide for all platforms~~ ✅ Complete (`docs/DEPLOYMENT_GUIDE.md`)
+
+5. **Next Phase (v5.4.0)**
    - Clinical validation against PhysioNet reference datasets
    - FDA 510(k) pre-submission documentation
    - Production TPC-C kernels for Intel Gaudi
    - Production Poplar vertices for Graphcore IPU
    - Physical RISC-V testing (ESP32-C3, SiFive)
+   - CUDA kernel optimization and profiling
+   - WebNN integration testing across browsers
+   - FPGA synthesis testing (Xilinx Zynq, Intel Arria)
 
 ---
 
@@ -1263,12 +1436,16 @@ Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
 |--------|----------|--------|
 | Cross-platform | `OnnxExporter` | `.onnx` file |
 | Mobile | `TfLiteExporter` | `.tflite` file |
-| Intel Loihi | `LoihiExporter` | Loihi configuration |
-| SpiNNaker | `SpinnakerExporter` | PyNN-compatible |
-| BrainScaleS | `BrainscalesExporter` | BrainScaleS mapping |
+| Intel Loihi 2 | `NeuromorphicExporter::Loihi2` | Lava Python code |
+| SpiNNaker 2 | `NeuromorphicExporter::SpiNNaker2` | sPyNNaker Python |
+| BrainScaleS-2 | `NeuromorphicExporter::BrainScaleS2` | hxtorch Python |
+| Portable neuromorphic | `NeuromorphicExporter::PyNN` | PyNN-compatible |
 | iOS/Android | `MobileRuntime` | Native runtime |
-| **JSON** ✅ NEW | `JsonExporter` | `.json` config |
-| **Binary** ✅ NEW | `BinaryExporter` | `.dpb` embedded |
+| **JSON** | `JsonExporter` | `.json` config |
+| **Binary** | `BinaryExporter` | `.dpb` embedded |
+| **Xilinx FPGA** ✅ NEW | `FpgaExporter::XilinxVitis` | Vitis HLS C++ |
+| **Intel FPGA** ✅ NEW | `FpgaExporter::IntelHls` | Intel HLS C++ |
+| **Generic FPGA** ✅ NEW | `FpgaExporter::GenericHls` | Plain C (portable) |
 
 ### 7.6 Neuromodulation Quick Reference
 
@@ -1303,6 +1480,33 @@ Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
 | `stream_types::RESP` | `"Respiration"` | Respiratory signals |
 | `stream_types::MARKERS` | `"Markers"` | Event markers |
 | `stream_types::SPIKES` | `"Spikes"` | DPB spike trains |
+
+### 7.9 Hardware Accelerator Quick Reference ✅ NEW v5.3.0
+
+| Backend | Class | Feature Flag | Key Capabilities |
+|---------|-------|--------------|------------------|
+| **CPU** | `CpuAccelerator` | (always) | Reference implementation, all platforms |
+| **CUDA** | `CudaAccelerator` | `cuda` | PTX kernels, NVIDIA GPUs, streams, events |
+| **Intel Gaudi** | `IntelGaudiAccelerator` | `intel-gaudi` | TPC kernels, HBM memory, graph compilation |
+| **Graphcore IPU** | `GraphcoreIpuAccelerator` | `graphcore-ipu` | Poplar SDK, BSP, tile computing |
+| **RISC-V** | `RiscVAccelerator` | `riscv` | Embedded HAL, fixed-point Q16.16, DMA |
+
+### 7.10 Mobile NPU Quick Reference ✅ NEW v5.3.0
+
+| Backend | Class/Config | Platform | Key Features |
+|---------|--------------|----------|--------------|
+| **Qualcomm Hexagon** | `NpuBackend::QualcommHexagon` | Android (Snapdragon) | DSP/HVX/HTP, power levels |
+| **ARM Ethos-U** | `NpuBackend::ArmEthosU` | IoT/Embedded | U55/U65, Cortex-M integration |
+| **Apple ANE** | `NpuBackend::AppleAne` | iOS/macOS | Neural Engine, FP16 support |
+| **Samsung NPU** | `NpuBackend::SamsungNpu` | Android (Exynos) | NPU co-processor |
+
+### 7.11 Web ML Quick Reference ✅ NEW v5.3.0
+
+| API | Class | Browser Support | Key Features |
+|-----|-------|-----------------|--------------|
+| **WebGPU** | `GpuEncoder` | Chrome 113+, Edge 113+, Firefox 121+ | WGSL compute shaders, full GPU access |
+| **WebNN** | `WebNNEncoder` | Chrome/Edge (flag) | ML inference, CPU/GPU/NPU device selection |
+| **WASM CPU** | `WasmLevelCrossingEncoder` | All modern browsers | Fallback, always available |
 
 ---
 
