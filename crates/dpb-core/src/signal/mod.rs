@@ -1,4 +1,104 @@
-//! Signal processing utilities for biosensor data.
+//! # Signal Processing Module
+//!
+//! Comprehensive signal processing for biosignals.
+//!
+//! This module provides domain-specific analyzers for various biosignal modalities,
+//! along with general-purpose signal processing utilities.
+//!
+//! ## Submodules
+//!
+//! ### Contact Modalities
+//! - [`ecg`]: ECG analysis including R-peak detection, QRS morphology, and arrhythmia detection
+//! - [`hrv`]: Heart rate variability analysis (time and frequency domain)
+//! - [`ppg`]: PPG analysis including pulse detection and SpO2 estimation
+//! - [`eda`]: Electrodermal activity decomposition and SCR detection
+//! - [`emg`]: EMG burst detection and fatigue analysis
+//!
+//! ### Neural Signals
+//! - [`eeg`]: EEG band power analysis, artifact detection, ERP analysis, and seizure detection
+//!
+//! ### Movement and Voice
+//! - [`eye`]: Eye tracking analysis (saccades, fixations, pupil metrics)
+//! - [`voice`]: Voice analysis (F0, jitter, shimmer, formants, prosody)
+//! - [`respiratory`]: Respiratory analysis and sleep apnea detection
+//!
+//! ### Multi-Modal Analysis
+//! - [`fatigue`]: Multi-modal fatigue detection (EMG, force, cognitive)
+//!
+//! ### Signal Processing Primitives
+//! - [`fft`]: FFT and STFT with windowing
+//! - [`filter`]: FIR and IIR filters
+//! - [`resample`]: Upsampling, downsampling, and resampling
+//! - [`wavelet`]: Continuous and discrete wavelet transforms
+//! - [`hilbert`]: Hilbert transform and analytic signals
+//! - [`ica`]: Independent Component Analysis
+//!
+//! ## Example: ECG Analysis
+//!
+//! ```rust
+//! use dpb_core::signal::ecg::*;
+//! use dpb_core::signal::hrv::*;
+//! use ndarray::Array1;
+//!
+//! # fn example() -> dpb_core::Result<()> {
+//! # let ecg_signal = Array1::from_vec(vec![0.0; 1000]);
+//! # let sample_rate = 250.0;
+//! // Detect R-peaks
+//! let detector = PanTompkinsDetector::new(sample_rate);
+//! let peaks = detector.detect(&ecg_signal)?;
+//!
+//! // Compute HRV metrics
+//! let analyzer = HrvAnalyzer::new();
+//! let time_domain = analyzer.compute_time_domain(&peaks, sample_rate)?;
+//! let freq_domain = analyzer.compute_frequency_domain(&peaks, sample_rate)?;
+//!
+//! println!("RMSSD: {:.1} ms", time_domain.rmssd);
+//! println!("LF/HF: {:.2}", freq_domain.lf_hf_ratio);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Example: EEG Band Power Analysis
+//!
+//! ```rust
+//! use dpb_core::signal::eeg::*;
+//! use ndarray::Array1;
+//!
+//! # fn example() -> dpb_core::Result<()> {
+//! # let eeg_signal = Array1::from_vec(vec![0.0; 1000]);
+//! # let sample_rate = 250.0;
+//! // Compute band powers
+//! let band_powers = compute_band_powers(&eeg_signal, sample_rate)?;
+//!
+//! println!("Delta: {:.2}", band_powers.delta);
+//! println!("Theta: {:.2}", band_powers.theta);
+//! println!("Alpha: {:.2}", band_powers.alpha);
+//! println!("Beta: {:.2}", band_powers.beta);
+//! println!("Gamma: {:.2}", band_powers.gamma);
+//!
+//! // Compute theta/beta ratio (ADHD marker)
+//! let ratio = theta_beta_ratio(&band_powers);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Example: Filtering and Normalization
+//!
+//! ```rust
+//! use dpb_core::signal::*;
+//! use ndarray::Array1;
+//!
+//! # fn example() -> dpb_core::Result<()> {
+//! # let signal = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
+//! // Apply bandpass filter
+//! let mut filter = IirFilter::bandpass(0.5, 40.0, 250.0, 4)?;
+//! let filtered = filter.apply(signal.view())?;
+//!
+//! // Normalize signal
+//! let normalized = normalize(filtered.view(), NormalizationMethod::ZScore)?;
+//! # Ok(())
+//! # }
+//! ```
 
 pub mod ecg;
 pub mod eeg;

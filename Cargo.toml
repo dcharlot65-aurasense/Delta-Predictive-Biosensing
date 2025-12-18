@@ -63,6 +63,7 @@ numpy = "0.23"
 # Testing
 approx = "0.5"
 criterion = "0.5"
+tempfile = "3.14"
 
 # Internal crates
 dpb-core = { path = "crates/dpb-core" }

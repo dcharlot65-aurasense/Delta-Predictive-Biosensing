@@ -13,6 +13,7 @@ pub mod encoder_accuracy;
 pub mod training_loop;
 pub mod inference_latency;
 pub mod cross_crate;
+pub mod full_pipeline_integration;
 
 /// Common test utilities
 pub mod utils {

@@ -1,51 +1,95 @@
-//! # DPB Core Library
+//! # dpb-core - Core Types and Signal Processing
 //!
-//! Core types, traits, and infrastructure for the Delta-Predictive Biosensing Framework.
+//! The foundational crate for the Delta-Predictive Biosensing framework.
 //!
-//! This is the foundation crate that all other DPB crates depend on. It provides:
+//! ## Features
 //!
-//! - **Core Types**: Data structures for spike events, time series, ground truth, etc.
-//! - **Traits**: Abstract interfaces for encoders, networks, datasets, and more
-//! - **GPU Infrastructure**: WebGPU-based compute acceleration
-//! - **Signal Processing**: Filters, FFT, resampling, and analysis tools
-//! - **Math Utilities**: Statistical functions, interpolation, and numerical methods
-//! - **Configuration**: Structured configuration for all framework components
+//! - **Signal Processing**: FFT, filtering, resampling, normalization
+//! - **Domain-Specific Analysis**: EEG, ECG, EMG, PPG, respiratory, voice
+//! - **Real-Time Pipeline**: Streaming inference with latency tracking
+//! - **Data Formats**: WFDB/PhysioNet and EDF/EDF+ support
+//! - **GPU Acceleration**: WebGPU-based compute infrastructure
+//! - **Visualization**: Plotting utilities for signals, spikes, and analysis
+//! - **Power Modeling**: Energy estimation for neuromorphic and conventional hardware
 //!
 //! ## Quick Start
 //!
 //! ```rust
-//! use dpb_core::{types::*, error::Result};
+//! use dpb_core::{signal::*, pipeline::*};
 //!
-//! fn example() -> Result<()> {
-//!     // Create a spike event
-//!     let event = SpikeEvent::new(0.001, 5, 1, 1.0);
+//! # fn example() -> dpb_core::Result<()> {
+//! // Create a real-time pipeline
+//! let config = PipelineConfig::new(256, 128, 1000.0)
+//!     .with_max_latency(10.0);
+//! let mut executor = PipelineExecutor::new(config);
 //!
-//!     // Build a spike train
-//!     let mut train = SpikeTrain::new(10);
-//!     train.add_event(event);
-//!
-//!     // Create time series data
-//!     let data = vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0]];
-//!     let ts = TimeSeries::new(data, 1000.0)?;
-//!
-//!     Ok(())
+//! // Process streaming data
+//! # let signal = vec![0.0f64; 100];
+//! for sample in signal.iter() {
+//!     if let Some(result) = executor.process_sample(*sample, |window| {
+//!         // Your processing logic here
+//!         vec![window.iter().sum::<f64>()]
+//!     }) {
+//!         // Handle result
+//!         println!("Result: {:?}", result);
+//!     }
 //! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Example: ECG Analysis
+//!
+//! ```rust
+//! use dpb_core::signal::ecg::*;
+//! use dpb_core::signal::hrv::*;
+//! use ndarray::Array1;
+//!
+//! # fn example() -> dpb_core::Result<()> {
+//! # let ecg_signal = Array1::from_vec(vec![0.0; 1000]);
+//! # let sample_rate = 250.0;
+//! // Detect R-peaks
+//! let detector = PanTompkinsDetector::new(sample_rate);
+//! let peaks = detector.detect(&ecg_signal)?;
+//!
+//! // Analyze HRV
+//! let analyzer = HrvAnalyzer::new();
+//! let metrics = analyzer.compute_time_domain(&peaks, sample_rate)?;
+//!
+//! println!("Heart Rate: {:.1} bpm", metrics.mean_hr);
+//! println!("RMSSD: {:.1} ms", metrics.rmssd);
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! ## Modules
 //!
-//! - [`types`] - Core data types (SpikeEvent, SpikeTrain, TimeSeries, etc.)
-//! - [`traits`] - Framework trait definitions
-//! - [`error`] - Error types and Result alias
-//! - [`config`] - Configuration structures
-//! - [`tensor`] - Batched spike tensor operations
-//! - [`gpu`] - GPU infrastructure and utilities
-//! - [`signal`] - Signal processing tools
-//! - [`math`] - Mathematical and statistical utilities
-//! - [`pipeline`] - Real-time processing pipeline infrastructure with buffering and latency tracking
-//! - [`power`] - Power estimation models for neuromorphic and conventional hardware
-//! - [`viz`] - Visualization utilities for signals, spikes, networks, training, and analysis
-//! - [`io`] - I/O support for physiological data formats (WFDB, EDF)
+//! | Module | Description |
+//! |--------|-------------|
+//! | [`signal`] | Signal processing primitives and domain-specific analyzers |
+//! | [`pipeline`] | Real-time streaming pipeline infrastructure |
+//! | [`io`] | Data format readers/writers (WFDB, EDF) |
+//! | [`types`] | Core type definitions (SpikeEvent, TimeSeries, etc.) |
+//! | [`traits`] | Framework trait definitions |
+//! | [`gpu`] | GPU compute infrastructure |
+//! | [`power`] | Power estimation models |
+//! | [`viz`] | Visualization utilities |
+//! | [`math`] | Mathematical and statistical utilities |
+//! | [`metrics`] | Performance metrics |
+//! | [`config`] | Configuration structures |
+//! | [`tensor`] | Batched spike tensor operations |
+//! | [`validation`] | Data validation utilities |
+//!
+//! ## Domain-Specific Modules
+//!
+//! | Module | Description |
+//! |--------|-------------|
+//! | [`cardiopulmonary`] | Cardiopulmonary analysis and modeling |
+//! | [`biomechanics`] | Biomechanical analysis and gait |
+//! | [`sleep`] | Sleep stage analysis |
+//! | [`pain`] | Pain and sensory processing |
+//! | [`somatosensory`] | Somatosensory signal analysis |
+//! | [`vestibular`] | Vestibular system analysis |
 
 #![warn(missing_docs)]
 #![warn(clippy::all)]

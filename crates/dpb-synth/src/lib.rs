@@ -1,37 +1,157 @@
-//! Synthetic Data Generation for DPB Framework
+//! # dpb-synth - Synthetic Biosignal Generation
 //!
-//! This crate provides 200+ synthetic biosignal generators for validation and testing
-//! of the Delta-Predictive Biosensing Framework. All generators support:
-//! - Seeded RNG for reproducibility
-//! - Ground truth output
-//! - Parameter sweeps
-//! - Clinical validity
+//! Generates realistic synthetic biosignals for testing and training.
 //!
-//! ## Module Organization
+//! ## Features
 //!
-//! ### Core Signal Modules
-//! - [`contact`] - Contact-based biosignals (ECG, EMG, EDA, etc.)
-//! - [`neural`] - Neural signals (EEG, ERP, sleep microstructure)
-//! - [`pose`] - Pose and movement signals
-//! - [`hand`] - Hand tracking and gestures
-//! - [`eye`] - Eye tracking and gaze
+//! - **Signal Generation**: ECG, EEG, EMG, PPG, respiratory, gaze, pose, and more
+//! - **Pathology Models**: ALS, MS, stroke disease signatures
+//! - **Augmentation**: 13+ signal augmentation techniques
+//! - **Cohort Generation**: Virtual patient populations
+//! - **Streaming**: Real-time signal generation for online systems
+//! - **Ground Truth**: All generators provide ground truth labels
 //!
-//! ### Biomechanical Modules (New)
-//! - [`force`] - Force dynamics (GRF, grip strength, RFD)
-//! - [`balance`] - Balance and COP (posturography, perturbation)
-//! - [`vestibular`] - Vestibular signals (VOR, nystagmus, caloric)
+//! ## Quick Start: Signal Generation
 //!
-//! ### Clinical Protocol Modules (New)
-//! - [`pain`] - Pain and sensory testing (QST, temporal summation)
-//! - [`cardiopulmonary`] - Cardiorespiratory signals (HRV, respiratory)
-//! - [`cognitive`] - Cognitive task responses (RT, accuracy, d-prime)
+//! ```rust
+//! use dpb_synth::contact::ecg::*;
+//! use rand::SeedableRng;
+//! use rand_chacha::ChaCha8Rng;
 //!
-//! ### Disease Pathology Modules (New)
-//! - [`pathology`] - Disease-specific models (ALS, MS, stroke)
+//! # fn example() -> dpb_synth::Result<()> {
+//! // Generate synthetic ECG
+//! let mut rng = ChaCha8Rng::seed_from_u64(42);
+//! let generator = EcgGenerator::new(250.0);  // 250 Hz
 //!
-//! ### Augmentation and Cohort Modules
-//! - [`augmentation`] - Signal augmentation (noise, temporal, spectral)
-//! - [`cohort`] - Virtual patient cohort generation
+//! let (signal, ground_truth) = generator.generate(
+//!     10.0,   // 10 seconds
+//!     70.0,   // 70 bpm heart rate
+//!     &mut rng,
+//! )?;
+//!
+//! println!("Generated {} samples", signal.len());
+//! println!("R-peaks: {:?}", ground_truth.r_peaks);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Example: Signal Augmentation
+//!
+//! ```rust
+//! use dpb_synth::augmentation::*;
+//! use rand::SeedableRng;
+//! use rand_chacha::ChaCha8Rng;
+//!
+//! # fn example() {
+//! let mut rng = ChaCha8Rng::seed_from_u64(42);
+//! let signal = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+//!
+//! // Build augmentation pipeline
+//! let pipeline = AugmentationPipeline::new()
+//!     .add(GaussianNoise::new(20.0), 0.8)  // 80% probability
+//!     .add(TimeWarp::new(0.2, 4), 0.5)     // 50% probability
+//!     .add(MagnitudeScale::new((0.9, 1.1)), 1.0);
+//!
+//! let augmented = pipeline.apply(&signal, &mut rng);
+//! # }
+//! ```
+//!
+//! ## Example: Virtual Patient Cohort
+//!
+//! ```rust
+//! use dpb_synth::cohort::*;
+//!
+//! # fn example() {
+//! // Generate virtual patient cohort
+//! let generator = CohortGenerator::new(100)  // 100 patients
+//!     .with_disease("Hypertension", 0.3)     // 30% prevalence
+//!     .with_disease("Diabetes", 0.15)
+//!     .with_age_distribution(50.0, 15.0);    // mean=50, std=15
+//!
+//! let cohort = generator.generate(42);  // seed=42
+//!
+//! for patient in &cohort {
+//!     println!("Patient {}: age={}, HR={}",
+//!         patient.id,
+//!         patient.demographics.age_years,
+//!         patient.baseline_hr
+//!     );
+//! }
+//! # }
+//! ```
+//!
+//! ## Example: Streaming Generation
+//!
+//! ```rust
+//! use dpb_synth::streaming::*;
+//! use rand::SeedableRng;
+//! use rand_chacha::ChaCha8Rng;
+//!
+//! # fn example() -> dpb_synth::Result<()> {
+//! let mut rng = ChaCha8Rng::seed_from_u64(42);
+//!
+//! // Create streaming ECG generator
+//! let config = StreamingConfig {
+//!     sample_rate: 250.0,
+//!     buffer_size: 1024,
+//! };
+//! let params = StreamingEcgParams {
+//!     heart_rate: 75.0,
+//!     hrv_enabled: true,
+//! };
+//!
+//! let mut generator = StreamingEcg::new(config, params);
+//!
+//! // Generate samples in real-time
+//! for _ in 0..1000 {
+//!     let sample = generator.next_sample(&mut rng);
+//!     // Process sample...
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Modules
+//!
+//! | Module | Description |
+//! |--------|-------------|
+//! | [`contact`] | Contact biosignals (ECG, EMG, EDA, PPG) |
+//! | [`neural`] | Neural signals (EEG, ERP, sleep) |
+//! | [`pose`] | Pose and movement signals |
+//! | [`hand`] | Hand tracking and gestures |
+//! | [`eye`] | Eye tracking and gaze |
+//! | [`voice`] | Voice and speech signals |
+//! | [`force`] | Force dynamics and grip |
+//! | [`balance`] | Balance and posturography |
+//! | [`vestibular`] | Vestibular system signals |
+//! | [`pain`] | Pain and sensory testing |
+//! | [`cardiopulmonary`] | Cardiopulmonary signals |
+//! | [`cognitive`] | Cognitive task responses |
+//! | [`pathology`] | Disease pathology models |
+//! | [`augmentation`] | Signal augmentation |
+//! | [`cohort`] | Virtual patient cohorts |
+//! | [`streaming`] | Real-time signal generation |
+//!
+//! ## Augmentation Techniques
+//!
+//! ### Noise Augmentations
+//! - [`GaussianNoise`]: White noise addition
+//! - [`PinkNoise`]: 1/f noise addition
+//! - [`BaselineWander`]: Low-frequency drift
+//! - [`PowerlineNoise`]: 50/60 Hz interference
+//! - [`MotionArtifact`]: Movement artifacts
+//!
+//! ### Temporal Augmentations
+//! - [`TimeWarp`]: Non-linear time warping
+//! - [`TimeShift`]: Circular time shift
+//! - [`WindowCrop`]: Random cropping
+//! - [`Resample`]: Sample rate changes
+//! - [`RandomDropout`]: Sample dropout
+//!
+//! ### Spectral Augmentations
+//! - [`MagnitudeScale`]: Amplitude scaling
+//! - [`FrequencyMask`]: Frequency masking
+//! - [`TimeMask`]: Time masking
 
 pub mod traits;
 pub mod streaming;

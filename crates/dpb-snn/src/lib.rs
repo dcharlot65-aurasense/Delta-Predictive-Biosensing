@@ -1,19 +1,120 @@
-//! # DPB-SNN: Spiking Neural Network Implementation
+//! # dpb-snn - Spiking Neural Networks
 //!
-//! This crate provides a comprehensive implementation of Spiking Neural Networks (SNNs)
-//! for the Delta-Predictive Biosensing Framework. It includes:
+//! Spiking Neural Network architectures, training, and deployment.
 //!
-//! - Spike tensor operations and representations
-//! - Various layer types (linear, convolutional, recurrent, attention)
-//! - Multiple SNN architectures
-//! - Training algorithms (BPTT, OTTT, SLTT)
-//! - ANN-to-SNN conversion utilities
-//! - Output decoders for spike trains
-//! - Model export capabilities
-//! - Training analysis and convergence detection
-//! - 44 ANN baseline architectures for fair SNN comparison
-//! - Model calibration and uncertainty quantification
-//! - Explainability and interpretability tools
+//! ## Features
+//!
+//! - **Architectures**: Feedforward, convolutional, recurrent SNNs
+//! - **Training**: BPTT, surrogate gradients, ANN-to-SNN conversion
+//! - **Calibration**: Temperature scaling, isotonic regression, uncertainty quantification
+//! - **Explainability**: Spike importance, attention maps, feature attribution
+//! - **Fusion**: Multi-modal sensor fusion architectures
+//! - **Baselines**: 44 ANN architectures for comparison
+//! - **Export**: ONNX format, weight serialization
+//!
+//! ## Quick Start: Building an SNN
+//!
+//! ```rust
+//! use dpb_snn::*;
+//! use dpb_neurons::prelude::*;
+//!
+//! # fn example() -> SNNResult<()> {
+//! // Build a feedforward SNN
+//! let config = SNNConfig::default();
+//! let mut network = FeedforwardSNN::new(
+//!     vec![128, 64, 10],  // layer sizes
+//!     config,
+//! );
+//!
+//! // Configure training
+//! let mut trainer = BPTT::new(
+//!     FastSigmoid::default(),  // surrogate gradient
+//!     0.001,                    // learning rate
+//! );
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Example: Model Calibration
+//!
+//! ```rust
+//! use dpb_snn::calibration::*;
+//!
+//! # fn example() -> dpb_snn::SNNResult<()> {
+//! # let logits = vec![vec![1.0, 2.0, 3.0]];
+//! # let labels = vec![2];
+//! # let predictions = vec![vec![0.1, 0.3, 0.6]];
+//! // Calibrate model confidence scores
+//! let mut calibrator = TemperatureScaling::new();
+//! calibrator.fit(&logits, &labels)?;
+//! let calibrated = calibrator.calibrate(&predictions);
+//!
+//! // Evaluate calibration quality
+//! let ece = expected_calibration_error(&calibrated, &labels, 10);
+//! println!("Expected Calibration Error: {:.4}", ece);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Example: Explainability
+//!
+//! ```rust
+//! use dpb_snn::explain::*;
+//! use ndarray::Array2;
+//!
+//! # fn example() -> dpb_snn::SNNResult<()> {
+//! # let spikes = Array2::from_shape_vec((10, 100), vec![false; 1000]).unwrap();
+//! # let gradients = Array2::from_shape_vec((10, 100), vec![0.1; 1000]).unwrap();
+//! # let weights = Array2::from_shape_vec((10, 100), vec![0.5; 1000]).unwrap();
+//! // Compute spike importance for interpretability
+//! let importance = compute_spike_importance(
+//!     &spikes,
+//!     &gradients,
+//!     &weights,
+//! );
+//!
+//! // Aggregate to neuron-level importance
+//! let neuron_importance = aggregate_to_neurons(&importance);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Example: Multi-Modal Fusion
+//!
+//! ```rust
+//! use dpb_snn::fusion::*;
+//!
+//! # fn example() -> dpb_snn::SNNResult<()> {
+//! // Create a cross-modal attention fusion network
+//! let config = FusionConfig {
+//!     ecg_channels: 12,
+//!     imu_channels: 6,
+//!     video_channels: 3,
+//!     num_classes: 5,
+//! };
+//!
+//! let network = CrossModalAttentionSNN::new(config)?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Modules
+//!
+//! | Module | Description |
+//! |--------|-------------|
+//! | [`architectures`] | SNN architectures (feedforward, CNN, RNN, transformer) |
+//! | [`layers`] | Spiking layers (linear, conv, pooling, attention) |
+//! | [`training`] | Training algorithms (BPTT, OTTT, SLTT) |
+//! | [`decoders`] | Output decoders for spike trains |
+//! | [`calibration`] | Model calibration and uncertainty |
+//! | [`explain`] | Explainability and interpretability |
+//! | [`fusion`] | Multi-modal fusion architectures |
+//! | [`baselines`] | ANN baseline architectures |
+//! | [`conversion`] | ANN-to-SNN conversion |
+//! | [`analysis`] | Training analysis and convergence |
+//! | [`learning`] | Unsupervised learning rules (STDP, Hebbian) |
+//! | [`optimization`] | Network pruning and compression |
+//! | [`export`] | Model export utilities |
 
 pub mod tensor;
 pub mod layers;
