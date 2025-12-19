@@ -20,6 +20,7 @@
 6. [Gap Analysis](#6-gap-analysis)
 7. [Quick Reference Tables](#7-quick-reference-tables)
 8. [Learning Resources](#8-learning-resources)
+9. [Related Documentation](#9-related-documentation)
 
 ---
 
@@ -1645,4 +1646,33 @@ cargo doc --no-deps --all-features --open
 
 ---
 
-*End of System Catalog v5.1.0*
+## 9. Related Documentation
+
+### 9.1 Deployment Guide
+
+For detailed platform-specific deployment instructions, see **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** (v2.0.0).
+
+The Deployment Guide provides:
+- **Guided Platform Selection** - Decision flowchart to choose the right deployment target
+- **Operating System** instructions for Windows, Linux, macOS
+- **GPU Platform** setup for CUDA, Metal, Vulkan, DirectX 12, ROCm
+- **Browser Deployment** with WebGPU, WebNN, Safari compatibility
+- **Mobile Platforms** for iOS and Android with NPU acceleration
+- **Embedded/TinyML** for ESP32, STM32, Raspberry Pi, RISC-V
+- **AI Accelerators** for Intel Gaudi, Graphcore IPU
+- **Neuromorphic Export** for Loihi 2, SpiNNaker 2, BrainScaleS-2
+- **FPGA Export** for Xilinx Vitis HLS, Intel HLS
+
+### 9.2 Other Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [API_GUIDE.md](API_GUIDE.md) | API reference and usage patterns |
+| [WEBGL_DEPRECATION.md](WEBGL_DEPRECATION.md) | WebGL to WebGPU migration guide |
+| [CROSS_PLATFORM_INTEGRATION_PLAN.md](CROSS_PLATFORM_INTEGRATION_PLAN.md) | Integration architecture |
+| [GAP_RESOLUTION_PLAN.md](GAP_RESOLUTION_PLAN.md) | Historical gap resolution tracking |
+| [learning/](learning/) | Educational resources (5 books, notebooks, videos) |
+
+---
+
+*End of System Catalog v5.3.0*
