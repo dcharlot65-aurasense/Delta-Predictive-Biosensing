@@ -69,7 +69,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **dpb-python** | PyO3 Python bindings | 3,000+ |
 | **dpb-ffi** | C-compatible FFI | 1,500+ |
 | **dpb-bench** | Benchmarking suite | 2,500+ |
-| **dpb-wasm** | WebAssembly bindings, browser deployment, WebGPU, WebNN ML inference | 3,000+ |
+| **dpb-wasm** | WebAssembly bindings, browser deployment, WebGPU (inc. Safari support), WebNN ML inference | 3,500+ |
 | **dpb-lsl** | Lab Streaming Layer integration, liblsl FFI, real-time streaming | 3,000+ |
 | **dpb-export** | ONNX, JSON, Binary, FPGA HLS, Neuromorphic (Lava/PyNN/hxtorch) export | 4,500+ |
 | **dpb-federated** ✅ NEW | Privacy-preserving distributed training, FedAvg, differential privacy, gradient compression | 3,500+ |
@@ -1279,7 +1279,6 @@ This section answers: **"What's needed but missing?"**
 | Gap | Description | Effort | Impact |
 |-----|-------------|--------|--------|
 | **RISC-V Production Testing** | Testing on physical ESP32-C3, SiFive boards | Low | Hardware validation |
-| **WebGPU Safari Support** | Safari-specific WebGPU compatibility testing | Low | Browser coverage |
 
 ### 6.3.1 Completed Gaps (v5.3.0)
 
@@ -1291,6 +1290,7 @@ This section answers: **"What's needed but missing?"**
 | ~~Mobile NPU Acceleration~~ | `dpb-mobile/npu.rs` | ✅ Complete |
 | ~~Neuromorphic Export~~ | `dpb-export/neuromorphic.rs` | ✅ Complete |
 | ~~WebGL Deprecation Docs~~ | `docs/WEBGL_DEPRECATION.md` | ✅ Complete |
+| ~~WebGPU Safari Support~~ | `dpb-wasm/webgpu_safari.rs` | ✅ Complete |
 
 ### 6.3.2 Completed Gaps (v5.2.0)
 
@@ -1316,7 +1316,7 @@ This section answers: **"What's needed but missing?"**
 | dpb-core/accelerators/gaudi | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-core/accelerators/ipu | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-core/accelerators/riscv | ✅ | ✅ | ✅ | ⚠️ |
-| dpb-core/accelerators/cuda | ✅ | ⚠️ | ✅ | ⚠️ |
+| dpb-core/accelerators/cuda | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-neurons/dendritic | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-snn/distillation | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-snn/neuromorphic | ✅ | ✅ | ✅ | ⚠️ |
@@ -1330,15 +1330,15 @@ This section answers: **"What's needed but missing?"**
 | dpb-clinical | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-clinical/phi | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-lsl | ✅ | ✅ | ✅ | ✅ |
-| dpb-lsl/native | ✅ | ⚠️ | ✅ | ⚠️ |
+| dpb-lsl/native | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-wasm | ✅ | ✅ | ✅ | ⚠️ |
-| dpb-wasm/webnn | ✅ | ⚠️ | ✅ | ⚠️ |
-| dpb-mobile/npu | ✅ | ⚠️ | ✅ | ⚠️ |
+| dpb-wasm/webnn | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-mobile/npu | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-export | ✅ | ✅ | ✅ | ✅ |
-| dpb-export/fpga | ✅ | ⚠️ | ✅ | ⚠️ |
-| dpb-export/neuromorphic | ✅ | ⚠️ | ✅ | ⚠️ |
+| dpb-export/fpga | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-export/neuromorphic | ✅ | ✅ | ✅ | ⚠️ |
 | bindings/r | ✅ | ✅ | ✅ | ✅ |
-| bindings/labview | ✅ | - | ✅ | ⚠️ |
+| bindings/labview | ✅ | - | ✅ | ✅ |
 
 Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
 
