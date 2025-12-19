@@ -14,7 +14,7 @@ The amazing thing? This electrical signal is so strong that we can detect it fro
 
 ## How It Works
 
-Your heart has its own internal pacemaker called the sinoatrial node, or SA node. This small cluster of specialized cells in your right atrium fires electrical signals automatically, about 60 to 100 times per minute when you're resting.
+Your heart has its own internal pacemaker called the sinoatrial node, or SA node. Martin Flack, a medical student, was the first to discover the SA node in the early 1900s. The SA node represents a cluster of myocytes with pacemaker activity that, under normal circumstances, generates electrical impulses that set the rhythm and rate of the heart ([StatPearls, Physiology: Sinoatrial Node, NCBI NBK459238](https://www.ncbi.nlm.nih.gov/books/NBK459238/)). This small cluster of specialized cells in your right atrium fires electrical signals automatically, about 60 to 100 times per minute when you're resting.
 
 Here's what happens during each heartbeat:
 
@@ -93,7 +93,7 @@ The ECG is excellent at detecting heart problems. Here are some common abnormali
 
 **Arrhythmias (Irregular Rhythms)**
 
-*Atrial Fibrillation (AFib)*: The atria quiver instead of beating normally. On ECG, you see irregular QRS complexes without clear P waves. This is common in older adults and increases stroke risk.
+*Atrial Fibrillation (AFib)*: The atria quiver instead of beating normally. Atrial fibrillation is a prevalent clinical arrhythmia disease and is an important cause of stroke, heart failure, and sudden death. On ECG, atrial fibrillation presents with the typical narrow complex "irregularly irregular" pattern with no distinguishable P waves ([StatPearls, Atrial Fibrillation, NCBI NBK526072](https://www.ncbi.nlm.nih.gov/books/NBK526072/)). This is common in older adults and increases stroke risk.
 
 *Premature Contractions*: Extra beats that come too early. They look different from normal beats. Occasional ones are harmless, but frequent ones might need attention.
 

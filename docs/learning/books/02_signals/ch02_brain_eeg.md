@@ -55,7 +55,7 @@ Brain waves are categorized by their frequency - how many times they cycle per s
 **Alpha Waves (8-13 Hz)**: Medium-frequency, regular waves
 - Dominant when you're awake but relaxed
 - Strongest when eyes are closed
-- Reduced when concentrating or alert
+- Reduced when concentrating or alert—the so-called "alpha blockade" ([Stone & Hughes, 2013, Child's Nervous System](https://link.springer.com/article/10.1007/s00381-020-04564-z))
 - Often called the "idling" rhythm
 
 **Beta Waves (13-30 Hz)**: Fast, lower-amplitude waves

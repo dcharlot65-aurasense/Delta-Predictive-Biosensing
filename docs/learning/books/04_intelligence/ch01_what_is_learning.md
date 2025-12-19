@@ -46,7 +46,7 @@ The process isn't mysterious. It's systematic pattern recognition through repeat
 
 > **Did You Know?**
 >
-> The term "machine learning" was coined in 1959 by Arthur Samuel, who created a program that learned to play checkers better than he could! The computer played thousands of games against itself, learning from each one.
+> In 1959, Arthur Samuel defined machine learning as a "field of study that gives computers the ability to learn without being explicitly programmed." In July 1959, he published "Some Studies in Machine Learning Using the Game of Checkers" in the IBM Journal of Research and Development, creating a program that learned to play checkers better than he could. The Samuel Checkers-playing Program was among the world's first successful self-learning programs and demonstrated the fundamental concept of artificial intelligence ([Samuel, 1959, IBM Journal R&D](https://www.semanticscholar.org/paper/Some-Studies-in-Machine-Learning-Using-the-Game-of-Samuel/e9e6bb5f2a04ae30d8ecc9287f8b702eedd7b772)).
 
 ---
 

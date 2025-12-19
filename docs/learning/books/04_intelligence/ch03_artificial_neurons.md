@@ -55,7 +55,7 @@ Then apply the activation function to this sum to get the output.
 
 > **Did You Know?**
 >
-> The perceptron was invented in 1958 by Frank Rosenblatt, a psychologist and computer scientist. His Mark 1 Perceptron machine could learn to recognize simple shapes. The New York Times called it "the embryo of an electronic computer that [the Navy] expects will be able to walk, talk, see, write, reproduce itself and be conscious of its existence."
+> The perceptron was invented in 1958 by Frank Rosenblatt (1928-1971), a psychologist and computer scientist at the Cornell Aeronautical Laboratory. His Mark 1 Perceptron was possibly the first machine that could "learn" new skills by trial and error. The perceptron algorithm was intended as a simplified model of how brain neurons learn, and although it has limitations for classification of linearly inseparable problems, it paved the way for modern neural networks ([Rosenblatt, 1958, Psychological Review](https://www.semanticscholar.org/paper/The-Perceptron-A-Probabilistic-Model-for-Storage-Rosenblatt/7a47f9c2d3d88f2c9baa6edb4b3abfbd05b0e1d2)).
 
 ---
 

@@ -16,7 +16,7 @@ This is cardiac monitoring in action. Let's see how it works.
 
 Your heart beats about 100,000 times per day. Most of those beats are normal. But sometimes, dangerous patterns emerge:
 
-**Atrial Fibrillation (AFib)**: The upper chambers of your heart quiver instead of beating regularly. This can cause blood clots, leading to stroke. About 6 million Americans have it, and many don't know.
+**Atrial Fibrillation (AFib)**: The upper chambers of your heart quiver instead of beating regularly. This can cause blood clots, leading to stroke. Atrial fibrillation is the most common sustained cardiac arrhythmia, with an estimated prevalence of 2-4% of the general population. AF is associated with a five-fold increase in stroke risk and a two-fold increase in all-cause mortality ([Hindricks et al., 2021, European Heart Journal](https://academic.oup.com/eurheartj/article/42/5/373/5899003)). About 6 million Americans have it, and many don't know.
 
 **Ventricular Tachycardia**: The lower chambers beat too fast. This can prevent your heart from pumping enough blood, causing dizziness or collapse. It can be life-threatening.
 

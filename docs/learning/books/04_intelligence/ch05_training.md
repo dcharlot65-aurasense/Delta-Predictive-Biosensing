@@ -113,7 +113,7 @@ The loss function is crucial because it guides learning. The network tries to mi
 
 Here's where it gets interesting. We know the network made an error. But which weights caused it? The network might have thousands or millions of weights. Which ones should we adjust?
 
-**Backpropagation** (backward propagation of errors) solves this problem through calculus. The key insight: we can calculate how much each weight contributed to the error.
+**Backpropagation** (backward propagation of errors) solves this problem through calculus. This fundamental algorithm was popularized by Rumelhart, Hinton, and Williams in their seminal 1986 paper "Learning representations by back-propagating errors" in Nature, which demonstrated how multi-layer neural networks could learn internal representations ([Rumelhart et al., 1986, Nature](https://www.nature.com/articles/323533a0)). The key insight: we can calculate how much each weight contributed to the error.
 
 Think of it like diagnosing a problem. A factory produces defective products. You trace backward through the assembly line, identifying which steps introduced the defects. Similarly, backpropagation traces backward through the network, identifying which weights contributed most to the error.
 

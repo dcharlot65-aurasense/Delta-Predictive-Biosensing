@@ -10,17 +10,17 @@ They're reading your pulse - and to them, it's like reading a book.
 
 ## Ancient China: The Pulse Masters
 
-In ancient China around 3000 BCE, physicians developed an incredible skill. They could feel dozens of different pulse qualities. Fast pulses, slow pulses, strong pulses, weak pulses. Each one told a different story about your health.
+In ancient China, physicians developed an incredible skill documented in the *Huangdi Neijing* (The Yellow Emperor's Classic of Medicine), an ancient treatise on health and disease ([Flaws & Lake, PMC5965015](https://pmc.ncbi.nlm.nih.gov/articles/PMC5965015/)). They could feel dozens of different pulse qualities. Fast pulses, slow pulses, strong pulses, weak pulses. Each one told a different story about your health.
 
-Chinese doctors pressed three fingers against each wrist. That's six positions total, each measuring different organs. They felt the rhythm, the strength, and the quality. A "slippery" pulse meant one thing. A "wiry" pulse meant another.
+Chinese doctors pressed three fingers against each wrist. That's six positions total, each measuring different organs. They felt the rhythm, the strength, and the quality. A "slippery" pulse meant one thing. A "wiry" pulse meant another. The pulse examination (脈診 mài zhěn) became a unique diagnostic approach that integrates ancient sphygmology theories from legendary physicians like Bian Que, Cang Gong, and Hua Tuo ([Bi et al., 2014, PMC3942893](https://pmc.ncbi.nlm.nih.gov/articles/PMC3942893/)).
 
-This wasn't guesswork. It was a sophisticated diagnostic system passed down through generations. Master physicians trained for decades to perfect their sensitivity. Their fingers became precision instruments.
+This wasn't guesswork. It was a sophisticated diagnostic system passed down through generations. Master physicians trained for decades to perfect their sensitivity. Their fingers became precision instruments. The fundamentals of traditional pulse diagnosis can be traced to the *Neijing Suwen* and have been refined by scholars such as Wang Shuhe in the Eastern Han Dynasty and Li Shi Zhen in the Ming Dynasty ([Hammer, 2013, PubMed 24139459](https://pubmed.ncbi.nlm.nih.gov/24139459/)).
 
 The pulse told them about your heart, but also much more. It revealed imbalances in your body's energy. It showed which organs needed help. It even suggested which herbs might cure you.
 
 > **Did You Know?**
 >
-> Ancient Chinese physicians described over 200 different pulse qualities! They had names like "floating," "sinking," "choppy," and "leather-like." Each required years of training to recognize accurately.
+> In traditional Chinese medicine, there are 26 categories of pulses, each indicating particular diseases or syndromes ([Flaws & Lake, PMC5965015](https://pmc.ncbi.nlm.nih.gov/articles/PMC5965015/)). They had names like "floating," "sinking," "choppy," and "leather-like." Each required years of training to recognize accurately.
 
 ---
 
@@ -38,17 +38,17 @@ The Egyptians connected pulse changes to different diseases. Fever made the puls
 
 ## Greece: Hippocrates and the Art of Observation
 
-Fast forward to ancient Greece, around 400 BCE. Here we meet Hippocrates, often called the father of medicine. His revolutionary idea? Observe carefully, record everything, and look for patterns.
+Fast forward to ancient Greece, around 400 BCE. Here we meet Hippocrates (460-377 BCE), universally recognized as the father of modern medicine, which is based on observation of clinical signs and rational conclusions ([Yapijakis, 2009, In Vivo 23(4):507](https://iv.iiarjournals.org/content/23/4/507)). His revolutionary idea? Observe carefully, record everything, and look for patterns.
 
-Hippocrates taught doctors to use all their senses. Look at the patient's color. Listen to their breathing. Feel their temperature. Smell their breath. Touch their pulse. Every detail mattered.
+Hippocrates taught doctors to use all their senses. In their diagnoses, Greek physicians were instructed to note geographical location, climate, age, gender, habits and diet. The physical examination required great attention to be given to fever, respiration, paralysis, color of the limbs, and pain on palpation ([Kleisiaris et al., 2014, PMC4263393](https://pmc.ncbi.nlm.nih.gov/articles/PMC4263393/)).
 
-He created detailed case studies of patients. He described symptoms day by day. He noted what worked and what didn't. This systematic approach transformed medicine from superstition to science.
+He created detailed case studies of patients. Books I and III of the *Epidemics* contain forty-two case histories, with Hippocrates making careful, regular notes of many symptoms including complexion, pulse, fever, pains, movement, and excretions ([Cureus, 2024](https://www.cureus.com/articles/291051-hippocrates-of-kos-460-377-bc-the-founder-and-pioneer-of-clinical-medicine)). This systematic approach transformed medicine from superstition to science—Hippocrates finally freed medicine from the shackles of magic, superstition, and the supernatural.
 
 Hippocrates emphasized the "vital signs" - the body's key indicators of life. Temperature, pulse, and breathing rate became standard measurements. These same vital signs are still checked in hospitals today, over 2,000 years later!
 
 > **Did You Know?**
 >
-> The Hippocratic Oath, a promise doctors make to help patients, comes from Hippocrates. Parts of it are still used in modern medical school graduation ceremonies!
+> The Hippocratic Oath, a promise doctors make to help patients, comes from Hippocrates. Parts of it are still used in modern medical school graduation ceremonies! Hippocrates is said to have measured a patient's pulse when taking a case history to discover whether the patient was lying ([Cureus, 2024](https://www.cureus.com/articles/291051-hippocrates-of-kos-460-377-bc-the-founder-and-pioneer-of-clinical-medicine)).
 
 ---
 
@@ -140,7 +140,7 @@ The next big leap required new tools. Tools that could extend human senses. Tool
 
 ## What's Next?
 
-In 1816, a French doctor faced an awkward situation. He needed to listen to a young woman's heart, but social customs made it inappropriate. His creative solution led to one of medicine's most iconic inventions.
+In 1816, French physician René Théophile Hyacinthe Laënnec (1781-1826) faced an awkward situation. He needed to listen to a young woman's heart, but social customs made it inappropriate. His creative solution—rolling up a sheet of paper to create distance while amplifying sound—led to one of medicine's most iconic inventions ([Roguin, 2006, PMC1570491](https://pmc.ncbi.nlm.nih.gov/articles/PMC1570491/)).
 
 The stethoscope changed everything. For the first time, doctors could clearly hear the secret sounds inside the body. Heart valves opening and closing. Air moving through lungs. Blood flowing through vessels.
 

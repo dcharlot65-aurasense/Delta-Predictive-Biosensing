@@ -4,7 +4,7 @@
 
 Make a fist. Squeeze hard. Now relax. During that simple action, millions of muscle fibers contracted and relaxed, each one triggered by electrical signals from your nervous system.
 
-Electromyography - EMG - records these electrical signals. Every time a muscle contracts, it generates a burst of electrical activity that we can detect and measure. The stronger the contraction, the more electrical activity appears. The more fatigued the muscle, the more the signal changes.
+Electromyography - EMG - records these electrical signals. The EMG signal is a biomedical signal that measures electrical currents generated in muscles during contraction, representing neuromuscular activities. The nervous system always controls the muscle activity, making EMG a complicated signal that is dependent on the anatomical and physiological properties of muscles ([Raez et al., 2006, PMC1455479](https://pmc.ncbi.nlm.nih.gov/articles/PMC1455479/)). Every time a muscle contracts, it generates a burst of electrical activity that we can detect and measure. The stronger the contraction, the more electrical activity appears. The more fatigued the muscle, the more the signal changes.
 
 EMG is like eavesdropping on the conversation between your nervous system and your muscles. Your brain sends commands as electrical signals traveling down nerves. These signals trigger muscle fibers to contract. EMG captures this moment - the instant when nerve signals become mechanical force.
 
@@ -50,9 +50,9 @@ During muscle contraction:
 
 **Surface vs. Needle EMG**
 
-*Surface EMG*: Electrodes on the skin detect activity from many motor units at once. This shows overall muscle activation but can't identify individual motor units. It's non-invasive and easy to use.
+*Surface EMG*: Electrodes on the skin detect activity from many motor units at once. Surface electromyography (sEMG) is a non-invasive measure of muscle activity that is widely used in research and can provide additional detail on neuromuscular function, such as median frequency providing information on muscle fatigue ([Merletti & Muceli, 2019, Frontiers in Neurology](https://www.frontiersin.org/journals/neurology/articles/10.3389/fneur.2020.576729/full)). This shows overall muscle activation but can't identify individual motor units.
 
-*Needle EMG*: A tiny needle electrode inserted into the muscle can record individual motor unit firings. This provides detailed diagnostic information but requires medical expertise and is uncomfortable.
+*Needle EMG*: A tiny needle electrode inserted into the muscle can record individual motor unit firings. This provides detailed diagnostic information but requires medical expertise and is uncomfortable. The average efficiency of capture of EMG signals with current technologies is around 70%, but once captured, signal processing algorithms can achieve recognition accuracy as high as 99.8% ([Jaramillo-Yánez et al., 2020, PMC7755956](https://pmc.ncbi.nlm.nih.gov/articles/PMC7755956/)).
 
 For most applications (sports, rehabilitation, research), surface EMG is sufficient and much more practical.
 

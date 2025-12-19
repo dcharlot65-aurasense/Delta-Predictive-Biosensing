@@ -40,7 +40,7 @@ The result? Billions of people now have access to continuous biosignal monitorin
 
 Today's consumer wearables pack an impressive array of biosignal sensors into compact form factors. Here's what they can measure:
 
-**Heart Rate**: Optical sensors (photoplethysmography or PPG) shine green light into your skin. Blood absorbs this light. When your heart pumps, blood volume in your wrist increases briefly, changing light absorption. The sensor detects these changes, calculating heart rate. This works continuously, 24/7.
+**Heart Rate**: Optical sensors (photoplethysmography or PPG) shine green light into your skin. Photoplethysmography is an uncomplicated and inexpensive optical measurement method that uses a light source and photodetector at the surface of skin to measure volumetric variations of blood circulation ([Tamura et al., 2019, PMC6426305](https://pmc.ncbi.nlm.nih.gov/articles/PMC6426305/)). Blood absorbs this light. When your heart pumps, blood volume in your wrist increases briefly, changing light absorption. The sensor detects these changes, calculating heart rate. This works continuously, 24/7.
 
 **Heart Rhythm**: Some devices include actual ECG capability. Metal sensors on the watch and band detect electrical signals just like Einthoven's original ECG. Algorithms analyze the rhythm for abnormalities like atrial fibrillation.
 
@@ -50,7 +50,7 @@ Today's consumer wearables pack an impressive array of biosignal sensors into co
 
 **Sleep Stages**: Combining heart rate, heart rate variability, and movement patterns, algorithms estimate sleep stages. Light sleep, deep sleep, REM sleep - each has characteristic biosignal patterns. Sleep quality metrics help identify sleep disorders.
 
-**Stress and Recovery**: Heart rate variability (HRV) - variation in time between heartbeats - indicates autonomic nervous system state. High HRV suggests relaxation and recovery. Low HRV suggests stress or fatigue. Wearables calculate HRV continuously.
+**Stress and Recovery**: Heart rate variability (HRV) - variation in time between heartbeats - indicates cardiac vagal tone and autonomic nervous system state. Psychophysiological research integrating HRV has increased dramatically, particularly because HRV is able to index cardiac vagal tone, which is linked with self-regulation at cognitive, emotional, social, and health levels ([Laborde et al., 2017, PMC5316555](https://pmc.ncbi.nlm.nih.gov/articles/PMC5316555/)). High HRV suggests relaxation and recovery. Low HRV suggests stress or fatigue. Wearables calculate HRV continuously.
 
 **Body Temperature**: Skin temperature sensors track changes that might indicate illness, ovulation, or circadian rhythm shifts.
 

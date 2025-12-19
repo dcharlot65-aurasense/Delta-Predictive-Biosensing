@@ -4,7 +4,7 @@
 
 Imagine trying to watch your favorite show on TV, but someone's vacuuming in the next room, the antenna's loose, and there's a storm outside. The picture keeps fuzzing out, the sound cuts in and out, and you can barely tell what's happening. That's exactly what dealing with real biosignals is like.
 
-In textbooks, ECG signals look beautiful - smooth, clean waves marching across the page like a perfect heartbeat should. In the real world? Not so much. Real ECG signals are messy, jumpy, and full of stuff that has nothing to do with the heart. Before we can analyze anything, we need to clean up the mess.
+In textbooks, ECG signals look beautiful - smooth, clean waves marching across the page like a perfect heartbeat should. In the real world? Not so much. Real ECG signals are messy, jumpy, and full of stuff that has nothing to do with the heart. The sources of noise in biosignal recordings include powerline interference, muscle activity (EMG noise), movement artifacts, baseline wander, electrode noise, and instrumentation noise ([Sörnmo & Laguna, 2005, Bioelectrical Signal Processing in Cardiac and Neurological Applications](https://www.sciencedirect.com/book/9780124375529/bioelectrical-signal-processing-in-cardiac-and-neurological-applications)). Before we can analyze anything, we need to clean up the mess.
 
 This chapter teaches you to recognize different types of noise and artifacts, understand where they come from, and know how to handle them. Think of it as learning to clean a dirty window - you can't see the view clearly until you remove the dirt.
 

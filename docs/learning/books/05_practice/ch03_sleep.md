@@ -22,13 +22,13 @@ Further analysis revealed why: subtle sleep apnea that didn't cause obvious brea
 
 You spend about one-third of your life asleep - roughly 25-30 years if you live to 80. But most people don't know what actually happens during those hours.
 
-Sleep isn't one uniform state. It's a complex cycle through different stages, each serving different purposes:
+Sleep isn't one uniform state. It's a complex cycle through different stages, each serving different purposes. The American Academy of Sleep Medicine (AASM) established the current standard for sleep stage scoring in 2007, dividing sleep into N1, N2, N3, and REM stages based on EEG, EOG, and EMG patterns ([Berry et al., 2020, AASM Manual for Scoring of Sleep](https://aasm.org/clinical-resources/scoring-manual/)):
 
 **Stage 1 (N1)**: Light transition into sleep. Easy to wake up. Brain waves slow from waking beta to drowsy theta. Lasts just a few minutes.
 
-**Stage 2 (N2)**: Actual sleep begins. Brain shows characteristic "sleep spindles" and "K-complexes" - brief bursts of activity. Body temperature drops. Heart rate slows. You spend about 50% of the night here.
+**Stage 2 (N2)**: Actual sleep begins. Brain shows characteristic "sleep spindles" (11-16 Hz bursts lasting 0.5-1.5 seconds) and "K-complexes" (brief high-amplitude negative-positive waves). Body temperature drops. Heart rate slows. You spend about 50% of the night here.
 
-**Stage 3 (N3)**: Deep sleep, also called slow-wave sleep. Brain waves are slow delta rhythms. Very hard to wake up. This is when your body repairs tissues, builds bone and muscle, and strengthens immune function. Typically 15-25% of the night.
+**Stage 3 (N3)**: Deep sleep, also called slow-wave sleep. Brain waves are slow delta rhythms (0.5-2 Hz). Very hard to wake up. This is when your body repairs tissues, builds bone and muscle, and strengthens immune function. Typically 15-25% of the night.
 
 **REM Sleep**: Rapid eye movement sleep, where most vivid dreams occur. Brain waves look almost like waking, but body is paralyzed. This is when memory consolidation and emotional processing happen. About 20-25% of the night.
 

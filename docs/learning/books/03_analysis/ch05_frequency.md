@@ -6,7 +6,7 @@ In 1666, Isaac Newton darkened his room, made a small hole in the curtain, and p
 
 White light isn't really white - it's all colors mixed together. The prism separates them so we can see each one.
 
-Biosignals work the same way. What looks like a complex, messy waveform is actually many simple frequencies mixed together. The **Fourier transform** is like Newton's prism - it separates the signal into its frequency components so we can see what's really there.
+Biosignals work the same way. What looks like a complex, messy waveform is actually many simple frequencies mixed together. The **Fourier transform**, named after French mathematician Jean-Baptiste Joseph Fourier (1768-1830), is like Newton's prism - it separates the signal into its frequency components so we can see what's really there. Fourier showed in his groundbreaking 1822 work "Théorie analytique de la chaleur" (The Analytical Theory of Heat) that any periodic function can be represented as a sum of sine and cosine functions ([Fourier, 1822](https://www.cambridge.org/core/books/analytical-theory-of-heat/F4122B106A85FD8F05F8E4F23C67DE9F)).
 
 This chapter teaches you to think in the frequency domain. You'll learn what frequencies mean, how the Fourier transform works (without heavy math), and why frequency analysis reveals patterns invisible in time-domain plots. By the end, you'll understand why this 200-year-old mathematical tool remains essential in modern biosignal analysis.
 
