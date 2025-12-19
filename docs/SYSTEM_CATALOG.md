@@ -20,6 +20,7 @@
 6. [Gap Analysis](#6-gap-analysis)
 7. [Quick Reference Tables](#7-quick-reference-tables)
 8. [Learning Resources](#8-learning-resources)
+9. [Related Documentation](#9-related-documentation)
 
 ---
 
@@ -69,7 +70,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **dpb-python** | PyO3 Python bindings | 3,000+ |
 | **dpb-ffi** | C-compatible FFI | 1,500+ |
 | **dpb-bench** | Benchmarking suite | 2,500+ |
-| **dpb-wasm** | WebAssembly bindings, browser deployment, WebGPU, WebNN ML inference | 3,000+ |
+| **dpb-wasm** | WebAssembly bindings, browser deployment, WebGPU (inc. Safari support), WebNN ML inference | 3,500+ |
 | **dpb-lsl** | Lab Streaming Layer integration, liblsl FFI, real-time streaming | 3,000+ |
 | **dpb-export** | ONNX, JSON, Binary, FPGA HLS, Neuromorphic (Lava/PyNN/hxtorch) export | 4,500+ |
 | **dpb-federated** ✅ NEW | Privacy-preserving distributed training, FedAvg, differential privacy, gradient compression | 3,500+ |
@@ -1279,7 +1280,6 @@ This section answers: **"What's needed but missing?"**
 | Gap | Description | Effort | Impact |
 |-----|-------------|--------|--------|
 | **RISC-V Production Testing** | Testing on physical ESP32-C3, SiFive boards | Low | Hardware validation |
-| **WebGPU Safari Support** | Safari-specific WebGPU compatibility testing | Low | Browser coverage |
 
 ### 6.3.1 Completed Gaps (v5.3.0)
 
@@ -1291,6 +1291,7 @@ This section answers: **"What's needed but missing?"**
 | ~~Mobile NPU Acceleration~~ | `dpb-mobile/npu.rs` | ✅ Complete |
 | ~~Neuromorphic Export~~ | `dpb-export/neuromorphic.rs` | ✅ Complete |
 | ~~WebGL Deprecation Docs~~ | `docs/WEBGL_DEPRECATION.md` | ✅ Complete |
+| ~~WebGPU Safari Support~~ | `dpb-wasm/webgpu_safari.rs` | ✅ Complete |
 
 ### 6.3.2 Completed Gaps (v5.2.0)
 
@@ -1316,7 +1317,7 @@ This section answers: **"What's needed but missing?"**
 | dpb-core/accelerators/gaudi | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-core/accelerators/ipu | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-core/accelerators/riscv | ✅ | ✅ | ✅ | ⚠️ |
-| dpb-core/accelerators/cuda | ✅ | ⚠️ | ✅ | ⚠️ |
+| dpb-core/accelerators/cuda | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-neurons/dendritic | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-snn/distillation | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-snn/neuromorphic | ✅ | ✅ | ✅ | ⚠️ |
@@ -1330,15 +1331,15 @@ This section answers: **"What's needed but missing?"**
 | dpb-clinical | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-clinical/phi | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-lsl | ✅ | ✅ | ✅ | ✅ |
-| dpb-lsl/native | ✅ | ⚠️ | ✅ | ⚠️ |
+| dpb-lsl/native | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-wasm | ✅ | ✅ | ✅ | ⚠️ |
-| dpb-wasm/webnn | ✅ | ⚠️ | ✅ | ⚠️ |
-| dpb-mobile/npu | ✅ | ⚠️ | ✅ | ⚠️ |
+| dpb-wasm/webnn | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-mobile/npu | ✅ | ✅ | ✅ | ⚠️ |
 | dpb-export | ✅ | ✅ | ✅ | ✅ |
-| dpb-export/fpga | ✅ | ⚠️ | ✅ | ⚠️ |
-| dpb-export/neuromorphic | ✅ | ⚠️ | ✅ | ⚠️ |
+| dpb-export/fpga | ✅ | ✅ | ✅ | ⚠️ |
+| dpb-export/neuromorphic | ✅ | ✅ | ✅ | ⚠️ |
 | bindings/r | ✅ | ✅ | ✅ | ✅ |
-| bindings/labview | ✅ | - | ✅ | ⚠️ |
+| bindings/labview | ✅ | - | ✅ | ✅ |
 
 Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
 
@@ -1645,4 +1646,33 @@ cargo doc --no-deps --all-features --open
 
 ---
 
-*End of System Catalog v5.1.0*
+## 9. Related Documentation
+
+### 9.1 Deployment Guide
+
+For detailed platform-specific deployment instructions, see **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** (v2.0.0).
+
+The Deployment Guide provides:
+- **Guided Platform Selection** - Decision flowchart to choose the right deployment target
+- **Operating System** instructions for Windows, Linux, macOS
+- **GPU Platform** setup for CUDA, Metal, Vulkan, DirectX 12, ROCm
+- **Browser Deployment** with WebGPU, WebNN, Safari compatibility
+- **Mobile Platforms** for iOS and Android with NPU acceleration
+- **Embedded/TinyML** for ESP32, STM32, Raspberry Pi, RISC-V
+- **AI Accelerators** for Intel Gaudi, Graphcore IPU
+- **Neuromorphic Export** for Loihi 2, SpiNNaker 2, BrainScaleS-2
+- **FPGA Export** for Xilinx Vitis HLS, Intel HLS
+
+### 9.2 Other Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [API_GUIDE.md](API_GUIDE.md) | API reference and usage patterns |
+| [WEBGL_DEPRECATION.md](WEBGL_DEPRECATION.md) | WebGL to WebGPU migration guide |
+| [CROSS_PLATFORM_INTEGRATION_PLAN.md](CROSS_PLATFORM_INTEGRATION_PLAN.md) | Integration architecture |
+| [GAP_RESOLUTION_PLAN.md](GAP_RESOLUTION_PLAN.md) | Historical gap resolution tracking |
+| [learning/](learning/) | Educational resources (5 books, notebooks, videos) |
+
+---
+
+*End of System Catalog v5.3.0*
