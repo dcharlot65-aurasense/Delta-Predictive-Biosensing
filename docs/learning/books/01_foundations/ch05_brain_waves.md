@@ -2,11 +2,11 @@
 
 ## The Secret Experiments
 
-Jena, Germany, 1924. Dr. Hans Berger locks his laboratory door. He's working alone again, as he has for years. His colleagues don't know about these experiments. They'd mock him if they knew. They already think his ideas are crazy.
+Jena, Germany, 1924. Dr. Hans Berger (21 May 1873 – 1 June 1941), a German psychiatrist, locks his laboratory door. He's working alone again, as he has for years. His colleagues don't know about these experiments. They'd mock him if they knew. They already think his ideas are crazy ([Haas, 2003, PubMed 16334737](https://pubmed.ncbi.nlm.nih.gov/16334737/)).
 
 On the table lies equipment he built himself: amplifiers, galvanometers, recording drums. Wires run to his patient - a young man who has volunteered for the mysterious experiment. Two electrodes are attached to the young man's scalp, one at the front, one at the back.
 
-Berger starts the recording equipment. Paper slowly scrolls past. An ink pen connected to the galvanometer begins tracing a wavy line. At first, Berger thinks it's just noise - random electrical interference from the room.
+On July 6, 1924, at the University Hospital in Jena, Berger successfully recorded an electrical brain signal in humans for the first time. This first EEG recording was made on a 17-year-old boy during a neurosurgery performed by neurosurgeon Nikolai Guleke ([Stone & Hughes, 2013, Child's Nervous System](https://link.springer.com/article/10.1007/s00381-020-04564-z)).
 
 But then he notices something. When the young man closes his eyes, the waves become larger and more regular. When he opens them, the waves shrink and speed up. This happens consistently, repeatedly.
 
@@ -34,7 +34,7 @@ This took incredible patience and determination. For five years, he experimented
 
 > **Did You Know?**
 >
-> Berger's obsession with brain electricity started with a strange personal experience. As a young soldier, he had a near-death accident. That same day, his sister, hundreds of miles away, suddenly felt he was in danger and convinced their father to send a telegram. Berger wondered: could thoughts generate detectable signals?
+> In 1893, when Berger was 19, he fell off his horse during military training and was nearly trampled. On that same day, his sister, far away, got a bad feeling about Hans and talked their father into sending a telegram asking if everything was all right. To young Berger, this eerie timing was no coincidence: It was a case of "spontaneous telepathy," he later wrote. He decided to study psychiatry to find a scientific basis for telepathy—though chasing telepathy was a dead end, in the attempt, Berger ended up inventing the EEG ([Science News, 2019](https://www.sciencenews.org/article/hans-berger-telepathy-neuroscience-brain-eeg)).
 
 ---
 
@@ -56,15 +56,15 @@ He also noticed faster rhythms during mental activity and slower ones during dro
 
 ## The First Publication (1929)
 
-In 1929, after nine years of secret work, Berger finally published his findings. His paper, "Über das Elektrenkephalogramm des Menschen" (On the Electroencephalogram of Man), introduced the EEG to the world.
+In 1924, Berger succeeded in recording the first human electroencephalogram (EEG), a term he coined. However, filled with doubt, he took five years to publish his first paper in 1929, titled "Über das Elektrenkephalogramm des Menschen" ("On the Electroencephalogram of Man"). Always skeptical of his own research and afraid of unintended appropriation of his ideas, Berger worked in the evening between 5:00 and 8:00 p.m. in almost complete isolation ([Millett, 2001, PMC10756801](https://pmc.ncbi.nlm.nih.gov/articles/PMC10756801/)).
 
-He described his methods, his observations, and his interpretations. He showed clear recordings of alpha rhythms. He demonstrated how mental states changed the patterns. He argued that these signals truly came from brain activity.
+He described his methods, his observations, and his interpretations. He introduced the terms alpha and beta waves. Using the EEG, Berger was the first to describe the different waves or rhythms present in the normal and abnormal brain, such as the alpha wave rhythm (8-12 Hz), and its suppression (substitution by faster beta waves) when the subject opens the eyes—the so-called alpha blockade ([Stone & Hughes, 2013, Child's Nervous System](https://link.springer.com/article/10.1007/s00381-020-04564-z)).
 
 The scientific community's response? Mostly silence. A few researchers were intrigued. Most ignored it. Some openly doubted his results.
 
 Critics argued that his signals came from scalp muscles, not brain activity. They said his patterns were artifacts - electrical noise misinterpreted as meaningful signals. They questioned his equipment and methods.
 
-Berger was devastated but not deterred. He continued his experiments. He published follow-up papers with more evidence. He refined his techniques. He recorded brain activity during epileptic seizures, showing dramatic changes in electrical patterns.
+Berger was devastated but not deterred. After 1929, Berger started to publish his reports in a series of 14 papers. By 1931, he had gathered 1133 records from 76 people, establishing normalization for alpha and beta waves in terms of frequency and amplitude.
 
 But acceptance came slowly. Too slowly for Berger's fragile confidence.
 

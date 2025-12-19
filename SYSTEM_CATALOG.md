@@ -1,6 +1,6 @@
-# Delta-Predictive Biosensing (DPB) System Catalog v5.0.0
+# Delta-Predictive Biosensing (DPB) System Catalog v5.1.0
 
-> **Last Updated:** December 2025
+> **Last Updated:** December 19, 2025
 > **Framework Version:** 0.4.0
 > **Total Modules:** 290+ | **Encoders:** 77+ | **Generators:** 200+ | **Decoders:** 48+
 > **Language Bindings:** 6 (Python, Julia, MATLAB, R, LabVIEW, C/C++)
@@ -45,7 +45,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | Export Formats | 5 (ONNX, TFLite, JSON, Binary, Mobile) |
 | Visualization Types | 6 |
 | Normative Databases | Age/Sex stratified (Pediatric/Adult/Geriatric) |
-| Learning Resources | 5 Books, 8 Notebooks, 5 Video Scripts |
+| Learning Resources | 5 Books (verified academic citations), 8 Notebooks, 5 Video Scripts |
 | **Language Bindings** | 6 (Python, Julia, MATLAB, R, LabVIEW, C/C++) |
 | **Web/Streaming** | 2 (WebAssembly, Lab Streaming Layer) |
 
@@ -1059,11 +1059,11 @@ Legend: ✅ Complete | ⚠️ Partial (needs more examples) | ❌ Missing
 docs/learning/
 ├── DOCUMENTATION_PLAN.md       → Master plan, writing guidelines
 ├── books/
-│   ├── 01_foundations/         → History of biosignal measurement (7 chapters)
-│   ├── 02_signals/             → Signal types explained (8 chapters)
-│   ├── 03_analysis/            → Processing techniques (8 chapters)
-│   ├── 04_intelligence/        → AI and ML concepts (8 chapters)
-│   └── 05_practice/            → Real-world applications (8 chapters)
+│   ├── 01_foundations/         → History of biosignal measurement (7 chapters) ✅ Cited
+│   ├── 02_signals/             → Signal types explained (8 chapters) ✅ Cited
+│   ├── 03_analysis/            → Processing techniques (8 chapters) ✅ Cited
+│   ├── 04_intelligence/        → AI and ML concepts (8 chapters) ✅ Cited
+│   └── 05_practice/            → Real-world applications (8 chapters) ✅ Cited
 ├── notebooks/
 │   ├── beginner/               → First steps (3 notebooks)
 │   ├── intermediate/           → Building skills (3 notebooks)
@@ -1075,7 +1075,34 @@ docs/learning/
     └── video_scripts/          → 5 episode scripts (~38 min total)
 ```
 
-### 8.2 Learning Path
+### 8.2 Academic Citation Sources
+
+All learning book chapters include verified inline citations from peer-reviewed sources:
+
+| Source | Type | Examples |
+|--------|------|----------|
+| **PubMed/NCBI** | Medical literature | PMC articles, StatPearls, NBK references |
+| **Semantic Scholar** | Academic papers | AI/ML foundational papers |
+| **Nature** | High-impact journals | Backpropagation (Rumelhart 1986) |
+| **European Heart Journal** | Cardiology | AFib prevalence studies |
+| **Springer** | Academic publishers | Child's Nervous System |
+| **Frontiers** | Open access journals | Neurology, signal processing |
+| **Nobel Prize Archives** | Historical | Einthoven biography |
+| **IEEE/ACM** | Computing | Shannon 1949, SNN surveys |
+
+**Citation Format:** Inline hyperlinks `([Author, Year, Source](URL))`
+
+**Chapters with Citations (19 total):**
+
+| Book | Chapters |
+|------|----------|
+| 01_foundations | ch01, ch02, ch04, ch05, ch06, ch07 |
+| 02_signals | ch01, ch02, ch03, ch05 |
+| 03_analysis | ch01, ch02, ch05 |
+| 04_intelligence | ch01, ch03, ch04, ch05 |
+| 05_practice | ch01, ch03 |
+
+### 8.3 Learning Path
 
 | Level | Content | Time |
 |-------|---------|------|
@@ -1084,7 +1111,7 @@ docs/learning/
 | **Advanced** | Book 5, Notebooks 07-08 | ~8 hours |
 | **Video Series** | Episodes 1-5 | ~40 minutes |
 
-### 8.3 Quick Cards Available
+### 8.4 Quick Cards Available
 
 1. **Signal Types** - ECG, EEG, EMG, PPG, EDA at a glance
 2. **Normal vs Abnormal** - Reference ranges and warning signs
@@ -1103,6 +1130,7 @@ docs/learning/
 | v3.0.0 | Dec 2025 | GPU, distributed, dpb-viz, GDF/BDF/XDF, dpb-mobile |
 | v4.0.0 | Dec 2025 | Knowledge distillation, BIDS, FHIR, neuromorphic export, TFLite, EMD/EEMD, dendritic computation, neuromodulation, learning library |
 | v5.0.0 | Dec 2025 | **R bindings**, **LabVIEW bindings**, **dpb-wasm** (WebAssembly), **dpb-lsl** (Lab Streaming Layer), **dpb-export** (ONNX/JSON/Binary), cross-platform integration |
+| v5.1.0 | Dec 19, 2025 | **Verified academic citations** added to 19 learning book chapters (PubMed, Semantic Scholar, Nature, Springer, Frontiers, IEEE/ACM sources) |
 
 ---
 
@@ -1166,4 +1194,4 @@ cargo doc --no-deps --all-features --open
 
 ---
 
-*End of System Catalog v5.0.0*
+*End of System Catalog v5.1.0*

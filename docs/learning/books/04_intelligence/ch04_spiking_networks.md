@@ -20,7 +20,7 @@ Remember from Chapter 2 that biological neurons communicate through action poten
 
 Traditional artificial neurons (like perceptrons) use continuous values - numbers like 0.7 or 0.35 representing activation level. They're "on" all the time at various intensities.
 
-**Spiking neural networks** work differently. They communicate through discrete spikes, just like biological neurons:
+**Spiking neural networks (SNNs)** work differently. Spiking Neural Networks represent the latest generation of neural computation, offering a brain-inspired alternative to conventional ANNs. Unlike ANNs, which depend on continuous-valued signals, SNNs operate using distinct spike events, making them inherently more energy-efficient and temporally dynamic ([ACM Computing Surveys, 2022](https://dl.acm.org/doi/full/10.1145/3571155)). They communicate through discrete spikes, just like biological neurons:
 
 - **Silent most of the time**: Neurons consume minimal energy when not firing
 - **Brief spikes when activated**: A spike is an all-or-nothing event

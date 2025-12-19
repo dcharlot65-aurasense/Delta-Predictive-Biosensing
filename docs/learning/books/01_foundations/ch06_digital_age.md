@@ -38,7 +38,7 @@ Here's a simple example: Imagine a heartbeat. Instead of recording the continuou
 
 But how often must you sample? This is crucial. Sample too slowly, and you miss important details. Sample unnecessarily fast, and you generate huge amounts of data without adding useful information.
 
-A mathematician named Harry Nyquist solved this problem in 1928. His answer: You must sample at least twice as fast as the highest frequency you want to capture. This is the Nyquist theorem.
+A mathematician named Harry Nyquist solved this problem in 1928, with Claude Shannon later formalizing the theorem in 1949. The answer: You must sample at least twice as fast as the highest frequency you want to capture. This is the Nyquist-Shannon sampling theorem ([Shannon, 1949, Proc. IRE](https://web.archive.org/web/20100915140548/http://www.stanford.edu/class/ee104/shannonpaper.pdf)).
 
 For example, human hearing goes up to about 20,000 Hz (cycles per second). To digitize sound, you need to sample at least 40,000 times per second. That's why CDs use 44,100 samples per second - safely above the Nyquist limit.
 

@@ -2,11 +2,11 @@
 
 ## A Paper Tube Changes Medicine
 
-Paris, France, 1816. Dr. René Laennec faces an uncomfortable problem. His patient is a young woman with heart trouble. He needs to listen to her heart, but there's a problem. Social customs of the time make it improper for him to press his ear against her chest.
+Paris, France, 1816. Dr. René Théophile Hyacinthe Laënnec (1781-1826) faces an uncomfortable problem. His patient is a young woman with heart trouble. He needs to listen to her heart, but there's a problem. Social customs of the time make it improper for him to press his ear against her chest ([Roguin, 2006, PMC1570491](https://pmc.ncbi.nlm.nih.gov/articles/PMC1570491/)).
 
 Laennec paces his office, thinking. He needs to hear her heart clearly. But he can't use the traditional method - direct ear-to-chest listening. What can he do?
 
-Then he remembers something. Yesterday, he watched children playing in the courtyard. They were using a hollow log as a speaking tube. One child whispered at one end while another listened at the other. The sound traveled perfectly through the wood.
+According to historical accounts, in September 1816, while walking in the courtyard of the Le Louvre Palace in Paris, Dr. Laënnec observed two children sending signals to each other using a long piece of solid wood and a pin—with an ear to one end, the child received an amplified sound of the pin scratching the opposite end ([Tan & Yeow, 2009, PubMed 31315405](https://pubmed.ncbi.nlm.nih.gov/31315405/)).
 
 Could the same principle work for medicine?
 
@@ -80,13 +80,13 @@ Each sound told a story. Doctors just needed to learn the language.
 
 ## Learning the New Language
 
-Laennec published his findings in 1819. His book, "De l'Auscultation Médiate" (On Mediate Auscultation), described hundreds of cases. It explained what different sounds meant. It taught doctors how to use the stethoscope properly.
+Laennec published his findings in 1819. His seminal book, *De l'Auscultation Médiate ou Traité, du Diagnostic des Maladies des Poumons et du Coeur*, marked the wider clinical application of the stethoscope and described hundreds of cases ([Tan & Yeow, 2009, PubMed 31315405](https://pubmed.ncbi.nlm.nih.gov/31315405/)). It explained what different sounds meant. It taught doctors how to use the stethoscope properly.
 
 At first, many doctors resisted. They thought the stethoscope was unnecessary or even silly. Why use a wooden tube when you could just press your ear to the chest? Some felt it created distance between doctor and patient.
 
-But the evidence was overwhelming. Doctors who used stethoscopes made better diagnoses. They could detect problems earlier. They could track how diseases progressed. They could tell if treatments were working.
+But the evidence was overwhelming. Laënnec is now considered the father of clinical auscultation. He wrote the first descriptions of bronchiectasis and cirrhosis, and classified pulmonary conditions such as pneumonia, pleurisy, emphysema, pneumothorax, and other lung diseases from the sounds he heard with his invention ([Roguin, 2006, PMC1570491](https://pmc.ncbi.nlm.nih.gov/articles/PMC1570491/)).
 
-Gradually, the stethoscope became standard equipment. Medical schools taught auscultation - the art of listening. Students learned to recognize normal and abnormal sounds. They practiced for hours, training their ears.
+Gradually, the stethoscope became standard equipment. Medical schools taught auscultation - the art of listening. There is actually a record of direct auscultation in the Hippocratic Corpus, and this method had been used for more than 2,000 years before Laennec's improvement ([Sakula, PubMed 21223702](https://pubmed.ncbi.nlm.nih.gov/21223702/)).
 
 The stethoscope symbolized the new scientific medicine. It represented using instruments to extend human senses. It showed that careful observation and measurement led to better care.
 
@@ -98,7 +98,7 @@ The wooden stethoscope worked, but it had limitations. It was bulky to carry. It
 
 Improvements came steadily throughout the 1800s. Doctors experimented with different shapes and materials. They tried metal, rubber, and various woods. Each material changed the sound slightly.
 
-The big breakthrough came in the 1850s. George Cammann designed the binaural stethoscope - one with two earpieces. This allowed stereo listening, making sounds clearer and easier to interpret. The Y-shaped design became standard.
+The big breakthrough came in 1851, when George Cammann, an American doctor, improved the stethoscope to create the binaural design with two earpieces. This became the model of today's stethoscope ([Sakula, PubMed 21223702](https://pubmed.ncbi.nlm.nih.gov/21223702/)). This allowed stereo listening, making sounds clearer and easier to interpret. The Y-shaped design became standard.
 
 Further improvements added:
 - **Rubber tubing** for flexibility and comfort

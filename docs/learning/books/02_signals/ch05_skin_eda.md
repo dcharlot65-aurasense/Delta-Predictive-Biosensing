@@ -4,7 +4,7 @@
 
 Think about the last time you were really nervous - maybe before a big test or presentation. Did your palms get sweaty? That wasn't just a coincidence. It was your sympathetic nervous system preparing you for action, and it left a measurable electrical trace.
 
-Electrodermal activity (EDA) - also called galvanic skin response (GSR) or skin conductance - measures your skin's electrical conductivity. Sounds technical, but the concept is simple: your skin conducts electricity better when you're aroused, stressed, or emotional, and worse when you're calm and relaxed.
+Electrodermal activity (EDA) - also called galvanic skin response (GSR) or skin conductance - measures your skin's electrical conductivity. EDA is now the preferred term for changes in electrical conductance of the skin, including phasic changes historically referred to as galvanic skin responses (GSR), that result from sympathetic neuronal activity ([Boucsein, 2012, Psychophysiology](https://www.sciencedirect.com/topics/neuroscience/electrodermal-response)). Sounds technical, but the concept is simple: your skin conducts electricity better when you're aroused, stressed, or emotional, and worse when you're calm and relaxed.
 
 The secret lies in tiny sweat glands. You have 2-5 million of them covering your body, but the ones on your palms, fingers, and feet soles are special. They respond not to temperature but to psychological state. Get excited, nervous, or startled? These glands activate within 1-3 seconds, filling with sweat. The moisture increases your skin's conductivity. Electricity flows more easily.
 
@@ -73,17 +73,19 @@ Two electrodes are placed on the skin (usually fingers or palm). A tiny, safe vo
 Two components make up the EDA signal:
 
 *Tonic Level (Skin Conductance Level - SCL)*:
-- The baseline conductance
+- The baseline conductance representing arousal over longer periods
 - Changes slowly over minutes
 - Reflects overall arousal state
 - Higher when generally anxious or alert
 
 *Phasic Response (Skin Conductance Response - SCR)*:
-- Rapid changes in response to specific stimuli
+- Rapid, stimulus-related changes in conductance ([Posada-Quintero & Chon, 2020, PMC9603244](https://pmc.ncbi.nlm.nih.gov/articles/PMC9603244/))
 - Rises within 1-3 seconds
 - Peaks after 3-6 seconds
 - Returns to baseline over 10-30 seconds
 - Shows momentary arousal events
+
+Fear, anger, startled response, orienting response, and sexual feelings are among the reactions reflected in EDA. In situations of stress, tension, or anxiety, sweat secretion increases, reducing skin resistance; in cases of relaxation, conductance is reduced and skin resistance increases ([Williams & Kreibig, 2015, Psychophysiology](https://www.sciencedirect.com/topics/neuroscience/electrodermal-response)).
 
 > **Did You Know?**
 >

@@ -14,7 +14,7 @@ This chapter teaches you how filters work, when to use each type, and how to avo
 
 A filter takes a signal as input and produces a modified signal as output. The modification is selective: some parts of the signal pass through unchanged (the **passband**), while other parts get reduced or eliminated (the **stopband**).
 
-**Key Insight**: Filters work in the frequency domain. They don't remove specific events or time points - they remove specific frequencies.
+**Key Insight**: Filters work in the frequency domain. They don't remove specific events or time points - they remove specific frequencies. Digital filters are implemented in software using mathematical operations on discrete samples, in contrast to analog filters which use physical electronic components ([Oppenheim & Schafer, 2009, Discrete-Time Signal Processing](https://www.pearson.com/en-us/subject-catalog/p/discrete-time-signal-processing/P200000003216)).
 
 Think of a signal as a recipe:
 - 30% low-frequency (slow changes)

@@ -2,7 +2,7 @@
 
 ## The Impossible Problem
 
-Leiden, Netherlands, 1893. Dr. Willem Einthoven listens to a lecture about the heart's electricity. Scientists know the heart generates electrical signals. They've measured them in animals using exposed hearts. But can these signals be detected from outside the body?
+Leiden, Netherlands, 1893. Dr. Willem Einthoven (21 May 1860 – 29 September 1927), a Dutch medical doctor and physiologist, listens to a lecture about the heart's electricity ([Einthoven biography, Nobel Prize](https://www.nobelprize.org/prizes/medicine/1924/einthoven/facts/)). Scientists know the heart generates electrical signals. They've measured them in animals using exposed hearts. But can these signals be detected from outside the body?
 
 The challenge seems impossible. The heart's electrical signals are incredibly weak - just thousandths of a volt. They must travel through muscle, fat, bone, and skin before reaching the surface. By the time they get there, they're almost undetectable.
 
@@ -40,7 +40,7 @@ If doctors could see the heart's electrical pattern, they could diagnose problem
 
 ## Previous Attempts
 
-Einthoven wasn't the first to try recording heart electricity. Augustus Waller, a British physiologist, had made crude recordings in the 1880s. He used a capillary electrometer - a device with a column of mercury that moved slightly with electrical changes.
+Einthoven wasn't the first to try recording heart electricity. Augustus Waller, a British physiologist, recorded the first electrocardiogram (ECG) from the intact human heart with a mercury capillary electrometer in May 1887 at St. Mary's Hospital, London. However, the tracings were poor and exhibited only 2 distorted deflections ([Hurst, 1998, PMC2435435](https://pmc.ncbi.nlm.nih.gov/articles/PMC2435435/)).
 
 Waller's recordings showed that heart electricity could be detected on the skin. But his tracings were shaky, imprecise, and hard to interpret. The mercury was sluggish, failing to capture rapid electrical changes.
 
@@ -62,7 +62,7 @@ No such instrument existed. So Einthoven decided to invent one.
 
 ## The String Galvanometer
 
-After years of work, Einthoven created the string galvanometer. It was a monster of a machine - weighing 600 pounds and filling an entire room. But it worked magnificently.
+After years of work, in 1903, Einthoven devised the first string galvanometer, known as the Einthoven galvanometer. It was a monster of a machine - weighing 600 pounds and filling an entire room. But it worked magnificently. With this instrument he was able to measure the changes of electrical potential caused by contractions of the heart muscle and to record them graphically. He coined the term "electrocardiogram" for this process ([Hurst, 1998, PMC2435435](https://pmc.ncbi.nlm.nih.gov/articles/PMC2435435/)).
 
 Here's the basic idea: A very thin quartz string (coated with silver) hangs between the poles of a powerful electromagnet. When a tiny electrical current flows through the string, the magnetic field makes it move slightly sideways.
 
@@ -136,11 +136,11 @@ Einthoven's invention became one of medicine's most important diagnostic tools.
 
 ## The Nobel Prize
 
-In 1924, Willem Einthoven received the Nobel Prize in Physiology or Medicine. The committee recognized his invention of the electrocardiograph and his interpretation of the electrocardiogram.
+In 1924, Willem Einthoven received the Nobel Prize in Physiology or Medicine "for his discovery of the mechanism of the electrocardiogram." It was not until 1924 that he received the award—3 years before his death aged 67 years on 29 September 1927—for inventing electrocardiography for use in medical diagnosis, after having been a candidate 7 times before ([Nobel Prize, 1924](https://www.nobelprize.org/prizes/medicine/1924/einthoven/facts/); [AlGhatrif & Lindsay, 2012, PubMed 19508302](https://pubmed.ncbi.nlm.nih.gov/19508302/)).
 
-The Nobel citation praised how Einthoven's work "contributed more than that of any other person to the development of electrocardiography." His string galvanometer had "made possible the graphic representation of the minute electrical changes that occur during cardiac activity."
+The Nobel citation praised how Einthoven's work "contributed more than that of any other person to the development of electrocardiography." His string galvanometer had "made possible the graphic representation of the minute electrical changes that occur during cardiac activity." Einthoven is considered "the father of electrocardiography."
 
-Einthoven was humble in his acceptance. He emphasized the collaborative nature of science. He thanked his assistants, his patients, and the scientists whose work enabled his own. He stressed that his achievement was "standing on the shoulders of giants" - building on discoveries by Galvani, Volta, du Bois-Reymond, and others.
+Einthoven was humble in his acceptance. He emphasized the collaborative nature of science. He thanked his assistants, his patients, and the scientists whose work enabled his own. He stressed that his achievement was "standing on the shoulders of giants" - building on discoveries by Galvani, Volta, du Bois-Reymond, and others. Although later technological advances brought about better and more portable EKG devices, much of the terminology used in describing an EKG originated with Einthoven, including his assignment of the letters P, Q, R, S and T to the various deflections ([Nicholls, 2019, European Heart Journal](https://academic.oup.com/eurheartj/article/40/37/3075/5578458)).
 
 He was right. His work exemplified how science progresses. Each generation builds on previous discoveries. Galvani found animal electricity. Du Bois-Reymond learned to measure it. Einthoven made those measurements practical for medical diagnosis.
 
