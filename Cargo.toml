@@ -69,8 +69,17 @@ numpy = "0.23"
 
 # Testing
 approx = "0.5"
-criterion = "0.5"
+criterion = { version = "0.5", features = ["html_reports"] }
 tempfile = "3.14"
+iai-callgrind = "0.14"
+
+# GPU Backends
+cudarc = { version = "0.12", features = ["cublas", "cufft"], optional = true }
+metal = { version = "0.29", optional = true }
+vulkano = { version = "0.34", optional = true }
+
+# Additional compute
+faer = "0.20"
 
 # Internal crates
 dpb-core = { path = "crates/dpb-core" }
