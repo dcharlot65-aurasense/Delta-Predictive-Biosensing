@@ -517,5 +517,263 @@ GPU optimization:
 
 ---
 
+## 11. Cross-Platform GPU Architecture (New Section)
+
+Based on the GPU-Accelerated Computational Methods Library reference, DPB should adopt a **unified backend abstraction** that supports multiple GPU platforms while maintaining the current WebGPU/WGSL foundation.
+
+### 11.1 Recommended Backend Trait Architecture
+
+```rust
+// src/backend/mod.rs
+pub trait ComputeBackend: Send + Sync {
+    type Device;
+    type Buffer;
+    type Kernel;
+    type Error;
+
+    fn device_count(&self) -> Result<usize, Self::Error>;
+    fn create_buffer(&self, size: usize) -> Result<Self::Buffer, Self::Error>;
+    fn compile_kernel(&self, source: &str) -> Result<Self::Kernel, Self::Error>;
+    fn execute(&self, kernel: &Self::Kernel, args: &[&Self::Buffer]) -> Result<(), Self::Error>;
+}
+
+// Backend implementations
+pub mod cuda;      // CUDA via cudarc (0.9+)
+pub mod vulkan;    // Vulkan compute via vulkano
+pub mod webgpu;    // WebGPU via wgpu (existing)
+pub mod metal;     // Metal via metal-rs
+pub mod rocm;      // ROCm via hip-rs
+```
+
+### 11.2 Priority Backend Implementation
+
+| Backend | Priority | Use Case | Crate |
+|---------|----------|----------|-------|
+| **CUDA** | 🔴 HIGH | Training (NVIDIA GPUs) | `cudarc` with cuBLAS/cuFFT |
+| **WebGPU** | ✅ EXISTS | Browser/WASM deployment | `wgpu` |
+| **Metal** | 🟡 MEDIUM | Apple Silicon training | `metal-rs` |
+| **Vulkan** | 🟡 MEDIUM | Cross-platform fallback | `vulkano` |
+| **ROCm** | 🟢 LOW | AMD GPU training | `hip-rs` |
+
+### 11.3 Key Libraries to Integrate
+
+**From Reference Guide:**
+
+| Library | Purpose | DPB Integration |
+|---------|---------|-----------------|
+| **cudarc** | Safe CUDA wrapper | Primary training backend |
+| **VkFFT** | Cross-platform FFT | Signal processing acceleration |
+| **faer** | High-performance linear algebra | CPU fallback, numerics |
+| **burn** | Deep learning framework | Optional ANN baselines |
+| **nalgebra** | ✅ Already integrated | Continue using |
+| **ndarray** | ✅ Already integrated | Continue using |
+
+### 11.4 Signal Processing Acceleration
+
+**Current DPB:** Uses RustFFT (CPU) for spectral analysis
+
+**Recommended Upgrades:**
+
+```rust
+// Integrate GPU-accelerated FFT
+#[cfg(feature = "cuda")]
+use cudarc::cufft::*;  // cuFFT for NVIDIA
+
+#[cfg(feature = "vulkan")]
+use vkfft::*;          // VkFFT for cross-platform
+
+// Existing WebGPU path
+#[cfg(feature = "webgpu")]
+use wgpu_fft::*;       // Custom WGSL FFT shaders
+```
+
+**Performance targets from reference:**
+- cuFFT: Multi-GPU support, highly optimized
+- VkFFT: Verified against FFTW FP128 precision
+
+### 11.5 Additional Algorithm Opportunities
+
+**From Reference Guide - Not Yet in DPB:**
+
+| Algorithm | Source | DPB Application |
+|-----------|--------|-----------------|
+| **Madgwick/VQF Filter** | ahrs crate | IMU sensor fusion for gait/tremor |
+| **Lucas-Kanade Optical Flow** | OpenCV CUDA | Video-based pose estimation |
+| **MediaPipe Pose** | Google | Real-time pose encoders |
+| **Quaternion IMU Fusion** | VQF paper | 3-axis accelerometer processing |
+
+### 11.6 NPU/Edge Deployment Path
+
+**Hardware targets from reference:**
+
+| Target | SDK | DPB Use Case |
+|--------|-----|--------------|
+| **Intel Loihi 2** | ✅ Already supported | Neuromorphic deployment |
+| **SpiNNaker** | ✅ Already supported | Research deployment |
+| **Apple Neural Engine** | CoreML/Metal | iOS biosensor apps |
+| **Edge TPU** | TFLite | Edge inference |
+| **Alif E7** | Ethos-U65 | Wearable devices |
+
+---
+
+## 12. Updated Implementation Roadmap
+
+### Phase 1: Multi-Backend Foundation (Months 1-2)
+
+```rust
+// Priority: Establish ComputeBackend trait abstraction
+// Keep existing wgpu, add cudarc for CUDA
+
+[dependencies]
+cudarc = { version = "0.9", features = ["cublas", "cufft"], optional = true }
+wgpu = "0.18"  # Existing
+```
+
+**Deliverables:**
+- [ ] `ComputeBackend` trait with device/buffer/kernel abstractions
+- [ ] CUDA backend via cudarc
+- [ ] Unified memory management layer
+- [ ] Backend auto-selection based on availability
+
+### Phase 2: CUDA Training Kernels (Months 2-4)
+
+```rust
+// Target: Match SpikingJelly 0.26s forward+backward
+
+// Custom CUDA kernels for:
+// 1. Fused LIF neuron update + spike propagation
+// 2. SLAYER-style time-vectorized backward pass
+// 3. Sparse CSR weight matrices
+// 4. STDP weight updates
+```
+
+**Performance target:** 11× speedup over current WGSL
+
+### Phase 3: Signal Processing Acceleration (Months 3-5)
+
+```rust
+// Integrate cuFFT for spectral encoders
+// Target: All EEG band power encoders GPU-accelerated
+
+use cudarc::cufft::{CudaFft, FftType};
+
+impl EegBandEncoder {
+    fn encode_gpu(&self, signal: &CudaBuffer<f32>) -> Vec<SpikeEvent> {
+        // GPU FFT → band power → threshold crossing
+    }
+}
+```
+
+### Phase 4: EventProp + Advanced Training (Months 4-6)
+
+```rust
+// Exact gradient computation
+// Delay learning support
+// Spiking Transformer architectures
+```
+
+### Phase 5: Cross-Platform & Edge (Months 6-8)
+
+```rust
+// Metal backend for Apple Silicon
+// NPU export (CoreML, TFLite)
+// Browser deployment validation
+```
+
+---
+
+## 13. Benchmarking Strategy
+
+Following the reference guide's approach, implement comprehensive benchmarks using Criterion:
+
+```rust
+// benches/gpu_backends.rs
+use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
+
+fn bench_snn_forward(c: &mut Criterion) {
+    let mut group = c.benchmark_group("snn_forward");
+
+    for neurons in [1000, 5000, 16000, 50000].iter() {
+        // CUDA backend
+        #[cfg(feature = "cuda")]
+        group.bench_with_input(BenchmarkId::new("CUDA", neurons), neurons, |b, &n| {
+            let backend = CudaBackend::new(0).unwrap();
+            let network = create_snn(n, &backend);
+            b.iter(|| network.forward(&input));
+        });
+
+        // WebGPU backend
+        group.bench_with_input(BenchmarkId::new("WebGPU", neurons), neurons, |b, &n| {
+            let backend = WebGPUBackend::new().unwrap();
+            let network = create_snn(n, &backend);
+            b.iter(|| network.forward(&input));
+        });
+    }
+
+    group.finish();
+}
+```
+
+**Add iai-callgrind for deterministic benchmarks:**
+
+```toml
+[dev-dependencies]
+iai-callgrind = "0.9"
+```
+
+---
+
+## 14. Summary: Integrated Priority Matrix
+
+| Priority | Category | Action | Speedup | Source |
+|----------|----------|--------|---------|--------|
+| 🔴 **P0** | GPU Backend | CUDA via cudarc | 11× | Reference Guide |
+| 🔴 **P0** | Training | EventProp exact gradients | 3× | Algorithm Research |
+| 🔴 **P1** | Architecture | Spiking Transformers | N/A | Algorithm Research |
+| 🟡 **P2** | Signal | cuFFT integration | 10× | Reference Guide |
+| 🟡 **P2** | Encoding | Madgwick/VQF IMU filters | N/A | Reference Guide |
+| 🟡 **P2** | Sparse | Temporal pruning | 2× | Algorithm Research |
+| 🟢 **P3** | Backend | Metal for Apple Silicon | 5× | Reference Guide |
+| 🟢 **P3** | Edge | NPU export (CoreML) | N/A | Reference Guide |
+
+---
+
+## Sources (Updated)
+
+### Training Algorithms
+- [Direct Training High-Performance Deep SNNs Review](https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2024.1383844/full)
+- [EXODUS: Stable and Efficient SNN Training](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9945199/)
+- [Event-Based Delay Learning (Nature 2025)](https://www.nature.com/articles/s41467-025-65394-8)
+
+### GPU Frameworks & Libraries
+- [cudarc - Safe CUDA wrapper](https://github.com/coreylowman/cudarc)
+- [wgpu - WebGPU implementation](https://github.com/gfx-rs/wgpu)
+- [VkFFT - Cross-platform FFT](https://github.com/DTolm/VkFFT)
+- [GPU-RANC CUDA Framework](https://arxiv.org/abs/2404.16208)
+- [SNN Library Benchmarks](https://open-neuromorphic.org/blog/spiking-neural-network-framework-benchmarking/)
+
+### Signal Processing
+- [cuFFT Library](https://developer.nvidia.com/cufft)
+- [cuSignal GPU Signal Processing](https://github.com/rapidsai/cusignal)
+- [VQF IMU Filter](https://arxiv.org/pdf/2203.17024)
+
+### Spiking Transformers
+- [STAtten CVPR 2025](https://openaccess.thecvf.com/content/CVPR2025/papers/Lee_Spiking_Transformer_with_Spatial-Temporal_Attention_CVPR_2025_paper.pdf)
+- [HAST 2025](https://ietresearch.onlinelibrary.wiley.com/doi/full/10.1049/csy2.70010)
+- [SGSAFormer](https://www.mdpi.com/2079-9292/14/1/43)
+
+### Sparse Training
+- [u-Ticket Workload-Balanced Pruning](https://arxiv.org/html/2302.06746v2)
+- [Dynamic Spatio-Temporal Pruning](https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2025.1545583/full)
+- [SpikeFit EurIPS 2025](https://arxiv.org/html/2510.15542)
+
+### Hardware & Deployment
+- [NVIDIA CUDA Documentation](https://docs.nvidia.com/cuda/)
+- [Metal Performance Shaders](https://developer.apple.com/documentation/metalperformanceshaders)
+- [Alif Ensemble E7](https://alifsemi.com/)
+
+---
+
 *Document generated: December 22, 2025*
 *DPB Version: 0.1.0*
+*Reference: GPU-Accelerated Computational Methods Library v1.0*

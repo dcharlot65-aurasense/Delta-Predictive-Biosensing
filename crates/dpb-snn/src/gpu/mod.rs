@@ -201,6 +201,17 @@ pub trait GpuBuffer: Send + Sync + std::fmt::Debug {
 
     /// Check if buffer is valid
     fn is_valid(&self) -> bool;
+
+    /// Downcast to concrete type for backend-specific operations
+    fn as_any(&self) -> &dyn std::any::Any;
+}
+
+/// Additional GPU error for synchronization
+impl GpuError {
+    /// Create a synchronization failed error
+    pub fn synchronization_failed(msg: impl Into<String>) -> Self {
+        GpuError::SyncFailed(msg.into())
+    }
 }
 
 /// Auto-detect the best available GPU backend

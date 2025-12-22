@@ -9,8 +9,8 @@ description = "Spiking neural network architectures and training"
 [features]
 default = []
 gpu = []
-cuda = ["gpu"]
-metal = ["gpu"]
+cuda = ["gpu", "dep:cudarc"]
+metal = ["gpu", "dep:metal"]
 distributed = []
 
 [dependencies]
@@ -27,6 +27,10 @@ thiserror.workspace = true
 rayon.workspace = true
 rand.workspace = true
 rand_distr.workspace = true
+
+# GPU backend dependencies (optional)
+cudarc = { workspace = true, optional = true }
+metal = { workspace = true, optional = true }
 
 [dev-dependencies]
 approx.workspace = true

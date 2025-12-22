@@ -14,6 +14,14 @@ intel-gaudi = []
 graphcore-ipu = []
 # All hardware accelerators
 hardware-accelerators = ["intel-gaudi", "graphcore-ipu"]
+# CUDA backend (NVIDIA GPUs) - enables cudarc dependency
+cuda = ["dep:cudarc"]
+# Metal backend (Apple Silicon) - enables metal dependency
+metal = ["dep:metal"]
+# Vulkan compute backend - enables vulkano dependency
+vulkan = ["dep:vulkano"]
+# All GPU backends
+all-backends = ["cuda", "metal", "vulkan"]
 
 [dependencies]
 wgpu.workspace = true
@@ -34,6 +42,11 @@ rand_distr.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
+
+# Optional GPU backends
+cudarc = { workspace = true, optional = true }
+metal = { workspace = true, optional = true }
+vulkano = { workspace = true, optional = true }
 
 [dev-dependencies]
 approx.workspace = true

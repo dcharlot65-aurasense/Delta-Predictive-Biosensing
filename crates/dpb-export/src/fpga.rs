@@ -277,7 +277,7 @@ impl FpgaExporter {
         writeln!(code)?;
         writeln!(code, "// Configuration")?;
         writeln!(code, "#define NUM_CHANNELS {}", config.num_channels)?;
-        writeln!(code, "#define THRESHOLD {:.6f}", config.threshold)?;
+        writeln!(code, "#define THRESHOLD {:.6}", config.threshold)?;
         writeln!(code, "#define WINDOW_SIZE {}", config.window_size)?;
         writeln!(code)?;
 
@@ -320,7 +320,7 @@ impl FpgaExporter {
         writeln!(code, "//")?;
         writeln!(code, "// Encoder: {:?}", config.encoder_type)?;
         writeln!(code, "// Channels: {}", config.num_channels)?;
-        writeln!(code, "// Threshold: {:.6f}", config.threshold)?;
+        writeln!(code, "// Threshold: {:.6}", config.threshold)?;
         writeln!(code)?;
         writeln!(code, "#include <ap_fixed.h>")?;
         writeln!(code, "#include <hls_stream.h>")?;
@@ -607,8 +607,95 @@ impl FpgaExporter {
                 writeln!(code, "    }}")?;
                 writeln!(code, "}}")?;
             }
-            _ => {
-                writeln!(code, "// TODO: Implement {:?} for Intel HLS", config.encoder_type)?;
+            EncoderType::DeltaModulation => {
+                writeln!(code, "component void delta_modulation_encode(")?;
+                writeln!(code, "    ihc::stream_in<data_t>& input,")?;
+                writeln!(code, "    ihc::stream_out<spike_t>& output,")?;
+                writeln!(code, "    data_t threshold")?;
+                writeln!(code, ") {{")?;
+                writeln!(code, "    static data_t reference[NUM_CHANNELS];")?;
+                writeln!(code)?;
+                writeln!(code, "    #pragma unroll")?;
+                writeln!(code, "    for (int ch = 0; ch < NUM_CHANNELS; ch++) {{")?;
+                writeln!(code, "        data_t curr = input.read();")?;
+                writeln!(code, "        data_t diff = curr - reference[ch];")?;
+                writeln!(code, "        spike_t spike = 0;")?;
+                writeln!(code)?;
+                writeln!(code, "        if (diff > threshold) {{")?;
+                writeln!(code, "            spike = 1;")?;
+                writeln!(code, "            reference[ch] = reference[ch] + threshold;")?;
+                writeln!(code, "        }} else if (diff < -threshold) {{")?;
+                writeln!(code, "            spike = -1;")?;
+                writeln!(code, "            reference[ch] = reference[ch] - threshold;")?;
+                writeln!(code, "        }}")?;
+                writeln!(code)?;
+                writeln!(code, "        output.write(spike);")?;
+                writeln!(code, "    }}")?;
+                writeln!(code, "}}")?;
+            }
+            EncoderType::TemporalContrast => {
+                writeln!(code, "component void temporal_contrast_encode(")?;
+                writeln!(code, "    ihc::stream_in<data_t>& input,")?;
+                writeln!(code, "    ihc::stream_out<spike_t>& output,")?;
+                writeln!(code, "    data_t threshold")?;
+                writeln!(code, ") {{")?;
+                writeln!(code, "    static data_t prev[NUM_CHANNELS];")?;
+                writeln!(code)?;
+                writeln!(code, "    #pragma unroll")?;
+                writeln!(code, "    for (int ch = 0; ch < NUM_CHANNELS; ch++) {{")?;
+                writeln!(code, "        data_t curr = input.read();")?;
+                writeln!(code, "        data_t derivative = curr - prev[ch];")?;
+                writeln!(code, "        spike_t spike = 0;")?;
+                writeln!(code)?;
+                writeln!(code, "        if (derivative > threshold) {{")?;
+                writeln!(code, "            spike = 1;")?;
+                writeln!(code, "        }} else if (derivative < -threshold) {{")?;
+                writeln!(code, "            spike = -1;")?;
+                writeln!(code, "        }}")?;
+                writeln!(code)?;
+                writeln!(code, "        output.write(spike);")?;
+                writeln!(code, "        prev[ch] = curr;")?;
+                writeln!(code, "    }}")?;
+                writeln!(code, "}}")?;
+            }
+            EncoderType::MovingWindow => {
+                writeln!(code, "constexpr int WINDOW_SIZE = {};", config.window_size)?;
+                writeln!(code)?;
+                writeln!(code, "component void moving_window_encode(")?;
+                writeln!(code, "    ihc::stream_in<data_t>& input,")?;
+                writeln!(code, "    ihc::stream_out<spike_t>& output,")?;
+                writeln!(code, "    data_t threshold")?;
+                writeln!(code, ") {{")?;
+                writeln!(code, "    static data_t window[NUM_CHANNELS][WINDOW_SIZE];")?;
+                writeln!(code, "    static int window_idx = 0;")?;
+                writeln!(code)?;
+                writeln!(code, "    #pragma unroll")?;
+                writeln!(code, "    for (int ch = 0; ch < NUM_CHANNELS; ch++) {{")?;
+                writeln!(code, "        data_t curr = input.read();")?;
+                writeln!(code, "        window[ch][window_idx] = curr;")?;
+                writeln!(code)?;
+                writeln!(code, "        // Compute window mean")?;
+                writeln!(code, "        data_t sum = 0;")?;
+                writeln!(code, "        #pragma unroll")?;
+                writeln!(code, "        for (int i = 0; i < WINDOW_SIZE; i++) {{")?;
+                writeln!(code, "            sum += window[ch][i];")?;
+                writeln!(code, "        }}")?;
+                writeln!(code, "        data_t mean = sum / WINDOW_SIZE;")?;
+                writeln!(code)?;
+                writeln!(code, "        data_t deviation = curr - mean;")?;
+                writeln!(code, "        spike_t spike = 0;")?;
+                writeln!(code)?;
+                writeln!(code, "        if (deviation > threshold) {{")?;
+                writeln!(code, "            spike = 1;")?;
+                writeln!(code, "        }} else if (deviation < -threshold) {{")?;
+                writeln!(code, "            spike = -1;")?;
+                writeln!(code, "        }}")?;
+                writeln!(code)?;
+                writeln!(code, "        output.write(spike);")?;
+                writeln!(code, "    }}")?;
+                writeln!(code)?;
+                writeln!(code, "    window_idx = (window_idx + 1) % WINDOW_SIZE;")?;
+                writeln!(code, "}}")?;
             }
         }
 
@@ -657,8 +744,84 @@ impl FpgaExporter {
                 writeln!(code, "    }}")?;
                 writeln!(code, "}}")?;
             }
-            _ => {
-                writeln!(code, "// TODO: Implement {:?} for generic HLS", config.encoder_type)?;
+            EncoderType::DeltaModulation => {
+                writeln!(code, "void delta_modulation_encode(")?;
+                writeln!(code, "    data_t input[NUM_CHANNELS],")?;
+                writeln!(code, "    spike_t output[NUM_CHANNELS]")?;
+                writeln!(code, ") {{")?;
+                writeln!(code, "    static data_t reference[NUM_CHANNELS];")?;
+                writeln!(code)?;
+                writeln!(code, "    for (int ch = 0; ch < NUM_CHANNELS; ch++) {{")?;
+                writeln!(code, "        data_t diff = input[ch] - reference[ch];")?;
+                writeln!(code)?;
+                writeln!(code, "        if (diff > THRESHOLD) {{")?;
+                writeln!(code, "            output[ch] = 1;")?;
+                writeln!(code, "            reference[ch] = reference[ch] + THRESHOLD;")?;
+                writeln!(code, "        }} else if (diff < -THRESHOLD) {{")?;
+                writeln!(code, "            output[ch] = -1;")?;
+                writeln!(code, "            reference[ch] = reference[ch] - THRESHOLD;")?;
+                writeln!(code, "        }} else {{")?;
+                writeln!(code, "            output[ch] = 0;")?;
+                writeln!(code, "        }}")?;
+                writeln!(code, "    }}")?;
+                writeln!(code, "}}")?;
+            }
+            EncoderType::TemporalContrast => {
+                writeln!(code, "void temporal_contrast_encode(")?;
+                writeln!(code, "    data_t input[NUM_CHANNELS],")?;
+                writeln!(code, "    spike_t output[NUM_CHANNELS]")?;
+                writeln!(code, ") {{")?;
+                writeln!(code, "    static data_t prev[NUM_CHANNELS];")?;
+                writeln!(code)?;
+                writeln!(code, "    for (int ch = 0; ch < NUM_CHANNELS; ch++) {{")?;
+                writeln!(code, "        data_t derivative = input[ch] - prev[ch];")?;
+                writeln!(code)?;
+                writeln!(code, "        if (derivative > THRESHOLD) {{")?;
+                writeln!(code, "            output[ch] = 1;")?;
+                writeln!(code, "        }} else if (derivative < -THRESHOLD) {{")?;
+                writeln!(code, "            output[ch] = -1;")?;
+                writeln!(code, "        }} else {{")?;
+                writeln!(code, "            output[ch] = 0;")?;
+                writeln!(code, "        }}")?;
+                writeln!(code)?;
+                writeln!(code, "        prev[ch] = input[ch];")?;
+                writeln!(code, "    }}")?;
+                writeln!(code, "}}")?;
+            }
+            EncoderType::MovingWindow => {
+                writeln!(code, "#define WINDOW_SIZE {}", config.window_size)?;
+                writeln!(code)?;
+                writeln!(code, "void moving_window_encode(")?;
+                writeln!(code, "    data_t input[NUM_CHANNELS],")?;
+                writeln!(code, "    spike_t output[NUM_CHANNELS]")?;
+                writeln!(code, ") {{")?;
+                writeln!(code, "    static data_t window[NUM_CHANNELS][WINDOW_SIZE];")?;
+                writeln!(code, "    static int window_idx = 0;")?;
+                writeln!(code)?;
+                writeln!(code, "    for (int ch = 0; ch < NUM_CHANNELS; ch++) {{")?;
+                writeln!(code, "        // Store new value")?;
+                writeln!(code, "        window[ch][window_idx] = input[ch];")?;
+                writeln!(code)?;
+                writeln!(code, "        // Compute window mean")?;
+                writeln!(code, "        data_t sum = 0;")?;
+                writeln!(code, "        for (int i = 0; i < WINDOW_SIZE; i++) {{")?;
+                writeln!(code, "            sum += window[ch][i];")?;
+                writeln!(code, "        }}")?;
+                writeln!(code, "        data_t mean = sum / WINDOW_SIZE;")?;
+                writeln!(code)?;
+                writeln!(code, "        // Detect spike based on deviation from mean")?;
+                writeln!(code, "        data_t deviation = input[ch] - mean;")?;
+                writeln!(code, "        if (deviation > THRESHOLD) {{")?;
+                writeln!(code, "            output[ch] = 1;")?;
+                writeln!(code, "        }} else if (deviation < -THRESHOLD) {{")?;
+                writeln!(code, "            output[ch] = -1;")?;
+                writeln!(code, "        }} else {{")?;
+                writeln!(code, "            output[ch] = 0;")?;
+                writeln!(code, "        }}")?;
+                writeln!(code, "    }}")?;
+                writeln!(code)?;
+                writeln!(code, "    window_idx = (window_idx + 1) % WINDOW_SIZE;")?;
+                writeln!(code, "}}")?;
             }
         }
 

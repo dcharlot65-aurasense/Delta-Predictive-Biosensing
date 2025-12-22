@@ -1,8 +1,46 @@
 //! GPU infrastructure for accelerated neuromorphic processing.
+//!
+//! This module provides both high-level and low-level GPU abstractions:
+//!
+//! - [`backend`]: Cross-platform compute backend abstraction (WebGPU, CUDA, Metal)
+//! - [`context`]: WebGPU-specific context management
+//! - [`buffer`]: GPU buffer utilities
+//!
+//! # Backend Selection
+//!
+//! Use the [`backend`] module for cross-platform code:
+//!
+//! ```rust,ignore
+//! use dpb_core::gpu::backend::*;
+//!
+//! // Auto-select best backend (CUDA > Metal > WebGPU)
+//! let backend = create_default_backend().await?;
+//! ```
+//!
+//! Or use [`context::GpuContext`] for direct WebGPU access:
+//!
+//! ```rust,ignore
+//! use dpb_core::gpu::GpuContext;
+//!
+//! let ctx = GpuContext::new_default().await?;
+//! ```
 
+pub mod backend;
 pub mod buffer;
 pub mod context;
 
+// Re-export backend types
+pub use backend::{
+    available_backends, create_backend, create_default_backend, BackendType, BufferHandle,
+    ComputeBackend, DeviceProperties, KernelHandle, WebGPUBackend,
+    // Helper functions for typed buffer operations
+    create_buffer_from_slice, upload_buffer, download_buffer,
+};
+
+#[cfg(feature = "cuda")]
+pub use backend::cuda::CUDABackend;
+
+// Re-export existing types
 pub use buffer::{create_storage_buffer, create_uniform_buffer, BufferPool, GpuBuffer, GpuVec4};
 pub use context::GpuContext;
 
