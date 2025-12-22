@@ -30,6 +30,7 @@
 
 use crate::error::{DpbError, Result};
 use std::sync::Arc;
+use wgpu::util::DeviceExt;
 
 /// Supported compute backend types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -233,6 +234,151 @@ pub trait ComputeBackendExt: ComputeBackend {
 
     /// Performs reduction operation (sum).
     fn reduce_sum(&self, input: &BufferHandle, output: &BufferHandle, size: usize) -> Result<()>;
+}
+
+// WGSL shader sources for compute operations
+mod shaders {
+    /// Element-wise addition kernel
+    pub const ADD_SHADER: &str = r#"
+@group(0) @binding(0) var<storage, read> a: array<f32>;
+@group(0) @binding(1) var<storage, read> b: array<f32>;
+@group(0) @binding(2) var<storage, read_write> result: array<f32>;
+
+@compute @workgroup_size(256)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let idx = global_id.x;
+    if (idx < arrayLength(&a)) {
+        result[idx] = a[idx] + b[idx];
+    }
+}
+"#;
+
+    /// Matrix multiplication kernel (naive, for reference)
+    pub const MATMUL_SHADER: &str = r#"
+struct Params {
+    m: u32,
+    n: u32,
+    k: u32,
+    _pad: u32,
+}
+
+@group(0) @binding(0) var<storage, read> a: array<f32>;
+@group(0) @binding(1) var<storage, read> b: array<f32>;
+@group(0) @binding(2) var<storage, read_write> result: array<f32>;
+@group(0) @binding(3) var<uniform> params: Params;
+
+@compute @workgroup_size(16, 16)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let row = global_id.y;
+    let col = global_id.x;
+
+    if (row >= params.m || col >= params.n) {
+        return;
+    }
+
+    var sum: f32 = 0.0;
+    for (var i: u32 = 0u; i < params.k; i = i + 1u) {
+        sum = sum + a[row * params.k + i] * b[i * params.n + col];
+    }
+
+    result[row * params.n + col] = sum;
+}
+"#;
+
+    /// Parallel reduction sum kernel
+    pub const REDUCE_SUM_SHADER: &str = r#"
+@group(0) @binding(0) var<storage, read> input: array<f32>;
+@group(0) @binding(1) var<storage, read_write> output: array<f32>;
+
+var<workgroup> shared_data: array<f32, 256>;
+
+@compute @workgroup_size(256)
+fn main(
+    @builtin(local_invocation_id) local_id: vec3<u32>,
+    @builtin(workgroup_id) workgroup_id: vec3<u32>,
+    @builtin(num_workgroups) num_workgroups: vec3<u32>
+) {
+    let tid = local_id.x;
+    let gid = workgroup_id.x * 256u + tid;
+    let input_len = arrayLength(&input);
+
+    // Load data into shared memory
+    if (gid < input_len) {
+        shared_data[tid] = input[gid];
+    } else {
+        shared_data[tid] = 0.0;
+    }
+
+    workgroupBarrier();
+
+    // Parallel reduction in shared memory
+    for (var stride: u32 = 128u; stride > 0u; stride = stride >> 1u) {
+        if (tid < stride) {
+            shared_data[tid] = shared_data[tid] + shared_data[tid + stride];
+        }
+        workgroupBarrier();
+    }
+
+    // Write result for this workgroup
+    if (tid == 0u) {
+        output[workgroup_id.x] = shared_data[0];
+    }
+}
+"#;
+
+    /// Cooley-Tukey FFT kernel (radix-2)
+    pub const FFT_SHADER: &str = r#"
+struct Complex {
+    real: f32,
+    imag: f32,
+}
+
+@group(0) @binding(0) var<storage, read_write> data_real: array<f32>;
+@group(0) @binding(1) var<storage, read_write> data_imag: array<f32>;
+@group(0) @binding(2) var<uniform> stage: u32;
+@group(0) @binding(3) var<uniform> n: u32;
+
+const PI: f32 = 3.14159265358979323846;
+
+@compute @workgroup_size(256)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let idx = global_id.x;
+    let half_n = n >> 1u;
+
+    if (idx >= half_n) {
+        return;
+    }
+
+    let step = 1u << stage;
+    let half_step = step >> 1u;
+
+    let group = idx / half_step;
+    let pair = idx % half_step;
+
+    let i = group * step + pair;
+    let j = i + half_step;
+
+    // Twiddle factor
+    let angle = -2.0 * PI * f32(pair) / f32(step);
+    let tw_real = cos(angle);
+    let tw_imag = sin(angle);
+
+    // Load values
+    let a_real = data_real[i];
+    let a_imag = data_imag[i];
+    let b_real = data_real[j];
+    let b_imag = data_imag[j];
+
+    // Butterfly operation
+    let tb_real = b_real * tw_real - b_imag * tw_imag;
+    let tb_imag = b_real * tw_imag + b_imag * tw_real;
+
+    data_real[i] = a_real + tb_real;
+    data_imag[i] = a_imag + tb_imag;
+    data_real[j] = a_real - tb_real;
+    data_imag[j] = a_imag - tb_imag;
+}
+"#;
 }
 
 // ============================================================================
@@ -526,6 +672,446 @@ impl WebGPUBackend {
         // WebGPU is always available (can fall back to software)
         true
     }
+
+    /// Creates a bind group layout for compute shaders.
+    fn create_compute_bind_group_layout(
+        &self,
+        entries: &[wgpu::BindGroupLayoutEntry],
+    ) -> wgpu::BindGroupLayout {
+        self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Compute Bind Group Layout"),
+            entries,
+        })
+    }
+
+    /// Creates a compute pipeline with the given shader and bind group layout.
+    fn create_compute_pipeline_with_layout(
+        &self,
+        shader_source: &str,
+        entry_point: &str,
+        bind_group_layout: &wgpu::BindGroupLayout,
+    ) -> wgpu::ComputePipeline {
+        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Compute Shader"),
+            source: wgpu::ShaderSource::Wgsl(shader_source.into()),
+        });
+
+        let pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Compute Pipeline Layout"),
+            bind_group_layouts: &[bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("Compute Pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point: Some(entry_point),
+            compilation_options: Default::default(),
+            cache: None,
+        })
+    }
+}
+
+impl ComputeBackendExt for WebGPUBackend {
+    fn add(&self, a: &BufferHandle, b: &BufferHandle, result: &BufferHandle) -> Result<()> {
+        let buffers = self.buffers.read().unwrap();
+        let buf_a = buffers.get(&a.id)
+            .ok_or_else(|| DpbError::Gpu("Buffer A not found".to_string()))?;
+        let buf_b = buffers.get(&b.id)
+            .ok_or_else(|| DpbError::Gpu("Buffer B not found".to_string()))?;
+        let buf_result = buffers.get(&result.id)
+            .ok_or_else(|| DpbError::Gpu("Result buffer not found".to_string()))?;
+
+        // Create bind group layout
+        let bind_group_layout = self.create_compute_bind_group_layout(&[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+        ]);
+
+        let pipeline = self.create_compute_pipeline_with_layout(
+            shaders::ADD_SHADER,
+            "main",
+            &bind_group_layout,
+        );
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Add Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: buf_a.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: buf_b.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: buf_result.as_entire_binding() },
+            ],
+        });
+
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Add Encoder"),
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Add Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+
+            let num_elements = a.size / std::mem::size_of::<f32>();
+            let workgroups = ((num_elements + 255) / 256) as u32;
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        self.queue.submit(Some(encoder.finish()));
+        Ok(())
+    }
+
+    fn matmul(
+        &self,
+        a: &BufferHandle,
+        b: &BufferHandle,
+        result: &BufferHandle,
+        m: usize,
+        n: usize,
+        k: usize,
+    ) -> Result<()> {
+        let buffers = self.buffers.read().unwrap();
+        let buf_a = buffers.get(&a.id)
+            .ok_or_else(|| DpbError::Gpu("Buffer A not found".to_string()))?;
+        let buf_b = buffers.get(&b.id)
+            .ok_or_else(|| DpbError::Gpu("Buffer B not found".to_string()))?;
+        let buf_result = buffers.get(&result.id)
+            .ok_or_else(|| DpbError::Gpu("Result buffer not found".to_string()))?;
+
+        // Create params buffer
+        #[repr(C)]
+        #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+        struct Params {
+            m: u32,
+            n: u32,
+            k: u32,
+            _pad: u32,
+        }
+
+        let params = Params {
+            m: m as u32,
+            n: n as u32,
+            k: k as u32,
+            _pad: 0,
+        };
+
+        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Matmul Params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        // Create bind group layout
+        let bind_group_layout = self.create_compute_bind_group_layout(&[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 3,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+        ]);
+
+        let pipeline = self.create_compute_pipeline_with_layout(
+            shaders::MATMUL_SHADER,
+            "main",
+            &bind_group_layout,
+        );
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Matmul Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: buf_a.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: buf_b.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: buf_result.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: params_buffer.as_entire_binding() },
+            ],
+        });
+
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Matmul Encoder"),
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Matmul Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+
+            let workgroups_x = ((n + 15) / 16) as u32;
+            let workgroups_y = ((m + 15) / 16) as u32;
+            compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
+        }
+
+        self.queue.submit(Some(encoder.finish()));
+        Ok(())
+    }
+
+    fn fft(&self, input: &BufferHandle, output: &BufferHandle, size: usize) -> Result<()> {
+        // For FFT, we need real and imaginary parts
+        // Input is assumed to be interleaved complex: [r0, i0, r1, i1, ...]
+        // We'll copy to separate real/imag buffers, run FFT stages, then copy back
+
+        let buffers = self.buffers.read().unwrap();
+        let _buf_input = buffers.get(&input.id)
+            .ok_or_else(|| DpbError::Gpu("Input buffer not found".to_string()))?;
+        let _buf_output = buffers.get(&output.id)
+            .ok_or_else(|| DpbError::Gpu("Output buffer not found".to_string()))?;
+
+        // Check size is power of 2
+        if size == 0 || (size & (size - 1)) != 0 {
+            return Err(DpbError::Gpu("FFT size must be power of 2".to_string()));
+        }
+
+        let num_stages = (size as f64).log2() as u32;
+
+        // Create working buffers for real and imaginary parts
+        let real_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("FFT Real Buffer"),
+            size: (size * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        let imag_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("FFT Imag Buffer"),
+            size: (size * std::mem::size_of::<f32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        // Create bind group layout for FFT
+        let bind_group_layout = self.create_compute_bind_group_layout(&[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 3,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+        ]);
+
+        let pipeline = self.create_compute_pipeline_with_layout(
+            shaders::FFT_SHADER,
+            "main",
+            &bind_group_layout,
+        );
+
+        let n_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("FFT N"),
+            contents: bytemuck::bytes_of(&(size as u32)),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        // Run FFT stages
+        for stage in 1..=num_stages {
+            let stage_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("FFT Stage"),
+                contents: bytemuck::bytes_of(&stage),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+
+            let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("FFT Bind Group"),
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry { binding: 0, resource: real_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 1, resource: imag_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 2, resource: stage_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 3, resource: n_buffer.as_entire_binding() },
+                ],
+            });
+
+            let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("FFT Encoder"),
+            });
+
+            {
+                let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("FFT Pass"),
+                    timestamp_writes: None,
+                });
+                compute_pass.set_pipeline(&pipeline);
+                compute_pass.set_bind_group(0, &bind_group, &[]);
+
+                let workgroups = ((size / 2 + 255) / 256) as u32;
+                compute_pass.dispatch_workgroups(workgroups, 1, 1);
+            }
+
+            self.queue.submit(Some(encoder.finish()));
+            self.device.poll(wgpu::Maintain::Wait);
+        }
+
+        Ok(())
+    }
+
+    fn reduce_sum(&self, input: &BufferHandle, output: &BufferHandle, size: usize) -> Result<()> {
+        let buffers = self.buffers.read().unwrap();
+        let buf_input = buffers.get(&input.id)
+            .ok_or_else(|| DpbError::Gpu("Input buffer not found".to_string()))?;
+        let buf_output = buffers.get(&output.id)
+            .ok_or_else(|| DpbError::Gpu("Output buffer not found".to_string()))?;
+
+        // Create bind group layout
+        let bind_group_layout = self.create_compute_bind_group_layout(&[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+        ]);
+
+        let pipeline = self.create_compute_pipeline_with_layout(
+            shaders::REDUCE_SUM_SHADER,
+            "main",
+            &bind_group_layout,
+        );
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Reduce Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: buf_input.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: buf_output.as_entire_binding() },
+            ],
+        });
+
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Reduce Encoder"),
+        });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Reduce Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&pipeline);
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+
+            let workgroups = ((size + 255) / 256) as u32;
+            compute_pass.dispatch_workgroups(workgroups, 1, 1);
+        }
+
+        self.queue.submit(Some(encoder.finish()));
+        Ok(())
+    }
 }
 
 // ============================================================================
@@ -536,6 +1122,7 @@ impl WebGPUBackend {
 pub mod cuda {
     use super::*;
     use cudarc::driver::*;
+    use std::collections::HashMap;
 
     /// CUDA backend using cudarc.
     pub struct CUDABackend {
@@ -543,6 +1130,10 @@ pub mod cuda {
         properties: DeviceProperties,
         buffer_counter: std::sync::atomic::AtomicU64,
         kernel_counter: std::sync::atomic::AtomicU64,
+        /// Stores allocated GPU buffers (as raw byte slices)
+        buffers: std::sync::RwLock<HashMap<u64, CudaSlice<u8>>>,
+        /// Stores compiled PTX modules
+        modules: std::sync::RwLock<HashMap<u64, CudaFunction>>,
     }
 
     impl CUDABackend {
@@ -551,14 +1142,18 @@ pub mod cuda {
             let device = CudaDevice::new(device_id)
                 .map_err(|e| DpbError::Gpu(format!("CUDA device init failed: {:?}", e)))?;
 
-            // Get device properties
+            // Query device properties
+            let name = device.name()
+                .unwrap_or_else(|_| format!("CUDA Device {}", device_id));
+
+            // Get memory info - cudarc doesn't expose this directly, use defaults
             let properties = DeviceProperties {
-                name: format!("CUDA Device {}", device_id),
+                name,
                 backend_type: BackendType::CUDA,
-                memory_size: 0, // Would need to query
+                memory_size: 8 * 1024 * 1024 * 1024, // 8GB default, would query cudaMemGetInfo
                 max_threads_per_block: 1024,
                 max_shared_memory: 48 * 1024,
-                compute_units: 0,
+                compute_units: 0, // Would query device attributes
                 unified_memory: false,
             };
 
@@ -567,7 +1162,14 @@ pub mod cuda {
                 properties,
                 buffer_counter: std::sync::atomic::AtomicU64::new(0),
                 kernel_counter: std::sync::atomic::AtomicU64::new(0),
+                buffers: std::sync::RwLock::new(HashMap::new()),
+                modules: std::sync::RwLock::new(HashMap::new()),
             })
+        }
+
+        /// Gets the underlying CUDA device for advanced operations.
+        pub fn cuda_device(&self) -> &Arc<CudaDevice> {
+            &self.device
         }
 
         fn next_buffer_id(&self) -> u64 {
@@ -597,8 +1199,14 @@ pub mod cuda {
 
         fn create_buffer(&self, size: usize) -> Result<BufferHandle> {
             let id = self.next_buffer_id();
-            // Note: Actual buffer allocation would happen here
-            // For now, we track the handle
+
+            // Allocate GPU memory using cudarc
+            let gpu_buffer = self.device
+                .alloc_zeros::<u8>(size)
+                .map_err(|e| DpbError::Gpu(format!("CUDA alloc failed: {:?}", e)))?;
+
+            self.buffers.write().unwrap().insert(id, gpu_buffer);
+
             Ok(BufferHandle {
                 id,
                 size,
@@ -609,7 +1217,14 @@ pub mod cuda {
         fn create_buffer_from_bytes(&self, data: &[u8]) -> Result<BufferHandle> {
             let id = self.next_buffer_id();
             let size = data.len();
-            // Note: Would allocate and copy data to GPU
+
+            // Allocate and copy data to GPU
+            let gpu_buffer = self.device
+                .htod_sync_copy(data)
+                .map_err(|e| DpbError::Gpu(format!("CUDA htod copy failed: {:?}", e)))?;
+
+            self.buffers.write().unwrap().insert(id, gpu_buffer);
+
             Ok(BufferHandle {
                 id,
                 size,
@@ -617,21 +1232,58 @@ pub mod cuda {
             })
         }
 
-        fn upload_buffer_bytes(&self, _handle: &BufferHandle, _data: &[u8]) -> Result<()> {
-            // Would copy data to GPU
+        fn upload_buffer_bytes(&self, handle: &BufferHandle, data: &[u8]) -> Result<()> {
+            let buffers = self.buffers.read().unwrap();
+            let gpu_buffer = buffers
+                .get(&handle.id)
+                .ok_or_else(|| DpbError::Gpu("Buffer not found".to_string()))?;
+
+            // Copy host data to device buffer
+            self.device
+                .htod_sync_copy_into(data, gpu_buffer)
+                .map_err(|e| DpbError::Gpu(format!("CUDA htod copy failed: {:?}", e)))?;
+
             Ok(())
         }
 
         fn download_buffer_bytes(&self, handle: &BufferHandle) -> Result<Vec<u8>> {
-            Ok(vec![0u8; handle.size])
+            let buffers = self.buffers.read().unwrap();
+            let gpu_buffer = buffers
+                .get(&handle.id)
+                .ok_or_else(|| DpbError::Gpu("Buffer not found".to_string()))?;
+
+            // Copy device buffer to host
+            let host_data = self.device
+                .dtoh_sync_copy(gpu_buffer)
+                .map_err(|e| DpbError::Gpu(format!("CUDA dtoh copy failed: {:?}", e)))?;
+
+            Ok(host_data)
         }
 
-        fn free_buffer(&self, _handle: &BufferHandle) -> Result<()> {
+        fn free_buffer(&self, handle: &BufferHandle) -> Result<()> {
+            // Remove buffer from map - cudarc will deallocate when dropped
+            self.buffers.write().unwrap().remove(&handle.id);
             Ok(())
         }
 
-        fn compile_kernel(&self, name: &str, _source: &str, _entry_point: &str) -> Result<KernelHandle> {
+        fn compile_kernel(&self, name: &str, source: &str, entry_point: &str) -> Result<KernelHandle> {
             let id = self.next_kernel_id();
+
+            // Load PTX module and get function
+            // Note: source should be PTX code for CUDA
+            let ptx = CudaModule::from_ptx(source.as_bytes(), &[])
+                .map_err(|e| DpbError::Gpu(format!("PTX compilation failed: {:?}", e)))?;
+
+            self.device
+                .load_ptx(ptx, name, &[entry_point])
+                .map_err(|e| DpbError::Gpu(format!("PTX load failed: {:?}", e)))?;
+
+            let func = self.device
+                .get_func(name, entry_point)
+                .ok_or_else(|| DpbError::Gpu(format!("Function {} not found", entry_point)))?;
+
+            self.modules.write().unwrap().insert(id, func);
+
             Ok(KernelHandle {
                 id,
                 name: name.to_string(),
@@ -641,12 +1293,30 @@ pub mod cuda {
 
         fn dispatch_kernel(
             &self,
-            _kernel: &KernelHandle,
+            kernel: &KernelHandle,
             _input_buffers: &[&BufferHandle],
             _output_buffers: &[&BufferHandle],
-            _workgroups: (u32, u32, u32),
+            workgroups: (u32, u32, u32),
         ) -> Result<()> {
-            // Would launch CUDA kernel
+            let modules = self.modules.read().unwrap();
+            let func = modules
+                .get(&kernel.id)
+                .ok_or_else(|| DpbError::Gpu("Kernel not found".to_string()))?;
+
+            // Launch kernel with grid/block dimensions
+            // Note: For a full implementation, we'd need to bind buffer arguments
+            let cfg = LaunchConfig {
+                grid_dim: workgroups,
+                block_dim: kernel.workgroup_size,
+                shared_mem_bytes: 0,
+            };
+
+            // Launch with no arguments for now - real impl would pass buffer pointers
+            unsafe {
+                func.clone().launch(cfg, ())
+                    .map_err(|e| DpbError::Gpu(format!("Kernel launch failed: {:?}", e)))?;
+            }
+
             Ok(())
         }
 

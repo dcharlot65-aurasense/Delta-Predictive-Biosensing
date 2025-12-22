@@ -295,6 +295,13 @@ pub struct ModulatoryNetwork {
 impl ModulatoryNetwork {
     /// Create new modulatory network
     pub fn new(config: ModulatoryNetworkConfig) -> Self {
+        // Initialize systems based on config - capture flags before moving config
+        let use_dopamine = config.use_dopamine;
+        let use_acetylcholine = config.use_acetylcholine;
+        let use_serotonin = config.use_serotonin;
+        let use_norepinephrine = config.use_norepinephrine;
+        let use_state_dependent = config.use_state_dependent;
+
         let mut network = Self {
             dopamine: None,
             acetylcholine: None,
@@ -305,29 +312,29 @@ impl ModulatoryNetwork {
         };
 
         // Initialize systems based on config
-        if config.use_dopamine {
+        if use_dopamine {
             network.dopamine = Some(DopamineSystem::new(DopamineConfig::default()));
         }
 
-        if config.use_acetylcholine {
+        if use_acetylcholine {
             network.acetylcholine = Some(AcetylcholineSystem::new(AcetylcholineConfig::default()));
         }
 
-        if config.use_serotonin {
+        if use_serotonin {
             network.modulators.insert(
                 NeuromodulatorType::Serotonin,
                 Neuromodulator::new(NeuromodulatorType::Serotonin),
             );
         }
 
-        if config.use_norepinephrine {
+        if use_norepinephrine {
             network.modulators.insert(
                 NeuromodulatorType::Norepinephrine,
                 Neuromodulator::new(NeuromodulatorType::Norepinephrine),
             );
         }
 
-        if config.use_state_dependent {
+        if use_state_dependent {
             network.state_dependent = Some(StateDependent::new());
         }
 
@@ -356,12 +363,13 @@ impl ModulatoryNetwork {
         }
 
         // Update state-dependent processing
+        // Get concentrations first to avoid borrow checker issues
+        let da_conc = self.get_dopamine_concentration();
+        let ach_conc = self.get_acetylcholine_concentration();
+
         if let Some(ref mut state) = self.state_dependent {
             state.update(dt);
-
             // Try state transition based on modulatory levels
-            let da_conc = self.get_dopamine_concentration();
-            let ach_conc = self.get_acetylcholine_concentration();
             state.try_transition(da_conc, ach_conc);
         }
 

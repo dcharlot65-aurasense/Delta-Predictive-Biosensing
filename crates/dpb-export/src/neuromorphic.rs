@@ -427,9 +427,9 @@ impl NeuromorphicExporter {
             let params = &layer.params;
             writeln!(code, "        self.{} = LIF(", layer.name)?;
             writeln!(code, "            shape=({},),", layer.size)?;
-            writeln!(code, "            du={:.4f},  # decay constant", 1.0 / params.tau_m)?;
-            writeln!(code, "            dv={:.4f},  # voltage decay", 1.0 / params.tau_syn)?;
-            writeln!(code, "            vth={:.1f},  # threshold", params.v_thresh.abs() as i32)?;
+            writeln!(code, "            du={:.4},  # decay constant", 1.0 / params.tau_m)?;
+            writeln!(code, "            dv={:.4},  # voltage decay", 1.0 / params.tau_syn)?;
+            writeln!(code, "            vth={:.1},  # threshold", params.v_thresh.abs() as i32)?;
             writeln!(code, "        )")?;
         }
 
@@ -447,7 +447,7 @@ impl NeuromorphicExporter {
                 if let Some(ref weights) = conn.weights {
                     writeln!(code, "        weights_{} = np.array([", i)?;
                     for row in weights {
-                        let row_str: Vec<String> = row.iter().map(|w| format!("{:.4f}", w)).collect();
+                        let row_str: Vec<String> = row.iter().map(|w| format!("{:.4}", w)).collect();
                         writeln!(code, "            [{}],", row_str.join(", "))?;
                     }
                     writeln!(code, "        ])")?;
@@ -512,7 +512,7 @@ impl NeuromorphicExporter {
 
         // Setup
         writeln!(code, "# Initialize simulator")?;
-        writeln!(code, "sim.setup(timestep={:.1f})", config.dt)?;
+        writeln!(code, "sim.setup(timestep={:.1})", config.dt)?;
         writeln!(code)?;
 
         // Create populations
@@ -524,14 +524,14 @@ impl NeuromorphicExporter {
             writeln!(code, "{} = sim.Population(", layer.name)?;
             writeln!(code, "    {},", layer.size)?;
             writeln!(code, "    sim.{}(", cell_type)?;
-            writeln!(code, "        tau_m={:.1f},", params.tau_m)?;
-            writeln!(code, "        tau_syn_E={:.1f},", params.tau_syn)?;
-            writeln!(code, "        tau_syn_I={:.1f},", params.tau_syn)?;
-            writeln!(code, "        v_thresh={:.1f},", params.v_thresh)?;
-            writeln!(code, "        v_reset={:.1f},", params.v_reset)?;
-            writeln!(code, "        v_rest={:.1f},", params.v_rest)?;
-            writeln!(code, "        tau_refrac={:.1f},", params.t_refrac)?;
-            writeln!(code, "        cm={:.1f},", params.cm)?;
+            writeln!(code, "        tau_m={:.1},", params.tau_m)?;
+            writeln!(code, "        tau_syn_E={:.1},", params.tau_syn)?;
+            writeln!(code, "        tau_syn_I={:.1},", params.tau_syn)?;
+            writeln!(code, "        v_thresh={:.1},", params.v_thresh)?;
+            writeln!(code, "        v_reset={:.1},", params.v_reset)?;
+            writeln!(code, "        v_rest={:.1},", params.v_rest)?;
+            writeln!(code, "        tau_refrac={:.1},", params.t_refrac)?;
+            writeln!(code, "        cm={:.1},", params.cm)?;
             writeln!(code, "    ),")?;
             writeln!(code, "    label='{}'", layer.name)?;
             writeln!(code, ")")?;
@@ -557,7 +557,7 @@ impl NeuromorphicExporter {
                     for (i, row) in weights.iter().enumerate() {
                         for (j, &w) in row.iter().enumerate() {
                             if w.abs() > 1e-6 {
-                                writeln!(code, "    ({}, {}, {:.4f}, {:.1f}),", j, i, w, conn.delay)?;
+                                writeln!(code, "    ({}, {}, {:.4}, {:.1}),", j, i, w, conn.delay)?;
                             }
                         }
                     }
@@ -569,7 +569,7 @@ impl NeuromorphicExporter {
             writeln!(code, "    {},", conn.source)?;
             writeln!(code, "    {},", conn.target)?;
             writeln!(code, "    {},"  , connector)?;
-            writeln!(code, "    synapse_type=sim.StaticSynapse(weight=1.0, delay={:.1f}),", conn.delay)?;
+            writeln!(code, "    synapse_type=sim.StaticSynapse(weight=1.0, delay={:.1}),", conn.delay)?;
             writeln!(code, "    receptor_type='excitatory'")?;
             writeln!(code, ")")?;
             writeln!(code)?;
@@ -586,7 +586,7 @@ impl NeuromorphicExporter {
 
         // Run simulation
         writeln!(code, "# Run simulation")?;
-        writeln!(code, "sim.run({:.1f})", config.duration_ms)?;
+        writeln!(code, "sim.run({:.1})", config.duration_ms)?;
         writeln!(code)?;
 
         // Extract data
@@ -613,7 +613,7 @@ impl NeuromorphicExporter {
                 writeln!(code, "for idx, train in enumerate({}_spikes):", layer.name)?;
                 writeln!(code, "    axes[{}].scatter(train, [idx]*len(train), s=1)", i)?;
                 writeln!(code, "axes[{}].set_ylabel('{}')", i, layer.name)?;
-                writeln!(code, "axes[{}].set_xlim(0, {:.1f})", i, config.duration_ms)?;
+                writeln!(code, "axes[{}].set_xlim(0, {:.1})", i, config.duration_ms)?;
             }
             writeln!(code, "axes[-1].set_xlabel('Time (ms)')")?;
             writeln!(code, "plt.tight_layout()")?;
@@ -671,8 +671,8 @@ impl NeuromorphicExporter {
             writeln!(code, "        )")?;
             writeln!(code, "        self.neuron_{} = snn.Neuron(", layer.name)?;
             writeln!(code, "            size={},", layer.size)?;
-            writeln!(code, "            leak={:.4f},", 1.0 / layer.params.tau_m)?;
-            writeln!(code, "            threshold={:.1f},", layer.params.v_thresh.abs())?;
+            writeln!(code, "            leak={:.4},", 1.0 / layer.params.tau_m)?;
+            writeln!(code, "            threshold={:.1},", layer.params.v_thresh.abs())?;
             writeln!(code, "        )")?;
             writeln!(code)?;
         }
@@ -732,15 +732,15 @@ impl NeuromorphicExporter {
         writeln!(code, "import numpy as np")?;
         writeln!(code)?;
 
-        writeln!(code, "sim.setup(timestep={:.2f})", config.dt)?;
+        writeln!(code, "sim.setup(timestep={:.2})", config.dt)?;
         writeln!(code)?;
 
         // Populations
         for layer in &config.layers {
             let params = &layer.params;
             writeln!(code, "{} = sim.Population({}, sim.IF_curr_exp(", layer.name, layer.size)?;
-            writeln!(code, "    tau_m={:.1f}, tau_syn_E={:.1f}, tau_syn_I={:.1f},", params.tau_m, params.tau_syn, params.tau_syn)?;
-            writeln!(code, "    v_thresh={:.1f}, v_reset={:.1f}, v_rest={:.1f}", params.v_thresh, params.v_reset, params.v_rest)?;
+            writeln!(code, "    tau_m={:.1}, tau_syn_E={:.1}, tau_syn_I={:.1},", params.tau_m, params.tau_syn, params.tau_syn)?;
+            writeln!(code, "    v_thresh={:.1}, v_reset={:.1}, v_rest={:.1}", params.v_thresh, params.v_reset, params.v_rest)?;
             writeln!(code, "), label='{}')", layer.name)?;
         }
         writeln!(code)?;
@@ -748,7 +748,7 @@ impl NeuromorphicExporter {
         // Projections
         for conn in &config.connections {
             writeln!(code, "sim.Projection({}, {}, sim.AllToAllConnector(),", conn.source, conn.target)?;
-            writeln!(code, "    synapse_type=sim.StaticSynapse(weight=0.1, delay={:.1f}))", conn.delay)?;
+            writeln!(code, "    synapse_type=sim.StaticSynapse(weight=0.1, delay={:.1}))", conn.delay)?;
         }
         writeln!(code)?;
 
@@ -757,7 +757,7 @@ impl NeuromorphicExporter {
             writeln!(code, "{}.record('spikes')", layer.name)?;
         }
         writeln!(code)?;
-        writeln!(code, "sim.run({:.1f})", config.duration_ms)?;
+        writeln!(code, "sim.run({:.1})", config.duration_ms)?;
         writeln!(code, "sim.end()")?;
 
         Ok(code)
