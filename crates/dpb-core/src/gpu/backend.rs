@@ -128,6 +128,9 @@ pub struct KernelHandle {
 ///
 /// This trait provides a common interface for GPU computation across
 /// different backends (WebGPU, CUDA, Metal, etc.).
+///
+/// Note: This trait uses byte slices for buffer operations to maintain
+/// dyn-compatibility. Use the helper methods on BufferHandle for typed access.
 pub trait ComputeBackend: Send + Sync {
     /// Returns the backend type.
     fn backend_type(&self) -> BackendType;
@@ -141,14 +144,14 @@ pub trait ComputeBackend: Send + Sync {
     /// Creates a new buffer with the given size in bytes.
     fn create_buffer(&self, size: usize) -> Result<BufferHandle>;
 
-    /// Creates a buffer initialized with the given data.
-    fn create_buffer_from_slice<T: bytemuck::Pod>(&self, data: &[T]) -> Result<BufferHandle>;
+    /// Creates a buffer initialized with the given byte data.
+    fn create_buffer_from_bytes(&self, data: &[u8]) -> Result<BufferHandle>;
 
-    /// Uploads data to an existing buffer.
-    fn upload_buffer<T: bytemuck::Pod>(&self, buffer: &BufferHandle, data: &[T]) -> Result<()>;
+    /// Uploads byte data to an existing buffer.
+    fn upload_buffer_bytes(&self, buffer: &BufferHandle, data: &[u8]) -> Result<()>;
 
-    /// Downloads data from a buffer.
-    fn download_buffer<T: bytemuck::Pod>(&self, buffer: &BufferHandle) -> Result<Vec<T>>;
+    /// Downloads byte data from a buffer.
+    fn download_buffer_bytes(&self, buffer: &BufferHandle) -> Result<Vec<u8>>;
 
     /// Frees a buffer.
     fn free_buffer(&self, buffer: &BufferHandle) -> Result<()>;
@@ -179,11 +182,34 @@ pub trait ComputeBackend: Send + Sync {
 
     /// Synchronizes all pending operations.
     fn synchronize(&self) -> Result<()>;
+}
 
-    /// Checks if this backend is available on the current system.
-    fn is_available() -> bool
-    where
-        Self: Sized;
+/// Extension methods for typed buffer operations.
+///
+/// These are provided as free functions to avoid generic methods in the trait.
+pub fn create_buffer_from_slice<T: bytemuck::Pod>(
+    backend: &dyn ComputeBackend,
+    data: &[T],
+) -> Result<BufferHandle> {
+    backend.create_buffer_from_bytes(bytemuck::cast_slice(data))
+}
+
+/// Upload typed data to a buffer.
+pub fn upload_buffer<T: bytemuck::Pod>(
+    backend: &dyn ComputeBackend,
+    buffer: &BufferHandle,
+    data: &[T],
+) -> Result<()> {
+    backend.upload_buffer_bytes(buffer, bytemuck::cast_slice(data))
+}
+
+/// Download typed data from a buffer.
+pub fn download_buffer<T: bytemuck::Pod + Clone>(
+    backend: &dyn ComputeBackend,
+    buffer: &BufferHandle,
+) -> Result<Vec<T>> {
+    let bytes = backend.download_buffer_bytes(buffer)?;
+    Ok(bytemuck::cast_slice(&bytes).to_vec())
 }
 
 /// Extension trait for common compute operations.
@@ -343,9 +369,9 @@ impl ComputeBackend for WebGPUBackend {
         })
     }
 
-    fn create_buffer_from_slice<T: bytemuck::Pod>(&self, data: &[T]) -> Result<BufferHandle> {
+    fn create_buffer_from_bytes(&self, data: &[u8]) -> Result<BufferHandle> {
         let id = self.next_buffer_id();
-        let size = data.len() * std::mem::size_of::<T>();
+        let size = data.len();
 
         let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some(&format!("Buffer_{}", id)),
@@ -356,7 +382,7 @@ impl ComputeBackend for WebGPUBackend {
             mapped_at_creation: false,
         });
 
-        self.queue.write_buffer(&buffer, 0, bytemuck::cast_slice(data));
+        self.queue.write_buffer(&buffer, 0, data);
         self.buffers.write().unwrap().insert(id, buffer);
 
         Ok(BufferHandle {
@@ -366,17 +392,17 @@ impl ComputeBackend for WebGPUBackend {
         })
     }
 
-    fn upload_buffer<T: bytemuck::Pod>(&self, handle: &BufferHandle, data: &[T]) -> Result<()> {
+    fn upload_buffer_bytes(&self, handle: &BufferHandle, data: &[u8]) -> Result<()> {
         let buffers = self.buffers.read().unwrap();
         let buffer = buffers
             .get(&handle.id)
             .ok_or_else(|| DpbError::Gpu("Buffer not found".to_string()))?;
 
-        self.queue.write_buffer(buffer, 0, bytemuck::cast_slice(data));
+        self.queue.write_buffer(buffer, 0, data);
         Ok(())
     }
 
-    fn download_buffer<T: bytemuck::Pod>(&self, handle: &BufferHandle) -> Result<Vec<T>> {
+    fn download_buffer_bytes(&self, handle: &BufferHandle) -> Result<Vec<u8>> {
         let buffers = self.buffers.read().unwrap();
         let buffer = buffers
             .get(&handle.id)
@@ -412,7 +438,7 @@ impl ComputeBackend for WebGPUBackend {
             .map_err(|e| DpbError::Gpu(format!("Buffer map failed: {:?}", e)))?;
 
         let data = slice.get_mapped_range();
-        let result: Vec<T> = bytemuck::cast_slice(&data).to_vec();
+        let result: Vec<u8> = data.to_vec();
 
         drop(data);
         staging.unmap();
@@ -492,8 +518,11 @@ impl ComputeBackend for WebGPUBackend {
         self.device.poll(wgpu::Maintain::Wait);
         Ok(())
     }
+}
 
-    fn is_available() -> bool {
+impl WebGPUBackend {
+    /// Checks if WebGPU is available on the current system.
+    pub fn is_available() -> bool {
         // WebGPU is always available (can fall back to software)
         true
     }
@@ -577,9 +606,9 @@ pub mod cuda {
             })
         }
 
-        fn create_buffer_from_slice<T: bytemuck::Pod>(&self, data: &[T]) -> Result<BufferHandle> {
+        fn create_buffer_from_bytes(&self, data: &[u8]) -> Result<BufferHandle> {
             let id = self.next_buffer_id();
-            let size = data.len() * std::mem::size_of::<T>();
+            let size = data.len();
             // Note: Would allocate and copy data to GPU
             Ok(BufferHandle {
                 id,
@@ -588,14 +617,13 @@ pub mod cuda {
             })
         }
 
-        fn upload_buffer<T: bytemuck::Pod>(&self, _handle: &BufferHandle, _data: &[T]) -> Result<()> {
+        fn upload_buffer_bytes(&self, _handle: &BufferHandle, _data: &[u8]) -> Result<()> {
             // Would copy data to GPU
             Ok(())
         }
 
-        fn download_buffer<T: bytemuck::Pod>(&self, handle: &BufferHandle) -> Result<Vec<T>> {
-            let count = handle.size / std::mem::size_of::<T>();
-            Ok(vec![T::zeroed(); count])
+        fn download_buffer_bytes(&self, handle: &BufferHandle) -> Result<Vec<u8>> {
+            Ok(vec![0u8; handle.size])
         }
 
         fn free_buffer(&self, _handle: &BufferHandle) -> Result<()> {
@@ -627,8 +655,11 @@ pub mod cuda {
                 .synchronize()
                 .map_err(|e| DpbError::Gpu(format!("CUDA sync failed: {:?}", e)))
         }
+    }
 
-        fn is_available() -> bool {
+    impl CUDABackend {
+        /// Checks if CUDA is available on the current system.
+        pub fn is_available() -> bool {
             CudaDevice::count().map(|c| c > 0).unwrap_or(false)
         }
     }
@@ -724,13 +755,13 @@ mod tests {
     async fn test_buffer_operations() {
         let result = WebGPUBackend::new().await;
         if let Ok(backend) = result {
-            // Create buffer from data
+            // Create buffer from data using helper function
             let data = vec![1.0f32, 2.0, 3.0, 4.0];
-            let buffer = backend.create_buffer_from_slice(&data).unwrap();
+            let buffer = create_buffer_from_slice(&backend, &data).unwrap();
             assert_eq!(buffer.size, 16); // 4 floats * 4 bytes
 
-            // Download and verify
-            let downloaded: Vec<f32> = backend.download_buffer(&buffer).unwrap();
+            // Download and verify using helper function
+            let downloaded: Vec<f32> = download_buffer(&backend, &buffer).unwrap();
             assert_eq!(downloaded, data);
 
             // Free buffer

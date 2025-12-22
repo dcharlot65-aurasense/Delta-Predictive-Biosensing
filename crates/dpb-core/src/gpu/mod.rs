@@ -33,6 +33,8 @@ pub mod context;
 pub use backend::{
     available_backends, create_backend, create_default_backend, BackendType, BufferHandle,
     ComputeBackend, DeviceProperties, KernelHandle, WebGPUBackend,
+    // Helper functions for typed buffer operations
+    create_buffer_from_slice, upload_buffer, download_buffer,
 };
 
 #[cfg(feature = "cuda")]

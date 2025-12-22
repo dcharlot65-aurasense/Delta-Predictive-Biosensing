@@ -16,6 +16,7 @@ dpb-synth.workspace = true
 
 # Benchmarking
 criterion = { version = "0.5", features = ["html_reports"] }
+iai-callgrind.workspace = true
 
 # Data structures
 ndarray.workspace = true
@@ -59,6 +60,19 @@ harness = false
 
 [[bench]]
 name = "synthetic"
+harness = false
+
+# iai-callgrind benchmarks (instruction-count based, deterministic)
+[[bench]]
+name = "iai_neurons"
+harness = false
+
+[[bench]]
+name = "iai_encoding"
+harness = false
+
+[[bench]]
+name = "iai_signal"
 harness = false
 
 [[example]]

@@ -378,7 +378,8 @@ impl DendriticIntegration for CoincidenceDetection {
 }
 
 /// Two-layer integration model (local branches + soma)
-#[derive(Debug, Clone)]
+///
+/// Note: Debug and Clone are not derived due to trait object constraints.
 pub struct TwoLayerIntegration {
     /// Branch-level integrators
     branch_integrators: Vec<Box<dyn DendriticIntegration>>,
@@ -386,8 +387,14 @@ pub struct TwoLayerIntegration {
     somatic_integrator: PassiveIntegration,
 }
 
-// Manual Clone implementation needed due to Box<dyn Trait>
-// (commenting out for now as it requires more complex trait setup)
+impl std::fmt::Debug for TwoLayerIntegration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TwoLayerIntegration")
+            .field("branch_count", &self.branch_integrators.len())
+            .field("somatic_integrator", &self.somatic_integrator)
+            .finish()
+    }
+}
 
 #[cfg(test)]
 mod tests {

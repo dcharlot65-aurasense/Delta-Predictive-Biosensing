@@ -73,10 +73,10 @@ criterion = { version = "0.5", features = ["html_reports"] }
 tempfile = "3.14"
 iai-callgrind = "0.14"
 
-# GPU Backends
-cudarc = { version = "0.12", features = ["cublas", "cufft"], optional = true }
-metal = { version = "0.29", optional = true }
-vulkano = { version = "0.34", optional = true }
+# GPU Backends (optional in individual crates)
+cudarc = { version = "0.12", features = ["cublas"] }
+metal = { version = "0.29" }
+vulkano = { version = "0.34" }
 
 # Additional compute
 faer = "0.20"
