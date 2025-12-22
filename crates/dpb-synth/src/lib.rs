@@ -178,6 +178,9 @@ pub mod pathology;
 pub mod augmentation;
 pub mod cohort;
 
+// Content description API for natural language landmark generation
+pub mod content_description;
+
 pub use traits::{SyntheticGenerator, GroundTruth, ParameterSpace};
 pub use augmentation::{
     SignalAugmentation, AugmentationPipeline,
@@ -216,6 +219,11 @@ pub use streaming::{
     StreamingClinicalHand, StreamingClinicalHandState, StreamingClinicalHandParams,
     // Multi-modal streaming
     MultiModalStreaming, MultiModalState, MultiModalParams, MultiModalSample,
+};
+pub use content_description::{
+    ContentDescription, ContentDescriptionBuilder, ContentDescriptionError,
+    Severity, LandmarkFormat, LandmarkStream,
+    generate_from_description, stream_from_description,
 };
 
 /// Common result type for generators
