@@ -1,0 +1,668 @@
+{
+  "version": "1.0.0",
+  "templates": {
+    "encoding": [
+      {
+        "id": "basic_level_crossing",
+        "name": "Basic Level Crossing Encoder",
+        "category": "encoding",
+        "description": "Encode a time series signal using level crossing detection",
+        "dependencies": [
+          "dpb-core",
+          "dpb-encoders"
+        ],
+        "imports": [
+          "use dpb_core::{TimeSeries, SpikeTrain};",
+          "use dpb_encoders::base::LevelCrossingEncoder;",
+          "use dpb_core::traits::EventEncoder;"
+        ],
+        "code": "// Create the encoder with threshold\nlet encoder = LevelCrossingEncoder::new({{THRESHOLD}});\n\n// Encode the signal\nlet spikes: SpikeTrain = encoder.encode(&{{SIGNAL}});\n\n// Access spike times\nfor event in spikes.events() {\n    println!(\"Spike at t={:.3}s, value={:.2}\", event.time, event.value);\n}",
+        "placeholders": [
+          {
+            "name": "THRESHOLD",
+            "description": "Level crossing threshold value",
+            "type_hint": "f64",
+            "example": "0.1",
+            "options": null
+          },
+          {
+            "name": "SIGNAL",
+            "description": "Input time series signal",
+            "type_hint": "TimeSeries",
+            "example": "time_series",
+            "options": null
+          }
+        ],
+        "example": "use dpb_core::{TimeSeries, SpikeTrain};\nuse dpb_encoders::base::LevelCrossingEncoder;\nuse dpb_core::traits::EventEncoder;\n\n// Create sample signal\nlet signal = TimeSeries::from_samples(&[0.0, 0.2, 0.5, 0.3, 0.1], 100.0);\n\n// Create the encoder with threshold\nlet encoder = LevelCrossingEncoder::new(0.1);\n\n// Encode the signal\nlet spikes: SpikeTrain = encoder.encode(&signal);\n\n// Access spike times\nfor event in spikes.events() {\n    println!(\"Spike at t={:.3}s, value={:.2}\", event.time, event.value);\n}",
+        "tags": [
+          "encoder",
+          "level-crossing",
+          "basic"
+        ]
+      },
+      {
+        "id": "ecg_rpeak_encoding",
+        "name": "ECG R-Peak Encoder",
+        "category": "encoding",
+        "description": "Detect and encode R-peaks from ECG signals",
+        "dependencies": [
+          "dpb-core",
+          "dpb-encoders"
+        ],
+        "imports": [
+          "use dpb_core::{TimeSeries, SpikeTrain};",
+          "use dpb_encoders::contact::ecg::EcgRPeakEncoder;",
+          "use dpb_core::traits::EventEncoder;"
+        ],
+        "code": "// Create ECG R-peak encoder with sample rate\nlet encoder = EcgRPeakEncoder::new({{SAMPLE_RATE}});\n\n// Encode ECG signal to R-peak spikes\nlet rpeak_spikes = encoder.encode(&{{ECG_SIGNAL}});\n\n// Calculate heart rate from R-R intervals\nlet rr_intervals: Vec<f64> = rpeak_spikes.events()\n    .windows(2)\n    .map(|w| w[1].time - w[0].time)\n    .collect();\n\nlet mean_rr = rr_intervals.iter().sum::<f64>() / rr_intervals.len() as f64;\nlet heart_rate_bpm = 60.0 / mean_rr;\nprintln!(\"Heart rate: {:.1} BPM\", heart_rate_bpm);",
+        "placeholders": [
+          {
+            "name": "SAMPLE_RATE",
+            "description": "ECG signal sample rate in Hz",
+            "type_hint": "f64",
+            "example": "250.0",
+            "options": null
+          },
+          {
+            "name": "ECG_SIGNAL",
+            "description": "Input ECG time series",
+            "type_hint": "TimeSeries",
+            "example": "ecg_data",
+            "options": null
+          }
+        ],
+        "example": "use dpb_core::{TimeSeries, SpikeTrain};\nuse dpb_encoders::contact::ecg::EcgRPeakEncoder;\nuse dpb_core::traits::EventEncoder;\nuse dpb_synth::contact::EcgGenerator;\n\n// Generate synthetic ECG\nlet generator = EcgGenerator::default();\nlet ecg_data = generator.generate(10.0, 250.0); // 10 seconds at 250 Hz\n\n// Create ECG R-peak encoder\nlet encoder = EcgRPeakEncoder::new(250.0);\n\n// Encode to spikes\nlet rpeak_spikes = encoder.encode(&ecg_data);\n\n// Calculate heart rate\nlet rr_intervals: Vec<f64> = rpeak_spikes.events()\n    .windows(2)\n    .map(|w| w[1].time - w[0].time)\n    .collect();\n\nlet mean_rr = rr_intervals.iter().sum::<f64>() / rr_intervals.len() as f64;\nlet heart_rate_bpm = 60.0 / mean_rr;\nprintln!(\"Heart rate: {:.1} BPM\", heart_rate_bpm);",
+        "tags": [
+          "encoder",
+          "ecg",
+          "cardiac",
+          "r-peak"
+        ]
+      },
+      {
+        "id": "multimodal_encoding",
+        "name": "Multi-Modal Signal Encoding",
+        "category": "encoding",
+        "description": "Encode multiple signal modalities (ECG, PPG, EMG) simultaneously",
+        "dependencies": [
+          "dpb-core",
+          "dpb-encoders"
+        ],
+        "imports": [
+          "use dpb_core::{TimeSeries, SpikeTrain, Modality};",
+          "use dpb_encoders::contact::{ecg::EcgRPeakEncoder, ppg::PpgPulseEncoder, emg::EmgBurstEncoder};",
+          "use dpb_core::traits::EventEncoder;",
+          "use std::collections::HashMap;"
+        ],
+        "code": "// Create encoders for each modality\nlet ecg_encoder = EcgRPeakEncoder::new({{SAMPLE_RATE}});\nlet ppg_encoder = PpgPulseEncoder::new({{SAMPLE_RATE}});\nlet emg_encoder = EmgBurstEncoder::new({{SAMPLE_RATE}});\n\n// Encode each signal\nlet mut spike_trains: HashMap<Modality, SpikeTrain> = HashMap::new();\nspike_trains.insert(Modality::Ecg, ecg_encoder.encode(&{{ECG_SIGNAL}}));\nspike_trains.insert(Modality::Ppg, ppg_encoder.encode(&{{PPG_SIGNAL}}));\nspike_trains.insert(Modality::Emg, emg_encoder.encode(&{{EMG_SIGNAL}}));\n\n// Process multimodal spikes\nfor (modality, spikes) in &spike_trains {\n    println!(\"{:?}: {} spikes\", modality, spikes.len());\n}",
+        "placeholders": [
+          {
+            "name": "SAMPLE_RATE",
+            "description": "Common sample rate for all signals",
+            "type_hint": "f64",
+            "example": "250.0",
+            "options": null
+          },
+          {
+            "name": "ECG_SIGNAL",
+            "description": "ECG time series",
+            "type_hint": "TimeSeries",
+            "example": "ecg",
+            "options": null
+          },
+          {
+            "name": "PPG_SIGNAL",
+            "description": "PPG time series",
+            "type_hint": "TimeSeries",
+            "example": "ppg",
+            "options": null
+          },
+          {
+            "name": "EMG_SIGNAL",
+            "description": "EMG time series",
+            "type_hint": "TimeSeries",
+            "example": "emg",
+            "options": null
+          }
+        ],
+        "example": "use dpb_core::{TimeSeries, SpikeTrain, Modality};\nuse dpb_encoders::contact::{ecg::EcgRPeakEncoder, ppg::PpgPulseEncoder, emg::EmgBurstEncoder};\nuse dpb_core::traits::EventEncoder;\nuse std::collections::HashMap;\n\n// Create encoders\nlet ecg_encoder = EcgRPeakEncoder::new(250.0);\nlet ppg_encoder = PpgPulseEncoder::new(250.0);\nlet emg_encoder = EmgBurstEncoder::new(250.0);\n\n// Encode signals (assuming signals are loaded)\nlet mut spike_trains: HashMap<Modality, SpikeTrain> = HashMap::new();\nspike_trains.insert(Modality::Ecg, ecg_encoder.encode(&ecg));\nspike_trains.insert(Modality::Ppg, ppg_encoder.encode(&ppg));\nspike_trains.insert(Modality::Emg, emg_encoder.encode(&emg));\n\nfor (modality, spikes) in &spike_trains {\n    println!(\"{:?}: {} spikes\", modality, spikes.len());\n}",
+        "tags": [
+          "encoder",
+          "multimodal",
+          "ecg",
+          "ppg",
+          "emg"
+        ]
+      }
+    ],
+    "signal_processing": [
+      {
+        "id": "ecg_preprocessing",
+        "name": "ECG Signal Preprocessing",
+        "category": "signal_processing",
+        "description": "Filter and preprocess ECG signals for analysis",
+        "dependencies": [
+          "dpb-core"
+        ],
+        "imports": [
+          "use dpb_core::signal::filter::{BandpassFilter, NotchFilter};",
+          "use dpb_core::signal::ecg::{BaselineRemoval, QrsDetector};",
+          "use dpb_core::TimeSeries;"
+        ],
+        "code": "// Create filters\nlet bandpass = BandpassFilter::new({{LOW_CUTOFF}}, {{HIGH_CUTOFF}}, {{SAMPLE_RATE}});\nlet notch = NotchFilter::new({{NOTCH_FREQ}}, {{SAMPLE_RATE}});\nlet baseline_removal = BaselineRemoval::new({{WINDOW_SIZE}});\n\n// Apply preprocessing pipeline\nlet filtered = bandpass.apply(&{{RAW_SIGNAL}});\nlet denoised = notch.apply(&filtered);\nlet clean_ecg = baseline_removal.apply(&denoised);\n\n// Detect QRS complexes\nlet qrs_detector = QrsDetector::new({{SAMPLE_RATE}});\nlet qrs_peaks = qrs_detector.detect(&clean_ecg);\n\nprintln!(\"Detected {} QRS complexes\", qrs_peaks.len());",
+        "placeholders": [
+          {
+            "name": "LOW_CUTOFF",
+            "description": "Low cutoff frequency (Hz)",
+            "type_hint": "f64",
+            "example": "0.5",
+            "options": null
+          },
+          {
+            "name": "HIGH_CUTOFF",
+            "description": "High cutoff frequency (Hz)",
+            "type_hint": "f64",
+            "example": "40.0",
+            "options": null
+          },
+          {
+            "name": "SAMPLE_RATE",
+            "description": "Signal sample rate (Hz)",
+            "type_hint": "f64",
+            "example": "250.0",
+            "options": null
+          },
+          {
+            "name": "NOTCH_FREQ",
+            "description": "Power line frequency (Hz)",
+            "type_hint": "f64",
+            "example": "60.0",
+            "options": [
+              "50.0",
+              "60.0"
+            ]
+          },
+          {
+            "name": "WINDOW_SIZE",
+            "description": "Baseline removal window (samples)",
+            "type_hint": "usize",
+            "example": "200",
+            "options": null
+          },
+          {
+            "name": "RAW_SIGNAL",
+            "description": "Raw ECG time series",
+            "type_hint": "TimeSeries",
+            "example": "raw_ecg",
+            "options": null
+          }
+        ],
+        "example": "use dpb_core::signal::filter::{BandpassFilter, NotchFilter};\nuse dpb_core::signal::ecg::{BaselineRemoval, QrsDetector};\n\nlet bandpass = BandpassFilter::new(0.5, 40.0, 250.0);\nlet notch = NotchFilter::new(60.0, 250.0);\nlet baseline_removal = BaselineRemoval::new(200);\n\nlet filtered = bandpass.apply(&raw_ecg);\nlet denoised = notch.apply(&filtered);\nlet clean_ecg = baseline_removal.apply(&denoised);\n\nlet qrs_detector = QrsDetector::new(250.0);\nlet qrs_peaks = qrs_detector.detect(&clean_ecg);",
+        "tags": [
+          "signal",
+          "ecg",
+          "filter",
+          "preprocessing"
+        ]
+      }
+    ],
+    "visualization": [
+      {
+        "id": "spike_raster_plot",
+        "name": "Spike Raster Plot",
+        "category": "visualization",
+        "description": "Create a raster plot of spike trains",
+        "dependencies": [
+          "dpb-viz"
+        ],
+        "imports": [
+          "use dpb_viz::{RasterPlot, RasterConfig};",
+          "use dpb_viz::export::SvgExporter;"
+        ],
+        "code": "// Configure raster plot\nlet config = RasterConfig {\n    width: {{WIDTH}},\n    height: {{HEIGHT}},\n    time_range: ({{START_TIME}}, {{END_TIME}}),\n    marker_size: {{MARKER_SIZE}},\n    color_by_neuron: {{COLOR_BY_NEURON}},\n    ..Default::default()\n};\n\n// Create raster plot\nlet plot = RasterPlot::new(config);\nplot.add_spike_trains(&{{SPIKE_TRAINS}});\n\n// Export to SVG\nlet exporter = SvgExporter::new();\nexporter.export(&plot, {{OUTPUT_PATH}})?;",
+        "placeholders": [
+          {
+            "name": "WIDTH",
+            "description": "Plot width in pixels",
+            "type_hint": "u32",
+            "example": "800",
+            "options": null
+          },
+          {
+            "name": "HEIGHT",
+            "description": "Plot height in pixels",
+            "type_hint": "u32",
+            "example": "400",
+            "options": null
+          },
+          {
+            "name": "START_TIME",
+            "description": "Start time (seconds)",
+            "type_hint": "f64",
+            "example": "0.0",
+            "options": null
+          },
+          {
+            "name": "END_TIME",
+            "description": "End time (seconds)",
+            "type_hint": "f64",
+            "example": "10.0",
+            "options": null
+          },
+          {
+            "name": "MARKER_SIZE",
+            "description": "Spike marker size",
+            "type_hint": "f64",
+            "example": "2.0",
+            "options": null
+          },
+          {
+            "name": "COLOR_BY_NEURON",
+            "description": "Color spikes by neuron index",
+            "type_hint": "bool",
+            "example": "true",
+            "options": null
+          },
+          {
+            "name": "SPIKE_TRAINS",
+            "description": "Vector of spike trains",
+            "type_hint": "Vec<SpikeTrain>",
+            "example": "spike_trains",
+            "options": null
+          },
+          {
+            "name": "OUTPUT_PATH",
+            "description": "Output file path",
+            "type_hint": "&str",
+            "example": "\"output/raster.svg\"",
+            "options": null
+          }
+        ],
+        "example": "use dpb_viz::{RasterPlot, RasterConfig};\nuse dpb_viz::export::SvgExporter;\n\nlet config = RasterConfig {\n    width: 800,\n    height: 400,\n    time_range: (0.0, 10.0),\n    marker_size: 2.0,\n    color_by_neuron: true,\n    ..Default::default()\n};\n\nlet plot = RasterPlot::new(config);\nplot.add_spike_trains(&spike_trains);\n\nlet exporter = SvgExporter::new();\nexporter.export(&plot, \"output/raster.svg\")?;",
+        "tags": [
+          "visualization",
+          "raster",
+          "spikes",
+          "svg"
+        ]
+      }
+    ],
+    "pipeline": [
+      {
+        "id": "realtime_pipeline",
+        "name": "Real-time Processing Pipeline",
+        "category": "pipeline",
+        "description": "Create a streaming pipeline for real-time biosignal processing",
+        "dependencies": [
+          "dpb-core",
+          "dpb-encoders",
+          "dpb-snn"
+        ],
+        "imports": [
+          "use dpb_core::pipeline::{Pipeline, PipelineConfig, StreamBuffer};",
+          "use dpb_encoders::contact::ecg::EcgRPeakEncoder;",
+          "use dpb_snn::architectures::FeedforwardSNN;",
+          "use tokio::sync::mpsc;"
+        ],
+        "code": "// Configure pipeline\nlet config = PipelineConfig {\n    buffer_size: {{BUFFER_SIZE}},\n    sample_rate: {{SAMPLE_RATE}},\n    window_size: {{WINDOW_SIZE}},\n    overlap: {{OVERLAP}},\n    ..Default::default()\n};\n\n// Create pipeline components\nlet encoder = EcgRPeakEncoder::new({{SAMPLE_RATE}});\nlet model = FeedforwardSNN::load({{MODEL_PATH}})?;\n\n// Create async channel for results\nlet (tx, mut rx) = mpsc::channel(100);\n\n// Build pipeline\nlet mut pipeline = Pipeline::new(config)\n    .add_stage(\"encode\", move |signal| encoder.encode(&signal))\n    .add_stage(\"classify\", move |spikes| model.forward(&spikes, 100))\n    .with_output(tx);\n\n// Start processing\npipeline.start().await;\n\n// Handle results\nwhile let Some(result) = rx.recv().await {\n    println!(\"Classification: {:?}\", result);\n}",
+        "placeholders": [
+          {
+            "name": "BUFFER_SIZE",
+            "description": "Internal buffer size (samples)",
+            "type_hint": "usize",
+            "example": "1024",
+            "options": null
+          },
+          {
+            "name": "SAMPLE_RATE",
+            "description": "Input sample rate (Hz)",
+            "type_hint": "f64",
+            "example": "250.0",
+            "options": null
+          },
+          {
+            "name": "WINDOW_SIZE",
+            "description": "Processing window size (samples)",
+            "type_hint": "usize",
+            "example": "500",
+            "options": null
+          },
+          {
+            "name": "OVERLAP",
+            "description": "Window overlap (samples)",
+            "type_hint": "usize",
+            "example": "250",
+            "options": null
+          },
+          {
+            "name": "MODEL_PATH",
+            "description": "Path to trained model",
+            "type_hint": "&str",
+            "example": "\"models/classifier.bin\"",
+            "options": null
+          }
+        ],
+        "example": "use dpb_core::pipeline::{Pipeline, PipelineConfig};\nuse dpb_encoders::contact::ecg::EcgRPeakEncoder;\nuse dpb_snn::architectures::FeedforwardSNN;\n\nlet config = PipelineConfig {\n    buffer_size: 1024,\n    sample_rate: 250.0,\n    window_size: 500,\n    overlap: 250,\n    ..Default::default()\n};\n\nlet encoder = EcgRPeakEncoder::new(250.0);\nlet model = FeedforwardSNN::load(\"models/classifier.bin\")?;\n\nlet mut pipeline = Pipeline::new(config)\n    .add_stage(\"encode\", move |signal| encoder.encode(&signal))\n    .add_stage(\"classify\", move |spikes| model.forward(&spikes, 100));\n\npipeline.start().await;",
+        "tags": [
+          "pipeline",
+          "realtime",
+          "streaming",
+          "async"
+        ]
+      },
+      {
+        "id": "lsl_integration",
+        "name": "Lab Streaming Layer Integration",
+        "category": "pipeline",
+        "description": "Connect to LSL streams for real-time biosignal acquisition",
+        "dependencies": [
+          "dpb-lsl",
+          "dpb-core"
+        ],
+        "imports": [
+          "use dpb_lsl::{LslInlet, StreamResolver, ChannelFormat};",
+          "use dpb_core::TimeSeries;"
+        ],
+        "code": "// Resolve LSL streams\nlet resolver = StreamResolver::new();\nlet streams = resolver.resolve_by_type({{STREAM_TYPE}}, {{TIMEOUT}}).await?;\n\nif streams.is_empty() {\n    return Err(anyhow::anyhow!(\"No {} streams found\", {{STREAM_TYPE}}));\n}\n\n// Create inlet for first matching stream\nlet inlet = LslInlet::new(&streams[0]).await?;\n\n// Read samples\nlet mut buffer = vec![0.0f64; inlet.channel_count()];\nloop {\n    let timestamp = inlet.pull_sample(&mut buffer, {{TIMEOUT}}).await?;\n\n    // Process sample\n    println!(\"t={:.3}: {:?}\", timestamp, buffer);\n\n    // Convert to TimeSeries for further processing\n    let sample = TimeSeries::from_sample(&buffer, inlet.sample_rate());\n    // ... process sample\n}",
+        "placeholders": [
+          {
+            "name": "STREAM_TYPE",
+            "description": "LSL stream type to search for",
+            "type_hint": "&str",
+            "example": "\"EEG\"",
+            "options": [
+              "\"EEG\"",
+              "\"ECG\"",
+              "\"EMG\"",
+              "\"Markers\""
+            ]
+          },
+          {
+            "name": "TIMEOUT",
+            "description": "Timeout in seconds",
+            "type_hint": "f64",
+            "example": "5.0",
+            "options": null
+          }
+        ],
+        "example": "use dpb_lsl::{LslInlet, StreamResolver};\n\nlet resolver = StreamResolver::new();\nlet streams = resolver.resolve_by_type(\"EEG\", 5.0).await?;\n\nlet inlet = LslInlet::new(&streams[0]).await?;\nlet mut buffer = vec![0.0f64; inlet.channel_count()];\n\nloop {\n    let timestamp = inlet.pull_sample(&mut buffer, 1.0).await?;\n    println!(\"t={:.3}: {:?}\", timestamp, buffer);\n}",
+        "tags": [
+          "lsl",
+          "streaming",
+          "realtime",
+          "eeg"
+        ]
+      }
+    ],
+    "inference": [
+      {
+        "id": "snn_inference",
+        "name": "SNN Inference",
+        "category": "inference",
+        "description": "Run inference on a trained SNN model",
+        "dependencies": [
+          "dpb-snn"
+        ],
+        "imports": [
+          "use dpb_snn::architectures::FeedforwardSNN;",
+          "use dpb_snn::decoders::SpikeRateDecoder;"
+        ],
+        "code": "// Load trained model\nlet snn = FeedforwardSNN::load({{MODEL_PATH}})?;\n\n// Create decoder for output interpretation\nlet decoder = SpikeRateDecoder::new({{NUM_CLASSES}});\n\n// Run inference\nlet output_spikes = snn.forward(&{{INPUT_SPIKES}}, {{TIME_STEPS}});\n\n// Decode output\nlet prediction = decoder.decode(&output_spikes);\nprintln!(\"Predicted class: {}\", prediction);",
+        "placeholders": [
+          {
+            "name": "MODEL_PATH",
+            "description": "Path to trained SNN model",
+            "type_hint": "&str",
+            "example": "\"models/snn.bin\"",
+            "options": null
+          },
+          {
+            "name": "NUM_CLASSES",
+            "description": "Number of output classes",
+            "type_hint": "usize",
+            "example": "10",
+            "options": null
+          },
+          {
+            "name": "INPUT_SPIKES",
+            "description": "Input spike train",
+            "type_hint": "SpikeTrain",
+            "example": "input",
+            "options": null
+          },
+          {
+            "name": "TIME_STEPS",
+            "description": "Number of time steps for simulation",
+            "type_hint": "usize",
+            "example": "100",
+            "options": null
+          }
+        ],
+        "example": "use dpb_snn::architectures::FeedforwardSNN;\nuse dpb_snn::decoders::SpikeRateDecoder;\n\nlet snn = FeedforwardSNN::load(\"models/snn.bin\")?;\nlet decoder = SpikeRateDecoder::new(10);\n\nlet output_spikes = snn.forward(&input, 100);\nlet prediction = decoder.decode(&output_spikes);\nprintln!(\"Predicted class: {}\", prediction);",
+        "tags": [
+          "inference",
+          "snn",
+          "prediction"
+        ]
+      },
+      {
+        "id": "clinical_score_prediction",
+        "name": "Clinical Score Prediction",
+        "category": "inference",
+        "description": "Predict clinical scores (UPDRS, MoCA, etc.) from biosignals",
+        "dependencies": [
+          "dpb-snn",
+          "dpb-encoders"
+        ],
+        "imports": [
+          "use dpb_snn::decoders::{UPDRSDecoder, MoCADecoder};",
+          "use dpb_snn::fusion::MultiModalFusionSNN;"
+        ],
+        "code": "// Load multimodal fusion model\nlet model = MultiModalFusionSNN::load({{MODEL_PATH}})?;\n\n// Create clinical decoders\nlet updrs_decoder = UPDRSDecoder::new();\nlet moca_decoder = MoCADecoder::new();\n\n// Encode input signals to spikes\nlet spike_inputs = vec![\n    (Modality::Gait, {{GAIT_SPIKES}}),\n    (Modality::Tremor, {{TREMOR_SPIKES}}),\n    (Modality::Voice, {{VOICE_SPIKES}}),\n];\n\n// Run fusion and get output\nlet output = model.forward(&spike_inputs, {{TIME_STEPS}});\n\n// Decode clinical scores\nlet updrs_score = updrs_decoder.decode(&output);\nlet moca_score = moca_decoder.decode(&output);\n\nprintln!(\"Predicted UPDRS: {:.1}\", updrs_score);\nprintln!(\"Predicted MoCA: {:.1}\", moca_score);",
+        "placeholders": [
+          {
+            "name": "MODEL_PATH",
+            "description": "Path to fusion model",
+            "type_hint": "&str",
+            "example": "\"models/clinical_fusion.bin\"",
+            "options": null
+          },
+          {
+            "name": "GAIT_SPIKES",
+            "description": "Encoded gait spikes",
+            "type_hint": "SpikeTrain",
+            "example": "gait_spikes",
+            "options": null
+          },
+          {
+            "name": "TREMOR_SPIKES",
+            "description": "Encoded tremor spikes",
+            "type_hint": "SpikeTrain",
+            "example": "tremor_spikes",
+            "options": null
+          },
+          {
+            "name": "VOICE_SPIKES",
+            "description": "Encoded voice spikes",
+            "type_hint": "SpikeTrain",
+            "example": "voice_spikes",
+            "options": null
+          },
+          {
+            "name": "TIME_STEPS",
+            "description": "Simulation time steps",
+            "type_hint": "usize",
+            "example": "200",
+            "options": null
+          }
+        ],
+        "example": "use dpb_snn::decoders::{UPDRSDecoder, MoCADecoder};\nuse dpb_snn::fusion::MultiModalFusionSNN;\n\nlet model = MultiModalFusionSNN::load(\"models/clinical_fusion.bin\")?;\nlet updrs_decoder = UPDRSDecoder::new();\n\nlet spike_inputs = vec![\n    (Modality::Gait, gait_spikes),\n    (Modality::Tremor, tremor_spikes),\n    (Modality::Voice, voice_spikes),\n];\n\nlet output = model.forward(&spike_inputs, 200);\nlet updrs_score = updrs_decoder.decode(&output);\nprintln!(\"Predicted UPDRS: {:.1}\", updrs_score);",
+        "tags": [
+          "inference",
+          "clinical",
+          "updrs",
+          "moca",
+          "multimodal"
+        ]
+      }
+    ],
+    "training": [
+      {
+        "id": "basic_snn_training",
+        "name": "Basic SNN Training Loop",
+        "category": "training",
+        "description": "Train a feedforward SNN with BPTT and surrogate gradients",
+        "dependencies": [
+          "dpb-core",
+          "dpb-snn",
+          "dpb-neurons"
+        ],
+        "imports": [
+          "use dpb_snn::architectures::FeedforwardSNN;",
+          "use dpb_snn::training::{BPTT, TrainingConfig};",
+          "use dpb_snn::loss::SpikingCrossEntropy;",
+          "use dpb_neurons::surrogate::FastSigmoid;"
+        ],
+        "code": "// Create SNN architecture\nlet mut snn = FeedforwardSNN::new(vec![\n    {{INPUT_SIZE}},  // Input layer\n    {{HIDDEN_SIZE}}, // Hidden layer\n    {{OUTPUT_SIZE}}, // Output layer\n]);\n\n// Configure training\nlet config = TrainingConfig {\n    learning_rate: {{LEARNING_RATE}},\n    epochs: {{EPOCHS}},\n    batch_size: {{BATCH_SIZE}},\n    surrogate: FastSigmoid::new({{BETA}}),\n    ..Default::default()\n};\n\n// Create trainer\nlet mut trainer = BPTT::new(config);\nlet loss_fn = SpikingCrossEntropy::new();\n\n// Training loop\nfor epoch in 0..{{EPOCHS}} {\n    let mut total_loss = 0.0;\n    for (inputs, targets) in {{DATALOADER}}.batches() {\n        let loss = trainer.train_step(&mut snn, &inputs, &targets, &loss_fn);\n        total_loss += loss;\n    }\n    println!(\"Epoch {}: Loss = {:.4}\", epoch, total_loss);\n}",
+        "placeholders": [
+          {
+            "name": "INPUT_SIZE",
+            "description": "Number of input neurons",
+            "type_hint": "usize",
+            "example": "784",
+            "options": null
+          },
+          {
+            "name": "HIDDEN_SIZE",
+            "description": "Number of hidden neurons",
+            "type_hint": "usize",
+            "example": "256",
+            "options": null
+          },
+          {
+            "name": "OUTPUT_SIZE",
+            "description": "Number of output neurons",
+            "type_hint": "usize",
+            "example": "10",
+            "options": null
+          },
+          {
+            "name": "LEARNING_RATE",
+            "description": "Learning rate",
+            "type_hint": "f64",
+            "example": "0.001",
+            "options": null
+          },
+          {
+            "name": "EPOCHS",
+            "description": "Number of training epochs",
+            "type_hint": "usize",
+            "example": "100",
+            "options": null
+          },
+          {
+            "name": "BATCH_SIZE",
+            "description": "Training batch size",
+            "type_hint": "usize",
+            "example": "32",
+            "options": null
+          },
+          {
+            "name": "BETA",
+            "description": "Surrogate gradient steepness",
+            "type_hint": "f64",
+            "example": "5.0",
+            "options": null
+          },
+          {
+            "name": "DATALOADER",
+            "description": "Data loader for training",
+            "type_hint": "DataLoader",
+            "example": "train_loader",
+            "options": null
+          }
+        ],
+        "example": "use dpb_snn::architectures::FeedforwardSNN;\nuse dpb_snn::training::{BPTT, TrainingConfig};\nuse dpb_snn::loss::SpikingCrossEntropy;\nuse dpb_neurons::surrogate::FastSigmoid;\n\n// Create SNN\nlet mut snn = FeedforwardSNN::new(vec![784, 256, 10]);\n\n// Configure training\nlet config = TrainingConfig {\n    learning_rate: 0.001,\n    epochs: 100,\n    batch_size: 32,\n    surrogate: FastSigmoid::new(5.0),\n    ..Default::default()\n};\n\nlet mut trainer = BPTT::new(config);\nlet loss_fn = SpikingCrossEntropy::new();\n\nfor epoch in 0..100 {\n    let loss = trainer.train_epoch(&mut snn, &train_loader, &loss_fn);\n    println!(\"Epoch {}: Loss = {:.4}\", epoch, loss);\n}",
+        "tags": [
+          "training",
+          "snn",
+          "bptt",
+          "feedforward"
+        ]
+      },
+      {
+        "id": "knowledge_distillation",
+        "name": "ANN to SNN Knowledge Distillation",
+        "category": "training",
+        "description": "Distill knowledge from a trained ANN to an SNN",
+        "dependencies": [
+          "dpb-snn"
+        ],
+        "imports": [
+          "use dpb_snn::distillation::{TeacherStudentFramework, DistillationConfig, DistillationMode};",
+          "use dpb_snn::baselines::MLP;",
+          "use dpb_snn::architectures::FeedforwardSNN;"
+        ],
+        "code": "// Load pre-trained ANN teacher\nlet teacher = MLP::load({{TEACHER_PATH}})?;\n\n// Create SNN student\nlet student = FeedforwardSNN::new(vec![{{LAYER_SIZES}}]);\n\n// Configure distillation\nlet config = DistillationConfig {\n    mode: DistillationMode::SpikePattern,\n    temperature: {{TEMPERATURE}},\n    alpha: {{ALPHA}}, // Weight for distillation loss\n    epochs: {{EPOCHS}},\n    ..Default::default()\n};\n\n// Create framework and distill\nlet mut framework = TeacherStudentFramework::new(teacher, student, config);\nlet distilled_snn = framework.distill(&{{DATALOADER}})?;\n\nprintln!(\"Distillation complete. Student accuracy: {:.2}%\",\n    distilled_snn.evaluate(&{{TEST_LOADER}}) * 100.0);",
+        "placeholders": [
+          {
+            "name": "TEACHER_PATH",
+            "description": "Path to pre-trained ANN model",
+            "type_hint": "&str",
+            "example": "\"models/teacher.bin\"",
+            "options": null
+          },
+          {
+            "name": "LAYER_SIZES",
+            "description": "SNN layer sizes",
+            "type_hint": "Vec<usize>",
+            "example": "784, 256, 10",
+            "options": null
+          },
+          {
+            "name": "TEMPERATURE",
+            "description": "Softmax temperature for distillation",
+            "type_hint": "f64",
+            "example": "3.0",
+            "options": null
+          },
+          {
+            "name": "ALPHA",
+            "description": "Weight for distillation loss vs hard labels",
+            "type_hint": "f64",
+            "example": "0.7",
+            "options": null
+          },
+          {
+            "name": "EPOCHS",
+            "description": "Distillation epochs",
+            "type_hint": "usize",
+            "example": "50",
+            "options": null
+          },
+          {
+            "name": "DATALOADER",
+            "description": "Training data loader",
+            "type_hint": "DataLoader",
+            "example": "train_loader",
+            "options": null
+          },
+          {
+            "name": "TEST_LOADER",
+            "description": "Test data loader",
+            "type_hint": "DataLoader",
+            "example": "test_loader",
+            "options": null
+          }
+        ],
+        "example": "use dpb_snn::distillation::{TeacherStudentFramework, DistillationConfig, DistillationMode};\nuse dpb_snn::baselines::MLP;\nuse dpb_snn::architectures::FeedforwardSNN;\n\nlet teacher = MLP::load(\"models/teacher.bin\")?;\nlet student = FeedforwardSNN::new(vec![784, 256, 10]);\n\nlet config = DistillationConfig {\n    mode: DistillationMode::SpikePattern,\n    temperature: 3.0,\n    alpha: 0.7,\n    epochs: 50,\n    ..Default::default()\n};\n\nlet mut framework = TeacherStudentFramework::new(teacher, student, config);\nlet distilled_snn = framework.distill(&train_loader)?;",
+        "tags": [
+          "training",
+          "distillation",
+          "ann",
+          "snn"
+        ]
+      }
+    ]
+  }
+}
