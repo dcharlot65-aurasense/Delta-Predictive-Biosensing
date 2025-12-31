@@ -387,14 +387,14 @@ impl Accelerator for IpuAccelerator {
         let id = self.next_buffer_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let num_floats = size_bytes / 4;
 
-        let mut buffers = self.buffers.lock().unwrap();
+        let mut buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         buffers.insert(id, vec![0.0; num_floats]);
 
         Ok(AcceleratorBuffer::new(id, size_bytes, AcceleratorType::GraphcoreIpu))
     }
 
     fn copy_to_device(&self, buffer: &mut AcceleratorBuffer, data: &[f32]) -> Result<(), AcceleratorError> {
-        let mut buffers = self.buffers.lock().unwrap();
+        let mut buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         if let Some(buf) = buffers.get_mut(&buffer.id) {
             let len = data.len().min(buf.len());
             buf[..len].copy_from_slice(&data[..len]);
@@ -405,7 +405,7 @@ impl Accelerator for IpuAccelerator {
     }
 
     fn copy_from_device(&self, buffer: &AcceleratorBuffer, data: &mut [f32]) -> Result<(), AcceleratorError> {
-        let buffers = self.buffers.lock().unwrap();
+        let buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         if let Some(buf) = buffers.get(&buffer.id) {
             let len = data.len().min(buf.len());
             data[..len].copy_from_slice(&buf[..len]);

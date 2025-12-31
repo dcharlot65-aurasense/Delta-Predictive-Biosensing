@@ -189,7 +189,7 @@ impl GaudiAccelerator {
             block_dims: (256, 1, 1),
         };
 
-        let mut kernels = self.kernels.lock().unwrap();
+        let mut kernels = self.kernels.lock().expect("accelerator mutex poisoned");
         kernels.insert(name.to_string(), kernel);
 
         Ok(())
@@ -203,7 +203,7 @@ impl GaudiAccelerator {
         outputs: &[&mut GaudiBuffer],
         grid_dims: (u32, u32, u32),
     ) -> Result<(), AcceleratorError> {
-        let kernels = self.kernels.lock().unwrap();
+        let kernels = self.kernels.lock().expect("accelerator mutex poisoned");
 
         let _kernel = kernels.get(name)
             .ok_or_else(|| AcceleratorError::InvalidOperation(
@@ -282,14 +282,14 @@ impl Accelerator for GaudiAccelerator {
 
         let id = self.next_buffer_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
-        let mut buffers = self.buffers.lock().unwrap();
+        let mut buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         buffers.insert(id, gaudi_buf);
 
         Ok(AcceleratorBuffer::new(id, size_bytes, AcceleratorType::IntelGaudi))
     }
 
     fn copy_to_device(&self, buffer: &mut AcceleratorBuffer, data: &[f32]) -> Result<(), AcceleratorError> {
-        let buffers = self.buffers.lock().unwrap();
+        let buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         let _gaudi_buf = buffers.get(&buffer.id)
             .ok_or_else(|| AcceleratorError::InvalidOperation("Buffer not found".to_string()))?;
 
@@ -300,7 +300,7 @@ impl Accelerator for GaudiAccelerator {
     }
 
     fn copy_from_device(&self, buffer: &AcceleratorBuffer, data: &mut [f32]) -> Result<(), AcceleratorError> {
-        let buffers = self.buffers.lock().unwrap();
+        let buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         let _gaudi_buf = buffers.get(&buffer.id)
             .ok_or_else(|| AcceleratorError::InvalidOperation("Buffer not found".to_string()))?;
 

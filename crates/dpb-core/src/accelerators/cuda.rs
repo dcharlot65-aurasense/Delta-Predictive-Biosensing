@@ -333,7 +333,7 @@ impl CudaAccelerator {
     /// Load a PTX module.
     pub fn load_module(&self, name: &str, ptx: &str) -> Result<Arc<CudaModule>, AcceleratorError> {
         let module = Arc::new(CudaModule::from_ptx(name, ptx)?);
-        let mut modules = self.modules.lock().unwrap();
+        let mut modules = self.modules.lock().expect("accelerator mutex poisoned");
         modules.insert(name.to_string(), module.clone());
         Ok(module)
     }
@@ -350,7 +350,7 @@ impl CudaAccelerator {
             is_unified: self.config.unified_memory,
         };
 
-        self.buffers.lock().unwrap().insert(id, CudaBuffer {
+        self.buffers.lock().expect("accelerator mutex poisoned").insert(id, CudaBuffer {
             id,
             size_bytes,
             device_ptr: 0,
@@ -381,7 +381,7 @@ impl CudaAccelerator {
 
     /// Free device memory.
     pub fn free(&self, buffer: CudaBuffer) -> Result<(), AcceleratorError> {
-        self.buffers.lock().unwrap().remove(&buffer.id);
+        self.buffers.lock().expect("accelerator mutex poisoned").remove(&buffer.id);
         // In production: cuMemFree
         Ok(())
     }
@@ -459,7 +459,7 @@ impl Accelerator for CudaAccelerator {
     }
 
     fn copy_to_device(&self, buffer: &mut AcceleratorBuffer, data: &[f32]) -> Result<(), AcceleratorError> {
-        let buffers = self.buffers.lock().unwrap();
+        let buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         if let Some(cuda_buffer) = buffers.get(&buffer.id) {
             // In production: cuMemcpyHtoD
             drop(buffers);
@@ -470,7 +470,7 @@ impl Accelerator for CudaAccelerator {
     }
 
     fn copy_from_device(&self, buffer: &AcceleratorBuffer, data: &mut [f32]) -> Result<(), AcceleratorError> {
-        let buffers = self.buffers.lock().unwrap();
+        let buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         if buffers.contains_key(&buffer.id) {
             // In production: cuMemcpyDtoH
             Ok(())

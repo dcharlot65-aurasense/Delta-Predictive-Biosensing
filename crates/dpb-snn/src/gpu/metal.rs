@@ -159,7 +159,7 @@ impl MetalDevice {
     /// Get or create a compute pipeline for the specified function
     #[cfg(feature = "metal")]
     fn get_pipeline(&self, function_name: &str) -> GpuResult<MtlPipeline> {
-        let mut cache = self.pipelines.lock().unwrap();
+        let mut cache = self.pipelines.lock().expect("GPU mutex poisoned");
 
         if let Some(pipeline) = cache.get(function_name) {
             return Ok(pipeline.clone());
@@ -449,7 +449,7 @@ impl GpuDevice for MetalDevice {
     fn allocate(&self, size_bytes: usize) -> GpuResult<Arc<dyn GpuBuffer>> {
         #[cfg(feature = "metal")]
         {
-            let mut pool = self.memory_pool.lock().unwrap();
+            let mut pool = self.memory_pool.lock().expect("GPU mutex poisoned");
             pool.allocate(size_bytes, &self.mtl_device)
         }
         #[cfg(not(feature = "metal"))]
