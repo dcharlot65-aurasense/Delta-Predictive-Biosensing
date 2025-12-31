@@ -21,7 +21,7 @@
 //! // Create a real-time pipeline
 //! let config = PipelineConfig::new(256, 128, 1000.0)
 //!     .with_max_latency(10.0);
-//! let mut executor = PipelineExecutor::new(config);
+//! let mut executor = PipelineExecutor::new(config)?;
 //!
 //! // Process streaming data
 //! # let signal = vec![0.0f64; 100];
