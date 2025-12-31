@@ -140,7 +140,8 @@ fn test_ecg_processing_pipeline() {
     let filtered = highpass.filter(&filtered_low).expect("Failed to apply highpass");
 
     // Step 4: Detect R-peaks using Pan-Tompkins
-    let detector = PanTompkinsDetector::new(sample_rate);
+    let detector = PanTompkinsDetector::new(sample_rate)
+        .expect("Failed to create Pan-Tompkins detector");
     let r_peaks = detector
         .detect(&filtered)
         .expect("Failed to detect R-peaks");
@@ -435,7 +436,8 @@ fn test_multi_modal_signal_fusion() {
     println!("  Duration: {:.1}s @ {:.0} Hz", duration, sample_rate);
 
     // Process ECG
-    let ecg_detector = PanTompkinsDetector::new(sample_rate);
+    let ecg_detector = PanTompkinsDetector::new(sample_rate)
+        .expect("Failed to create Pan-Tompkins detector");
     let r_peaks = ecg_detector.detect(&ecg_data).expect("Failed to detect R-peaks");
     println!("  ECG: {} R-peaks detected", r_peaks.len());
 

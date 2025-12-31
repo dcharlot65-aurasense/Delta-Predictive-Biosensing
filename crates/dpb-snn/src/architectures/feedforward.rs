@@ -27,6 +27,7 @@ impl FeedforwardSNN {
     ///
     /// # Errors
     /// Returns `SNNError::InvalidConfig` if fewer than 2 layer sizes are provided.
+    #[must_use = "this Result may contain an error that should be handled"]
     pub fn new(layer_sizes: Vec<usize>, config: SNNConfig, use_bias: bool) -> SNNResult<Self> {
         if layer_sizes.len() < 2 {
             return Err(SNNError::InvalidConfig(

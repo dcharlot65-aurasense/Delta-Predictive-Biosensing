@@ -31,6 +31,7 @@ impl RecurrentSNN {
     ///
     /// # Errors
     /// Returns `SNNError::InvalidConfig` if `hidden_sizes` is empty.
+    #[must_use = "this Result may contain an error that should be handled"]
     pub fn new(
         input_size: usize,
         hidden_sizes: Vec<usize>,

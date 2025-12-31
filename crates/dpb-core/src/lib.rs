@@ -49,7 +49,7 @@
 //! # let ecg_signal = Array1::from_vec(vec![0.0; 1000]);
 //! # let sample_rate = 250.0;
 //! // Detect R-peaks
-//! let detector = PanTompkinsDetector::new(sample_rate);
+//! let detector = PanTompkinsDetector::new(sample_rate)?;
 //! let peaks = detector.detect(&ecg_signal)?;
 //!
 //! // Analyze HRV

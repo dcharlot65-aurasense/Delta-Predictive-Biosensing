@@ -76,23 +76,26 @@ impl PanTompkinsDetector {
     /// Create a new Pan-Tompkins detector
     ///
     /// # Arguments
-    /// * `sample_rate` - Sampling rate in Hz
-    pub fn new(sample_rate: f64) -> Self {
+    /// * `sample_rate` - Sampling rate in Hz (must be > 30 Hz for proper bandpass filtering)
+    ///
+    /// # Errors
+    /// Returns an error if the sample rate is too low for the bandpass filter (< 30 Hz)
+    #[must_use = "this Result may contain an error that should be handled"]
+    pub fn new(sample_rate: f64) -> Result<Self> {
         // Create bandpass filter components (5-15 Hz)
         // Using 2nd order Butterworth filters
-        let bandpass_low = IirFilter::butterworth_lowpass(2, 15.0, sample_rate)
-            .expect("Failed to create lowpass filter");
-        let bandpass_high = IirFilter::butterworth_highpass(2, 5.0, sample_rate)
-            .expect("Failed to create highpass filter");
+        // Note: cutoff must be < sample_rate/2 (Nyquist), so sample_rate must be > 30 Hz
+        let bandpass_low = IirFilter::butterworth_lowpass(2, 15.0, sample_rate)?;
+        let bandpass_high = IirFilter::butterworth_highpass(2, 5.0, sample_rate)?;
 
-        Self {
+        Ok(Self {
             sample_rate,
             bandpass_low,
             bandpass_high,
             integration_window_ms: 150.0,
             refractory_period_ms: 200.0,
             threshold_factor: 0.6,
-        }
+        })
     }
 
     /// Detect R-peaks in ECG signal
@@ -624,14 +627,21 @@ mod tests {
 
     #[test]
     fn test_pan_tompkins_detector_creation() {
-        let detector = PanTompkinsDetector::new(250.0);
+        let detector = PanTompkinsDetector::new(250.0).unwrap();
         assert_eq!(detector.sample_rate, 250.0);
+    }
+
+    #[test]
+    fn test_pan_tompkins_detector_low_sample_rate() {
+        // Sample rate of 20 Hz is too low (must be > 30 Hz for 15 Hz bandpass)
+        let result = PanTompkinsDetector::new(20.0);
+        assert!(result.is_err());
     }
 
     #[test]
     fn test_synthetic_ecg_peak_detection() {
         let sample_rate = 250.0;
-        let detector = PanTompkinsDetector::new(sample_rate);
+        let detector = PanTompkinsDetector::new(sample_rate).unwrap();
 
         // Generate more realistic synthetic ECG with QRS complexes
         let mut ecg = vec![0.0; 1000];
@@ -711,7 +721,7 @@ mod tests {
 
     #[test]
     fn test_derivative_filter() {
-        let detector = PanTompkinsDetector::new(250.0);
+        let detector = PanTompkinsDetector::new(250.0).unwrap();
         let signal = vec![0.0, 1.0, 2.0, 3.0, 4.0, 3.0, 2.0, 1.0, 0.0];
         let derivative = detector.compute_derivative(&signal);
 
@@ -721,7 +731,7 @@ mod tests {
 
     #[test]
     fn test_moving_window_integration() {
-        let detector = PanTompkinsDetector::new(250.0);
+        let detector = PanTompkinsDetector::new(250.0).unwrap();
         let signal = vec![1.0; 100];
         let integrated = detector.moving_window_integration(&signal);
 
@@ -742,7 +752,7 @@ mod tests {
 
     #[test]
     fn test_rpeak_quality() {
-        let detector = PanTompkinsDetector::new(250.0);
+        let detector = PanTompkinsDetector::new(250.0).unwrap();
         let mut ecg = vec![0.0; 100];
 
         // Create a high-quality peak
