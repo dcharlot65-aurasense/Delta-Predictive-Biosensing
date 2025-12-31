@@ -179,11 +179,13 @@ impl SyntheticECG {
         let width_samples = (width * sample_rate * 3.0) as usize; // 3 sigma
 
         for i in 0..width_samples {
-            let idx = (center_idx as isize + offset_samples + i as isize - width_samples as isize / 2) as usize;
-            if idx < signal.len() {
-                let t = i as f64 - width_samples as f64 / 2.0;
-                let gaussian = amplitude * ((-0.5 * (t / (width * sample_rate)).powi(2)).exp() as f32);
-                signal[idx] += gaussian;
+            let signed_idx = center_idx as isize + offset_samples + i as isize - width_samples as isize / 2;
+            if let Ok(idx) = usize::try_from(signed_idx) {
+                if idx < signal.len() {
+                    let t = i as f64 - width_samples as f64 / 2.0;
+                    let gaussian = amplitude * ((-0.5 * (t / (width * sample_rate)).powi(2)).exp() as f32);
+                    signal[idx] += gaussian;
+                }
             }
         }
     }

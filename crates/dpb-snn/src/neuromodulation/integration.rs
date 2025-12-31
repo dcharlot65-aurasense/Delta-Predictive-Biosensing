@@ -17,7 +17,7 @@ use super::modulators::{Neuromodulator, NeuromodulatorType, ModulatorySystem};
 use super::{NeuromodError, NeuromodResult};
 
 /// Brain state
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BrainState {
     /// Alert/active state
     Alert,

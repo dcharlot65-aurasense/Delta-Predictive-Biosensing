@@ -49,7 +49,7 @@ impl ANNToSNNConverter {
         }
 
         // Create SNN with same architecture
-        let mut snn = FeedforwardSNN::new(layer_sizes, config, true);
+        let mut snn = FeedforwardSNN::new(layer_sizes, config, true)?;
 
         // Copy and normalize weights
         for (i, ann_weight) in ann_weights.iter().enumerate() {

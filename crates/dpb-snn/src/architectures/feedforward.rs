@@ -185,11 +185,11 @@ impl FeedforwardSNNBuilder {
             ));
         }
 
-        Ok(FeedforwardSNN::new(
+        FeedforwardSNN::new(
             self.layer_sizes,
             self.config,
             self.use_bias,
-        ))
+        )
     }
 }
 

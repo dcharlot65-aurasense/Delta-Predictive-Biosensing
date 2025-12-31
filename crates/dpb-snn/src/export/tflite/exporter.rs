@@ -2,8 +2,8 @@
 //!
 //! Exports SNN models to TensorFlow Lite format with quantization support.
 
-use super::config::{LayerConfig, ExportMetadata};
-use super::weights::ModelWeights;
+use super::super::config::{LayerConfig, ExportMetadata};
+use super::super::weights::ModelWeights;
 use super::flatbuffer::{FlatBufferBuilder, SubgraphBuilder, BufferManager};
 use super::metadata::{TFLiteMetadata, TensorMetadata, ContentType, AssociatedFile, FileType};
 use super::operators::{TFLiteOperator, OperatorRegistry, OperatorType, BuiltinOperator, OperatorOptions};
