@@ -206,12 +206,12 @@ impl ErpAnalyzer {
             window
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())?
+                .max_by(|(_, a), (_, b)| a.total_cmp(b))?
         } else {
             window
                 .iter()
                 .enumerate()
-                .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())?
+                .min_by(|(_, a), (_, b)| a.total_cmp(b))?
         };
 
         let global_idx = start_idx + peak_idx;

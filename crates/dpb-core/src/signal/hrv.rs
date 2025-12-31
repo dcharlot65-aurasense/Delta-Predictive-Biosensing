@@ -480,7 +480,7 @@ impl HrvAnalyzer {
         // Simplified: use range containing 95% of samples
         let sorted_rr: Vec<f64> = {
             let mut sorted = rr_intervals.to_vec();
-            sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            sorted.sort_by(|a, b| a.total_cmp(b));
             sorted
         };
 

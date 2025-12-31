@@ -261,7 +261,7 @@ pub fn calculate_rt_metrics(
     let n = valid_rts.len();
     let mean_rt = valid_rts.iter().sum::<f64>() / n as f64;
 
-    valid_rts.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    valid_rts.sort_by(|a, b| a.total_cmp(b));
     let median_rt = if n % 2 == 0 {
         (valid_rts[n / 2 - 1] + valid_rts[n / 2]) / 2.0
     } else {
@@ -298,7 +298,7 @@ pub fn calculate_rt_metrics(
 pub fn calculate_percentile(rts: &[f64], percentile: f64) -> f64 {
     assert!(!rts.is_empty() && percentile >= 0.0 && percentile <= 100.0);
     let mut sorted = rts.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted.sort_by(|a, b| a.total_cmp(b));
 
     let rank = (percentile / 100.0) * (sorted.len() - 1) as f64;
     let lower = rank.floor() as usize;

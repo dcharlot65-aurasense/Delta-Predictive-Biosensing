@@ -388,7 +388,7 @@ impl EventEncoder for GripOnsetEncoder {
             }
         }
 
-        events.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
+        events.sort_by(|a, b| a.timestamp.total_cmp(&b.timestamp));
         Ok(events)
     }
 }
@@ -518,7 +518,7 @@ impl EventEncoder for RfdEncoder {
         // Also emit onset event
         events.push(SpikeEvent::new(onset_time, config.time_windows.len() as u32, 1, onset_force));
 
-        events.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
+        events.sort_by(|a, b| a.timestamp.total_cmp(&b.timestamp));
         Ok(events)
     }
 }

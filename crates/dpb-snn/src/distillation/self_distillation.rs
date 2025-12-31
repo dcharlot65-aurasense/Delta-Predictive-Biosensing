@@ -309,7 +309,7 @@ impl BornAgainNetworks {
     pub fn best_generation(&self) -> Option<&GenerationInfo> {
         self.generations
             .iter()
-            .max_by(|a, b| a.accuracy.partial_cmp(&b.accuracy).unwrap())
+            .max_by(|a, b| a.accuracy.total_cmp(&b.accuracy))
     }
 }
 

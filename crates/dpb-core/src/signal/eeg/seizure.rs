@@ -262,7 +262,7 @@ impl SeizureDetector {
         }
 
         // Sort by time
-        all_spikes.sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
+        all_spikes.sort_by(|a, b| a.time.total_cmp(&b.time));
         all_spikes
     }
 

@@ -248,7 +248,7 @@ impl Aggregator for MedianAggregator {
             // Compute coordinate-wise median
             for i in 0..size {
                 let mut values: Vec<f32> = tensors.iter().map(|t| t.data[i]).collect();
-                values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                values.sort_by(|a, b| a.total_cmp(b));
                 aggregated_data[i] = median(&values);
             }
 
@@ -318,7 +318,7 @@ impl Aggregator for TrimmedMeanAggregator {
 
             for i in 0..size {
                 let mut values: Vec<f32> = tensors.iter().map(|t| t.data[i]).collect();
-                values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                values.sort_by(|a, b| a.total_cmp(b));
 
                 // Trim from both ends
                 let trimmed = if trim_count > 0 && values.len() > 2 * trim_count {

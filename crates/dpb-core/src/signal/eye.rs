@@ -449,7 +449,7 @@ impl EyeAnalyzer {
             .iter()
             .enumerate()
             .filter(|(_, v)| v.is_finite())
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .max_by(|(_, a), (_, b)| a.total_cmp(b))
             .map(|(i, _)| i)
             .unwrap_or(0);
         let peak_latency = peak_idx as f64 * 1000.0 / self.sample_rate;

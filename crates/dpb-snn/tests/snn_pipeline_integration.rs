@@ -142,7 +142,7 @@ fn test_calibrated_snn_predictions() {
             .row(0)
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .max_by(|(_, a), (_, b)| a.total_cmp(b))
             .map(|(idx, _)| idx)
             .unwrap();
         all_labels.push(label);

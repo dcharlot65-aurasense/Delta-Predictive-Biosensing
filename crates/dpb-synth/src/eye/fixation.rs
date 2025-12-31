@@ -105,7 +105,7 @@ impl SyntheticGenerator for MicrosaccadeGenerator {
         for _ in 0..num_microsaccades {
             microsaccade_times.push(rng.r#gen_range(0.0..params.duration));
         }
-        microsaccade_times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        microsaccade_times.sort_by(|a, b| a.total_cmp(b));
 
         for ms_time in microsaccade_times {
             let amplitude = rng.r#gen_range(params.amplitude_range.0..params.amplitude_range.1);

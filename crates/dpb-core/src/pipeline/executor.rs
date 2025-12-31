@@ -129,7 +129,7 @@ impl LatencyStats {
         }
 
         let mut sorted = latencies.to_vec();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(|a, b| a.total_cmp(b));
 
         let min = sorted[0];
         let max = sorted[sorted.len() - 1];

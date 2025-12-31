@@ -243,7 +243,7 @@ pub fn median_filter(signal: ArrayView1<f64>, window_size: usize) -> Result<Arra
         let end = (i + half_window + 1).min(signal.len());
 
         let mut window: Vec<f64> = signal.slice(ndarray::s![start..end]).to_vec();
-        window.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        window.sort_by(|a, b| a.total_cmp(b));
 
         result[i] = window[window.len() / 2];
     }

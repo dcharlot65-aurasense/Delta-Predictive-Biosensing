@@ -316,7 +316,7 @@ impl AucRoc {
         let mut pairs: Vec<(f32, f32)> = predictions.iter().zip(targets.iter())
             .map(|(&p, &t)| (p, t))
             .collect();
-        pairs.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        pairs.sort_by(|a, b| b.0.total_cmp(&a.0));
 
         // Count positives and negatives
         let pos_count = targets.iter().filter(|&&t| t > 0.5).count() as f64;
@@ -402,7 +402,7 @@ impl AucPr {
         let mut pairs: Vec<(f32, f32)> = predictions.iter().zip(targets.iter())
             .map(|(&p, &t)| (p, t))
             .collect();
-        pairs.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        pairs.sort_by(|a, b| b.0.total_cmp(&a.0));
 
         let pos_count = targets.iter().filter(|&&t| t > 0.5).count() as f64;
 

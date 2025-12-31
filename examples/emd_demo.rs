@@ -199,7 +199,7 @@ fn demo_hilbert_huang(signal: &Array1<f64>, sample_rate: f64) -> Result<()> {
         let peak_idx = marginal
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .max_by(|(_, a), (_, b)| a.total_cmp(b))
             .map(|(i, _)| i)
             .unwrap_or(0);
 

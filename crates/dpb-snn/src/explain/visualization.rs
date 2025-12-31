@@ -162,7 +162,7 @@ impl ExplanationVisualizer {
         }
 
         // Sort by time
-        raster.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        raster.sort_by(|a, b| a.0.total_cmp(&b.0));
 
         raster
     }
@@ -211,7 +211,7 @@ impl ExplanationVisualizer {
             .map(|((layer, neuron), score)| (layer, neuron, score))
             .collect();
 
-        ranking.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap());
+        ranking.sort_by(|a, b| b.2.total_cmp(&a.2));
 
         ranking
     }

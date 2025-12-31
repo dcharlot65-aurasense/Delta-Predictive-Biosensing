@@ -249,7 +249,7 @@ impl Decoder for MaxSpikeDecoder {
             let max_idx = row
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                .max_by(|(_, a), (_, b)| a.total_cmp(b))
                 .map(|(idx, _)| idx)
                 .unwrap_or(0);
 
@@ -413,7 +413,7 @@ impl Decoder for AdaptiveRateDecoder {
 
         for b in 0..batch_size {
             let mut sorted_rates: Vec<f32> = rates.row(b).to_vec();
-            sorted_rates.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            sorted_rates.sort_by(|a, b| a.total_cmp(b));
 
             let threshold_idx = ((self.percentile / 100.0) * sorted_rates.len() as f32) as usize;
             let threshold = sorted_rates.get(threshold_idx).copied().unwrap_or(0.0);

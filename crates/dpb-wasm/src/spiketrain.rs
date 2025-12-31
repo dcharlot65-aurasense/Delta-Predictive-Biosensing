@@ -199,7 +199,7 @@ impl WasmSpikeTrain {
     /// Sort events by timestamp.
     #[wasm_bindgen(js_name = "sortByTime")]
     pub fn sort_by_time(&mut self) {
-        self.events.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
+        self.events.sort_by(|a, b| a.timestamp.total_cmp(&b.timestamp));
     }
 
     /// Clear all events.

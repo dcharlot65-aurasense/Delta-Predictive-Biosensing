@@ -318,7 +318,7 @@ impl<'a> MultiModalAssessor<'a> {
             .iter()
             .map(|(d, s)| (*d, s.mean_z_score))
             .collect();
-        domain_ranking.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        domain_ranking.sort_by(|a, b| a.1.total_cmp(&b.1));
 
         // Calculate global impairment index
         let global_z: f64 = comparisons.iter().map(|c| c.z_score).sum::<f64>()

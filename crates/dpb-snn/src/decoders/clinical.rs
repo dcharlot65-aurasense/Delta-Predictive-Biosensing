@@ -1079,7 +1079,7 @@ impl Decoder for QstPhenotypeDecoder {
             // Dominant phenotype (argmax)
             let phenotypes = [output[[b, 0]], output[[b, 1]], output[[b, 2]], output[[b, 3]], output[[b, 4]]];
             let max_idx = phenotypes.iter().enumerate()
-                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                .max_by(|a, b| a.1.total_cmp(b.1))
                 .map(|(i, _)| i)
                 .unwrap_or(0);
             output[[b, 5]] = max_idx as f32;

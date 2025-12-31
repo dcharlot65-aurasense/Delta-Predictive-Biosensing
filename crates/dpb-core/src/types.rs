@@ -276,14 +276,14 @@ impl SpikeTrain {
         self.events
             .iter()
             .map(|e| e.timestamp)
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .max_by(|a, b| a.total_cmp(b))
             .unwrap_or(0.0)
     }
 
     /// Sorts events by timestamp.
     pub fn sort_by_time(&mut self) {
         self.events
-            .sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
+            .sort_by(|a, b| a.timestamp.total_cmp(&b.timestamp));
     }
 
     /// Filters events by channel.

@@ -40,7 +40,7 @@ impl RocAnalyzer {
             .cloned()
             .zip(labels.iter().cloned())
             .collect();
-        indexed.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        indexed.sort_by(|a, b| b.0.total_cmp(&a.0));
 
         // Generate ROC points
         let mut points = Vec::new();
@@ -154,7 +154,7 @@ impl RocAnalyzer {
     fn find_optimal_youden(&self, points: &[RocPoint]) -> OptimalCutoff {
         let best = points
             .iter()
-            .max_by(|a, b| a.youden_index.partial_cmp(&b.youden_index).unwrap())
+            .max_by(|a, b| a.youden_index.total_cmp(&b.youden_index))
             .unwrap();
 
         OptimalCutoff {
@@ -176,7 +176,7 @@ impl RocAnalyzer {
             .min_by(|a, b| {
                 let dist_a = a.false_positive_rate.powi(2) + (1.0 - a.true_positive_rate).powi(2);
                 let dist_b = b.false_positive_rate.powi(2) + (1.0 - b.true_positive_rate).powi(2);
-                dist_a.partial_cmp(&dist_b).unwrap()
+                dist_a.total_cmp(&dist_b)
             })
             .unwrap();
 

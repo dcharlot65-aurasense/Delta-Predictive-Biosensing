@@ -73,7 +73,7 @@ impl NeuronImportance {
         self.temporal_profile
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .max_by(|(_, a), (_, b)| a.total_cmp(b))
             .map(|(idx, _)| idx as f64 * bin_size_ms)
             .unwrap_or(0.0)
     }
@@ -105,7 +105,7 @@ impl LayerImportance {
     /// Get top N most important neurons in this layer
     pub fn top_neurons(&self, n: usize) -> Vec<&NeuronImportance> {
         let mut neurons: Vec<_> = self.neuron_importances.iter().collect();
-        neurons.sort_by(|a, b| b.mean_importance.partial_cmp(&a.mean_importance).unwrap());
+        neurons.sort_by(|a, b| b.mean_importance.total_cmp(&a.mean_importance));
         neurons.into_iter().take(n).collect()
     }
 }

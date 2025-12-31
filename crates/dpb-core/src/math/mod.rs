@@ -34,7 +34,7 @@ pub fn median(data: ArrayView1<f64>) -> f64 {
     }
 
     let mut sorted = data.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted.sort_by(|a, b| a.total_cmp(b));
 
     let mid = sorted.len() / 2;
     if sorted.len() % 2 == 0 {
@@ -59,7 +59,7 @@ pub fn percentile(data: ArrayView1<f64>, percentile: f64) -> Result<f64> {
     }
 
     let mut sorted = data.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted.sort_by(|a, b| a.total_cmp(b));
 
     let index = (percentile / 100.0) * (sorted.len() - 1) as f64;
     let lower = index.floor() as usize;

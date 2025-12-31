@@ -76,7 +76,7 @@ impl LatencyMetrics {
         }
 
         let mut sorted = samples_ms.to_vec();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(|a, b| a.total_cmp(b));
 
         let min_ms = sorted[0];
         let max_ms = sorted[sorted.len() - 1];
