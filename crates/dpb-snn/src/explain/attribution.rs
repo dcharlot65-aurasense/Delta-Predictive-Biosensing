@@ -42,7 +42,7 @@ impl FeatureAttribution {
             .map(|(name, &val)| (name.clone(), val))
             .collect();
 
-        indexed.sort_by(|a, b| b.1.abs().partial_cmp(&a.1.abs()).unwrap());
+        indexed.sort_by(|a, b| b.1.abs().total_cmp(&a.1.abs()));
 
         indexed.into_iter().take(k).collect()
     }
