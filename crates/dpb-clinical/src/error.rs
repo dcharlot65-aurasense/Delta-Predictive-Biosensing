@@ -6,7 +6,11 @@ use thiserror::Error;
 pub type Result<T> = std::result::Result<T, ClinicalError>;
 
 /// Errors that can occur during clinical operations.
+///
+/// This enum is marked as non-exhaustive to allow adding new error variants
+/// in future versions without breaking downstream code.
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum ClinicalError {
     /// Demographic data missing or invalid.
     #[error("Invalid demographics: {0}")]

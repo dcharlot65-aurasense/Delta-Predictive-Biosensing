@@ -287,8 +287,8 @@ impl PostTrainingQuantizer {
 
         let params = QuantizationParams::per_channel(scales, zero_points, 0)
             .with_min_max(
-                *weights.iter().cloned().fold(&f32::INFINITY, |a, b| if b < *a { &b } else { a }),
-                *weights.iter().cloned().fold(&f32::NEG_INFINITY, |a, b| if b > *a { &b } else { a }),
+                weights.iter().cloned().fold(f32::INFINITY, f32::min),
+                weights.iter().cloned().fold(f32::NEG_INFINITY, f32::max),
             );
 
         Ok((quantized, params))

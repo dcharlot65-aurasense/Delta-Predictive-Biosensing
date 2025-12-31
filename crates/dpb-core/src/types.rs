@@ -4,6 +4,190 @@ use crate::error::{DpbError, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+// ============================================================================
+// Newtype Wrappers for Type Safety
+// ============================================================================
+
+/// Unique identifier for a signal channel.
+///
+/// Using a newtype prevents accidentally mixing channel indices with other
+/// integer types like neuron indices or sample counts.
+///
+/// # Examples
+///
+/// ```
+/// use dpb_core::types::ChannelId;
+///
+/// let ch = ChannelId::new(5);
+/// assert_eq!(ch.as_u32(), 5);
+///
+/// // Convert from u32
+/// let ch2: ChannelId = 10.into();
+/// assert_eq!(u32::from(ch2), 10);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ChannelId(pub u32);
+
+impl ChannelId {
+    /// Creates a new channel ID.
+    #[inline]
+    pub const fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    /// Returns the underlying channel index.
+    #[inline]
+    pub const fn as_u32(self) -> u32 {
+        self.0
+    }
+}
+
+impl From<u32> for ChannelId {
+    fn from(id: u32) -> Self {
+        Self(id)
+    }
+}
+
+impl From<ChannelId> for u32 {
+    fn from(id: ChannelId) -> Self {
+        id.0
+    }
+}
+
+impl std::fmt::Display for ChannelId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Ch{}", self.0)
+    }
+}
+
+/// Index into a neuron population.
+///
+/// This newtype ensures neuron indices are not confused with channel IDs
+/// or sample counts.
+///
+/// # Examples
+///
+/// ```
+/// use dpb_core::types::NeuronIndex;
+///
+/// let idx = NeuronIndex::new(42);
+/// assert_eq!(idx.as_usize(), 42);
+///
+/// // Use in collections
+/// let neurons: Vec<NeuronIndex> = (0..10).map(NeuronIndex::new).collect();
+/// assert_eq!(neurons.len(), 10);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct NeuronIndex(pub usize);
+
+impl NeuronIndex {
+    /// Creates a new neuron index.
+    #[inline]
+    pub const fn new(idx: usize) -> Self {
+        Self(idx)
+    }
+
+    /// Returns the underlying index value.
+    #[inline]
+    pub const fn as_usize(self) -> usize {
+        self.0
+    }
+}
+
+impl From<usize> for NeuronIndex {
+    fn from(idx: usize) -> Self {
+        Self(idx)
+    }
+}
+
+impl From<NeuronIndex> for usize {
+    fn from(idx: NeuronIndex) -> Self {
+        idx.0
+    }
+}
+
+impl std::fmt::Display for NeuronIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "N{}", self.0)
+    }
+}
+
+/// Count of samples in a signal.
+///
+/// Provides type safety and utility methods for working with sample counts.
+///
+/// # Examples
+///
+/// ```
+/// use dpb_core::types::SampleCount;
+///
+/// let count = SampleCount::new(1000);
+/// let sample_rate = 250.0; // Hz
+///
+/// // Convert to time
+/// let seconds = count.as_seconds(sample_rate);
+/// assert_eq!(seconds, 4.0); // 1000 samples / 250 Hz = 4 seconds
+///
+/// let duration = count.as_duration(sample_rate);
+/// assert_eq!(duration.as_secs(), 4);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct SampleCount(pub usize);
+
+impl SampleCount {
+    /// Creates a new sample count.
+    #[inline]
+    pub const fn new(count: usize) -> Self {
+        Self(count)
+    }
+
+    /// Returns the underlying count.
+    #[inline]
+    pub const fn as_usize(self) -> usize {
+        self.0
+    }
+
+    /// Converts sample count to duration at given sample rate.
+    #[inline]
+    pub fn as_duration(self, sample_rate: f64) -> std::time::Duration {
+        std::time::Duration::from_secs_f64(self.0 as f64 / sample_rate)
+    }
+
+    /// Converts sample count to seconds at given sample rate.
+    #[inline]
+    pub fn as_seconds(self, sample_rate: f64) -> f64 {
+        self.0 as f64 / sample_rate
+    }
+
+    /// Creates a sample count from a duration and sample rate.
+    #[inline]
+    pub fn from_duration(duration: std::time::Duration, sample_rate: f64) -> Self {
+        Self((duration.as_secs_f64() * sample_rate) as usize)
+    }
+}
+
+impl From<usize> for SampleCount {
+    fn from(count: usize) -> Self {
+        Self(count)
+    }
+}
+
+impl From<SampleCount> for usize {
+    fn from(count: SampleCount) -> Self {
+        count.0
+    }
+}
+
+impl std::fmt::Display for SampleCount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} samples", self.0)
+    }
+}
+
+// ============================================================================
+// Core Domain Types
+// ============================================================================
+
 /// Represents a single spike event in neuromorphic processing.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct SpikeEvent {
@@ -92,14 +276,14 @@ impl SpikeTrain {
         self.events
             .iter()
             .map(|e| e.timestamp)
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .max_by(|a, b| a.total_cmp(b))
             .unwrap_or(0.0)
     }
 
     /// Sorts events by timestamp.
     pub fn sort_by_time(&mut self) {
         self.events
-            .sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
+            .sort_by(|a, b| a.timestamp.total_cmp(&b.timestamp));
     }
 
     /// Filters events by channel.
@@ -544,5 +728,98 @@ mod tests {
         assert_eq!(signal.data.len(), 5);
         assert_eq!(signal.sample_rate, 100.0);
         assert_eq!(signal.num_channels, 1);
+    }
+}
+
+/// Property-based tests using proptest
+#[cfg(test)]
+mod proptest_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        /// Test that SpikeEvent serialization round-trips correctly
+        #[test]
+        fn spike_event_serialization_roundtrip(
+            timestamp in 0.0f64..1000.0,
+            channel in 0u32..1000,
+            polarity in prop_oneof![-1i8, 1i8],
+            magnitude in 0.0f32..100.0,
+        ) {
+            let event = SpikeEvent::new(timestamp, channel, polarity, magnitude);
+            let serialized = bincode::serialize(&event).unwrap();
+            let deserialized: SpikeEvent = bincode::deserialize(&serialized).unwrap();
+            prop_assert_eq!(event, deserialized);
+        }
+
+        /// Test that SpikeTrain operations are consistent
+        #[test]
+        fn spike_train_length_consistency(
+            num_events in 0usize..100,
+            num_channels in 1u32..100,
+        ) {
+            let mut train = SpikeTrain::new(num_channels);
+            for i in 0..num_events {
+                train.add_event(SpikeEvent::new(
+                    i as f64 * 0.001,
+                    (i as u32) % num_channels,
+                    if i % 2 == 0 { 1 } else { -1 },
+                    1.0,
+                ));
+            }
+            prop_assert_eq!(train.len(), num_events);
+        }
+
+        /// Test that SignalQuality score validation works for all valid values
+        #[test]
+        fn signal_quality_valid_range(score in 0.0f64..=1.0) {
+            let result = SignalQuality::new(score);
+            prop_assert!(result.is_ok());
+            let sq = result.unwrap();
+            prop_assert_eq!(sq.score, score);
+        }
+
+        /// Test that SignalQuality rejects invalid scores
+        #[test]
+        fn signal_quality_invalid_range(
+            score in prop_oneof![
+                -100.0f64..-0.001,
+                1.001f64..100.0
+            ]
+        ) {
+            let result = SignalQuality::new(score);
+            prop_assert!(result.is_err());
+        }
+
+        /// Test that Context builder methods don't lose data
+        #[test]
+        fn context_preserves_age(age in 0.0f64..150.0) {
+            let ctx = Context::new().with_age(age);
+            prop_assert_eq!(ctx.age, Some(age));
+        }
+
+        /// Test SpikeEvent validated constructor
+        #[test]
+        fn spike_event_validated_accepts_valid_polarity(
+            timestamp in 0.0f64..1000.0,
+            channel in 0u32..1000,
+            polarity in prop_oneof![-1i8, 1i8],
+            magnitude in 0.0f32..100.0,
+        ) {
+            let result = SpikeEvent::new_validated(timestamp, channel, polarity, magnitude);
+            prop_assert!(result.is_ok());
+        }
+
+        /// Test SpikeEvent validated constructor rejects invalid polarity
+        #[test]
+        fn spike_event_validated_rejects_invalid_polarity(
+            timestamp in 0.0f64..1000.0,
+            channel in 0u32..1000,
+            polarity in (-128i8..=-2).prop_union(2i8..=127),
+            magnitude in 0.0f32..100.0,
+        ) {
+            let result = SpikeEvent::new_validated(timestamp, channel, polarity, magnitude);
+            prop_assert!(result.is_err());
+        }
     }
 }

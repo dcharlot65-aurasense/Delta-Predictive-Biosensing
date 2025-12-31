@@ -55,8 +55,14 @@ impl PySpikeEvent {
     #[staticmethod]
     fn from_dict(d: &Bound<'_, PyDict>) -> PyResult<Self> {
         Ok(Self {
-            timestamp: d.get_item("timestamp")?.unwrap().extract()?,
-            channel: d.get_item("channel")?.unwrap().extract()?,
+            timestamp: d
+                .get_item("timestamp")?
+                .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("Missing key: 'timestamp'"))?
+                .extract()?,
+            channel: d
+                .get_item("channel")?
+                .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("Missing key: 'channel'"))?
+                .extract()?,
             polarity: d
                 .get_item("polarity")?
                 .map(|v| v.extract())

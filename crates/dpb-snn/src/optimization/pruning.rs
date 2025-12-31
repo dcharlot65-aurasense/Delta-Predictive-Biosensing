@@ -95,7 +95,7 @@ impl PruningStrategy {
             .collect();
 
         // Sort by magnitude (ascending)
-        indexed_weights.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        indexed_weights.sort_by(|a, b| a.1.total_cmp(&b.1));
 
         // Prune lowest magnitude weights
         let mut pruned = 0;
@@ -137,7 +137,7 @@ impl PruningStrategy {
             .collect();
 
         // Sort by magnitude (ascending)
-        row_magnitudes.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        row_magnitudes.sort_by(|a, b| a.1.total_cmp(&b.1));
 
         // Prune lowest magnitude rows
         for (row_idx, _) in row_magnitudes.iter().take(n_prune_rows) {

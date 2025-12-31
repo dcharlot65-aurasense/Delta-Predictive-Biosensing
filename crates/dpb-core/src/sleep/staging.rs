@@ -366,7 +366,7 @@ fn calculate_activity_threshold(counts: &[f64]) -> f64 {
     }
 
     let mut sorted = counts.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted.sort_by(|a, b| a.total_cmp(b));
 
     let idx = (sorted.len() as f64 * 0.1) as usize;
     sorted.get(idx).copied().unwrap_or(0.0)

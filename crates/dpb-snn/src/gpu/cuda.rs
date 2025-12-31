@@ -297,7 +297,7 @@ impl CudaDevice {
     fn ensure_kernel_loaded(&self, _kernel_name: &str) -> GpuResult<()> {
         // PTX kernels would be embedded or loaded from files here
         // For now, we check if the module is already loaded
-        let mut kernels = self.kernels.lock().unwrap();
+        let mut kernels = self.kernels.lock().expect("GPU mutex poisoned");
         if !kernels.contains_key("snn_kernels") {
             // In a real implementation, we'd load PTX here:
             // let ptx = include_str!("kernels/snn_kernels.ptx");
@@ -318,7 +318,7 @@ impl GpuDevice for CudaDevice {
     }
 
     fn allocate(&self, size_bytes: usize) -> GpuResult<Arc<dyn GpuBuffer>> {
-        let mut pool = self.memory_pool.lock().unwrap();
+        let mut pool = self.memory_pool.lock().expect("GPU mutex poisoned");
         pool.allocate(size_bytes)
     }
 

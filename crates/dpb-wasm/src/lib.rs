@@ -72,6 +72,7 @@ pub fn log(message: &str) {
 
 /// Performance timer for benchmarking.
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct PerformanceTimer {
     start: f64,
 }
@@ -79,7 +80,11 @@ pub struct PerformanceTimer {
 #[wasm_bindgen]
 impl PerformanceTimer {
     /// Create a new timer starting now.
+    ///
+    /// # Errors
+    /// Returns an error if the browser window or performance API is not available.
     #[wasm_bindgen(constructor)]
+    #[must_use = "this Result may contain an error that should be handled"]
     pub fn new() -> Result<PerformanceTimer, JsValue> {
         let window = web_sys::window().ok_or("no window")?;
         let performance = window.performance().ok_or("no performance API")?;
@@ -89,7 +94,11 @@ impl PerformanceTimer {
     }
 
     /// Get elapsed time in milliseconds.
+    ///
+    /// # Errors
+    /// Returns an error if the browser window or performance API is not available.
     #[wasm_bindgen]
+    #[must_use = "this Result may contain an error that should be handled"]
     pub fn elapsed_ms(&self) -> Result<f64, JsValue> {
         let window = web_sys::window().ok_or("no window")?;
         let performance = window.performance().ok_or("no performance API")?;
@@ -97,7 +106,11 @@ impl PerformanceTimer {
     }
 
     /// Reset the timer.
+    ///
+    /// # Errors
+    /// Returns an error if the browser window or performance API is not available.
     #[wasm_bindgen]
+    #[must_use = "this Result may contain an error that should be handled"]
     pub fn reset(&mut self) -> Result<(), JsValue> {
         let window = web_sys::window().ok_or("no window")?;
         let performance = window.performance().ok_or("no performance API")?;

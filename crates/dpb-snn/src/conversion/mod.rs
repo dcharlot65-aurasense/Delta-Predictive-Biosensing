@@ -49,7 +49,7 @@ impl ANNToSNNConverter {
         }
 
         // Create SNN with same architecture
-        let mut snn = FeedforwardSNN::new(layer_sizes, config, true);
+        let mut snn = FeedforwardSNN::new(layer_sizes, config, true)?;
 
         // Copy and normalize weights
         for (i, ann_weight) in ann_weights.iter().enumerate() {
@@ -125,7 +125,7 @@ impl WeightNormalization {
             WeightNormalization::DataBased => {
                 // Normalize by 99th percentile
                 let mut sorted: Vec<f32> = weights.iter().map(|&x| x.abs()).collect();
-                sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                sorted.sort_by(|a, b| a.total_cmp(b));
                 let percentile_99 = sorted[(sorted.len() as f32 * 0.99) as usize];
 
                 if percentile_99 > 0.0 {

@@ -363,7 +363,7 @@ mod tests {
         let max_idx = values
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| a.abs().partial_cmp(&b.abs()).unwrap())
+            .max_by(|(_, a), (_, b)| a.abs().total_cmp(&b.abs()))
             .map(|(idx, _)| idx)
             .unwrap();
         assert!((max_idx as i32 - 50).abs() < 5); // Near center

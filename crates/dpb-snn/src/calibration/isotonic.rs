@@ -31,7 +31,7 @@ impl IsotonicCalibration {
 
         // Sort by scores
         let mut data: Vec<(f64, f64)> = scores.iter().zip(labels.iter()).map(|(&s, &l)| (s, l)).collect();
-        data.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        data.sort_by(|a, b| a.0.total_cmp(&b.0));
 
         let sorted_scores: Vec<f64> = data.iter().map(|(s, _)| *s).collect();
         let sorted_labels: Vec<f64> = data.iter().map(|(_, l)| *l).collect();

@@ -166,7 +166,7 @@ impl UncertaintyEstimator for MCDropout {
         }
 
         let mut sorted = predictions.to_vec();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(|a, b| a.total_cmp(b));
 
         let alpha = 1.0 - level;
         let lower_idx = ((alpha / 2.0) * sorted.len() as f64) as usize;
@@ -331,7 +331,7 @@ pub fn bootstrap_ci(data: &[f64], n_bootstrap: usize, confidence: f64) -> Confid
     }
 
     // Sort bootstrap means
-    bootstrap_means.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    bootstrap_means.sort_by(|a, b| a.total_cmp(b));
 
     // Compute percentiles
     let alpha = 1.0 - confidence;

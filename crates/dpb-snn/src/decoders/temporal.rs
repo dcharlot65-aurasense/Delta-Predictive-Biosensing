@@ -496,7 +496,7 @@ impl RankOrderDecoder {
 
         // Sort by spike time
         let mut sorted_spikes = first_spike_times.to_vec();
-        sorted_spikes.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        sorted_spikes.sort_by(|a, b| a.1.total_cmp(&b.1));
 
         // Assign scores based on rank (earlier = higher score)
         for (rank, &(neuron_idx, _)) in sorted_spikes.iter().enumerate() {

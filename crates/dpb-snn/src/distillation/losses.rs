@@ -422,10 +422,17 @@ impl DistillationLoss for AttentionTransferLoss {
 }
 
 /// Combined weighted loss
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CombinedDistillationLoss {
     /// Individual losses with weights
     pub losses: Vec<(Box<dyn DistillationLoss>, f32)>,
+}
+
+impl std::fmt::Debug for CombinedDistillationLoss {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CombinedDistillationLoss")
+            .field("losses", &format!("{} loss function(s)", self.losses.len()))
+            .finish()
+    }
 }
 
 /// Loss weights configuration

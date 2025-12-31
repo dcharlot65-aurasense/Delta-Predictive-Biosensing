@@ -498,7 +498,7 @@ impl EventEncoder for CaloricEncoder {
             events.push(SpikeEvent::new(peak_time, 1, direction, peak_spv));
         }
 
-        events.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
+        events.sort_by(|a, b| a.timestamp.total_cmp(&b.timestamp));
         Ok(events)
     }
 }

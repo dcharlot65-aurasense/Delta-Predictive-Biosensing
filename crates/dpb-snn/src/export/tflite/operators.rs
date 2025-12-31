@@ -434,6 +434,7 @@ impl OptionValue {
 }
 
 /// Operator registry for mapping SNN layers to TFLite operators
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OperatorRegistry {
     mappings: HashMap<String, OperatorType>,
 }

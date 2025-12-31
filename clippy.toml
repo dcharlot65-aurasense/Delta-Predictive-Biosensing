@@ -1,0 +1,29 @@
+# Clippy Configuration for Delta Predictive Biosensing
+# Based on Rust 2025 best practices
+
+# Cognitive complexity threshold (default: 25)
+cognitive-complexity-threshold = 30
+
+# Maximum number of function arguments (default: 7)
+too-many-arguments-threshold = 8
+
+# Maximum type complexity (default: 250)
+type-complexity-threshold = 300
+
+# Allow internal API changes in future versions
+avoid-breaking-exported-api = false
+
+# Maximum lines in a single function
+too-many-lines-threshold = 150
+
+# Maximum number of struct fields
+max-struct-bools = 5
+
+# Enable stricter single-char-binding-names
+single-char-binding-names-threshold = 5
+
+# Disallow large futures (in bytes)
+future-size-threshold = 16384
+
+# Warn about trivially-copy-passable large types (in bytes)
+trivial-copy-size-limit = 32

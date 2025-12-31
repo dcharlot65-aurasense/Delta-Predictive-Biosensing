@@ -412,7 +412,7 @@ impl SpearmanCorrelation {
 
     fn rank(values: &[f32]) -> Vec<f64> {
         let mut indexed: Vec<(usize, f32)> = values.iter().enumerate().map(|(i, &v)| (i, v)).collect();
-        indexed.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        indexed.sort_by(|a, b| a.1.total_cmp(&b.1));
 
         let mut ranks = vec![0.0; values.len()];
         let mut i = 0;

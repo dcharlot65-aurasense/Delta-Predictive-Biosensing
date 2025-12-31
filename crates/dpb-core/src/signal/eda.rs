@@ -142,7 +142,7 @@ impl EdaAnalyzer {
 
             // Use median for robustness against SCR peaks
             let mut values: Vec<f64> = window.to_vec();
-            values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            values.sort_by(|a, b| a.total_cmp(b));
             tonic[i] = values[values.len() / 2];
         }
 

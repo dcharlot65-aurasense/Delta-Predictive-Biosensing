@@ -580,7 +580,7 @@ impl CognitiveGenerator {
         };
 
         let mut sorted_rts = valid_rts.clone();
-        sorted_rts.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_rts.sort_by(|a, b| a.total_cmp(b));
         let median_rt = if !sorted_rts.is_empty() {
             sorted_rts[sorted_rts.len() / 2]
         } else {

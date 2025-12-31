@@ -28,14 +28,20 @@ pub struct RecurrentSNN {
 
 impl RecurrentSNN {
     /// Create a new recurrent SNN
+    ///
+    /// # Errors
+    /// Returns `SNNError::InvalidConfig` if `hidden_sizes` is empty.
+    #[must_use = "this Result may contain an error that should be handled"]
     pub fn new(
         input_size: usize,
         hidden_sizes: Vec<usize>,
         output_size: usize,
         config: SNNConfig,
-    ) -> Self {
+    ) -> SNNResult<Self> {
         if hidden_sizes.is_empty() {
-            panic!("Need at least one hidden layer");
+            return Err(SNNError::InvalidConfig(
+                "Need at least one hidden layer".to_string(),
+            ));
         }
 
         // Input projection if first hidden size differs from input
@@ -82,13 +88,13 @@ impl RecurrentSNN {
         layer_sizes.extend(hidden_sizes);
         layer_sizes.push(output_size);
 
-        Self {
+        Ok(Self {
             input_layer,
             recurrent_layers,
             output_layer,
             config,
             layer_sizes,
-        }
+        })
     }
 }
 
@@ -350,13 +356,19 @@ mod tests {
 
     #[test]
     fn test_recurrent_snn_creation() {
-        let rsnn = RecurrentSNN::new(10, vec![20, 15], 5, SNNConfig::default());
+        let rsnn = RecurrentSNN::new(10, vec![20, 15], 5, SNNConfig::default()).unwrap();
         assert_eq!(rsnn.layer_sizes, vec![10, 20, 15, 5]);
     }
 
     #[test]
+    fn test_recurrent_snn_empty_hidden() {
+        let result = RecurrentSNN::new(10, vec![], 5, SNNConfig::default());
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn test_recurrent_snn_forward() {
-        let mut rsnn = RecurrentSNN::new(10, vec![20], 5, SNNConfig::default());
+        let mut rsnn = RecurrentSNN::new(10, vec![20], 5, SNNConfig::default()).unwrap();
         let input = SpikeTensor::zeros(2, 30, 10, false);
 
         let output = rsnn.forward(&input).unwrap();

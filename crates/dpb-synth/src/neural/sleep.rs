@@ -444,7 +444,7 @@ impl SleepMicrostructureGenerator {
             spindles.push(info);
         }
 
-        spindles.sort_by(|a, b| a.onset.partial_cmp(&b.onset).unwrap());
+        spindles.sort_by(|a, b| a.onset.total_cmp(&b.onset));
         spindles
     }
 
@@ -502,7 +502,7 @@ impl SleepMicrostructureGenerator {
             kcomplexes.push(info);
         }
 
-        kcomplexes.sort_by(|a, b| a.onset.partial_cmp(&b.onset).unwrap());
+        kcomplexes.sort_by(|a, b| a.onset.total_cmp(&b.onset));
         kcomplexes
     }
 

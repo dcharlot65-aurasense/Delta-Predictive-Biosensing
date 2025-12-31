@@ -36,7 +36,7 @@ impl SyntheticGenerator for MainSequenceSaccadeGenerator {
         for _ in 0..params.saccade_count {
             saccade_times.push(rng.r#gen_range(0.0..params.duration));
         }
-        saccade_times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        saccade_times.sort_by(|a, b| a.total_cmp(b));
 
         let mut current_position = [0.0, 0.0];
 

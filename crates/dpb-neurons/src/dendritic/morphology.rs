@@ -335,7 +335,6 @@ impl DendriticTree {
     /// Create tree from morphology data
     pub fn from_morphology(morphology: MorphologyData) -> Self {
         let mut tree = Self::new();
-        tree.morphology = morphology.clone();
 
         // Convert SWC points to branch nodes
         let mut point_to_node: HashMap<usize, usize> = HashMap::new();
@@ -373,6 +372,9 @@ impl DendriticTree {
                 }
             }
         }
+
+        // Move morphology data into tree (needed for calculate_distances)
+        tree.morphology = morphology;
 
         // Calculate distances and branch orders
         if let Some(root) = tree.root {

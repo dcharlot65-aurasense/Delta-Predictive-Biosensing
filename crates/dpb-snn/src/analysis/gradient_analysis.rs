@@ -301,7 +301,7 @@ impl ConvergenceAnalyzer for ExplodingGradientDetector {
         report.converged = self.detected;
         report.convergence_epoch = self.detection_epoch;
 
-        if let Some(&max_grad) = self.gradient_history.iter().max_by(|a, b| a.partial_cmp(b).unwrap()) {
+        if let Some(&max_grad) = self.gradient_history.iter().max_by(|a, b| a.total_cmp(b)) {
             report.add_metric("max_gradient", max_grad);
         }
 

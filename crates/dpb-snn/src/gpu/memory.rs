@@ -106,8 +106,8 @@ impl MemoryPool {
     /// Otherwise, a new buffer will be allocated from the device.
     pub fn allocate(&mut self, size: usize) -> GpuResult<Arc<dyn GpuBuffer>> {
         let size_class = Self::size_class(size);
-        let mut pools = self.pools.lock().unwrap();
-        let mut stats = self.stats.lock().unwrap();
+        let mut pools = self.pools.lock().expect("GPU mutex poisoned");
+        let mut stats = self.stats.lock().expect("GPU mutex poisoned");
 
         stats.num_allocations += 1;
 
@@ -121,7 +121,7 @@ impl MemoryPool {
         }
 
         // Check capacity
-        let mut allocated = self.allocated_bytes.lock().unwrap();
+        let mut allocated = self.allocated_bytes.lock().expect("GPU mutex poisoned");
         if *allocated + size_class > self.total_capacity {
             return Err(GpuError::AllocationFailed(
                 format!("Pool capacity exceeded: {} + {} > {}",
@@ -143,7 +143,7 @@ impl MemoryPool {
         let size = buffer.size();
         let size_class = Self::size_class(size);
 
-        let mut pools = self.pools.lock().unwrap();
+        let mut pools = self.pools.lock().expect("GPU mutex poisoned");
         pools
             .entry(size_class)
             .or_insert_with(Vec::new)
@@ -152,16 +152,16 @@ impl MemoryPool {
 
     /// Clear the pool, freeing all cached buffers
     pub fn clear(&mut self) {
-        let mut pools = self.pools.lock().unwrap();
+        let mut pools = self.pools.lock().expect("GPU mutex poisoned");
         pools.clear();
 
-        let mut allocated = self.allocated_bytes.lock().unwrap();
+        let mut allocated = self.allocated_bytes.lock().expect("GPU mutex poisoned");
         *allocated = 0;
     }
 
     /// Get pool statistics
     pub fn stats(&self) -> PoolStats {
-        self.stats.lock().unwrap().clone()
+        self.stats.lock().expect("GPU mutex poisoned").clone()
     }
 
     /// Round size up to nearest power-of-2 size class
@@ -175,8 +175,8 @@ impl MemoryPool {
 
     /// Get current memory usage
     pub fn memory_usage(&self) -> MemoryUsage {
-        let allocated = *self.allocated_bytes.lock().unwrap();
-        let pools = self.pools.lock().unwrap();
+        let allocated = *self.allocated_bytes.lock().expect("GPU mutex poisoned");
+        let pools = self.pools.lock().expect("GPU mutex poisoned");
 
         let cached: usize = pools
             .values()
@@ -524,7 +524,7 @@ impl AsyncTransferManager {
             completed: Arc::new(Mutex::new(true)),
         };
 
-        let mut pending = self.pending_transfers.lock().unwrap();
+        let mut pending = self.pending_transfers.lock().expect("GPU mutex poisoned");
         pending.push(handle.clone());
 
         Ok(handle)
@@ -550,7 +550,7 @@ impl AsyncTransferManager {
             completed: Arc::new(Mutex::new(true)),
         };
 
-        let mut pending = self.pending_transfers.lock().unwrap();
+        let mut pending = self.pending_transfers.lock().expect("GPU mutex poisoned");
         pending.push(handle.clone());
 
         Ok(handle)
@@ -576,7 +576,7 @@ impl AsyncTransferManager {
             completed: Arc::new(Mutex::new(true)),
         };
 
-        let mut pending = self.pending_transfers.lock().unwrap();
+        let mut pending = self.pending_transfers.lock().expect("GPU mutex poisoned");
         pending.push(handle.clone());
 
         Ok(handle)
@@ -585,9 +585,9 @@ impl AsyncTransferManager {
     /// Wait for all pending transfers to complete
     pub fn synchronize(&self) -> GpuResult<()> {
         self.device.synchronize()?;
-        let mut pending = self.pending_transfers.lock().unwrap();
+        let mut pending = self.pending_transfers.lock().expect("GPU mutex poisoned");
         for handle in pending.iter() {
-            *handle.completed.lock().unwrap() = true;
+            *handle.completed.lock().expect("GPU mutex poisoned") = true;
         }
         pending.clear();
         Ok(())
@@ -595,12 +595,12 @@ impl AsyncTransferManager {
 
     /// Get number of pending transfers
     pub fn num_pending(&self) -> usize {
-        self.pending_transfers.lock().unwrap().len()
+        self.pending_transfers.lock().expect("GPU mutex poisoned").len()
     }
 
     /// Clean up completed transfers
     pub fn cleanup_completed(&self) {
-        let mut pending = self.pending_transfers.lock().unwrap();
+        let mut pending = self.pending_transfers.lock().expect("GPU mutex poisoned");
         pending.retain(|h| !h.is_complete());
     }
 }
@@ -618,7 +618,7 @@ pub struct TransferHandle {
 impl TransferHandle {
     /// Check if transfer is complete
     pub fn is_complete(&self) -> bool {
-        *self.completed.lock().unwrap()
+        *self.completed.lock().expect("GPU mutex poisoned")
     }
 
     /// Wait for transfer to complete
@@ -705,7 +705,7 @@ impl TrackedAllocator {
             allocated_at: Instant::now(),
         };
 
-        let mut allocations = self.allocations.lock().unwrap();
+        let mut allocations = self.allocations.lock().expect("GPU mutex poisoned");
         allocations.insert(id, info);
 
         // Update statistics
@@ -721,7 +721,7 @@ impl TrackedAllocator {
 
     /// Deallocate a tracked buffer
     pub fn deallocate(&self, id: u64) {
-        let mut allocations = self.allocations.lock().unwrap();
+        let mut allocations = self.allocations.lock().expect("GPU mutex poisoned");
         if let Some(info) = allocations.remove(&id) {
             self.total_allocated.fetch_sub(info.size as u64, Ordering::SeqCst);
         }
@@ -739,12 +739,12 @@ impl TrackedAllocator {
 
     /// Get number of active allocations
     pub fn num_allocations(&self) -> usize {
-        self.allocations.lock().unwrap().len()
+        self.allocations.lock().expect("GPU mutex poisoned").len()
     }
 
     /// Get allocation statistics
     pub fn allocation_stats(&self) -> AllocationStats {
-        let allocations = self.allocations.lock().unwrap();
+        let allocations = self.allocations.lock().expect("GPU mutex poisoned");
         AllocationStats {
             num_active: allocations.len(),
             total_bytes: self.total_allocated.load(Ordering::SeqCst) as usize,
@@ -754,7 +754,7 @@ impl TrackedAllocator {
 
     /// Check for potential memory leaks (allocations older than threshold)
     pub fn find_leaks(&self, age_threshold: std::time::Duration) -> Vec<AllocationInfo> {
-        let allocations = self.allocations.lock().unwrap();
+        let allocations = self.allocations.lock().expect("GPU mutex poisoned");
         let now = Instant::now();
         allocations
             .values()

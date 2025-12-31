@@ -21,7 +21,7 @@
 //! // Create a real-time pipeline
 //! let config = PipelineConfig::new(256, 128, 1000.0)
 //!     .with_max_latency(10.0);
-//! let mut executor = PipelineExecutor::new(config);
+//! let mut executor = PipelineExecutor::new(config)?;
 //!
 //! // Process streaming data
 //! # let signal = vec![0.0f64; 100];
@@ -49,7 +49,7 @@
 //! # let ecg_signal = Array1::from_vec(vec![0.0; 1000]);
 //! # let sample_rate = 250.0;
 //! // Detect R-peaks
-//! let detector = PanTompkinsDetector::new(sample_rate);
+//! let detector = PanTompkinsDetector::new(sample_rate)?;
 //! let peaks = detector.detect(&ecg_signal)?;
 //!
 //! // Analyze HRV

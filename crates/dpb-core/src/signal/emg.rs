@@ -261,7 +261,7 @@ impl EmgAnalyzer {
         let peak_idx = powers
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .max_by(|(_, a), (_, b)| a.total_cmp(b))
             .map(|(i, _)| i)
             .unwrap_or(0);
         let peak_frequency = freqs.get(peak_idx).copied().unwrap_or(0.0);

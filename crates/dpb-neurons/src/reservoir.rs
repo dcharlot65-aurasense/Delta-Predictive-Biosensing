@@ -301,13 +301,16 @@ impl EchoStateNetwork {
     }
 
     /// Predict output for given input
-    pub fn predict(&mut self, input: &Array1<f64>) -> Array1<f64> {
+    ///
+    /// # Errors
+    /// Returns an error if `train_readout` has not been called.
+    pub fn predict(&mut self, input: &Array1<f64>) -> Result<Array1<f64>, String> {
         let state = self.forward(input);
 
         if let Some(ref w_out) = self.output_weights {
-            w_out.dot(&state)
+            Ok(w_out.dot(&state))
         } else {
-            panic!("Output weights not trained. Call train_readout first.");
+            Err("Output weights not trained. Call train_readout first.".to_string())
         }
     }
 
@@ -375,12 +378,18 @@ impl LiquidStateMachine {
     }
 
     /// Initialize with random connectivity
+    ///
+    /// # Panics
+    /// This function will not panic. If weight_scale is invalid, weights default to 0.
     pub fn initialize(&mut self, sparsity: f64, weight_scale: f64, seed: u64) {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let reservoir_size = self.neurons.len();
 
-        // Initialize input weights
-        let input_dist = Normal::new(0.0, weight_scale).unwrap();
+        // Initialize input weights - use safe default if weight_scale is invalid
+        let input_dist = match Normal::new(0.0, weight_scale.abs().max(1e-10)) {
+            Ok(dist) => dist,
+            Err(_) => return, // Invalid scale, leave weights at default
+        };
         for i in 0..reservoir_size {
             for j in 0..self.input_size {
                 self.input_weights[[i, j]] = input_dist.sample(&mut rng);
@@ -455,13 +464,16 @@ impl LiquidStateMachine {
     }
 
     /// Predict using trained readout
-    pub fn predict(&mut self, input: &Array1<f64>) -> Array1<f64> {
+    ///
+    /// # Errors
+    /// Returns an error if `train_readout` has not been called.
+    pub fn predict(&mut self, input: &Array1<f64>) -> Result<Array1<f64>, String> {
         let spikes = self.forward(input);
 
         if let Some(ref w_out) = self.readout_weights {
-            w_out.dot(&spikes)
+            Ok(w_out.dot(&spikes))
         } else {
-            panic!("Readout weights not trained. Call train_readout first.");
+            Err("Readout weights not trained. Call train_readout first.".to_string())
         }
     }
 

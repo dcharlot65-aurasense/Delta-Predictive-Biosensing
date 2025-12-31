@@ -5,6 +5,7 @@
 
 use super::buffer::SlidingWindow;
 use super::stage::PipelineStage;
+use crate::error::{DpbError, Result};
 use std::time::{Duration, Instant};
 
 /// Execution mode for the pipeline
@@ -63,18 +64,22 @@ impl PipelineConfig {
     }
 
     /// Check if configuration is valid
-    pub fn validate(&self) -> Result<(), String> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any configuration parameter is invalid.
+    pub fn validate(&self) -> Result<()> {
         if self.window_size == 0 {
-            return Err("Window size must be greater than 0".to_string());
+            return Err(DpbError::Config("Window size must be greater than 0".to_string()));
         }
         if self.hop_size == 0 {
-            return Err("Hop size must be greater than 0".to_string());
+            return Err(DpbError::Config("Hop size must be greater than 0".to_string()));
         }
         if self.sample_rate <= 0.0 {
-            return Err("Sample rate must be positive".to_string());
+            return Err(DpbError::Config("Sample rate must be positive".to_string()));
         }
         if self.max_latency_ms <= 0.0 {
-            return Err("Max latency must be positive".to_string());
+            return Err(DpbError::Config("Max latency must be positive".to_string()));
         }
         Ok(())
     }
@@ -129,7 +134,7 @@ impl LatencyStats {
         }
 
         let mut sorted = latencies.to_vec();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(|a, b| a.total_cmp(b));
 
         let min = sorted[0];
         let max = sorted[sorted.len() - 1];
@@ -190,12 +195,17 @@ pub struct PipelineExecutor {
 
 impl PipelineExecutor {
     /// Create a new pipeline executor
-    pub fn new(config: PipelineConfig) -> Self {
-        config.validate().expect("Invalid pipeline configuration");
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the configuration is invalid.
+    #[must_use = "this Result may contain an error that should be handled"]
+    pub fn new(config: PipelineConfig) -> Result<Self> {
+        config.validate()?;
 
         let input_buffer = SlidingWindow::new(config.window_size, config.hop_size);
 
-        Self {
+        Ok(Self {
             config,
             input_buffer,
             latencies: Vec::new(),
@@ -204,7 +214,7 @@ impl PipelineExecutor {
             total_samples: 0,
             dropped_samples: 0,
             last_window_time: None,
-        }
+        })
     }
 
     /// Process a single sample, returns output if window is complete
@@ -362,15 +372,19 @@ impl PipelineBuilder {
     }
 
     /// Build the final pipeline
-    pub fn build(self) -> Result<Pipeline, String> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the configuration is invalid or no stages are defined.
+    pub fn build(self) -> Result<Pipeline> {
         self.config.validate()?;
 
         if self.stages.is_empty() {
-            return Err("Pipeline must have at least one stage".to_string());
+            return Err(DpbError::Config("Pipeline must have at least one stage".to_string()));
         }
 
         Ok(Pipeline {
-            executor: PipelineExecutor::new(self.config),
+            executor: PipelineExecutor::new(self.config)?,
             stages: self.stages,
         })
     }
@@ -492,7 +506,7 @@ mod tests {
     #[test]
     fn test_pipeline_executor_basic() {
         let config = PipelineConfig::new(3, 3, 1000.0);
-        let mut executor = PipelineExecutor::new(config);
+        let mut executor = PipelineExecutor::new(config).unwrap();
 
         let result1 = executor.process_sample(1.0, |w| w.to_vec());
         assert!(result1.is_none()); // Not enough samples yet
@@ -507,7 +521,7 @@ mod tests {
     #[test]
     fn test_pipeline_executor_chunk() {
         let config = PipelineConfig::new(3, 3, 1000.0);
-        let mut executor = PipelineExecutor::new(config);
+        let mut executor = PipelineExecutor::new(config).unwrap();
 
         let samples = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let results = executor.process_chunk(&samples, |w| w.to_vec());
@@ -520,7 +534,7 @@ mod tests {
     #[test]
     fn test_pipeline_executor_overlap() {
         let config = PipelineConfig::new(4, 2, 1000.0);
-        let mut executor = PipelineExecutor::new(config);
+        let mut executor = PipelineExecutor::new(config).unwrap();
 
         let samples = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let results = executor.process_chunk(&samples, |w| w.to_vec());
@@ -533,7 +547,7 @@ mod tests {
     #[test]
     fn test_pipeline_executor_reset() {
         let config = PipelineConfig::new(3, 3, 1000.0);
-        let mut executor = PipelineExecutor::new(config);
+        let mut executor = PipelineExecutor::new(config).unwrap();
 
         executor.process_sample(1.0, |w| w.to_vec());
         executor.process_sample(2.0, |w| w.to_vec());
@@ -588,7 +602,7 @@ mod tests {
         for mode in modes {
             let config = PipelineConfig::new(3, 3, 1000.0)
                 .with_execution_mode(mode);
-            let executor = PipelineExecutor::new(config);
+            let executor = PipelineExecutor::new(config).unwrap();
             assert_eq!(executor.config().execution_mode, mode);
         }
     }
@@ -597,7 +611,7 @@ mod tests {
     fn test_latency_tracking() {
         let config = PipelineConfig::new(3, 3, 1000.0)
             .with_max_latency(10.0);
-        let mut executor = PipelineExecutor::new(config);
+        let mut executor = PipelineExecutor::new(config).unwrap();
 
         // Process several windows
         for i in 0..300 {

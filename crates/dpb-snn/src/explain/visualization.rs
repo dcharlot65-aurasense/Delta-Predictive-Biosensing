@@ -127,7 +127,7 @@ impl ExplanationVisualizer {
 
         // Sort by absolute value (descending)
         let mut indexed: Vec<_> = features.into_iter().zip(values).collect();
-        indexed.sort_by(|a, b| b.1.abs().partial_cmp(&a.1.abs()).unwrap());
+        indexed.sort_by(|a, b| b.1.abs().total_cmp(&a.1.abs()));
 
         indexed.into_iter().unzip()
     }
@@ -162,7 +162,7 @@ impl ExplanationVisualizer {
         }
 
         // Sort by time
-        raster.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        raster.sort_by(|a, b| a.0.total_cmp(&b.0));
 
         raster
     }
@@ -211,7 +211,7 @@ impl ExplanationVisualizer {
             .map(|((layer, neuron), score)| (layer, neuron, score))
             .collect();
 
-        ranking.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap());
+        ranking.sort_by(|a, b| b.2.total_cmp(&a.2));
 
         ranking
     }

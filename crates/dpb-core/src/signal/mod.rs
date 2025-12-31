@@ -45,7 +45,7 @@
 //! # let ecg_signal = Array1::from_vec(vec![0.0; 1000]);
 //! # let sample_rate = 250.0;
 //! // Detect R-peaks
-//! let detector = PanTompkinsDetector::new(sample_rate);
+//! let detector = PanTompkinsDetector::new(sample_rate)?;
 //! let peaks = detector.detect(&ecg_signal)?;
 //!
 //! // Compute HRV metrics
@@ -258,7 +258,7 @@ pub fn normalize(signal: ArrayView1<f64>, method: NormalizationMethod) -> Result
         }
         NormalizationMethod::Robust => {
             let mut sorted = signal.to_vec();
-            sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            sorted.sort_by(|a, b| a.total_cmp(b));
             let q25 = sorted[sorted.len() / 4];
             let q75 = sorted[3 * sorted.len() / 4];
             let median = sorted[sorted.len() / 2];

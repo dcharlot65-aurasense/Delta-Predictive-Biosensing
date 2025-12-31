@@ -131,7 +131,11 @@ impl GradientCompressor {
             .enumerate()
             .map(|(i, v)| (i, v.abs()))
             .collect();
-        magnitudes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        // Sort by magnitude descending (NaN-safe comparison)
+        magnitudes.sort_by(|a, b| {
+            b.1.partial_cmp(&a.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Create mask
         let mut mask = vec![false; tensor.data.len()];
@@ -221,7 +225,11 @@ impl GradientCompressor {
             .enumerate()
             .map(|(i, v)| (i, v.abs()))
             .collect();
-        magnitudes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        // Sort by magnitude descending (NaN-safe comparison)
+        magnitudes.sort_by(|a, b| {
+            b.1.partial_cmp(&a.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         let mut mask = vec![false; tensor.data.len()];
         for (i, _) in magnitudes.iter().take(k) {

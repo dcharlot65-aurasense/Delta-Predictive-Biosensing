@@ -128,7 +128,7 @@ impl SyntheticGenerator for PauseGenerator {
             }
         }
 
-        pauses.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        pauses.sort_by(|a, b| a.0.total_cmp(&b.0));
 
         let ground_truth = TimeSeriesGroundTruth {
             parameters: HashMap::new(),
@@ -306,7 +306,7 @@ impl SyntheticGenerator for FilledPauseGenerator {
             });
         }
 
-        filled_pauses.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        filled_pauses.sort_by(|a, b| a.0.total_cmp(&b.0));
 
         let mut gt_params = HashMap::new();
         gt_params.insert("target_rate".to_string(), params.filled_pause_rate);

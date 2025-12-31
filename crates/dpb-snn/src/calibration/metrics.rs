@@ -185,7 +185,7 @@ pub fn adaptive_calibration_error(
         .zip(labels.iter())
         .map(|(&p, &l)| (p, l))
         .collect();
-    data.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    data.sort_by(|a, b| a.0.total_cmp(&b.0));
 
     let samples_per_bin = probabilities.len() / n_bins;
     let mut ace = 0.0;

@@ -360,7 +360,7 @@ impl RiscVHal {
         threshold: i16,
     ) -> Vec<SpikeEvent> {
         let mut spikes = Vec::new();
-        let mut state = self.level_crossing_state.lock().unwrap();
+        let mut state = self.level_crossing_state.lock().expect("accelerator mutex poisoned");
 
         // Initialize state if needed
         if state.len() != num_channels {
@@ -404,7 +404,7 @@ impl RiscVHal {
         delta_threshold: i16,
     ) -> Vec<SpikeEvent> {
         let mut spikes = Vec::new();
-        let mut state = self.delta_state.lock().unwrap();
+        let mut state = self.delta_state.lock().expect("accelerator mutex poisoned");
 
         // Initialize state
         if state.len() != num_channels {
@@ -442,7 +442,7 @@ impl RiscVHal {
 
     /// Configure spike interrupt.
     pub fn configure_interrupt(&self, config: SpikeInterruptConfig) {
-        let mut current = self.interrupt_config.lock().unwrap();
+        let mut current = self.interrupt_config.lock().expect("accelerator mutex poisoned");
         *current = config;
     }
 
@@ -472,7 +472,7 @@ impl RiscVHal {
 
     /// Get available buffer memory.
     pub fn available_memory(&self) -> usize {
-        let buffers = self.buffers.lock().unwrap();
+        let buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         let used: usize = buffers.values().map(|b| b.len()).sum();
         self.config.sram_bytes.saturating_sub(used)
     }
@@ -508,14 +508,14 @@ impl Accelerator for RiscVHal {
 
         let id = self.next_buffer_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
-        let mut buffers = self.buffers.lock().unwrap();
+        let mut buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         buffers.insert(id, vec![0u8; size_bytes]);
 
         Ok(AcceleratorBuffer::new(id, size_bytes, AcceleratorType::Cpu))
     }
 
     fn copy_to_device(&self, buffer: &mut AcceleratorBuffer, data: &[f32]) -> Result<(), AcceleratorError> {
-        let mut buffers = self.buffers.lock().unwrap();
+        let mut buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         if let Some(buf) = buffers.get_mut(&buffer.id) {
             // Convert f32 to bytes
             let bytes: Vec<u8> = data.iter()
@@ -530,7 +530,7 @@ impl Accelerator for RiscVHal {
     }
 
     fn copy_from_device(&self, buffer: &AcceleratorBuffer, data: &mut [f32]) -> Result<(), AcceleratorError> {
-        let buffers = self.buffers.lock().unwrap();
+        let buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         if let Some(buf) = buffers.get(&buffer.id) {
             // Convert bytes to f32
             for (i, chunk) in buf.chunks(4).enumerate() {

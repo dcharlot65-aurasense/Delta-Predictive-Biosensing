@@ -240,8 +240,12 @@ impl EventEncoder for CopSwayEncoder {
             }
         }
 
-        // Sort by timestamp
-        events.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
+        // Sort by timestamp (NaN-safe comparison)
+        events.sort_by(|a, b| {
+            a.timestamp
+                .partial_cmp(&b.timestamp)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         Ok(events)
     }
 }
@@ -368,7 +372,12 @@ impl EventEncoder for CopVelocityEncoder {
             }
         }
 
-        events.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
+        // Sort by timestamp (NaN-safe comparison)
+        events.sort_by(|a, b| {
+            a.timestamp
+                .partial_cmp(&b.timestamp)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         Ok(events)
     }
 }
@@ -497,7 +506,12 @@ impl EventEncoder for StabilityLimitEncoder {
             }
         }
 
-        events.sort_by(|a, b| a.timestamp.partial_cmp(&b.timestamp).unwrap());
+        // Sort by timestamp (NaN-safe comparison)
+        events.sort_by(|a, b| {
+            a.timestamp
+                .partial_cmp(&b.timestamp)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         Ok(events)
     }
 }

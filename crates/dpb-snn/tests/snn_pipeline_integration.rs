@@ -59,14 +59,14 @@ fn test_encoder_to_snn_to_decoder() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..Default::default()
     };
 
     let mut snn = FeedforwardSNN::new(
         vec![num_input_neurons, num_hidden, num_output],
         snn_config,
         true, // use_bias
-    );
+    ).expect("Failed to create SNN");
 
     println!("  Created SNN: {} → {} → {}", num_input_neurons, num_hidden, num_output);
 
@@ -119,10 +119,11 @@ fn test_calibrated_snn_predictions() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..Default::default()
     };
 
-    let mut snn = FeedforwardSNN::new(vec![num_input, 20, num_classes], snn_config, true);
+    let mut snn = FeedforwardSNN::new(vec![num_input, 20, num_classes], snn_config, true)
+        .expect("Failed to create SNN");
 
     // Generate batch of predictions
     let mut all_logits = Vec::new();
@@ -142,7 +143,7 @@ fn test_calibrated_snn_predictions() {
             .row(0)
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .max_by(|(_, a), (_, b)| a.total_cmp(b))
             .map(|(idx, _)| idx)
             .unwrap();
         all_labels.push(label);
@@ -231,14 +232,14 @@ fn test_explainability_pipeline() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..Default::default()
     };
 
     let mut snn = FeedforwardSNN::new(
         vec![num_input, num_hidden, num_output],
         snn_config,
         true, // use_bias
-    );
+    ).expect("Failed to create SNN");
 
     let input_spikes = create_test_spike_tensor(batch_size, num_input, num_timesteps);
     let output_spikes = snn
@@ -443,7 +444,7 @@ fn test_uncertainty_estimation_pipeline() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..Default::default()
     };
 
     for _ in 0..num_models {
@@ -451,7 +452,7 @@ fn test_uncertainty_estimation_pipeline() {
             vec![num_input, 20, num_classes],
             snn_config.clone(),
             true,
-        ));
+        ).expect("Failed to create SNN"));
     }
 
     println!("  Created ensemble of {} models", num_models);
@@ -587,10 +588,11 @@ fn test_training_with_convergence_analysis() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..Default::default()
     };
 
-    let mut snn = FeedforwardSNN::new(vec![num_input, 20, num_output], snn_config, true);
+    let mut snn = FeedforwardSNN::new(vec![num_input, 20, num_output], snn_config, true)
+        .expect("Failed to create SNN");
 
     // Initialize analyzers
     let mut loss_plateau = LossPlateauDetector::new(5, 0.01, 3); // window, threshold, patience

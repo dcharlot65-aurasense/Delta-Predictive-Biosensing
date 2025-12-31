@@ -3,9 +3,9 @@
 //! Low-level communication primitives for distributed training.
 
 use super::{CommunicationBackend, DistributedError, DistributedResult, ReduceOp};
+use crossbeam::channel::{self, Receiver, Sender, TryRecvError, TrySendError};
 use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// Message types for distributed communication
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -349,72 +349,85 @@ impl CommunicationOps {
     }
 }
 
-/// Message queue for asynchronous communication
+/// Message queue for asynchronous communication.
+///
+/// Uses crossbeam bounded channels for lock-free, efficient message passing.
+/// This is more performant than `Arc<Mutex<VecDeque>>` for concurrent access
+/// and avoids potential deadlocks.
 pub struct MessageQueue {
-    queue: Arc<Mutex<VecDeque<Message>>>,
-    max_size: usize,
+    sender: Sender<Message>,
+    receiver: Receiver<Message>,
 }
 
 impl MessageQueue {
-    /// Create new message queue
+    /// Create new message queue with bounded capacity
     pub fn new(max_size: usize) -> Self {
-        Self {
-            queue: Arc::new(Mutex::new(VecDeque::new())),
-            max_size,
-        }
+        let (sender, receiver) = channel::bounded(max_size);
+        Self { sender, receiver }
     }
 
     /// Push message to queue
+    ///
+    /// Returns an error if the queue is full or disconnected.
     pub fn push(&self, message: Message) -> DistributedResult<()> {
-        let mut queue = self.queue.lock().unwrap();
-
-        if queue.len() >= self.max_size {
-            return Err(DistributedError::Communication(
-                "Message queue full".to_string(),
-            ));
-        }
-
-        queue.push_back(message);
-        Ok(())
+        self.sender.try_send(message).map_err(|e| match e {
+            TrySendError::Full(_) => {
+                DistributedError::Communication("Message queue full".to_string())
+            }
+            TrySendError::Disconnected(_) => {
+                DistributedError::Communication("Message queue disconnected".to_string())
+            }
+        })
     }
 
-    /// Pop message from queue
+    /// Pop message from queue (non-blocking)
     pub fn pop(&self) -> Option<Message> {
-        let mut queue = self.queue.lock().unwrap();
-        queue.pop_front()
+        self.receiver.try_recv().ok()
     }
 
     /// Peek at next message without removing
+    ///
+    /// Note: Channels don't support true peek, so this receives and re-sends.
+    /// For high-performance code, prefer using `pop()` directly.
     pub fn peek(&self) -> Option<Message> {
-        let queue = self.queue.lock().unwrap();
-        queue.front().cloned()
+        match self.receiver.try_recv() {
+            Ok(msg) => {
+                let cloned = msg.clone();
+                // Re-send the message (goes to back of queue)
+                let _ = self.sender.try_send(msg);
+                Some(cloned)
+            }
+            Err(TryRecvError::Empty | TryRecvError::Disconnected) => None,
+        }
     }
 
-    /// Get queue size
+    /// Get approximate queue size
+    ///
+    /// Note: This is approximate due to concurrent access.
     pub fn len(&self) -> usize {
-        let queue = self.queue.lock().unwrap();
-        queue.len()
+        self.receiver.len()
     }
 
     /// Check if queue is empty
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.receiver.is_empty()
     }
 
-    /// Clear queue
+    /// Clear queue by draining all messages
     pub fn clear(&self) {
-        let mut queue = self.queue.lock().unwrap();
-        queue.clear();
+        while self.receiver.try_recv().is_ok() {}
     }
 }
 
 /// Get current timestamp (milliseconds since epoch)
+///
+/// Returns 0 if the system clock is before the UNIX epoch (should never happen).
 fn current_timestamp() -> u64 {
     use std::time::{SystemTime, UNIX_EPOCH};
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as u64
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
 }
 
 /// Communication statistics
