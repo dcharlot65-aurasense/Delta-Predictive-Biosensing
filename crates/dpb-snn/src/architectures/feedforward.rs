@@ -24,12 +24,17 @@ pub struct FeedforwardSNN {
 
 impl FeedforwardSNN {
     /// Create a new feedforward SNN
-    pub fn new(layer_sizes: Vec<usize>, config: SNNConfig, use_bias: bool) -> Self {
+    ///
+    /// # Errors
+    /// Returns `SNNError::InvalidConfig` if fewer than 2 layer sizes are provided.
+    pub fn new(layer_sizes: Vec<usize>, config: SNNConfig, use_bias: bool) -> SNNResult<Self> {
         if layer_sizes.len() < 2 {
-            panic!("Need at least 2 layer sizes (input and output)");
+            return Err(SNNError::InvalidConfig(
+                "Need at least 2 layer sizes (input and output)".to_string(),
+            ));
         }
 
-        let mut layers = Vec::new();
+        let mut layers = Vec::with_capacity(layer_sizes.len() - 1);
         for i in 0..layer_sizes.len() - 1 {
             let layer = SpikingLinear::new(
                 layer_sizes[i],
@@ -42,21 +47,24 @@ impl FeedforwardSNN {
             layers.push(layer);
         }
 
-        Self {
+        Ok(Self {
             layers,
             layer_sizes,
             config,
             use_bias,
-        }
+        })
     }
 
     /// Create a standard MLP-style SNN
+    ///
+    /// # Errors
+    /// Returns `SNNError::InvalidConfig` if configuration is invalid.
     pub fn mlp(
         input_size: usize,
         hidden_sizes: Vec<usize>,
         output_size: usize,
         config: SNNConfig,
-    ) -> Self {
+    ) -> SNNResult<Self> {
         let mut layer_sizes = vec![input_size];
         layer_sizes.extend(hidden_sizes);
         layer_sizes.push(output_size);
@@ -190,21 +198,27 @@ mod tests {
 
     #[test]
     fn test_feedforward_creation() {
-        let snn = FeedforwardSNN::new(vec![10, 20, 5], SNNConfig::default(), true);
+        let snn = FeedforwardSNN::new(vec![10, 20, 5], SNNConfig::default(), true).unwrap();
         assert_eq!(snn.num_layers(), 2);
         assert_eq!(snn.layer_sizes, vec![10, 20, 5]);
     }
 
     #[test]
+    fn test_feedforward_creation_insufficient_layers() {
+        let result = FeedforwardSNN::new(vec![10], SNNConfig::default(), true);
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn test_feedforward_mlp() {
-        let snn = FeedforwardSNN::mlp(10, vec![20, 15], 5, SNNConfig::default());
+        let snn = FeedforwardSNN::mlp(10, vec![20, 15], 5, SNNConfig::default()).unwrap();
         assert_eq!(snn.num_layers(), 3);
         assert_eq!(snn.layer_sizes, vec![10, 20, 15, 5]);
     }
 
     #[test]
     fn test_feedforward_forward() {
-        let mut snn = FeedforwardSNN::new(vec![10, 20, 5], SNNConfig::default(), true);
+        let mut snn = FeedforwardSNN::new(vec![10, 20, 5], SNNConfig::default(), true).unwrap();
         let input = SpikeTensor::zeros(2, 50, 10, false);
 
         let output = snn.forward(&input).unwrap();
@@ -227,7 +241,7 @@ mod tests {
 
     #[test]
     fn test_feedforward_reset() {
-        let mut snn = FeedforwardSNN::new(vec![5, 10, 3], SNNConfig::default(), true);
+        let mut snn = FeedforwardSNN::new(vec![5, 10, 3], SNNConfig::default(), true).unwrap();
         let input = SpikeTensor::zeros(1, 10, 5, false);
 
         // Forward pass to create state

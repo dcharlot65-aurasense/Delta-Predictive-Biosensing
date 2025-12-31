@@ -6,7 +6,11 @@ use thiserror::Error;
 pub type Result<T> = std::result::Result<T, ExportError>;
 
 /// Errors that can occur during model export.
+///
+/// This enum is marked as non-exhaustive to allow adding new error variants
+/// in future versions without breaking downstream code.
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum ExportError {
     /// IO error during file operations.
     #[error("IO error: {0}")]

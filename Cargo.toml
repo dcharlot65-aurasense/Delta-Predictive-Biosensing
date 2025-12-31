@@ -98,6 +98,40 @@ dpb-export = { path = "crates/dpb-export" }
 dpb-clinical = { path = "crates/dpb-clinical" }
 dpb-federated = { path = "crates/dpb-federated" }
 
+# Workspace-wide lint configuration
+# Based on Rust 2025 best practices
+[workspace.lints.rust]
+# Deny unsafe code in library crates (allow in FFI)
+unsafe_code = "warn"
+
+[workspace.lints.clippy]
+# Error handling
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+
+# Performance
+clone_on_ref_ptr = "warn"
+redundant_clone = "warn"
+inefficient_to_string = "warn"
+large_enum_variant = "warn"
+vec_init_then_push = "warn"
+
+# Style
+needless_pass_by_value = "warn"
+match_same_arms = "warn"
+manual_string_new = "warn"
+if_not_else = "warn"
+
+# Correctness
+float_cmp = "warn"
+cast_possible_truncation = "warn"
+cast_sign_loss = "warn"
+cast_precision_loss = "warn"
+
+# Documentation
+missing_docs_in_private_items = "allow"
+
 [profile.release]
 lto = true
 codegen-units = 1

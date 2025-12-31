@@ -3,7 +3,11 @@
 use thiserror::Error;
 
 /// Main error type for the DPB framework.
+///
+/// This enum is marked as non-exhaustive to allow adding new error variants
+/// in future versions without breaking downstream code.
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum DpbError {
     /// Configuration errors
     #[error("Configuration error: {0}")]

@@ -6,7 +6,11 @@ use thiserror::Error;
 pub type Result<T> = std::result::Result<T, FederatedError>;
 
 /// Errors that can occur during federated learning.
+///
+/// This enum is marked as non-exhaustive to allow adding new error variants
+/// in future versions without breaking downstream code.
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum FederatedError {
     /// Client not registered with server.
     #[error("Client not registered: {0}")]

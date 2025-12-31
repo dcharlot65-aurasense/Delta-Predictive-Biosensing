@@ -171,28 +171,40 @@ impl StochasticLifNeuron {
     }
 
     /// Generate noise sample based on noise type.
+    ///
+    /// Uses safe defaults if noise parameters are invalid (sigma <= 0).
     fn generate_noise(&mut self, dt: f32) -> f32 {
         match self.noise_type {
             NoiseType::Gaussian => {
-                // White Gaussian noise
-                let normal = Normal::new(0.0, self.config.noise_sigma).unwrap();
-                normal.sample(&mut self.rng) * dt.sqrt()
+                // White Gaussian noise - use safe default if sigma is invalid
+                let sigma = self.config.noise_sigma.max(0.0) as f64;
+                if sigma <= 0.0 {
+                    return 0.0;
+                }
+                let Ok(normal) = Normal::new(0.0, sigma) else {
+                    return 0.0;
+                };
+                (normal.sample(&mut self.rng) * (dt as f64).sqrt()) as f32
             }
             NoiseType::OrnsteinUhlenbeck => {
                 // Ornstein-Uhlenbeck process: dX = -X/τ dt + σ dW
-                let normal = Normal::new(0.0, 1.0).unwrap();
-                let dW = normal.sample(&mut self.rng) * dt.sqrt();
+                let Ok(normal) = Normal::new(0.0, 1.0) else {
+                    return self.state.ou_noise;
+                };
+                let dW = normal.sample(&mut self.rng) * (dt as f64).sqrt();
 
-                let dou = -self.state.ou_noise / self.config.tau_ou * dt
-                          + self.config.noise_sigma * dW;
-                self.state.ou_noise += dou;
+                let dou = -self.state.ou_noise as f64 / self.config.tau_ou as f64 * dt as f64
+                          + self.config.noise_sigma as f64 * dW;
+                self.state.ou_noise += dou as f32;
 
                 self.state.ou_noise
             }
             NoiseType::Multiplicative => {
                 // Multiplicative noise: σ * v * ξ
-                let normal = Normal::new(0.0, 1.0).unwrap();
-                let xi = normal.sample(&mut self.rng);
+                let Ok(normal) = Normal::new(0.0, 1.0) else {
+                    return 0.0;
+                };
+                let xi = normal.sample(&mut self.rng) as f32;
                 self.config.noise_mult * self.state.v * xi * dt.sqrt()
             }
         }
