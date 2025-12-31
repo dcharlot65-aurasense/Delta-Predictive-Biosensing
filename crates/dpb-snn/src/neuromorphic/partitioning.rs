@@ -120,7 +120,7 @@ impl NetworkPartitioner {
             let min_core = core_loads
                 .iter()
                 .enumerate()
-                .min_by_key(|(_, &load)| load)
+                .min_by_key(|&(_, load)| *load)
                 .map(|(idx, _)| idx)
                 .unwrap();
 
@@ -389,7 +389,7 @@ impl PartitionResult {
     pub fn get_neurons_on_core(&self, core_id: usize) -> Vec<usize> {
         self.assignments
             .iter()
-            .filter(|(_, &c)| c == core_id)
+            .filter(|&(_, c)| *c == core_id)
             .map(|(&n, _)| n)
             .collect()
     }
@@ -514,7 +514,7 @@ mod tests {
     fn test_partition_validity() {
         let graph = create_test_graph();
         let constraints = HardwareConstraints::loihi_constraints();
-        let partitioner = NetworkPartitioner::new(constraints, PartitionStrategy::Greedy);
+        let partitioner = NetworkPartitioner::new(constraints.clone(), PartitionStrategy::Greedy);
 
         let result = partitioner.partition(&graph).unwrap();
 
@@ -588,7 +588,7 @@ mod tests {
 
         let graph = NetworkGraph::new(1000, edges);
         let constraints = HardwareConstraints::loihi_constraints();
-        let partitioner = NetworkPartitioner::new(constraints, PartitionStrategy::LoadBalanced);
+        let partitioner = NetworkPartitioner::new(constraints.clone(), PartitionStrategy::LoadBalanced);
 
         let result = partitioner.partition(&graph).unwrap();
 

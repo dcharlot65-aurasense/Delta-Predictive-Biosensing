@@ -43,7 +43,7 @@ fn test_basic_snn_forward_pass() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..Default::default()
     };
 
     // Create SNN
@@ -51,7 +51,7 @@ fn test_basic_snn_forward_pass() {
         vec![num_input, num_hidden, num_output],
         config,
         true,
-    );
+    ).expect("Failed to create SNN");
 
     // Create input
     let input = create_test_spikes(batch_size, num_timesteps, num_input);
@@ -85,7 +85,7 @@ fn test_snn_with_decoder() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..Default::default()
     };
 
     // Create SNN
@@ -93,7 +93,7 @@ fn test_snn_with_decoder() {
         vec![num_input, 32, num_output],
         config,
         true,
-    );
+    ).expect("Failed to create SNN");
 
     // Create input
     let input = create_test_spikes(batch_size, num_timesteps, num_input);
@@ -132,7 +132,7 @@ fn test_multiple_snn_architectures() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..Default::default()
     };
 
     let input = create_test_spikes(batch_size, num_timesteps, num_input);
@@ -145,7 +145,8 @@ fn test_multiple_snn_architectures() {
     ];
 
     for (name, layers) in architectures {
-        let mut snn = FeedforwardSNN::new(layers.clone(), config.clone(), true);
+        let mut snn = FeedforwardSNN::new(layers.clone(), config.clone(), true)
+            .expect("Failed to create SNN");
         let output = snn.forward(&input).expect(&format!("{} forward failed", name));
 
         let (out_batch, out_time, out_neurons) = output.shape();
@@ -203,14 +204,14 @@ fn test_neuron_models() {
             num_steps: num_timesteps,
             neuron_model: model,
             neuron_params: NeuronParams::default(),
-            use_gpu: false,
+            ..Default::default()
         };
 
         let mut snn = FeedforwardSNN::new(
             vec![num_input, num_output],
             config,
             true,
-        );
+        ).expect("Failed to create SNN");
 
         let output = snn.forward(&input).expect("Forward pass failed");
 
@@ -235,14 +236,14 @@ fn test_batch_processing() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..Default::default()
     };
 
     let mut snn = FeedforwardSNN::new(
         vec![num_input, 20, num_output],
         config,
         true,
-    );
+    ).expect("Failed to create SNN");
 
     // Test different batch sizes
     let batch_sizes = vec![1, 2, 4, 8];
