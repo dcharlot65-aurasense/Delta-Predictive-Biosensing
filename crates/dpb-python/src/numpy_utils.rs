@@ -98,7 +98,12 @@ pub fn batch_arrays<'py>(
     let mut flat = Vec::with_capacity(rows * cols);
     for array in arrays {
         for row in array.rows() {
-            flat.extend_from_slice(row.as_slice().unwrap());
+            // Use as_slice when contiguous, fall back to iter for non-contiguous views
+            if let Some(slice) = row.as_slice() {
+                flat.extend_from_slice(slice);
+            } else {
+                flat.extend(row.iter().copied());
+            }
         }
     }
 
