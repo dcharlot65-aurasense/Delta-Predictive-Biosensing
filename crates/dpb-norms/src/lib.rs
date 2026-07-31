@@ -1,28 +1,47 @@
-//! # DPB-Norms: Normative Databases for Biosensing Assessments
+//! # DPB-Norms: Normative-Comparison API with Illustrative Reference Values
 //!
-//! This crate provides comprehensive normative databases for comparing
-//! individual assessment results to population-based reference values.
+//! This crate implements the *machinery* for comparing an individual measurement
+//! against stratified reference values: percentiles, z-scores, reference ranges,
+//! standard error of measurement, minimal detectable change (MDC) and the
+//! Reliable Change Index (RCI).
 //!
-//! ## Features
+//! # ⚠️ The bundled reference values are ILLUSTRATIVE, not sourced
 //!
-//! - Age and sex-stratified normative data
-//! - Percentile and z-score calculations
+//! **The reference values shipped in [`database`], [`pediatric`] and [`geriatric`]
+//! are illustrative placeholders that exist to demonstrate and test this API. They
+//! are not drawn from any published cohort, they carry no citations, and they must
+//! not be used to interpret a real measurement from a real person.**
+//!
+//! Any percentile, z-score, classification or change score computed against the
+//! bundled values is a demonstration of the arithmetic, not a clinical or
+//! psychometric finding. Supply your own cited reference values before using this
+//! crate for research, and cite them explicitly.
+//!
+//! The reliability coefficients used to derive SEM/MDC are likewise illustrative
+//! defaults, not measured test-retest coefficients. The SEM/MDC/RCI formulas
+//! themselves are standard and correct; only the constants fed into them are
+//! placeholders.
+//!
+//! ## Intended use
+//!
+//! Research and educational use only. This is not a medical device, is not
+//! FDA-cleared or CE-marked, and has not been validated for diagnosis, treatment,
+//! or any clinical decision.
+//!
+//! ## Trademarks
+//!
+//! MoCA, MDS-UPDRS, Berg Balance Scale, Trail Making Test and the Stroop Test are
+//! marks of their respective owners. References here are descriptive and imply no
+//! endorsement, affiliation or license.
+//!
+//! ## What this crate provides
+//!
+//! - Age- and sex-stratified lookup with best-match demographic resolution
+//! - Percentile and z-score calculation
 //! - Reference ranges (5th-95th percentile)
-//! - Minimal detectable change (MDC) values
-//! - Support for multiple metric types across cognitive and motor domains
-//! - **Pediatric norms** (0-17 years) with developmental stage stratification
-//! - **Geriatric norms** (65+ years) with frailty adjustments for 80+ populations
-//! - **Longitudinal change detection** with MDC and Reliable Change Index (RCI)
-//!
-//! ## Clinical Applications
-//!
-//! - Identifying impairment relative to age-matched peers
-//! - Tracking longitudinal change with clinical significance thresholds
-//! - Risk stratification based on normative cut-offs
-//! - Research cohort characterization
-//! - Pediatric developmental screening and monitoring
-//! - Geriatric frailty assessment and fall risk prediction
-//! - Rehabilitation outcome evaluation
+//! - SEM and minimal detectable change (MDC) derivation
+//! - Longitudinal change detection with MDC and the Reliable Change Index (RCI)
+//! - Pediatric (0-17) and geriatric (65+) stratification structures
 
 pub mod database;
 pub mod demographics;
@@ -95,8 +114,6 @@ pub struct NormativeStats {
     pub p75: f64,
     /// 95th percentile
     pub p95: f64,
-    /// Sample size
-    pub n: usize,
     /// Standard error of measurement
     pub sem: Option<f64>,
     /// Minimal detectable change (90% CI)
@@ -107,7 +124,7 @@ pub struct NormativeStats {
 
 impl NormativeStats {
     /// Create new normative stats
-    pub fn new(mean: f64, std_dev: f64, n: usize) -> Self {
+    pub fn new(mean: f64, std_dev: f64) -> Self {
         // Approximate percentiles assuming normal distribution
         let p5 = mean - 1.645 * std_dev;
         let p25 = mean - 0.674 * std_dev;
@@ -122,16 +139,18 @@ impl NormativeStats {
             p25,
             p75,
             p95,
-            n,
             sem: None,
             mdc90: None,
             mdc95: None,
         }
     }
 
-    /// Create with reliability data for MDC calculation
-    pub fn with_reliability(mean: f64, std_dev: f64, n: usize, icc: f64) -> Self {
-        let mut stats = Self::new(mean, std_dev, n);
+    /// Create with an illustrative reliability coefficient for SEM/MDC derivation.
+    ///
+    /// `icc` is an illustrative default, not a measured test-retest coefficient.
+    /// The SEM/MDC formulas are standard; only the constant is a placeholder.
+    pub fn with_reliability(mean: f64, std_dev: f64, icc: f64) -> Self {
+        let mut stats = Self::new(mean, std_dev);
 
         // Standard error of measurement: SEM = SD * sqrt(1 - ICC)
         let sem = std_dev * (1.0 - icc).sqrt();
@@ -283,7 +302,7 @@ mod tests {
 
     #[test]
     fn test_normative_stats_creation() {
-        let stats = NormativeStats::new(100.0, 15.0, 1000);
+        let stats = NormativeStats::new(100.0, 15.0);
 
         assert_eq!(stats.mean, 100.0);
         assert_eq!(stats.std_dev, 15.0);
@@ -295,7 +314,7 @@ mod tests {
 
     #[test]
     fn test_percentile_calculation() {
-        let stats = NormativeStats::new(100.0, 15.0, 1000);
+        let stats = NormativeStats::new(100.0, 15.0);
 
         // Mean should be at 50th percentile
         let p_mean = stats.percentile(100.0);
@@ -314,7 +333,7 @@ mod tests {
 
     #[test]
     fn test_z_score_calculation() {
-        let stats = NormativeStats::new(100.0, 15.0, 1000);
+        let stats = NormativeStats::new(100.0, 15.0);
 
         assert!((stats.z_score(100.0) - 0.0).abs() < 0.001);
         assert!((stats.z_score(115.0) - 1.0).abs() < 0.001);
@@ -323,7 +342,7 @@ mod tests {
 
     #[test]
     fn test_impairment_levels() {
-        let stats = NormativeStats::new(100.0, 15.0, 1000);
+        let stats = NormativeStats::new(100.0, 15.0);
 
         // Normal range
         assert_eq!(
@@ -346,7 +365,7 @@ mod tests {
 
     #[test]
     fn test_mdc_calculation() {
-        let stats = NormativeStats::with_reliability(100.0, 15.0, 1000, 0.90);
+        let stats = NormativeStats::with_reliability(100.0, 15.0, 0.90);
 
         assert!(stats.sem.is_some());
         assert!(stats.mdc90.is_some());
@@ -362,7 +381,7 @@ mod tests {
 
     #[test]
     fn test_reference_range() {
-        let stats = NormativeStats::new(100.0, 15.0, 1000);
+        let stats = NormativeStats::new(100.0, 15.0);
         let (low, high) = stats.reference_range();
 
         assert!(low < 100.0);

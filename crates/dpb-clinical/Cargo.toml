@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 authors = ["AuraSense Tech Corporation"]
 description = "Clinical utilities for DPB Framework: normative data, treatment response, comorbidity modeling"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/aurasense/delta-predictive-biosensing"
+license.workspace = true
+repository.workspace = true
 keywords = ["clinical", "normative", "biosignal", "treatment-response"]
 categories = ["science", "algorithms"]
 

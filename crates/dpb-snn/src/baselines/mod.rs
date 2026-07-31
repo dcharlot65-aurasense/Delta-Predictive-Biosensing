@@ -157,18 +157,67 @@ impl Tensor {
         }
     }
 
-    /// Element-wise addition
+    /// Element-wise addition with trailing-dimension broadcasting.
+    ///
+    /// Exact-shape addition is the common case. A rank-1 operand whose length
+    /// matches the trailing dimension is broadcast across the leading ones, which
+    /// is what a bias add is: `[batch, features] + [features]`.
+    ///
+    /// This previously required exact shape equality and panicked with
+    /// "shapes must match for addition ... left: [1, 20] right: [20]" on every
+    /// bias add, so every MLP, RNN, CNN and Transformer baseline failed at
+    /// construction — 13 tests across four modules from this one assert.
     pub fn add(&self, other: &Tensor) -> Tensor {
-        assert_eq!(self.shape, other.shape, "shapes must match for addition");
-        let data = self.data.iter().zip(&other.data).map(|(a, b)| a + b).collect();
-        Tensor {
-            data,
-            shape: self.shape.clone(),
+        if self.shape == other.shape {
+            let data = self.data.iter().zip(&other.data).map(|(a, b)| a + b).collect();
+            return Tensor { data, shape: self.shape.clone() };
         }
+
+        if let Some(width) = self.broadcast_width(other) {
+            let data = self
+                .data
+                .iter()
+                .enumerate()
+                .map(|(i, a)| a + other.data[i % width])
+                .collect();
+            return Tensor { data, shape: self.shape.clone() };
+        }
+
+        panic!(
+            "shapes must match for addition (or broadcast a trailing dim): \
+             left: {:?} right: {:?}",
+            self.shape, other.shape
+        );
     }
 
-    /// Element-wise multiplication
+    /// Length of the trailing dimension when `other` can broadcast against self.
+    ///
+    /// Returns `Some(width)` when `other` is rank-1, its length equals self's
+    /// trailing dimension, and self's total length is a whole number of rows.
+    fn broadcast_width(&self, other: &Tensor) -> Option<usize> {
+        let width = *self.shape.last()?;
+        let ok = other.shape.len() == 1
+            && other.shape[0] == width
+            && width > 0
+            && self.data.len() % width == 0
+            && other.data.len() == width;
+        ok.then_some(width)
+    }
+
+    /// Element-wise multiplication with the same trailing-dimension
+    /// broadcasting rule as [`Tensor::add`] (per-feature scaling).
     pub fn mul(&self, other: &Tensor) -> Tensor {
+        if self.shape != other.shape {
+            if let Some(width) = self.broadcast_width(other) {
+                let data = self
+                    .data
+                    .iter()
+                    .enumerate()
+                    .map(|(i, a)| a * other.data[i % width])
+                    .collect();
+                return Tensor { data, shape: self.shape.clone() };
+            }
+        }
         assert_eq!(self.shape, other.shape, "shapes must match for multiplication");
         let data = self.data.iter().zip(&other.data).map(|(a, b)| a * b).collect();
         Tensor {

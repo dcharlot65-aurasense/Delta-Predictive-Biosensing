@@ -24,8 +24,8 @@ members = [
 version = "0.1.0"
 edition = "2024"
 authors = ["AuraSense Tech Corporation"]
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/AuraSenseTech/dpb-framework"
+license = "Apache-2.0"
+repository = "https://github.com/dcharlot65-aurasense/Delta-Predictive-Biosensing"
 description = "Delta-Predictive Biosensing Framework - Neuromorphic signal processing"
 rust-version = "1.92.0"
 

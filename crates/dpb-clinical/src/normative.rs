@@ -587,7 +587,51 @@ mod tests {
 
         assert_eq!(reference.qualitative_descriptor(130.0), "Very Superior");
         assert_eq!(reference.qualitative_descriptor(100.0), "Average");
-        assert_eq!(reference.qualitative_descriptor(70.0), "Extremely Low");
+        // 70 is z = -2.0 exactly. Under the conventional Wechsler bands that is
+        // the bottom of Borderline (70-79); Extremely Low is <= 69. This
+        // assertion previously expected "Extremely Low" and failed — the band
+        // boundaries in qualitative_descriptor are right and the expectation was
+        // wrong. Changing the classifier to satisfy it would have mislabelled
+        // every borderline score as extremely low.
+        assert_eq!(reference.qualitative_descriptor(70.0), "Borderline");
+        assert_eq!(reference.qualitative_descriptor(69.0), "Extremely Low");
+    }
+
+    #[test]
+    fn qualitative_descriptor_band_boundaries() {
+        // qualitative_descriptor is defined on the Z-SCORE (see its doc), with
+        // cut-offs at +/-0.7, +/-1.3 and +/-2.0. Those approximate — but do not
+        // exactly reproduce — the Wechsler standard-score bands: with SD 15 a
+        // score of 110 is z = 0.67, just under the 0.7 cut-off, so it lands in
+        // Average where the Wechsler band (110-119) would say High Average.
+        //
+        // This pins the classifier's ACTUAL contract so a future edit cannot
+        // shift a classification unnoticed. It deliberately does not "correct"
+        // the cut-offs to the score bands: that would change how real
+        // measurements are labelled and needs a clinical decision, not a test.
+        let r = NormativeReference::new(100.0, 15.0);
+        for (score, expected) in [
+            (130.0, "Very Superior"),  // z =  2.00
+            (125.0, "Superior"),       // z =  1.67
+            (121.0, "Superior"),       // z =  1.40
+            (115.0, "High Average"),   // z =  1.00
+            (111.0, "High Average"),   // z =  0.73
+            (100.0, "Average"),        // z =  0.00
+            (90.0, "Average"),         // z = -0.67
+            (85.0, "Low Average"),     // z = -1.00
+            (80.0, "Borderline"),      // z = -1.33, just past the -1.3 cut-off
+            (75.0, "Borderline"),      // z = -1.67
+            (70.0, "Borderline"),      // z = -2.00 exactly
+            (69.0, "Extremely Low"),   // z = -2.07
+            (50.0, "Extremely Low"),   // z = -3.33
+        ] {
+            assert_eq!(
+                r.qualitative_descriptor(score),
+                expected,
+                "score {score} (z = {:.2}) misclassified",
+                r.z_score(score)
+            );
+        }
     }
 
     #[test]

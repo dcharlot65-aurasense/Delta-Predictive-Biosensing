@@ -2,6 +2,17 @@
 //!
 //! Clinical utilities for the Delta-Predictive Biosensing Framework.
 //!
+//! # ⚠️ Intended use — research and education only
+//!
+//! This crate is not a medical device. It is not FDA-cleared or CE-marked and has
+//! not been validated for diagnosis, treatment, monitoring, or any clinical
+//! decision. Outputs named after clinical rating scales are model estimates, not
+//! clinical scores, and must not be interpreted as such.
+//!
+//! Using the de-identification helpers here does not by itself establish HIPAA
+//! compliance. Compliance is a property of a covered entity's practices, not of
+//! any library.
+//!
 //! ## Overview
 //!
 //! This crate provides clinical analysis tools including:
@@ -11,11 +22,12 @@
 //! - **Comorbidity Modeling**: Multi-disease simulation
 //! - **Practice Effects**: Serial testing corrections
 //! - **Normative Data**: Age/sex-adjusted reference ranges
-//! - **HIPAA/PHI Tools**: De-identification and anonymization (NEW)
+//! - **PHI Tools**: HIPAA Safe Harbor de-identification (45 CFR 164.514(b)(2))
 //!
 //! ## HIPAA Compliance
 //!
-//! The `phi` module provides HIPAA-compliant de-identification tools:
+//! The `phi` module implements the HIPAA Safe Harbor de-identification method
+//! (45 CFR 164.514(b)(2)):
 //!
 //! - Safe Harbor method (removal of 18 identifier types)
 //! - Limited Data Set configuration

@@ -1,0 +1,86 @@
+Delta-Predictive Biosensing (DPB)
+Copyright 2026 AuraSense Tech Corporation
+
+This product includes software developed by AuraSense Tech Corporation.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+--------------------------------------------------------------------------------
+INTENDED USE
+--------------------------------------------------------------------------------
+
+This software is provided for RESEARCH AND EDUCATIONAL USE ONLY.
+
+It is not a medical device. It is not FDA-cleared, CE-marked, or approved by any
+regulatory authority, and it has not been validated for diagnosis, treatment,
+monitoring, or any clinical decision.
+
+Outputs named after clinical rating scales (including but not limited to UPDRS,
+MoCA, Berg Balance Scale, Tinetti, Hoehn-Yahr, TUG and PDQ-39) are model
+estimates produced by this software. They are NOT clinical scores, are not
+equivalent to an administered assessment, and must not be interpreted or
+reported as such.
+
+Any percentile, z-score, impairment classification, or change score computed by
+this software against its bundled reference values is a demonstration of the
+arithmetic only. The bundled reference values are illustrative placeholders
+(see below) and support no clinical or psychometric conclusion.
+
+--------------------------------------------------------------------------------
+ILLUSTRATIVE REFERENCE VALUES
+--------------------------------------------------------------------------------
+
+The reference values distributed in the `dpb-norms` crate are ILLUSTRATIVE
+PLACEHOLDERS that exist to demonstrate and exercise the normative-comparison
+API. They are not drawn from any published cohort and they carry no citations.
+They must not be used to interpret a measurement from a real person.
+
+Reliability coefficients used to derive SEM, MDC and RCI are likewise
+illustrative defaults, not measured test-retest coefficients. The SEM/MDC/RCI
+formulas themselves are standard and correct; only the constants supplied to
+them are placeholders.
+
+Users intending to draw research conclusions must supply their own reference
+values from cited sources and report those citations.
+
+--------------------------------------------------------------------------------
+TRADEMARKS
+--------------------------------------------------------------------------------
+
+MoCA (Montreal Cognitive Assessment), MDS-UPDRS, Berg Balance Scale, Trail
+Making Test, the Stroop Test, Tinetti, TUG, PDQ-39 and other named clinical
+instruments are marks of their respective owners.
+
+References to these instruments in this software are descriptive — they name
+the construct a decoder or reference table is modelled after. They imply no
+endorsement, affiliation, certification or license from the mark holders, and
+this software reproduces no instrument item content, administration text, or
+official scoring form.
+
+--------------------------------------------------------------------------------
+COMPONENT LICENSING
+--------------------------------------------------------------------------------
+
+Source code:                Apache License 2.0 (see LICENSE)
+Educational corpus
+  (`docs/learning/`):       Creative Commons Attribution 4.0 International
+                            (CC-BY-4.0) — see docs/learning/LICENSE
+Brand assets
+  (`assets/branding/`):     All rights reserved. Not licensed for reuse under
+                            the Apache License. See assets/branding/LICENSE.
+
+--------------------------------------------------------------------------------
+PROVENANCE
+--------------------------------------------------------------------------------
+
+Portions of this repository were authored with AI assistance (Claude). The
+commit history records this authorship openly and has not been rewritten.

@@ -32,6 +32,18 @@
 //! - Disease progression monitoring
 //! - Rehabilitation outcome assessment
 //! - Identifying clinically meaningful improvement/decline
+//!
+//! # ⚠️ The reference values in this module are ILLUSTRATIVE
+//!
+//! They are placeholders that exist to exercise the API. They are not drawn from
+//! any published cohort, they carry no citations, and they must not be used to
+//! interpret a measurement from a real person. Any percentile, z-score or
+//! classification computed against them demonstrates the arithmetic only.
+//!
+//! Supply your own cited reference values before drawing research conclusions.
+//! See the crate-level documentation for the full statement.
+//!
+//! Research and educational use only. Not a medical device.
 
 use serde::{Deserialize, Serialize};
 
@@ -374,9 +386,15 @@ impl ChangeAnalysis {
     ///
     /// Combines statistical significance (MDC95) with a minimum effect size
     pub fn is_clinically_significant(&self, min_percent_change: f64) -> bool {
-        self.status == ChangeStatus::ImprovedMdc95
-            || self.status == ChangeStatus::DeclinedMdc95
-                && self.percent_change.abs() >= min_percent_change
+        // NOTE the parentheses. `&&` binds tighter than `||`, so without them
+        // this read as `Improved || (Declined && threshold)` — the effect-size
+        // threshold was ignored entirely for improvements, so any improvement
+        // reaching MDC95 counted as clinically significant no matter how small,
+        // while declines were held to the threshold. Both conditions must apply
+        // in both directions, per this method's own documentation.
+        (self.status == ChangeStatus::ImprovedMdc95
+            || self.status == ChangeStatus::DeclinedMdc95)
+            && self.percent_change.abs() >= min_percent_change
     }
 }
 

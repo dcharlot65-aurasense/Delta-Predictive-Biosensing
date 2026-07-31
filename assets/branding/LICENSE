@@ -1,0 +1,52 @@
+BRAND ASSETS — ALL RIGHTS RESERVED
+
+Copyright 2026 AuraSense Tech Corporation. All rights reserved.
+
+The images in this directory are trade dress and brand identity. They are
+explicitly EXCLUDED from the Apache License 2.0 that covers the source code in
+this repository.
+
+No license is granted to copy, modify, redistribute or otherwise use these files,
+whether or not this repository is publicly readable. Being able to read a file in
+a public repository does not grant a license to it. In particular, a fork of this
+repository does not carry any right to use these marks.
+
+Permitted without separate written permission:
+
+  * Nominative reference — using the AuraSense name to refer to this project
+    accurately, e.g. in an article, citation, or a list of dependencies.
+
+Not permitted without separate written permission:
+
+  * Using these marks to brand, name or identify your own project, product,
+    fork, service or organisation
+  * Any use implying endorsement, affiliation, partnership or certification
+  * Modifying the marks, or incorporating them into another logo or design
+
+--------------------------------------------------------------------------------
+UNRESOLVED THIRD-PARTY MARK — READ BEFORE PUBLISHING
+--------------------------------------------------------------------------------
+
+`Opening@3x.png` is described in this directory's README as a "Haptics Health
+branded neural network landscape". Haptics Health is a third party. The rights
+under which that asset was produced, and whether AuraSense Tech Corporation may
+redistribute it, HAVE NOT BEEN CONFIRMED.
+
+Publishing another organisation's branded artwork without an established right to
+do so is a trademark problem that a permissive repository license does not cure,
+and it is not resolved by this file. Until ownership is confirmed in writing, the
+safe action is to REMOVE that file from the repository rather than publish it.
+
+The remaining files in this directory (`AuraSense*.png`, `Visual NN@3x.png`) are
+AuraSense's own marks and artwork and are covered by the terms above.
+
+--------------------------------------------------------------------------------
+NOTE ON REPOSITORY SIZE
+--------------------------------------------------------------------------------
+
+These are @3x print-resolution masters totalling roughly 79 MB, which every clone
+of this repository pays for in full. If the repository is published, replacing
+them with web-resolution derivatives and keeping the masters in asset storage
+would remove the great majority of that cost. This is a packaging concern, not a
+licensing one, and is recorded here only because this is where a reader will be
+looking when they wonder why the clone is large.

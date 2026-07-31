@@ -1,4 +1,21 @@
-//! Clinical score decoders for Parkinson's disease and movement disorders
+//! Clinical score decoders for Parkinson's disease and movement disorders.
+//!
+//! # ⚠️ Intended use — research and education only
+//!
+//! **The values produced by these decoders are model estimates, not clinical
+//! scores.** They are named after published rating scales because they are
+//! modelled after those constructs — they are not equivalent to an administered
+//! assessment, they have not been validated against one, and they must never be
+//! recorded, reported, or interpreted as a clinical score.
+//!
+//! This software is not a medical device. It is not FDA-cleared or CE-marked and
+//! has not been validated for diagnosis, treatment, monitoring, or any clinical
+//! decision.
+//!
+//! MDS-UPDRS, Berg Balance Scale, Tinetti, TUG, PDQ-39 and other named
+//! instruments are marks of their respective owners; use here is descriptive and
+//! implies no endorsement, affiliation or license. No instrument item content or
+//! official scoring form is reproduced.
 
 use super::Decoder;
 use crate::{SNNError, SNNResult, SpikeTensor};

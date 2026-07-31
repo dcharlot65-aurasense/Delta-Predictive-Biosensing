@@ -4,8 +4,8 @@ version = "0.4.0"
 edition = "2021"
 authors = ["AuraSense Tech Corporation"]
 description = "Lab Streaming Layer integration for DPB Framework - real-time biosignal streaming"
-license = "MIT"
-repository = "https://github.com/dcharlot65-aurasense/Delta-Predictive-Biosensing"
+license.workspace = true
+repository.workspace = true
 keywords = ["lsl", "biosignal", "streaming", "real-time", "eeg"]
 categories = ["science", "asynchronous"]
 
@@ -36,6 +36,7 @@ serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
 tokio-test = "0.4"
+serde_json = "1.0"
 tracing-subscriber = "0.3"
 
 [build-dependencies]

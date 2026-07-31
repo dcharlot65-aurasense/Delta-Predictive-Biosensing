@@ -623,7 +623,7 @@ mod tests {
         esn.reset();
         let test_input = Array1::from_vec(vec![0.5_f64.sin(), 0.5_f64.cos()]);
         let _ = esn.forward(&test_input);
-        let prediction = esn.predict(&test_input);
+        let prediction = esn.predict(&test_input).expect("predict should succeed after training");
 
         assert_eq!(prediction.len(), 1);
     }

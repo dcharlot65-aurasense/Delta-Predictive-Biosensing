@@ -1,0 +1,52 @@
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+Copyright 2026 AuraSense Tech Corporation
+
+The contents of this directory — the Delta-Predictive Biosensing educational
+corpus, comprising the chapter text, notebooks, glossary and bibliography — are
+licensed under the Creative Commons Attribution 4.0 International License.
+
+You are free to:
+
+  Share  — copy and redistribute the material in any medium or format
+  Adapt  — remix, transform, and build upon the material for any purpose,
+           including commercially
+
+under the following term:
+
+  Attribution — You must give appropriate credit, provide a link to the
+  license, and indicate if changes were made. You may do so in any reasonable
+  manner, but not in any way that suggests the licensor endorses you or your
+  use.
+
+The full legal code is available at:
+
+    https://creativecommons.org/licenses/by/4.0/legalcode
+
+and a plain-language summary at:
+
+    https://creativecommons.org/licenses/by/4.0/
+
+--------------------------------------------------------------------------------
+SCOPE
+--------------------------------------------------------------------------------
+
+This license applies ONLY to the contents of `docs/learning/`.
+
+  * Source code elsewhere in this repository is licensed under the Apache
+    License 2.0 — see the LICENSE file at the repository root.
+  * Brand assets in `assets/branding/` are NOT licensed for reuse — see
+    `assets/branding/LICENSE`.
+
+The corpus cites external works throughout. Citation does not transfer any
+license: the cited papers, datasets and instruments remain under their own terms,
+and any figures or excerpts reproduced from them are used under the terms granted
+by their respective rights holders, not under this license.
+
+--------------------------------------------------------------------------------
+INTENDED USE
+--------------------------------------------------------------------------------
+
+This material is educational. It is not clinical guidance, and nothing in it is a
+substitute for professional judgement. See the NOTICE file at the repository root
+for the project's full intended-use statement.

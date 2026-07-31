@@ -743,7 +743,7 @@ mod proptest_tests {
         fn spike_event_serialization_roundtrip(
             timestamp in 0.0f64..1000.0,
             channel in 0u32..1000,
-            polarity in prop_oneof![-1i8, 1i8],
+            polarity in prop_oneof![Just(-1i8), Just(1i8)],
             magnitude in 0.0f32..100.0,
         ) {
             let event = SpikeEvent::new(timestamp, channel, polarity, magnitude);
@@ -803,7 +803,7 @@ mod proptest_tests {
         fn spike_event_validated_accepts_valid_polarity(
             timestamp in 0.0f64..1000.0,
             channel in 0u32..1000,
-            polarity in prop_oneof![-1i8, 1i8],
+            polarity in prop_oneof![Just(-1i8), Just(1i8)],
             magnitude in 0.0f32..100.0,
         ) {
             let result = SpikeEvent::new_validated(timestamp, channel, polarity, magnitude);

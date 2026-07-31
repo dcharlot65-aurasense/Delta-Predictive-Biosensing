@@ -4,8 +4,8 @@ version = "0.4.0"
 edition = "2021"
 authors = ["AuraSense Tech Corporation"]
 description = "Model export capabilities for DPB Framework - ONNX, TensorFlow, and more"
-license = "MIT"
-repository = "https://github.com/dcharlot65-aurasense/Delta-Predictive-Biosensing"
+license.workspace = true
+repository.workspace = true
 keywords = ["onnx", "export", "model", "neural-network", "biosignal"]
 categories = ["science", "encoding"]
 

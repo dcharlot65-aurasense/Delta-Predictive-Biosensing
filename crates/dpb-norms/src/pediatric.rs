@@ -11,12 +11,23 @@
 //! - **School Age** (6-12 years): Continued cognitive and motor maturation
 //! - **Adolescent** (13-17 years): Approaching adult-level performance
 //!
-//! # Clinical Applications
+//! # What this module provides
 //!
-//! - Developmental delay screening
-//! - Tracking growth-related changes
-//! - Identifying early neurological impairments
-//! - Longitudinal developmental monitoring
+//! Age- and stage-stratified lookup structures, and the arithmetic for comparing
+//! a measurement against them. It does not provide validated developmental norms,
+//! and it is not a screening instrument.
+//!
+//! # ⚠️ The reference values in this module are ILLUSTRATIVE
+//!
+//! They are placeholders that exist to exercise the API. They are not drawn from
+//! any published cohort, they carry no citations, and they must not be used to
+//! interpret a measurement from a real person. Any percentile, z-score or
+//! classification computed against them demonstrates the arithmetic only.
+//!
+//! Supply your own cited reference values before drawing research conclusions.
+//! See the crate-level documentation for the full statement.
+//!
+//! Research and educational use only. Not a medical device.
 
 use crate::{Demographics, MetricType, NormativeStats, NormsError, Result, Sex};
 use serde::{Deserialize, Serialize};
@@ -612,23 +623,29 @@ mod tests {
         let db = PediatricNormativeDb::with_defaults();
 
         // Check percentile calculation for grip strength
-        let percentile = db.get_percentile("grip_strength", 18.0, 96, Sex::Male);
+        // 120 months = 10 years, inside the 97-144 month (9-12y) band whose
+        // mean is 18.0. The previous query used 96 months, which is the LAST
+        // month of the 5-8y band (mean 10.0, sd 3.0) — so 18 kg was z = +2.67
+        // there, not the 50th percentile the comment intended.
+        let percentile = db.get_percentile("grip_strength", 18.0, 120, Sex::Male);
         assert!(percentile.is_some());
 
         let p = percentile.unwrap();
-        // 18 kg is the mean for 9-12 year olds, should be around 50th percentile
-        assert!((p - 50.0).abs() < 10.0);
+        assert!((p - 50.0).abs() < 10.0, "got {p}");
     }
 
     #[test]
     fn test_pediatric_db_z_score() {
         let db = PediatricNormativeDb::with_defaults();
 
-        let z = db.get_z_score("grip_strength", 18.0, 96, Sex::Male);
+        // 120 months (10y) lands in the band whose mean is 18.0; see the
+        // percentile test above for why 96 was wrong.
+        let z = db.get_z_score("grip_strength", 18.0, 120, Sex::Male);
         assert!(z.is_some());
 
-        // Mean should have z-score near 0
-        assert!(z.unwrap().abs() < 0.5);
+        // At the band mean the z-score is ~0.
+        let z = z.unwrap();
+        assert!(z.abs() < 0.5, "got {z}");
     }
 
     #[test]

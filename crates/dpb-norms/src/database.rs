@@ -2,6 +2,18 @@
 //!
 //! Provides age and sex-stratified normative data for comparing individual
 //! assessment results to population-based reference values.
+//!
+//! # ⚠️ The reference values in this module are ILLUSTRATIVE
+//!
+//! They are placeholders that exist to exercise the API. They are not drawn from
+//! any published cohort, they carry no citations, and they must not be used to
+//! interpret a measurement from a real person. Any percentile, z-score or
+//! classification computed against them demonstrates the arithmetic only.
+//!
+//! Supply your own cited reference values before drawing research conclusions.
+//! See the crate-level documentation for the full statement.
+//!
+//! Research and educational use only. Not a medical device.
 
 use crate::{
     Demographics, DemographicsFilter, MetricDirection, MetricType, NormativeComparison,
@@ -272,13 +284,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::SimpleReactionTime,
             &[
-                ((18, 29), None, 250.0, 40.0, 500),
-                ((30, 39), None, 260.0, 42.0, 450),
-                ((40, 49), None, 275.0, 45.0, 400),
-                ((50, 59), None, 290.0, 50.0, 380),
-                ((60, 69), None, 310.0, 55.0, 350),
-                ((70, 79), None, 340.0, 65.0, 300),
-                ((80, 89), None, 380.0, 80.0, 200),
+                ((18, 29), None, 250.0, 40.0),
+                ((30, 39), None, 260.0, 42.0),
+                ((40, 49), None, 275.0, 45.0),
+                ((50, 59), None, 290.0, 50.0),
+                ((60, 69), None, 310.0, 55.0),
+                ((70, 79), None, 340.0, 65.0),
+                ((80, 89), None, 380.0, 80.0),
             ],
         );
         self.set_reliability(MetricType::SimpleReactionTime, 0.85);
@@ -287,13 +299,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::ChoiceReactionTime,
             &[
-                ((18, 29), None, 350.0, 50.0, 500),
-                ((30, 39), None, 365.0, 52.0, 450),
-                ((40, 49), None, 385.0, 58.0, 400),
-                ((50, 59), None, 410.0, 65.0, 380),
-                ((60, 69), None, 450.0, 75.0, 350),
-                ((70, 79), None, 500.0, 90.0, 300),
-                ((80, 89), None, 560.0, 110.0, 200),
+                ((18, 29), None, 350.0, 50.0),
+                ((30, 39), None, 365.0, 52.0),
+                ((40, 49), None, 385.0, 58.0),
+                ((50, 59), None, 410.0, 65.0),
+                ((60, 69), None, 450.0, 75.0),
+                ((70, 79), None, 500.0, 90.0),
+                ((80, 89), None, 560.0, 110.0),
             ],
         );
         self.set_reliability(MetricType::ChoiceReactionTime, 0.82);
@@ -302,13 +314,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::TrailMakingA,
             &[
-                ((18, 29), None, 22.0, 7.0, 500),
-                ((30, 39), None, 24.0, 8.0, 450),
-                ((40, 49), None, 28.0, 9.0, 400),
-                ((50, 59), None, 32.0, 10.0, 380),
-                ((60, 69), None, 38.0, 12.0, 350),
-                ((70, 79), None, 48.0, 16.0, 300),
-                ((80, 89), None, 62.0, 22.0, 200),
+                ((18, 29), None, 22.0, 7.0),
+                ((30, 39), None, 24.0, 8.0),
+                ((40, 49), None, 28.0, 9.0),
+                ((50, 59), None, 32.0, 10.0),
+                ((60, 69), None, 38.0, 12.0),
+                ((70, 79), None, 48.0, 16.0),
+                ((80, 89), None, 62.0, 22.0),
             ],
         );
         self.set_reliability(MetricType::TrailMakingA, 0.79);
@@ -317,13 +329,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::TrailMakingB,
             &[
-                ((18, 29), None, 48.0, 15.0, 500),
-                ((30, 39), None, 52.0, 16.0, 450),
-                ((40, 49), None, 60.0, 18.0, 400),
-                ((50, 59), None, 72.0, 22.0, 380),
-                ((60, 69), None, 90.0, 28.0, 350),
-                ((70, 79), None, 115.0, 38.0, 300),
-                ((80, 89), None, 150.0, 55.0, 200),
+                ((18, 29), None, 48.0, 15.0),
+                ((30, 39), None, 52.0, 16.0),
+                ((40, 49), None, 60.0, 18.0),
+                ((50, 59), None, 72.0, 22.0),
+                ((60, 69), None, 90.0, 28.0),
+                ((70, 79), None, 115.0, 38.0),
+                ((80, 89), None, 150.0, 55.0),
             ],
         );
         self.set_reliability(MetricType::TrailMakingB, 0.82);
@@ -332,10 +344,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::MocaTotal,
             &[
-                ((18, 59), None, 27.5, 2.0, 1000),
-                ((60, 69), None, 26.5, 2.2, 800),
-                ((70, 79), None, 25.5, 2.5, 600),
-                ((80, 89), None, 24.0, 3.0, 400),
+                ((18, 59), None, 27.5, 2.0),
+                ((60, 69), None, 26.5, 2.2),
+                ((70, 79), None, 25.5, 2.5),
+                ((80, 89), None, 24.0, 3.0),
             ],
         );
         self.set_reliability(MetricType::MocaTotal, 0.92);
@@ -346,20 +358,20 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::GaitVelocity,
             &[
-                ((18, 29), Some(crate::demographics::Sex::Male), 1.35, 0.15, 300),
-                ((18, 29), Some(crate::demographics::Sex::Female), 1.30, 0.14, 300),
-                ((30, 39), Some(crate::demographics::Sex::Male), 1.32, 0.15, 280),
-                ((30, 39), Some(crate::demographics::Sex::Female), 1.28, 0.14, 280),
-                ((40, 49), Some(crate::demographics::Sex::Male), 1.28, 0.16, 260),
-                ((40, 49), Some(crate::demographics::Sex::Female), 1.24, 0.15, 260),
-                ((50, 59), Some(crate::demographics::Sex::Male), 1.22, 0.18, 250),
-                ((50, 59), Some(crate::demographics::Sex::Female), 1.18, 0.16, 250),
-                ((60, 69), Some(crate::demographics::Sex::Male), 1.15, 0.20, 240),
-                ((60, 69), Some(crate::demographics::Sex::Female), 1.10, 0.18, 240),
-                ((70, 79), Some(crate::demographics::Sex::Male), 1.05, 0.22, 200),
-                ((70, 79), Some(crate::demographics::Sex::Female), 0.98, 0.20, 200),
-                ((80, 89), Some(crate::demographics::Sex::Male), 0.90, 0.25, 150),
-                ((80, 89), Some(crate::demographics::Sex::Female), 0.82, 0.22, 150),
+                ((18, 29), Some(crate::demographics::Sex::Male), 1.35, 0.15),
+                ((18, 29), Some(crate::demographics::Sex::Female), 1.30, 0.14),
+                ((30, 39), Some(crate::demographics::Sex::Male), 1.32, 0.15),
+                ((30, 39), Some(crate::demographics::Sex::Female), 1.28, 0.14),
+                ((40, 49), Some(crate::demographics::Sex::Male), 1.28, 0.16),
+                ((40, 49), Some(crate::demographics::Sex::Female), 1.24, 0.15),
+                ((50, 59), Some(crate::demographics::Sex::Male), 1.22, 0.18),
+                ((50, 59), Some(crate::demographics::Sex::Female), 1.18, 0.16),
+                ((60, 69), Some(crate::demographics::Sex::Male), 1.15, 0.20),
+                ((60, 69), Some(crate::demographics::Sex::Female), 1.10, 0.18),
+                ((70, 79), Some(crate::demographics::Sex::Male), 1.05, 0.22),
+                ((70, 79), Some(crate::demographics::Sex::Female), 0.98, 0.20),
+                ((80, 89), Some(crate::demographics::Sex::Male), 0.90, 0.25),
+                ((80, 89), Some(crate::demographics::Sex::Female), 0.82, 0.22),
             ],
         );
         self.set_reliability(MetricType::GaitVelocity, 0.95);
@@ -368,12 +380,12 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::TimedUpAndGo,
             &[
-                ((18, 39), None, 7.0, 1.2, 400),
-                ((40, 49), None, 7.5, 1.3, 350),
-                ((50, 59), None, 8.0, 1.5, 320),
-                ((60, 69), None, 9.0, 2.0, 300),
-                ((70, 79), None, 10.5, 2.5, 250),
-                ((80, 89), None, 12.5, 3.5, 180),
+                ((18, 39), None, 7.0, 1.2),
+                ((40, 49), None, 7.5, 1.3),
+                ((50, 59), None, 8.0, 1.5),
+                ((60, 69), None, 9.0, 2.0),
+                ((70, 79), None, 10.5, 2.5),
+                ((80, 89), None, 12.5, 3.5),
             ],
         );
         self.set_reliability(MetricType::TimedUpAndGo, 0.97);
@@ -382,20 +394,20 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::GripStrength,
             &[
-                ((18, 29), Some(crate::demographics::Sex::Male), 48.0, 8.0, 300),
-                ((18, 29), Some(crate::demographics::Sex::Female), 30.0, 5.5, 300),
-                ((30, 39), Some(crate::demographics::Sex::Male), 47.0, 8.5, 280),
-                ((30, 39), Some(crate::demographics::Sex::Female), 29.0, 5.5, 280),
-                ((40, 49), Some(crate::demographics::Sex::Male), 45.0, 9.0, 260),
-                ((40, 49), Some(crate::demographics::Sex::Female), 28.0, 5.5, 260),
-                ((50, 59), Some(crate::demographics::Sex::Male), 42.0, 9.0, 250),
-                ((50, 59), Some(crate::demographics::Sex::Female), 26.0, 5.5, 250),
-                ((60, 69), Some(crate::demographics::Sex::Male), 38.0, 9.5, 240),
-                ((60, 69), Some(crate::demographics::Sex::Female), 23.0, 5.5, 240),
-                ((70, 79), Some(crate::demographics::Sex::Male), 33.0, 9.0, 200),
-                ((70, 79), Some(crate::demographics::Sex::Female), 20.0, 5.0, 200),
-                ((80, 89), Some(crate::demographics::Sex::Male), 27.0, 8.0, 150),
-                ((80, 89), Some(crate::demographics::Sex::Female), 16.0, 4.5, 150),
+                ((18, 29), Some(crate::demographics::Sex::Male), 48.0, 8.0),
+                ((18, 29), Some(crate::demographics::Sex::Female), 30.0, 5.5),
+                ((30, 39), Some(crate::demographics::Sex::Male), 47.0, 8.5),
+                ((30, 39), Some(crate::demographics::Sex::Female), 29.0, 5.5),
+                ((40, 49), Some(crate::demographics::Sex::Male), 45.0, 9.0),
+                ((40, 49), Some(crate::demographics::Sex::Female), 28.0, 5.5),
+                ((50, 59), Some(crate::demographics::Sex::Male), 42.0, 9.0),
+                ((50, 59), Some(crate::demographics::Sex::Female), 26.0, 5.5),
+                ((60, 69), Some(crate::demographics::Sex::Male), 38.0, 9.5),
+                ((60, 69), Some(crate::demographics::Sex::Female), 23.0, 5.5),
+                ((70, 79), Some(crate::demographics::Sex::Male), 33.0, 9.0),
+                ((70, 79), Some(crate::demographics::Sex::Female), 20.0, 5.0),
+                ((80, 89), Some(crate::demographics::Sex::Male), 27.0, 8.0),
+                ((80, 89), Some(crate::demographics::Sex::Female), 16.0, 4.5),
             ],
         );
         self.set_reliability(MetricType::GripStrength, 0.95);
@@ -406,12 +418,12 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::SwayArea,
             &[
-                ((18, 39), None, 2.5, 1.0, 400),
-                ((40, 49), None, 3.0, 1.2, 350),
-                ((50, 59), None, 3.5, 1.5, 320),
-                ((60, 69), None, 4.5, 2.0, 300),
-                ((70, 79), None, 6.0, 2.8, 250),
-                ((80, 89), None, 8.5, 4.0, 180),
+                ((18, 39), None, 2.5, 1.0),
+                ((40, 49), None, 3.0, 1.2),
+                ((50, 59), None, 3.5, 1.5),
+                ((60, 69), None, 4.5, 2.0),
+                ((70, 79), None, 6.0, 2.8),
+                ((80, 89), None, 8.5, 4.0),
             ],
         );
         self.set_reliability(MetricType::SwayArea, 0.80);
@@ -420,9 +432,9 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::BergBalanceScale,
             &[
-                ((60, 69), None, 54.0, 2.0, 300),
-                ((70, 79), None, 52.0, 3.0, 250),
-                ((80, 89), None, 48.0, 5.0, 180),
+                ((60, 69), None, 54.0, 2.0),
+                ((70, 79), None, 52.0, 3.0),
+                ((80, 89), None, 48.0, 5.0),
             ],
         );
         self.set_reliability(MetricType::BergBalanceScale, 0.98);
@@ -433,13 +445,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::HrvSdnn,
             &[
-                ((18, 29), None, 140.0, 40.0, 400),
-                ((30, 39), None, 125.0, 38.0, 380),
-                ((40, 49), None, 110.0, 35.0, 350),
-                ((50, 59), None, 95.0, 32.0, 320),
-                ((60, 69), None, 80.0, 28.0, 300),
-                ((70, 79), None, 65.0, 25.0, 250),
-                ((80, 89), None, 50.0, 20.0, 180),
+                ((18, 29), None, 140.0, 40.0),
+                ((30, 39), None, 125.0, 38.0),
+                ((40, 49), None, 110.0, 35.0),
+                ((50, 59), None, 95.0, 32.0),
+                ((60, 69), None, 80.0, 28.0),
+                ((70, 79), None, 65.0, 25.0),
+                ((80, 89), None, 50.0, 20.0),
             ],
         );
         self.set_reliability(MetricType::HrvSdnn, 0.85);
@@ -448,13 +460,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::HrvRmssd,
             &[
-                ((18, 29), None, 45.0, 20.0, 400),
-                ((30, 39), None, 38.0, 18.0, 380),
-                ((40, 49), None, 32.0, 15.0, 350),
-                ((50, 59), None, 26.0, 12.0, 320),
-                ((60, 69), None, 22.0, 10.0, 300),
-                ((70, 79), None, 18.0, 8.0, 250),
-                ((80, 89), None, 14.0, 6.0, 180),
+                ((18, 29), None, 45.0, 20.0),
+                ((30, 39), None, 38.0, 18.0),
+                ((40, 49), None, 32.0, 15.0),
+                ((50, 59), None, 26.0, 12.0),
+                ((60, 69), None, 22.0, 10.0),
+                ((70, 79), None, 18.0, 8.0),
+                ((80, 89), None, 14.0, 6.0),
             ],
         );
         self.set_reliability(MetricType::HrvRmssd, 0.82);
@@ -465,13 +477,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::TotalSleepTime,
             &[
-                ((18, 29), None, 450.0, 45.0, 400),
-                ((30, 39), None, 440.0, 50.0, 380),
-                ((40, 49), None, 425.0, 55.0, 350),
-                ((50, 59), None, 410.0, 60.0, 320),
-                ((60, 69), None, 390.0, 65.0, 300),
-                ((70, 79), None, 370.0, 70.0, 250),
-                ((80, 89), None, 350.0, 75.0, 180),
+                ((18, 29), None, 450.0, 45.0),
+                ((30, 39), None, 440.0, 50.0),
+                ((40, 49), None, 425.0, 55.0),
+                ((50, 59), None, 410.0, 60.0),
+                ((60, 69), None, 390.0, 65.0),
+                ((70, 79), None, 370.0, 70.0),
+                ((80, 89), None, 350.0, 75.0),
             ],
         );
         self.set_reliability(MetricType::TotalSleepTime, 0.75);
@@ -480,13 +492,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::SleepEfficiency,
             &[
-                ((18, 29), None, 92.0, 5.0, 400),
-                ((30, 39), None, 90.0, 6.0, 380),
-                ((40, 49), None, 88.0, 7.0, 350),
-                ((50, 59), None, 85.0, 8.0, 320),
-                ((60, 69), None, 82.0, 9.0, 300),
-                ((70, 79), None, 78.0, 10.0, 250),
-                ((80, 89), None, 74.0, 12.0, 180),
+                ((18, 29), None, 92.0, 5.0),
+                ((30, 39), None, 90.0, 6.0),
+                ((40, 49), None, 88.0, 7.0),
+                ((50, 59), None, 85.0, 8.0),
+                ((60, 69), None, 82.0, 9.0),
+                ((70, 79), None, 78.0, 10.0),
+                ((80, 89), None, 74.0, 12.0),
             ],
         );
         self.set_reliability(MetricType::SleepEfficiency, 0.78);
@@ -497,18 +509,18 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::PressurePainThreshold,
             &[
-                ((18, 29), Some(crate::demographics::Sex::Male), 450.0, 120.0, 200),
-                ((18, 29), Some(crate::demographics::Sex::Female), 350.0, 100.0, 200),
-                ((30, 39), Some(crate::demographics::Sex::Male), 440.0, 115.0, 180),
-                ((30, 39), Some(crate::demographics::Sex::Female), 340.0, 95.0, 180),
-                ((40, 49), Some(crate::demographics::Sex::Male), 420.0, 110.0, 160),
-                ((40, 49), Some(crate::demographics::Sex::Female), 330.0, 90.0, 160),
-                ((50, 59), Some(crate::demographics::Sex::Male), 400.0, 105.0, 150),
-                ((50, 59), Some(crate::demographics::Sex::Female), 315.0, 85.0, 150),
-                ((60, 69), Some(crate::demographics::Sex::Male), 380.0, 100.0, 140),
-                ((60, 69), Some(crate::demographics::Sex::Female), 300.0, 80.0, 140),
-                ((70, 89), Some(crate::demographics::Sex::Male), 360.0, 95.0, 100),
-                ((70, 89), Some(crate::demographics::Sex::Female), 285.0, 75.0, 100),
+                ((18, 29), Some(crate::demographics::Sex::Male), 450.0, 120.0),
+                ((18, 29), Some(crate::demographics::Sex::Female), 350.0, 100.0),
+                ((30, 39), Some(crate::demographics::Sex::Male), 440.0, 115.0),
+                ((30, 39), Some(crate::demographics::Sex::Female), 340.0, 95.0),
+                ((40, 49), Some(crate::demographics::Sex::Male), 420.0, 110.0),
+                ((40, 49), Some(crate::demographics::Sex::Female), 330.0, 90.0),
+                ((50, 59), Some(crate::demographics::Sex::Male), 400.0, 105.0),
+                ((50, 59), Some(crate::demographics::Sex::Female), 315.0, 85.0),
+                ((60, 69), Some(crate::demographics::Sex::Male), 380.0, 100.0),
+                ((60, 69), Some(crate::demographics::Sex::Female), 300.0, 80.0),
+                ((70, 89), Some(crate::demographics::Sex::Male), 360.0, 95.0),
+                ((70, 89), Some(crate::demographics::Sex::Female), 285.0, 75.0),
             ],
         );
         self.set_reliability(MetricType::PressurePainThreshold, 0.88);
@@ -517,14 +529,14 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::PainTolerance,
             &[
-                ((18, 29), Some(crate::demographics::Sex::Male), 650.0, 150.0, 200),
-                ((18, 29), Some(crate::demographics::Sex::Female), 520.0, 130.0, 200),
-                ((30, 49), Some(crate::demographics::Sex::Male), 620.0, 145.0, 180),
-                ((30, 49), Some(crate::demographics::Sex::Female), 500.0, 125.0, 180),
-                ((50, 69), Some(crate::demographics::Sex::Male), 580.0, 140.0, 150),
-                ((50, 69), Some(crate::demographics::Sex::Female), 470.0, 120.0, 150),
-                ((70, 89), Some(crate::demographics::Sex::Male), 540.0, 135.0, 100),
-                ((70, 89), Some(crate::demographics::Sex::Female), 440.0, 115.0, 100),
+                ((18, 29), Some(crate::demographics::Sex::Male), 650.0, 150.0),
+                ((18, 29), Some(crate::demographics::Sex::Female), 520.0, 130.0),
+                ((30, 49), Some(crate::demographics::Sex::Male), 620.0, 145.0),
+                ((30, 49), Some(crate::demographics::Sex::Female), 500.0, 125.0),
+                ((50, 69), Some(crate::demographics::Sex::Male), 580.0, 140.0),
+                ((50, 69), Some(crate::demographics::Sex::Female), 470.0, 120.0),
+                ((70, 89), Some(crate::demographics::Sex::Male), 540.0, 135.0),
+                ((70, 89), Some(crate::demographics::Sex::Female), 440.0, 115.0),
             ],
         );
         self.set_reliability(MetricType::PainTolerance, 0.85);
@@ -533,10 +545,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::CpmEffect,
             &[
-                ((18, 39), None, 35.0, 15.0, 200),
-                ((40, 59), None, 30.0, 14.0, 180),
-                ((60, 79), None, 22.0, 12.0, 150),
-                ((80, 89), None, 15.0, 10.0, 80),
+                ((18, 39), None, 35.0, 15.0),
+                ((40, 59), None, 30.0, 14.0),
+                ((60, 79), None, 22.0, 12.0),
+                ((80, 89), None, 15.0, 10.0),
             ],
         );
         self.set_reliability(MetricType::CpmEffect, 0.75);
@@ -545,13 +557,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::VibrationThreshold,
             &[
-                ((18, 29), None, 0.5, 0.2, 300),
-                ((30, 39), None, 0.6, 0.25, 280),
-                ((40, 49), None, 0.8, 0.3, 260),
-                ((50, 59), None, 1.2, 0.4, 250),
-                ((60, 69), None, 2.0, 0.6, 240),
-                ((70, 79), None, 3.5, 1.0, 200),
-                ((80, 89), None, 5.5, 1.5, 150),
+                ((18, 29), None, 0.5, 0.2),
+                ((30, 39), None, 0.6, 0.25),
+                ((40, 49), None, 0.8, 0.3),
+                ((50, 59), None, 1.2, 0.4),
+                ((60, 69), None, 2.0, 0.6),
+                ((70, 79), None, 3.5, 1.0),
+                ((80, 89), None, 5.5, 1.5),
             ],
         );
         self.set_reliability(MetricType::VibrationThreshold, 0.82);
@@ -560,12 +572,12 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::JointPositionError,
             &[
-                ((18, 39), None, 2.5, 1.0, 300),
-                ((40, 49), None, 3.0, 1.2, 280),
-                ((50, 59), None, 3.5, 1.4, 260),
-                ((60, 69), None, 4.5, 1.8, 240),
-                ((70, 79), None, 6.0, 2.2, 200),
-                ((80, 89), None, 8.0, 3.0, 150),
+                ((18, 39), None, 2.5, 1.0),
+                ((40, 49), None, 3.0, 1.2),
+                ((50, 59), None, 3.5, 1.4),
+                ((60, 69), None, 4.5, 1.8),
+                ((70, 79), None, 6.0, 2.2),
+                ((80, 89), None, 8.0, 3.0),
             ],
         );
         self.set_reliability(MetricType::JointPositionError, 0.78);
@@ -576,12 +588,12 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::SwayVelocity,
             &[
-                ((18, 39), None, 0.8, 0.25, 400),
-                ((40, 49), None, 0.95, 0.30, 350),
-                ((50, 59), None, 1.1, 0.35, 320),
-                ((60, 69), None, 1.4, 0.45, 300),
-                ((70, 79), None, 1.8, 0.55, 250),
-                ((80, 89), None, 2.4, 0.70, 180),
+                ((18, 39), None, 0.8, 0.25),
+                ((40, 49), None, 0.95, 0.30),
+                ((50, 59), None, 1.1, 0.35),
+                ((60, 69), None, 1.4, 0.45),
+                ((70, 79), None, 1.8, 0.55),
+                ((80, 89), None, 2.4, 0.70),
             ],
         );
         self.set_reliability(MetricType::SwayVelocity, 0.82);
@@ -590,12 +602,12 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::SwayPathLength,
             &[
-                ((18, 39), None, 25.0, 8.0, 400),
-                ((40, 49), None, 30.0, 10.0, 350),
-                ((50, 59), None, 36.0, 12.0, 320),
-                ((60, 69), None, 45.0, 15.0, 300),
-                ((70, 79), None, 58.0, 20.0, 250),
-                ((80, 89), None, 75.0, 28.0, 180),
+                ((18, 39), None, 25.0, 8.0),
+                ((40, 49), None, 30.0, 10.0),
+                ((50, 59), None, 36.0, 12.0),
+                ((60, 69), None, 45.0, 15.0),
+                ((70, 79), None, 58.0, 20.0),
+                ((80, 89), None, 75.0, 28.0),
             ],
         );
         self.set_reliability(MetricType::SwayPathLength, 0.80);
@@ -604,12 +616,12 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::LosMaxExcursion,
             &[
-                ((18, 39), None, 95.0, 8.0, 350),
-                ((40, 49), None, 92.0, 9.0, 320),
-                ((50, 59), None, 88.0, 10.0, 300),
-                ((60, 69), None, 82.0, 12.0, 280),
-                ((70, 79), None, 74.0, 14.0, 220),
-                ((80, 89), None, 65.0, 16.0, 150),
+                ((18, 39), None, 95.0, 8.0),
+                ((40, 49), None, 92.0, 9.0),
+                ((50, 59), None, 88.0, 10.0),
+                ((60, 69), None, 82.0, 12.0),
+                ((70, 79), None, 74.0, 14.0),
+                ((80, 89), None, 65.0, 16.0),
             ],
         );
         self.set_reliability(MetricType::LosMaxExcursion, 0.85);
@@ -618,12 +630,12 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::LosReactionTime,
             &[
-                ((18, 39), None, 450.0, 80.0, 350),
-                ((40, 49), None, 480.0, 90.0, 320),
-                ((50, 59), None, 520.0, 100.0, 300),
-                ((60, 69), None, 580.0, 120.0, 280),
-                ((70, 79), None, 660.0, 150.0, 220),
-                ((80, 89), None, 780.0, 180.0, 150),
+                ((18, 39), None, 450.0, 80.0),
+                ((40, 49), None, 480.0, 90.0),
+                ((50, 59), None, 520.0, 100.0),
+                ((60, 69), None, 580.0, 120.0),
+                ((70, 79), None, 660.0, 150.0),
+                ((80, 89), None, 780.0, 180.0),
             ],
         );
         self.set_reliability(MetricType::LosReactionTime, 0.82);
@@ -634,18 +646,18 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::RateOfForceDevelopment,
             &[
-                ((18, 29), Some(crate::demographics::Sex::Male), 1200.0, 300.0, 200),
-                ((18, 29), Some(crate::demographics::Sex::Female), 750.0, 200.0, 200),
-                ((30, 39), Some(crate::demographics::Sex::Male), 1100.0, 280.0, 180),
-                ((30, 39), Some(crate::demographics::Sex::Female), 700.0, 185.0, 180),
-                ((40, 49), Some(crate::demographics::Sex::Male), 950.0, 260.0, 160),
-                ((40, 49), Some(crate::demographics::Sex::Female), 620.0, 170.0, 160),
-                ((50, 59), Some(crate::demographics::Sex::Male), 800.0, 240.0, 150),
-                ((50, 59), Some(crate::demographics::Sex::Female), 530.0, 155.0, 150),
-                ((60, 69), Some(crate::demographics::Sex::Male), 650.0, 220.0, 140),
-                ((60, 69), Some(crate::demographics::Sex::Female), 440.0, 140.0, 140),
-                ((70, 89), Some(crate::demographics::Sex::Male), 480.0, 180.0, 100),
-                ((70, 89), Some(crate::demographics::Sex::Female), 320.0, 120.0, 100),
+                ((18, 29), Some(crate::demographics::Sex::Male), 1200.0, 300.0),
+                ((18, 29), Some(crate::demographics::Sex::Female), 750.0, 200.0),
+                ((30, 39), Some(crate::demographics::Sex::Male), 1100.0, 280.0),
+                ((30, 39), Some(crate::demographics::Sex::Female), 700.0, 185.0),
+                ((40, 49), Some(crate::demographics::Sex::Male), 950.0, 260.0),
+                ((40, 49), Some(crate::demographics::Sex::Female), 620.0, 170.0),
+                ((50, 59), Some(crate::demographics::Sex::Male), 800.0, 240.0),
+                ((50, 59), Some(crate::demographics::Sex::Female), 530.0, 155.0),
+                ((60, 69), Some(crate::demographics::Sex::Male), 650.0, 220.0),
+                ((60, 69), Some(crate::demographics::Sex::Female), 440.0, 140.0),
+                ((70, 89), Some(crate::demographics::Sex::Male), 480.0, 180.0),
+                ((70, 89), Some(crate::demographics::Sex::Female), 320.0, 120.0),
             ],
         );
         self.set_reliability(MetricType::RateOfForceDevelopment, 0.90);
@@ -654,13 +666,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::TappingFrequency,
             &[
-                ((18, 29), None, 6.0, 0.8, 300),
-                ((30, 39), None, 5.8, 0.9, 280),
-                ((40, 49), None, 5.5, 0.9, 260),
-                ((50, 59), None, 5.2, 1.0, 250),
-                ((60, 69), None, 4.8, 1.1, 240),
-                ((70, 79), None, 4.3, 1.2, 200),
-                ((80, 89), None, 3.7, 1.3, 150),
+                ((18, 29), None, 6.0, 0.8),
+                ((30, 39), None, 5.8, 0.9),
+                ((40, 49), None, 5.5, 0.9),
+                ((50, 59), None, 5.2, 1.0),
+                ((60, 69), None, 4.8, 1.1),
+                ((70, 79), None, 4.3, 1.2),
+                ((80, 89), None, 3.7, 1.3),
             ],
         );
         self.set_reliability(MetricType::TappingFrequency, 0.88);
@@ -669,14 +681,14 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::StrideLength,
             &[
-                ((18, 39), Some(crate::demographics::Sex::Male), 1.50, 0.12, 250),
-                ((18, 39), Some(crate::demographics::Sex::Female), 1.35, 0.11, 250),
-                ((40, 59), Some(crate::demographics::Sex::Male), 1.45, 0.13, 220),
-                ((40, 59), Some(crate::demographics::Sex::Female), 1.30, 0.12, 220),
-                ((60, 79), Some(crate::demographics::Sex::Male), 1.35, 0.15, 180),
-                ((60, 79), Some(crate::demographics::Sex::Female), 1.20, 0.14, 180),
-                ((80, 89), Some(crate::demographics::Sex::Male), 1.20, 0.18, 120),
-                ((80, 89), Some(crate::demographics::Sex::Female), 1.05, 0.16, 120),
+                ((18, 39), Some(crate::demographics::Sex::Male), 1.50, 0.12),
+                ((18, 39), Some(crate::demographics::Sex::Female), 1.35, 0.11),
+                ((40, 59), Some(crate::demographics::Sex::Male), 1.45, 0.13),
+                ((40, 59), Some(crate::demographics::Sex::Female), 1.30, 0.12),
+                ((60, 79), Some(crate::demographics::Sex::Male), 1.35, 0.15),
+                ((60, 79), Some(crate::demographics::Sex::Female), 1.20, 0.14),
+                ((80, 89), Some(crate::demographics::Sex::Male), 1.20, 0.18),
+                ((80, 89), Some(crate::demographics::Sex::Female), 1.05, 0.16),
             ],
         );
         self.set_reliability(MetricType::StrideLength, 0.92);
@@ -685,12 +697,12 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::Cadence,
             &[
-                ((18, 39), None, 115.0, 10.0, 400),
-                ((40, 49), None, 112.0, 11.0, 350),
-                ((50, 59), None, 108.0, 12.0, 320),
-                ((60, 69), None, 104.0, 13.0, 300),
-                ((70, 79), None, 98.0, 14.0, 250),
-                ((80, 89), None, 90.0, 16.0, 180),
+                ((18, 39), None, 115.0, 10.0),
+                ((40, 49), None, 112.0, 11.0),
+                ((50, 59), None, 108.0, 12.0),
+                ((60, 69), None, 104.0, 13.0),
+                ((70, 79), None, 98.0, 14.0),
+                ((80, 89), None, 90.0, 16.0),
             ],
         );
         self.set_reliability(MetricType::Cadence, 0.90);
@@ -701,13 +713,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::HeartRate,
             &[
-                ((18, 29), None, 68.0, 10.0, 500),
-                ((30, 39), None, 70.0, 10.0, 480),
-                ((40, 49), None, 72.0, 11.0, 450),
-                ((50, 59), None, 74.0, 11.0, 420),
-                ((60, 69), None, 72.0, 10.0, 400),
-                ((70, 79), None, 70.0, 10.0, 350),
-                ((80, 89), None, 72.0, 12.0, 250),
+                ((18, 29), None, 68.0, 10.0),
+                ((30, 39), None, 70.0, 10.0),
+                ((40, 49), None, 72.0, 11.0),
+                ((50, 59), None, 74.0, 11.0),
+                ((60, 69), None, 72.0, 10.0),
+                ((70, 79), None, 70.0, 10.0),
+                ((80, 89), None, 72.0, 12.0),
             ],
         );
         self.set_reliability(MetricType::HeartRate, 0.92);
@@ -716,10 +728,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::RespiratoryRate,
             &[
-                ((18, 39), None, 14.0, 2.5, 400),
-                ((40, 59), None, 15.0, 3.0, 380),
-                ((60, 79), None, 16.0, 3.5, 300),
-                ((80, 89), None, 18.0, 4.0, 200),
+                ((18, 39), None, 14.0, 2.5),
+                ((40, 59), None, 15.0, 3.0),
+                ((60, 79), None, 16.0, 3.5),
+                ((80, 89), None, 18.0, 4.0),
             ],
         );
         self.set_reliability(MetricType::RespiratoryRate, 0.75);
@@ -728,10 +740,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::SpO2,
             &[
-                ((18, 59), None, 97.5, 1.0, 500),
-                ((60, 69), None, 97.0, 1.2, 400),
-                ((70, 79), None, 96.5, 1.5, 300),
-                ((80, 89), None, 95.5, 2.0, 200),
+                ((18, 59), None, 97.5, 1.0),
+                ((60, 69), None, 97.0, 1.2),
+                ((70, 79), None, 96.5, 1.5),
+                ((80, 89), None, 95.5, 2.0),
             ],
         );
         self.set_reliability(MetricType::SpO2, 0.85);
@@ -740,13 +752,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::BpSystolic,
             &[
-                ((18, 29), None, 115.0, 10.0, 500),
-                ((30, 39), None, 118.0, 11.0, 480),
-                ((40, 49), None, 122.0, 12.0, 450),
-                ((50, 59), None, 128.0, 14.0, 420),
-                ((60, 69), None, 132.0, 16.0, 400),
-                ((70, 79), None, 138.0, 18.0, 350),
-                ((80, 89), None, 142.0, 20.0, 250),
+                ((18, 29), None, 115.0, 10.0),
+                ((30, 39), None, 118.0, 11.0),
+                ((40, 49), None, 122.0, 12.0),
+                ((50, 59), None, 128.0, 14.0),
+                ((60, 69), None, 132.0, 16.0),
+                ((70, 79), None, 138.0, 18.0),
+                ((80, 89), None, 142.0, 20.0),
             ],
         );
         self.set_reliability(MetricType::BpSystolic, 0.88);
@@ -755,13 +767,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::BpDiastolic,
             &[
-                ((18, 29), None, 72.0, 8.0, 500),
-                ((30, 39), None, 75.0, 8.0, 480),
-                ((40, 49), None, 78.0, 9.0, 450),
-                ((50, 59), None, 80.0, 9.0, 420),
-                ((60, 69), None, 78.0, 10.0, 400),
-                ((70, 79), None, 76.0, 10.0, 350),
-                ((80, 89), None, 74.0, 11.0, 250),
+                ((18, 29), None, 72.0, 8.0),
+                ((30, 39), None, 75.0, 8.0),
+                ((40, 49), None, 78.0, 9.0),
+                ((50, 59), None, 80.0, 9.0),
+                ((60, 69), None, 78.0, 10.0),
+                ((70, 79), None, 76.0, 10.0),
+                ((80, 89), None, 74.0, 11.0),
             ],
         );
         self.set_reliability(MetricType::BpDiastolic, 0.86);
@@ -770,13 +782,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::HrvPnn50,
             &[
-                ((18, 29), None, 20.0, 12.0, 400),
-                ((30, 39), None, 16.0, 10.0, 380),
-                ((40, 49), None, 12.0, 8.0, 350),
-                ((50, 59), None, 8.0, 6.0, 320),
-                ((60, 69), None, 5.0, 4.0, 300),
-                ((70, 79), None, 3.0, 3.0, 250),
-                ((80, 89), None, 2.0, 2.0, 180),
+                ((18, 29), None, 20.0, 12.0),
+                ((30, 39), None, 16.0, 10.0),
+                ((40, 49), None, 12.0, 8.0),
+                ((50, 59), None, 8.0, 6.0),
+                ((60, 69), None, 5.0, 4.0),
+                ((70, 79), None, 3.0, 3.0),
+                ((80, 89), None, 2.0, 2.0),
             ],
         );
         self.set_reliability(MetricType::HrvPnn50, 0.80);
@@ -787,10 +799,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::DigitSpanForward,
             &[
-                ((18, 39), None, 7.0, 1.2, 400),
-                ((40, 59), None, 6.8, 1.3, 350),
-                ((60, 79), None, 6.2, 1.4, 280),
-                ((80, 89), None, 5.5, 1.5, 180),
+                ((18, 39), None, 7.0, 1.2),
+                ((40, 59), None, 6.8, 1.3),
+                ((60, 79), None, 6.2, 1.4),
+                ((80, 89), None, 5.5, 1.5),
             ],
         );
         self.set_reliability(MetricType::DigitSpanForward, 0.80);
@@ -799,10 +811,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::DigitSpanBackward,
             &[
-                ((18, 39), None, 5.5, 1.3, 400),
-                ((40, 59), None, 5.2, 1.4, 350),
-                ((60, 79), None, 4.5, 1.5, 280),
-                ((80, 89), None, 3.8, 1.6, 180),
+                ((18, 39), None, 5.5, 1.3),
+                ((40, 59), None, 5.2, 1.4),
+                ((60, 79), None, 4.5, 1.5),
+                ((80, 89), None, 3.8, 1.6),
             ],
         );
         self.set_reliability(MetricType::DigitSpanBackward, 0.78);
@@ -811,10 +823,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::VerbalFluency,
             &[
-                ((18, 39), None, 18.0, 5.0, 400),
-                ((40, 59), None, 16.0, 5.0, 350),
-                ((60, 79), None, 13.0, 4.5, 280),
-                ((80, 89), None, 10.0, 4.0, 180),
+                ((18, 39), None, 18.0, 5.0),
+                ((40, 59), None, 16.0, 5.0),
+                ((60, 79), None, 13.0, 4.5),
+                ((80, 89), None, 10.0, 4.0),
             ],
         );
         self.set_reliability(MetricType::VerbalFluency, 0.82);
@@ -823,13 +835,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::StroopInterference,
             &[
-                ((18, 29), None, 40.0, 20.0, 400),
-                ((30, 39), None, 45.0, 22.0, 380),
-                ((40, 49), None, 55.0, 25.0, 350),
-                ((50, 59), None, 70.0, 30.0, 320),
-                ((60, 69), None, 90.0, 38.0, 280),
-                ((70, 79), None, 120.0, 50.0, 220),
-                ((80, 89), None, 160.0, 65.0, 150),
+                ((18, 29), None, 40.0, 20.0),
+                ((30, 39), None, 45.0, 22.0),
+                ((40, 49), None, 55.0, 25.0),
+                ((50, 59), None, 70.0, 30.0),
+                ((60, 69), None, 90.0, 38.0),
+                ((70, 79), None, 120.0, 50.0),
+                ((80, 89), None, 160.0, 65.0),
             ],
         );
         self.set_reliability(MetricType::StroopInterference, 0.75);
@@ -840,10 +852,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::TremorAmplitude,
             &[
-                ((18, 39), None, 0.15, 0.08, 350),
-                ((40, 59), None, 0.22, 0.12, 320),
-                ((60, 79), None, 0.35, 0.18, 280),
-                ((80, 89), None, 0.50, 0.25, 180),
+                ((18, 39), None, 0.15, 0.08),
+                ((40, 59), None, 0.22, 0.12),
+                ((60, 79), None, 0.35, 0.18),
+                ((80, 89), None, 0.50, 0.25),
             ],
         );
         self.set_reliability(MetricType::TremorAmplitude, 0.85);
@@ -852,10 +864,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::TremorFrequency,
             &[
-                ((18, 39), None, 10.0, 1.5, 350),
-                ((40, 59), None, 9.5, 1.8, 320),
-                ((60, 79), None, 8.5, 2.0, 280),
-                ((80, 89), None, 7.5, 2.2, 180),
+                ((18, 39), None, 10.0, 1.5),
+                ((40, 59), None, 9.5, 1.8),
+                ((60, 79), None, 8.5, 2.0),
+                ((80, 89), None, 7.5, 2.2),
             ],
         );
         self.set_reliability(MetricType::TremorFrequency, 0.88);
@@ -866,10 +878,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::ReactionTimeVariability,
             &[
-                ((18, 29), None, 12.0, 4.0, 250),
-                ((30, 49), None, 14.0, 4.5, 300),
-                ((50, 69), None, 18.0, 5.5, 280),
-                ((70, 89), None, 24.0, 7.0, 200),
+                ((18, 29), None, 12.0, 4.0),
+                ((30, 49), None, 14.0, 4.5),
+                ((50, 69), None, 18.0, 5.5),
+                ((70, 89), None, 24.0, 7.0),
             ],
         );
         self.set_reliability(MetricType::ReactionTimeVariability, 0.75);
@@ -878,10 +890,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::NBackAccuracy,
             &[
-                ((18, 29), None, 85.0, 8.0, 300),
-                ((30, 49), None, 82.0, 9.0, 350),
-                ((50, 69), None, 75.0, 12.0, 320),
-                ((70, 89), None, 65.0, 15.0, 180),
+                ((18, 29), None, 85.0, 8.0),
+                ((30, 49), None, 82.0, 9.0),
+                ((50, 69), None, 75.0, 12.0),
+                ((70, 89), None, 65.0, 15.0),
             ],
         );
         self.set_reliability(MetricType::NBackAccuracy, 0.78);
@@ -890,10 +902,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::NBackDPrime,
             &[
-                ((18, 29), None, 2.8, 0.6, 280),
-                ((30, 49), None, 2.5, 0.7, 320),
-                ((50, 69), None, 2.0, 0.8, 300),
-                ((70, 89), None, 1.5, 0.9, 160),
+                ((18, 29), None, 2.8, 0.6),
+                ((30, 49), None, 2.5, 0.7),
+                ((50, 69), None, 2.0, 0.8),
+                ((70, 89), None, 1.5, 0.9),
             ],
         );
         self.set_reliability(MetricType::NBackDPrime, 0.80);
@@ -902,10 +914,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::CptOmissions,
             &[
-                ((18, 29), None, 2.0, 2.5, 250),
-                ((30, 49), None, 3.5, 3.0, 300),
-                ((50, 69), None, 6.0, 4.5, 280),
-                ((70, 89), None, 12.0, 7.0, 150),
+                ((18, 29), None, 2.0, 2.5),
+                ((30, 49), None, 3.5, 3.0),
+                ((50, 69), None, 6.0, 4.5),
+                ((70, 89), None, 12.0, 7.0),
             ],
         );
         self.set_reliability(MetricType::CptOmissions, 0.72);
@@ -914,10 +926,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::CptCommissions,
             &[
-                ((18, 29), None, 15.0, 8.0, 250),
-                ((30, 49), None, 12.0, 7.0, 300),
-                ((50, 69), None, 10.0, 6.0, 280),
-                ((70, 89), None, 8.0, 5.0, 150),
+                ((18, 29), None, 15.0, 8.0),
+                ((30, 49), None, 12.0, 7.0),
+                ((50, 69), None, 10.0, 6.0),
+                ((70, 89), None, 8.0, 5.0),
             ],
         );
         self.set_reliability(MetricType::CptCommissions, 0.70);
@@ -926,10 +938,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::TrailMakingBMinusA,
             &[
-                ((18, 29), None, 25.0, 12.0, 280),
-                ((30, 49), None, 30.0, 15.0, 320),
-                ((50, 69), None, 45.0, 22.0, 300),
-                ((70, 89), None, 70.0, 35.0, 180),
+                ((18, 29), None, 25.0, 12.0),
+                ((30, 49), None, 30.0, 15.0),
+                ((50, 69), None, 45.0, 22.0),
+                ((70, 89), None, 70.0, 35.0),
             ],
         );
         self.set_reliability(MetricType::TrailMakingBMinusA, 0.78);
@@ -940,10 +952,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::StrideTimeVariability,
             &[
-                ((18, 39), None, 2.5, 0.8, 300),
-                ((40, 59), None, 3.0, 1.0, 350),
-                ((60, 74), None, 3.8, 1.3, 320),
-                ((75, 89), None, 5.0, 2.0, 180),
+                ((18, 39), None, 2.5, 0.8),
+                ((40, 59), None, 3.0, 1.0),
+                ((60, 74), None, 3.8, 1.3),
+                ((75, 89), None, 5.0, 2.0),
             ],
         );
         self.set_reliability(MetricType::StrideTimeVariability, 0.85);
@@ -952,10 +964,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::DoubleSupportTime,
             &[
-                ((18, 39), None, 22.0, 3.0, 300),
-                ((40, 59), None, 24.0, 3.5, 350),
-                ((60, 74), None, 27.0, 4.0, 320),
-                ((75, 89), None, 32.0, 5.0, 180),
+                ((18, 39), None, 22.0, 3.0),
+                ((40, 59), None, 24.0, 3.5),
+                ((60, 74), None, 27.0, 4.0),
+                ((75, 89), None, 32.0, 5.0),
             ],
         );
         self.set_reliability(MetricType::DoubleSupportTime, 0.88);
@@ -964,10 +976,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::TappingVariability,
             &[
-                ((18, 39), None, 8.0, 3.0, 250),
-                ((40, 59), None, 10.0, 4.0, 280),
-                ((60, 74), None, 14.0, 5.0, 250),
-                ((75, 89), None, 20.0, 7.0, 150),
+                ((18, 39), None, 8.0, 3.0),
+                ((40, 59), None, 10.0, 4.0),
+                ((60, 74), None, 14.0, 5.0),
+                ((75, 89), None, 20.0, 7.0),
             ],
         );
         self.set_reliability(MetricType::TappingVariability, 0.82);
@@ -976,9 +988,9 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::UpdrsMotor,
             &[
-                ((18, 49), None, 0.0, 1.0, 500),  // Healthy baseline
-                ((50, 69), None, 2.0, 3.0, 450),
-                ((70, 89), None, 5.0, 5.0, 300),
+                ((18, 49), None, 0.0, 1.0),  // Healthy baseline
+                ((50, 69), None, 2.0, 3.0),
+                ((70, 89), None, 5.0, 5.0),
             ],
         );
         self.set_reliability(MetricType::UpdrsMotor, 0.92);
@@ -989,10 +1001,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::RombergQuotient,
             &[
-                ((18, 39), None, 1.3, 0.3, 280),
-                ((40, 59), None, 1.5, 0.4, 320),
-                ((60, 74), None, 1.8, 0.5, 300),
-                ((75, 89), None, 2.2, 0.7, 150),
+                ((18, 39), None, 1.3, 0.3),
+                ((40, 59), None, 1.5, 0.4),
+                ((60, 74), None, 1.8, 0.5),
+                ((75, 89), None, 2.2, 0.7),
             ],
         );
         self.set_reliability(MetricType::RombergQuotient, 0.75);
@@ -1001,10 +1013,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::LosDirectionalControl,
             &[
-                ((18, 39), None, 82.0, 8.0, 280),
-                ((40, 59), None, 78.0, 10.0, 320),
-                ((60, 74), None, 72.0, 12.0, 300),
-                ((75, 89), None, 62.0, 15.0, 150),
+                ((18, 39), None, 82.0, 8.0),
+                ((40, 59), None, 78.0, 10.0),
+                ((60, 74), None, 72.0, 12.0),
+                ((75, 89), None, 62.0, 15.0),
             ],
         );
         self.set_reliability(MetricType::LosDirectionalControl, 0.82);
@@ -1015,10 +1027,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::HrvLfHf,
             &[
-                ((18, 29), None, 1.5, 0.8, 300),
-                ((30, 49), None, 2.0, 1.0, 350),
-                ((50, 69), None, 2.5, 1.2, 320),
-                ((70, 89), None, 3.0, 1.5, 180),
+                ((18, 29), None, 1.5, 0.8),
+                ((30, 49), None, 2.0, 1.0),
+                ((50, 69), None, 2.5, 1.2),
+                ((70, 89), None, 3.0, 1.5),
             ],
         );
         self.set_reliability(MetricType::HrvLfHf, 0.75);
@@ -1029,10 +1041,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::SleepOnsetLatency,
             &[
-                ((18, 39), None, 12.0, 8.0, 400),
-                ((40, 59), None, 15.0, 10.0, 450),
-                ((60, 74), None, 20.0, 12.0, 380),
-                ((75, 89), None, 25.0, 15.0, 200),
+                ((18, 39), None, 12.0, 8.0),
+                ((40, 59), None, 15.0, 10.0),
+                ((60, 74), None, 20.0, 12.0),
+                ((75, 89), None, 25.0, 15.0),
             ],
         );
         self.set_reliability(MetricType::SleepOnsetLatency, 0.70);
@@ -1041,10 +1053,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::WakeAfterSleepOnset,
             &[
-                ((18, 39), None, 15.0, 12.0, 400),
-                ((40, 59), None, 25.0, 18.0, 450),
-                ((60, 74), None, 40.0, 25.0, 380),
-                ((75, 89), None, 60.0, 35.0, 200),
+                ((18, 39), None, 15.0, 12.0),
+                ((40, 59), None, 25.0, 18.0),
+                ((60, 74), None, 40.0, 25.0),
+                ((75, 89), None, 60.0, 35.0),
             ],
         );
         self.set_reliability(MetricType::WakeAfterSleepOnset, 0.72);
@@ -1053,10 +1065,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::RemPercent,
             &[
-                ((18, 39), None, 22.0, 4.0, 400),
-                ((40, 59), None, 20.0, 4.5, 450),
-                ((60, 74), None, 18.0, 5.0, 380),
-                ((75, 89), None, 15.0, 5.5, 200),
+                ((18, 39), None, 22.0, 4.0),
+                ((40, 59), None, 20.0, 4.5),
+                ((60, 74), None, 18.0, 5.0),
+                ((75, 89), None, 15.0, 5.5),
             ],
         );
         self.set_reliability(MetricType::RemPercent, 0.75);
@@ -1065,10 +1077,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::DeepSleepPercent,
             &[
-                ((18, 29), None, 20.0, 5.0, 350),
-                ((30, 49), None, 15.0, 5.0, 400),
-                ((50, 69), None, 10.0, 4.0, 380),
-                ((70, 89), None, 5.0, 3.0, 180),
+                ((18, 29), None, 20.0, 5.0),
+                ((30, 49), None, 15.0, 5.0),
+                ((50, 69), None, 10.0, 4.0),
+                ((70, 89), None, 5.0, 3.0),
             ],
         );
         self.set_reliability(MetricType::DeepSleepPercent, 0.78);
@@ -1079,10 +1091,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::CognitiveComposite,
             &[
-                ((18, 29), None, 105.0, 15.0, 500),
-                ((30, 49), None, 100.0, 15.0, 600),
-                ((50, 69), None, 95.0, 15.0, 550),
-                ((70, 89), None, 88.0, 16.0, 300),
+                ((18, 29), None, 105.0, 15.0),
+                ((30, 49), None, 100.0, 15.0),
+                ((50, 69), None, 95.0, 15.0),
+                ((70, 89), None, 88.0, 16.0),
             ],
         );
         self.set_reliability(MetricType::CognitiveComposite, 0.90);
@@ -1091,10 +1103,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::MotorComposite,
             &[
-                ((18, 29), None, 105.0, 14.0, 500),
-                ((30, 49), None, 100.0, 14.0, 600),
-                ((50, 69), None, 92.0, 15.0, 550),
-                ((70, 89), None, 82.0, 16.0, 300),
+                ((18, 29), None, 105.0, 14.0),
+                ((30, 49), None, 100.0, 14.0),
+                ((50, 69), None, 92.0, 15.0),
+                ((70, 89), None, 82.0, 16.0),
             ],
         );
         self.set_reliability(MetricType::MotorComposite, 0.92);
@@ -1103,10 +1115,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::GlobalComposite,
             &[
-                ((18, 29), None, 105.0, 14.0, 500),
-                ((30, 49), None, 100.0, 14.0, 600),
-                ((50, 69), None, 94.0, 15.0, 550),
-                ((70, 89), None, 85.0, 16.0, 300),
+                ((18, 29), None, 105.0, 14.0),
+                ((30, 49), None, 100.0, 14.0),
+                ((50, 69), None, 94.0, 15.0),
+                ((70, 89), None, 85.0, 16.0),
             ],
         );
         self.set_reliability(MetricType::GlobalComposite, 0.93);
@@ -1115,11 +1127,11 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::FrailtyIndex,
             &[
-                ((18, 49), None, 0.05, 0.03, 600),
-                ((50, 64), None, 0.10, 0.06, 500),
-                ((65, 74), None, 0.18, 0.10, 450),
-                ((75, 84), None, 0.28, 0.12, 300),
-                ((85, 99), None, 0.38, 0.15, 150),
+                ((18, 49), None, 0.05, 0.03),
+                ((50, 64), None, 0.10, 0.06),
+                ((65, 74), None, 0.18, 0.10),
+                ((75, 84), None, 0.28, 0.12),
+                ((85, 99), None, 0.38, 0.15),
             ],
         );
         self.set_reliability(MetricType::FrailtyIndex, 0.88);
@@ -1130,13 +1142,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::PulseTransitTime,
             &[
-                ((18, 29), None, 280.0, 40.0, 300),
-                ((30, 39), None, 260.0, 38.0, 280),
-                ((40, 49), None, 240.0, 35.0, 260),
-                ((50, 59), None, 220.0, 32.0, 250),
-                ((60, 69), None, 200.0, 30.0, 240),
-                ((70, 79), None, 180.0, 28.0, 200),
-                ((80, 89), None, 160.0, 25.0, 150),
+                ((18, 29), None, 280.0, 40.0),
+                ((30, 39), None, 260.0, 38.0),
+                ((40, 49), None, 240.0, 35.0),
+                ((50, 59), None, 220.0, 32.0),
+                ((60, 69), None, 200.0, 30.0),
+                ((70, 79), None, 180.0, 28.0),
+                ((80, 89), None, 160.0, 25.0),
             ],
         );
         self.set_reliability(MetricType::PulseTransitTime, 0.85);
@@ -1145,13 +1157,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::PulseWaveVelocity,
             &[
-                ((18, 29), None, 6.5, 1.0, 300),
-                ((30, 39), None, 7.0, 1.1, 280),
-                ((40, 49), None, 7.8, 1.3, 260),
-                ((50, 59), None, 8.8, 1.5, 250),
-                ((60, 69), None, 10.0, 1.8, 240),
-                ((70, 79), None, 11.5, 2.2, 200),
-                ((80, 89), None, 13.0, 2.5, 150),
+                ((18, 29), None, 6.5, 1.0),
+                ((30, 39), None, 7.0, 1.1),
+                ((40, 49), None, 7.8, 1.3),
+                ((50, 59), None, 8.8, 1.5),
+                ((60, 69), None, 10.0, 1.8),
+                ((70, 79), None, 11.5, 2.2),
+                ((80, 89), None, 13.0, 2.5),
             ],
         );
         self.set_reliability(MetricType::PulseWaveVelocity, 0.88);
@@ -1160,13 +1172,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::AugmentationIndex,
             &[
-                ((18, 29), None, 5.0, 8.0, 300),
-                ((30, 39), None, 12.0, 9.0, 280),
-                ((40, 49), None, 20.0, 10.0, 260),
-                ((50, 59), None, 28.0, 10.0, 250),
-                ((60, 69), None, 32.0, 11.0, 240),
-                ((70, 79), None, 35.0, 12.0, 200),
-                ((80, 89), None, 38.0, 12.0, 150),
+                ((18, 29), None, 5.0, 8.0),
+                ((30, 39), None, 12.0, 9.0),
+                ((40, 49), None, 20.0, 10.0),
+                ((50, 59), None, 28.0, 10.0),
+                ((60, 69), None, 32.0, 11.0),
+                ((70, 79), None, 35.0, 12.0),
+                ((80, 89), None, 38.0, 12.0),
             ],
         );
         self.set_reliability(MetricType::AugmentationIndex, 0.82);
@@ -1175,10 +1187,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::StiffnessIndex,
             &[
-                ((18, 29), None, 6.0, 1.2, 280),
-                ((30, 49), None, 7.0, 1.4, 300),
-                ((50, 69), None, 8.5, 1.8, 280),
-                ((70, 89), None, 10.5, 2.2, 180),
+                ((18, 29), None, 6.0, 1.2),
+                ((30, 49), None, 7.0, 1.4),
+                ((50, 69), None, 8.5, 1.8),
+                ((70, 89), None, 10.5, 2.2),
             ],
         );
         self.set_reliability(MetricType::StiffnessIndex, 0.80);
@@ -1187,10 +1199,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::PerfusionIndex,
             &[
-                ((18, 39), None, 5.0, 3.0, 350),
-                ((40, 59), None, 4.0, 2.5, 320),
-                ((60, 79), None, 3.0, 2.0, 280),
-                ((80, 89), None, 2.0, 1.5, 150),
+                ((18, 39), None, 5.0, 3.0),
+                ((40, 59), None, 4.0, 2.5),
+                ((60, 79), None, 3.0, 2.0),
+                ((80, 89), None, 2.0, 1.5),
             ],
         );
         self.set_reliability(MetricType::PerfusionIndex, 0.75);
@@ -1199,13 +1211,13 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::PrvSdnn,
             &[
-                ((18, 29), None, 135.0, 38.0, 350),
-                ((30, 39), None, 120.0, 36.0, 320),
-                ((40, 49), None, 105.0, 33.0, 300),
-                ((50, 59), None, 90.0, 30.0, 280),
-                ((60, 69), None, 75.0, 26.0, 260),
-                ((70, 79), None, 60.0, 22.0, 200),
-                ((80, 89), None, 48.0, 18.0, 150),
+                ((18, 29), None, 135.0, 38.0),
+                ((30, 39), None, 120.0, 36.0),
+                ((40, 49), None, 105.0, 33.0),
+                ((50, 59), None, 90.0, 30.0),
+                ((60, 69), None, 75.0, 26.0),
+                ((70, 79), None, 60.0, 22.0),
+                ((80, 89), None, 48.0, 18.0),
             ],
         );
         self.set_reliability(MetricType::PrvSdnn, 0.84);
@@ -1216,10 +1228,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::SkinConductanceLevel,
             &[
-                ((18, 29), None, 5.0, 3.0, 300),
-                ((30, 49), None, 4.5, 2.8, 350),
-                ((50, 69), None, 3.5, 2.5, 320),
-                ((70, 89), None, 2.5, 2.0, 180),
+                ((18, 29), None, 5.0, 3.0),
+                ((30, 49), None, 4.5, 2.8),
+                ((50, 69), None, 3.5, 2.5),
+                ((70, 89), None, 2.5, 2.0),
             ],
         );
         self.set_reliability(MetricType::SkinConductanceLevel, 0.75);
@@ -1228,10 +1240,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::ScrFrequency,
             &[
-                ((18, 29), None, 8.0, 5.0, 280),
-                ((30, 49), None, 6.0, 4.0, 320),
-                ((50, 69), None, 4.0, 3.0, 300),
-                ((70, 89), None, 2.5, 2.0, 150),
+                ((18, 29), None, 8.0, 5.0),
+                ((30, 49), None, 6.0, 4.0),
+                ((50, 69), None, 4.0, 3.0),
+                ((70, 89), None, 2.5, 2.0),
             ],
         );
         self.set_reliability(MetricType::ScrFrequency, 0.72);
@@ -1240,10 +1252,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::ScrAmplitude,
             &[
-                ((18, 29), None, 0.5, 0.3, 280),
-                ((30, 49), None, 0.4, 0.25, 320),
-                ((50, 69), None, 0.3, 0.2, 300),
-                ((70, 89), None, 0.2, 0.15, 150),
+                ((18, 29), None, 0.5, 0.3),
+                ((30, 49), None, 0.4, 0.25),
+                ((50, 69), None, 0.3, 0.2),
+                ((70, 89), None, 0.2, 0.15),
             ],
         );
         self.set_reliability(MetricType::ScrAmplitude, 0.78);
@@ -1252,10 +1264,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::NsScrCount,
             &[
-                ((18, 29), None, 25.0, 15.0, 250),
-                ((30, 49), None, 20.0, 12.0, 300),
-                ((50, 69), None, 12.0, 8.0, 280),
-                ((70, 89), None, 6.0, 5.0, 150),
+                ((18, 29), None, 25.0, 15.0),
+                ((30, 49), None, 20.0, 12.0),
+                ((50, 69), None, 12.0, 8.0),
+                ((70, 89), None, 6.0, 5.0),
             ],
         );
         self.set_reliability(MetricType::NsScrCount, 0.70);
@@ -1264,10 +1276,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::EdaRecoveryTime,
             &[
-                ((18, 29), None, 3.0, 1.0, 250),
-                ((30, 49), None, 3.5, 1.2, 300),
-                ((50, 69), None, 4.5, 1.5, 280),
-                ((70, 89), None, 6.0, 2.0, 150),
+                ((18, 29), None, 3.0, 1.0),
+                ((30, 49), None, 3.5, 1.2),
+                ((50, 69), None, 4.5, 1.5),
+                ((70, 89), None, 6.0, 2.0),
             ],
         );
         self.set_reliability(MetricType::EdaRecoveryTime, 0.75);
@@ -1278,10 +1290,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::EegDeltaPower,
             &[
-                ((18, 29), None, 15.0, 8.0, 250),
-                ((30, 49), None, 18.0, 10.0, 300),
-                ((50, 69), None, 22.0, 12.0, 280),
-                ((70, 89), None, 28.0, 15.0, 150),
+                ((18, 29), None, 15.0, 8.0),
+                ((30, 49), None, 18.0, 10.0),
+                ((50, 69), None, 22.0, 12.0),
+                ((70, 89), None, 28.0, 15.0),
             ],
         );
         self.set_reliability(MetricType::EegDeltaPower, 0.80);
@@ -1290,10 +1302,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::EegThetaPower,
             &[
-                ((18, 29), None, 12.0, 6.0, 250),
-                ((30, 49), None, 14.0, 7.0, 300),
-                ((50, 69), None, 16.0, 8.0, 280),
-                ((70, 89), None, 20.0, 10.0, 150),
+                ((18, 29), None, 12.0, 6.0),
+                ((30, 49), None, 14.0, 7.0),
+                ((50, 69), None, 16.0, 8.0),
+                ((70, 89), None, 20.0, 10.0),
             ],
         );
         self.set_reliability(MetricType::EegThetaPower, 0.78);
@@ -1302,10 +1314,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::EegAlphaPower,
             &[
-                ((18, 29), None, 35.0, 18.0, 280),
-                ((30, 49), None, 32.0, 16.0, 320),
-                ((50, 69), None, 28.0, 14.0, 300),
-                ((70, 89), None, 22.0, 12.0, 180),
+                ((18, 29), None, 35.0, 18.0),
+                ((30, 49), None, 32.0, 16.0),
+                ((50, 69), None, 28.0, 14.0),
+                ((70, 89), None, 22.0, 12.0),
             ],
         );
         self.set_reliability(MetricType::EegAlphaPower, 0.85);
@@ -1314,10 +1326,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::EegBetaPower,
             &[
-                ((18, 29), None, 8.0, 4.0, 250),
-                ((30, 49), None, 10.0, 5.0, 300),
-                ((50, 69), None, 12.0, 6.0, 280),
-                ((70, 89), None, 10.0, 5.0, 150),
+                ((18, 29), None, 8.0, 4.0),
+                ((30, 49), None, 10.0, 5.0),
+                ((50, 69), None, 12.0, 6.0),
+                ((70, 89), None, 10.0, 5.0),
             ],
         );
         self.set_reliability(MetricType::EegBetaPower, 0.78);
@@ -1326,10 +1338,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::EegGammaPower,
             &[
-                ((18, 29), None, 2.0, 1.2, 200),
-                ((30, 49), None, 2.5, 1.5, 250),
-                ((50, 69), None, 2.2, 1.3, 220),
-                ((70, 89), None, 1.8, 1.0, 120),
+                ((18, 29), None, 2.0, 1.2),
+                ((30, 49), None, 2.5, 1.5),
+                ((50, 69), None, 2.2, 1.3),
+                ((70, 89), None, 1.8, 1.0),
             ],
         );
         self.set_reliability(MetricType::EegGammaPower, 0.72);
@@ -1338,10 +1350,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::EegAlphaThetaRatio,
             &[
-                ((18, 29), None, 3.0, 1.2, 250),
-                ((30, 49), None, 2.5, 1.0, 300),
-                ((50, 69), None, 2.0, 0.8, 280),
-                ((70, 89), None, 1.5, 0.6, 150),
+                ((18, 29), None, 3.0, 1.2),
+                ((30, 49), None, 2.5, 1.0),
+                ((50, 69), None, 2.0, 0.8),
+                ((70, 89), None, 1.5, 0.6),
             ],
         );
         self.set_reliability(MetricType::EegAlphaThetaRatio, 0.80);
@@ -1350,9 +1362,9 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::EegAlphaAsymmetry,
             &[
-                ((18, 39), None, 0.0, 0.15, 300),
-                ((40, 59), None, 0.0, 0.18, 320),
-                ((60, 89), None, 0.0, 0.20, 200),
+                ((18, 39), None, 0.0, 0.15),
+                ((40, 59), None, 0.0, 0.18),
+                ((60, 89), None, 0.0, 0.20),
             ],
         );
         self.set_reliability(MetricType::EegAlphaAsymmetry, 0.75);
@@ -1363,10 +1375,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::SaccadePeakVelocity,
             &[
-                ((18, 29), None, 450.0, 60.0, 280),
-                ((30, 49), None, 420.0, 65.0, 320),
-                ((50, 69), None, 380.0, 70.0, 300),
-                ((70, 89), None, 320.0, 80.0, 180),
+                ((18, 29), None, 450.0, 60.0),
+                ((30, 49), None, 420.0, 65.0),
+                ((50, 69), None, 380.0, 70.0),
+                ((70, 89), None, 320.0, 80.0),
             ],
         );
         self.set_reliability(MetricType::SaccadePeakVelocity, 0.88);
@@ -1375,10 +1387,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::SaccadeAmplitude,
             &[
-                ((18, 39), None, 8.0, 3.0, 300),
-                ((40, 59), None, 7.5, 3.0, 320),
-                ((60, 79), None, 7.0, 3.0, 280),
-                ((80, 89), None, 6.5, 3.0, 150),
+                ((18, 39), None, 8.0, 3.0),
+                ((40, 59), None, 7.5, 3.0),
+                ((60, 79), None, 7.0, 3.0),
+                ((80, 89), None, 6.5, 3.0),
             ],
         );
         self.set_reliability(MetricType::SaccadeAmplitude, 0.82);
@@ -1387,10 +1399,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::SaccadeLatency,
             &[
-                ((18, 29), None, 180.0, 30.0, 280),
-                ((30, 49), None, 195.0, 35.0, 320),
-                ((50, 69), None, 220.0, 45.0, 300),
-                ((70, 89), None, 260.0, 60.0, 180),
+                ((18, 29), None, 180.0, 30.0),
+                ((30, 49), None, 195.0, 35.0),
+                ((50, 69), None, 220.0, 45.0),
+                ((70, 89), None, 260.0, 60.0),
             ],
         );
         self.set_reliability(MetricType::SaccadeLatency, 0.85);
@@ -1399,10 +1411,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::FixationDuration,
             &[
-                ((18, 29), None, 250.0, 80.0, 280),
-                ((30, 49), None, 270.0, 90.0, 320),
-                ((50, 69), None, 300.0, 100.0, 300),
-                ((70, 89), None, 350.0, 120.0, 180),
+                ((18, 29), None, 250.0, 80.0),
+                ((30, 49), None, 270.0, 90.0),
+                ((50, 69), None, 300.0, 100.0),
+                ((70, 89), None, 350.0, 120.0),
             ],
         );
         self.set_reliability(MetricType::FixationDuration, 0.80);
@@ -1411,10 +1423,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::FixationCount,
             &[
-                ((18, 39), None, 180.0, 40.0, 280),
-                ((40, 59), None, 160.0, 45.0, 320),
-                ((60, 79), None, 140.0, 50.0, 280),
-                ((80, 89), None, 120.0, 50.0, 150),
+                ((18, 39), None, 180.0, 40.0),
+                ((40, 59), None, 160.0, 45.0),
+                ((60, 79), None, 140.0, 50.0),
+                ((80, 89), None, 120.0, 50.0),
             ],
         );
         self.set_reliability(MetricType::FixationCount, 0.78);
@@ -1423,10 +1435,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::PupilDiameter,
             &[
-                ((18, 29), None, 4.5, 0.8, 300),
-                ((30, 49), None, 4.0, 0.8, 350),
-                ((50, 69), None, 3.5, 0.7, 320),
-                ((70, 89), None, 3.0, 0.6, 180),
+                ((18, 29), None, 4.5, 0.8),
+                ((30, 49), None, 4.0, 0.8),
+                ((50, 69), None, 3.5, 0.7),
+                ((70, 89), None, 3.0, 0.6),
             ],
         );
         self.set_reliability(MetricType::PupilDiameter, 0.85);
@@ -1435,10 +1447,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::PupilResponseLatency,
             &[
-                ((18, 29), None, 200.0, 30.0, 280),
-                ((30, 49), None, 220.0, 35.0, 320),
-                ((50, 69), None, 250.0, 45.0, 300),
-                ((70, 89), None, 300.0, 60.0, 180),
+                ((18, 29), None, 200.0, 30.0),
+                ((30, 49), None, 220.0, 35.0),
+                ((50, 69), None, 250.0, 45.0),
+                ((70, 89), None, 300.0, 60.0),
             ],
         );
         self.set_reliability(MetricType::PupilResponseLatency, 0.82);
@@ -1447,10 +1459,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::SmoothPursuitGain,
             &[
-                ((18, 29), None, 0.95, 0.05, 280),
-                ((30, 49), None, 0.92, 0.06, 320),
-                ((50, 69), None, 0.88, 0.08, 300),
-                ((70, 89), None, 0.80, 0.10, 180),
+                ((18, 29), None, 0.95, 0.05),
+                ((30, 49), None, 0.92, 0.06),
+                ((50, 69), None, 0.88, 0.08),
+                ((70, 89), None, 0.80, 0.10),
             ],
         );
         self.set_reliability(MetricType::SmoothPursuitGain, 0.85);
@@ -1459,9 +1471,9 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::BlinkRate,
             &[
-                ((18, 39), None, 17.0, 6.0, 350),
-                ((40, 59), None, 18.0, 7.0, 380),
-                ((60, 89), None, 16.0, 6.0, 250),
+                ((18, 39), None, 17.0, 6.0),
+                ((40, 59), None, 18.0, 7.0),
+                ((60, 89), None, 16.0, 6.0),
             ],
         );
         self.set_reliability(MetricType::BlinkRate, 0.75);
@@ -1472,14 +1484,14 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::VoiceF0,
             &[
-                ((18, 29), Some(crate::demographics::Sex::Male), 120.0, 20.0, 250),
-                ((18, 29), Some(crate::demographics::Sex::Female), 220.0, 25.0, 250),
-                ((30, 49), Some(crate::demographics::Sex::Male), 115.0, 20.0, 300),
-                ((30, 49), Some(crate::demographics::Sex::Female), 210.0, 25.0, 300),
-                ((50, 69), Some(crate::demographics::Sex::Male), 110.0, 22.0, 280),
-                ((50, 69), Some(crate::demographics::Sex::Female), 195.0, 28.0, 280),
-                ((70, 89), Some(crate::demographics::Sex::Male), 130.0, 25.0, 150),
-                ((70, 89), Some(crate::demographics::Sex::Female), 180.0, 30.0, 150),
+                ((18, 29), Some(crate::demographics::Sex::Male), 120.0, 20.0),
+                ((18, 29), Some(crate::demographics::Sex::Female), 220.0, 25.0),
+                ((30, 49), Some(crate::demographics::Sex::Male), 115.0, 20.0),
+                ((30, 49), Some(crate::demographics::Sex::Female), 210.0, 25.0),
+                ((50, 69), Some(crate::demographics::Sex::Male), 110.0, 22.0),
+                ((50, 69), Some(crate::demographics::Sex::Female), 195.0, 28.0),
+                ((70, 89), Some(crate::demographics::Sex::Male), 130.0, 25.0),
+                ((70, 89), Some(crate::demographics::Sex::Female), 180.0, 30.0),
             ],
         );
         self.set_reliability(MetricType::VoiceF0, 0.90);
@@ -1488,10 +1500,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::VoiceF0Variability,
             &[
-                ((18, 39), None, 3.0, 1.0, 300),
-                ((40, 59), None, 3.5, 1.2, 350),
-                ((60, 79), None, 4.0, 1.5, 280),
-                ((80, 89), None, 5.0, 2.0, 150),
+                ((18, 39), None, 3.0, 1.0),
+                ((40, 59), None, 3.5, 1.2),
+                ((60, 79), None, 4.0, 1.5),
+                ((80, 89), None, 5.0, 2.0),
             ],
         );
         self.set_reliability(MetricType::VoiceF0Variability, 0.82);
@@ -1500,10 +1512,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::VoiceJitter,
             &[
-                ((18, 39), None, 0.4, 0.2, 300),
-                ((40, 59), None, 0.6, 0.3, 350),
-                ((60, 79), None, 0.9, 0.4, 280),
-                ((80, 89), None, 1.3, 0.6, 150),
+                ((18, 39), None, 0.4, 0.2),
+                ((40, 59), None, 0.6, 0.3),
+                ((60, 79), None, 0.9, 0.4),
+                ((80, 89), None, 1.3, 0.6),
             ],
         );
         self.set_reliability(MetricType::VoiceJitter, 0.85);
@@ -1512,10 +1524,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::VoiceShimmer,
             &[
-                ((18, 39), None, 2.5, 1.2, 300),
-                ((40, 59), None, 3.5, 1.5, 350),
-                ((60, 79), None, 5.0, 2.0, 280),
-                ((80, 89), None, 7.0, 3.0, 150),
+                ((18, 39), None, 2.5, 1.2),
+                ((40, 59), None, 3.5, 1.5),
+                ((60, 79), None, 5.0, 2.0),
+                ((80, 89), None, 7.0, 3.0),
             ],
         );
         self.set_reliability(MetricType::VoiceShimmer, 0.83);
@@ -1524,10 +1536,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::VoiceHnr,
             &[
-                ((18, 39), None, 22.0, 4.0, 300),
-                ((40, 59), None, 20.0, 4.5, 350),
-                ((60, 79), None, 17.0, 5.0, 280),
-                ((80, 89), None, 14.0, 5.5, 150),
+                ((18, 39), None, 22.0, 4.0),
+                ((40, 59), None, 20.0, 4.5),
+                ((60, 79), None, 17.0, 5.0),
+                ((80, 89), None, 14.0, 5.5),
             ],
         );
         self.set_reliability(MetricType::VoiceHnr, 0.85);
@@ -1536,10 +1548,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::SpeechRate,
             &[
-                ((18, 39), None, 5.0, 1.0, 350),
-                ((40, 59), None, 4.8, 1.0, 380),
-                ((60, 79), None, 4.2, 1.2, 300),
-                ((80, 89), None, 3.5, 1.2, 150),
+                ((18, 39), None, 5.0, 1.0),
+                ((40, 59), None, 4.8, 1.0),
+                ((60, 79), None, 4.2, 1.2),
+                ((80, 89), None, 3.5, 1.2),
             ],
         );
         self.set_reliability(MetricType::SpeechRate, 0.80);
@@ -1548,10 +1560,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::VoiceOnsetTime,
             &[
-                ((18, 39), None, 25.0, 10.0, 280),
-                ((40, 59), None, 30.0, 12.0, 320),
-                ((60, 79), None, 40.0, 15.0, 280),
-                ((80, 89), None, 55.0, 20.0, 150),
+                ((18, 39), None, 25.0, 10.0),
+                ((40, 59), None, 30.0, 12.0),
+                ((60, 79), None, 40.0, 15.0),
+                ((80, 89), None, 55.0, 20.0),
             ],
         );
         self.set_reliability(MetricType::VoiceOnsetTime, 0.78);
@@ -1560,14 +1572,14 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::MaxPhonationTime,
             &[
-                ((18, 29), Some(crate::demographics::Sex::Male), 25.0, 8.0, 200),
-                ((18, 29), Some(crate::demographics::Sex::Female), 20.0, 6.0, 200),
-                ((30, 49), Some(crate::demographics::Sex::Male), 22.0, 7.0, 250),
-                ((30, 49), Some(crate::demographics::Sex::Female), 18.0, 6.0, 250),
-                ((50, 69), Some(crate::demographics::Sex::Male), 18.0, 7.0, 220),
-                ((50, 69), Some(crate::demographics::Sex::Female), 15.0, 5.0, 220),
-                ((70, 89), Some(crate::demographics::Sex::Male), 14.0, 6.0, 120),
-                ((70, 89), Some(crate::demographics::Sex::Female), 12.0, 5.0, 120),
+                ((18, 29), Some(crate::demographics::Sex::Male), 25.0, 8.0),
+                ((18, 29), Some(crate::demographics::Sex::Female), 20.0, 6.0),
+                ((30, 49), Some(crate::demographics::Sex::Male), 22.0, 7.0),
+                ((30, 49), Some(crate::demographics::Sex::Female), 18.0, 6.0),
+                ((50, 69), Some(crate::demographics::Sex::Male), 18.0, 7.0),
+                ((50, 69), Some(crate::demographics::Sex::Female), 15.0, 5.0),
+                ((70, 89), Some(crate::demographics::Sex::Male), 14.0, 6.0),
+                ((70, 89), Some(crate::demographics::Sex::Female), 12.0, 5.0),
             ],
         );
         self.set_reliability(MetricType::MaxPhonationTime, 0.88);
@@ -1578,10 +1590,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::VorGain,
             &[
-                ((18, 39), None, 1.0, 0.08, 300),
-                ((40, 59), None, 0.95, 0.10, 350),
-                ((60, 79), None, 0.85, 0.12, 280),
-                ((80, 89), None, 0.75, 0.15, 150),
+                ((18, 39), None, 1.0, 0.08),
+                ((40, 59), None, 0.95, 0.10),
+                ((60, 79), None, 0.85, 0.12),
+                ((80, 89), None, 0.75, 0.15),
             ],
         );
         self.set_reliability(MetricType::VorGain, 0.88);
@@ -1590,10 +1602,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::CanalParesis,
             &[
-                ((18, 39), None, 8.0, 5.0, 300),
-                ((40, 59), None, 10.0, 6.0, 350),
-                ((60, 79), None, 14.0, 8.0, 280),
-                ((80, 89), None, 18.0, 10.0, 150),
+                ((18, 39), None, 8.0, 5.0),
+                ((40, 59), None, 10.0, 6.0),
+                ((60, 79), None, 14.0, 8.0),
+                ((80, 89), None, 18.0, 10.0),
             ],
         );
         self.set_reliability(MetricType::CanalParesis, 0.82);
@@ -1602,10 +1614,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::DvaScoreLoss,
             &[
-                ((18, 39), None, 0.05, 0.03, 280),
-                ((40, 59), None, 0.08, 0.04, 320),
-                ((60, 79), None, 0.12, 0.06, 280),
-                ((80, 89), None, 0.18, 0.08, 150),
+                ((18, 39), None, 0.05, 0.03),
+                ((40, 59), None, 0.08, 0.04),
+                ((60, 79), None, 0.12, 0.06),
+                ((80, 89), None, 0.18, 0.08),
             ],
         );
         self.set_reliability(MetricType::DvaScoreLoss, 0.85);
@@ -1614,10 +1626,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::SvvError,
             &[
-                ((18, 39), None, 1.5, 1.0, 300),
-                ((40, 59), None, 2.0, 1.2, 350),
-                ((60, 79), None, 2.8, 1.5, 280),
-                ((80, 89), None, 4.0, 2.0, 150),
+                ((18, 39), None, 1.5, 1.0),
+                ((40, 59), None, 2.0, 1.2),
+                ((60, 79), None, 2.8, 1.5),
+                ((80, 89), None, 4.0, 2.0),
             ],
         );
         self.set_reliability(MetricType::SvvError, 0.80);
@@ -1626,10 +1638,10 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::HeadImpulseGain,
             &[
-                ((18, 39), None, 1.0, 0.08, 280),
-                ((40, 59), None, 0.95, 0.10, 320),
-                ((60, 79), None, 0.88, 0.12, 280),
-                ((80, 89), None, 0.78, 0.15, 150),
+                ((18, 39), None, 1.0, 0.08),
+                ((40, 59), None, 0.95, 0.10),
+                ((60, 79), None, 0.88, 0.12),
+                ((80, 89), None, 0.78, 0.15),
             ],
         );
         self.set_reliability(MetricType::HeadImpulseGain, 0.85);
@@ -1639,11 +1651,11 @@ impl NormativeDatabase {
     fn add_age_sex_norms(
         &mut self,
         metric: MetricType,
-        data: &[((u8, u8), Option<crate::demographics::Sex>, f64, f64, usize)],
+        data: &[((u8, u8), Option<crate::demographics::Sex>, f64, f64)],
     ) {
-        for &(age_range, sex, mean, std_dev, n) in data {
+        for &(age_range, sex, mean, std_dev) in data {
             let icc = self.reliability.get(&metric).copied().unwrap_or(0.85);
-            let stats = NormativeStats::with_reliability(mean, std_dev, n, icc);
+            let stats = NormativeStats::with_reliability(mean, std_dev, icc);
 
             self.add_entry(NormativeEntry {
                 metric,

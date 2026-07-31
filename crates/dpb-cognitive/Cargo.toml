@@ -3,6 +3,9 @@ name = "dpb-cognitive"
 version = "0.1.0"
 edition = "2021"
 description = "Cognitive assessment paradigms for Delta Predictive Biosensing"
+license.workspace = true
+repository.workspace = true
+
 
 [dependencies]
 rand = "0.8"

@@ -69,26 +69,41 @@ impl TreatmentResponse {
 
     /// Classify response based on criteria.
     pub fn classify_response(&mut self, criteria: &ResponseCriteria) -> ResponseClassification {
-        let classification = if let Some(primary_change) = self.change_from_baseline(&criteria.primary_measure) {
-            if primary_change >= criteria.response_threshold {
-                if let Some(remission_threshold) = criteria.remission_threshold {
-                    if let Some(followup) = self.latest_followup() {
-                        if let Some(val) = followup.get_value(&criteria.primary_measure) {
-                            if val <= remission_threshold {
-                                ResponseClassification::Remission
-                            } else {
-                                ResponseClassification::Response
-                            }
-                        } else {
-                            ResponseClassification::Response
-                        }
+        let classification = if let Some(raw_change) = self.change_from_baseline(&criteria.primary_measure) {
+            // `change_from_baseline` is followup - baseline, so its sign depends on
+            // the measure's direction. Normalise to a magnitude where positive
+            // always means "got better", per criteria.higher_is_better. Without
+            // this every lower-is-better measure (depression, UPDRS, TUG, Trail
+            // Making, reaction time) classifies backwards.
+            let improvement = if criteria.higher_is_better {
+                raw_change
+            } else {
+                -raw_change
+            };
+
+            // Compared by magnitude so a caller may pass either a signed threshold
+            // matching their direction (e.g. -12.5 for a lower-is-better measure)
+            // or a plain magnitude (12.5). Both mean the same thing.
+            let required = criteria.response_threshold.abs();
+
+            if improvement >= required {
+                let reached_remission = criteria.remission_threshold.and_then(|remission| {
+                    let val = self
+                        .latest_followup()?
+                        .get_value(&criteria.primary_measure)?;
+                    // Remission is an absolute cut-off, so it is crossed in the
+                    // direction the measure improves.
+                    Some(if criteria.higher_is_better {
+                        val >= remission
                     } else {
-                        ResponseClassification::Response
-                    }
-                } else {
-                    ResponseClassification::Response
+                        val <= remission
+                    })
+                });
+                match reached_remission {
+                    Some(true) => ResponseClassification::Remission,
+                    _ => ResponseClassification::Response,
                 }
-            } else if primary_change > 0.0 {
+            } else if improvement > 0.0 {
                 ResponseClassification::PartialResponse
             } else {
                 ResponseClassification::NoResponse
@@ -669,25 +684,82 @@ mod tests {
         assert!(effect.value.abs() < cohens.value.abs());
     }
 
-    #[test]
-    fn test_response_classification() {
+    /// Build a two-timepoint response for `measure`, baseline -> followup.
+    fn response_for(measure: &str, baseline_val: f64, followup_val: f64) -> TreatmentResponse {
         let mut baseline = Assessment::new(0.0, "Baseline");
-        baseline.add_value("depression", 25.0);
-
-        let mut response = TreatmentResponse::new("P001", "Therapy", baseline);
-
+        baseline.add_value(measure, baseline_val);
+        let mut r = TreatmentResponse::new("P001", "Therapy", baseline);
         let mut followup = Assessment::new(8.0, "Week 8");
-        followup.add_value("depression", 8.0);
-        response.add_followup(followup);
+        followup.add_value(measure, followup_val);
+        r.add_followup(followup);
+        r
+    }
 
-        let criteria = ResponseCriteria::new("depression", -12.5) // 50% reduction
+    #[test]
+    fn lower_is_better_improvement_reaches_remission() {
+        // Depression 25 -> 8. A 17-point drop clears the 12.5 response threshold,
+        // and 8 is at or below the remission cut-off of 10.
+        let mut r = response_for("depression", 25.0, 8.0);
+        let criteria = ResponseCriteria::new("depression", -12.5)
             .with_remission(10.0)
             .with_direction(false);
+        assert_eq!(
+            r.classify_response(&criteria),
+            ResponseClassification::Remission,
+            "a 25->8 drop on a lower-is-better measure is remission, not failure"
+        );
+    }
 
-        // Since we reduced from 25 to 8, the change is -17, which is more than -12.5
-        // So it should be a response. And since 8 < 10, it should be remission.
-        // But wait, the logic checks if change >= threshold, and -17 >= -12.5 is false...
-        // Let me check the logic again - for lower is better, we need different handling
+    #[test]
+    fn lower_is_better_deterioration_is_no_response() {
+        // Depression got worse: 25 -> 30. Must never read as improvement.
+        let mut r = response_for("depression", 25.0, 30.0);
+        let criteria = ResponseCriteria::new("depression", 12.5).with_direction(false);
+        assert_eq!(
+            r.classify_response(&criteria),
+            ResponseClassification::NoResponse
+        );
+    }
+
+    #[test]
+    fn lower_is_better_partial_improvement() {
+        // 25 -> 20: real but below the 12.5 threshold.
+        let mut r = response_for("depression", 25.0, 20.0);
+        let criteria = ResponseCriteria::new("depression", 12.5).with_direction(false);
+        assert_eq!(
+            r.classify_response(&criteria),
+            ResponseClassification::PartialResponse
+        );
+    }
+
+    #[test]
+    fn higher_is_better_direction_still_works() {
+        // Function score 40 -> 60 on a higher-is-better measure, remission at 55.
+        let mut r = response_for("function", 40.0, 60.0);
+        let criteria = ResponseCriteria::new("function", 12.5)
+            .with_remission(55.0)
+            .with_direction(true);
+        assert_eq!(
+            r.classify_response(&criteria),
+            ResponseClassification::Remission
+        );
+
+        // And a decline on the same measure is not a response.
+        let mut worse = response_for("function", 40.0, 30.0);
+        assert_eq!(
+            worse.classify_response(&criteria),
+            ResponseClassification::NoResponse
+        );
+    }
+
+    #[test]
+    fn signed_and_unsigned_thresholds_agree() {
+        // -12.5 and 12.5 must mean the same thing for a lower-is-better measure.
+        let signed = ResponseCriteria::new("depression", -12.5).with_direction(false);
+        let unsigned = ResponseCriteria::new("depression", 12.5).with_direction(false);
+        let mut a = response_for("depression", 25.0, 8.0);
+        let mut b = response_for("depression", 25.0, 8.0);
+        assert_eq!(a.classify_response(&signed), b.classify_response(&unsigned));
     }
 
     #[test]

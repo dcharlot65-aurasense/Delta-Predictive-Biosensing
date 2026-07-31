@@ -1,6 +1,12 @@
 //! # Protected Health Information (PHI) Utilities
 //!
-//! HIPAA-compliant de-identification and anonymization tools.
+//! De-identification helpers implementing the HIPAA Safe Harbor method
+//! (45 CFR 164.514(b)(2)).
+//!
+//! Using these helpers does not by itself establish HIPAA compliance — that is a
+//! property of a covered entity's policies, practices and agreements, not of a
+//! software library. Verify any de-identification against your own compliance
+//! obligations before relying on it.
 //!
 //! ## HIPAA Safe Harbor Method
 //!
@@ -44,6 +50,7 @@
 //! assert_eq!(deidentified.birth_year, Some(1985)); // Year retained
 //! ```
 
+use chrono::Datelike;
 use crate::{ClinicalError, Result, Demographics};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
@@ -171,6 +178,14 @@ impl DeIdentificationConfig {
         for id in PhiIdentifier::all() {
             methods.insert(id, DeIdentificationMethod::Remove);
         }
+        // Dates are the one Safe Harbor category that is generalized rather than
+        // removed outright: 45 CFR 164.514(b)(2) strips date elements more
+        // specific than the year but permits the year, and requires ages over 89
+        // to be aggregated into a single "90+" category. Leaving this as Remove
+        // (as the blanket loop above does) makes retain_date_year and
+        // age_over_89_threshold below unreachable, because process_date only
+        // consults them in the Generalize branch.
+        methods.insert(PhiIdentifier::Dates, DeIdentificationMethod::Generalize);
 
         Self {
             methods,
@@ -613,7 +628,9 @@ impl DeIdentifier {
             timestamp,
         });
 
-        let current_year = 2025; // Would use chrono in production
+        // A hardcoded year silently mis-ages every record, and the error grows
+        // every January. chrono is already a workspace dependency.
+        let current_year = chrono::Utc::now().year();
         let age = current_year - dob.year;
 
         match method {

@@ -16,12 +16,24 @@
 //! in older adults. Frailty-adjusted norms account for accumulated deficits
 //! and provide more personalized reference values.
 //!
-//! # Clinical Applications
+//! # What this module provides
 //!
-//! - Fall risk assessment
-//! - Frailty screening and monitoring
-//! - Functional decline detection
-//! - Rehabilitation outcome prediction
+//! Finer age stratification for older adults plus a frailty-adjustment structure,
+//! and the arithmetic for comparing a measurement against them. It does not
+//! provide validated geriatric norms, and it is not a fall-risk or frailty
+//! screening instrument.
+//!
+//! # ⚠️ The reference values in this module are ILLUSTRATIVE
+//!
+//! They are placeholders that exist to exercise the API. They are not drawn from
+//! any published cohort, they carry no citations, and they must not be used to
+//! interpret a measurement from a real person. Any percentile, z-score or
+//! classification computed against them demonstrates the arithmetic only.
+//!
+//! Supply your own cited reference values before drawing research conclusions.
+//! See the crate-level documentation for the full statement.
+//!
+//! Research and educational use only. Not a medical device.
 
 use crate::{Demographics, MetricType, NormativeStats, NormsError, Result, Sex};
 use serde::{Deserialize, Serialize};

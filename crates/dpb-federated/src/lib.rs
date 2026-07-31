@@ -8,9 +8,22 @@
 //! without sharing raw biosignal data. Key features:
 //!
 //! - **Federated Averaging (FedAvg)**: Standard federated learning algorithm
-//! - **Differential Privacy**: Optional noise injection for privacy guarantees
-//! - **Secure Aggregation**: Cryptographic protection of model updates
+//! - **Differential Privacy**: Optional Gaussian/Laplace noise injection with
+//!   gradient clipping
 //! - **Communication Efficiency**: Gradient compression and sparse updates
+//!
+//! ## ⚠️ What this crate does NOT provide
+//!
+//! **There is no secure aggregation and no cryptographic protection of model
+//! updates.** Model updates are transmitted in plaintext. Do not use this crate
+//! in a threat model where the aggregation server is untrusted, or where model
+//! updates must be confidential in transit or at rest. Transport security is
+//! entirely your responsibility.
+//!
+//! The differential-privacy budget accountant uses **basic composition**, which
+//! is an approximation. It is not a certified DP accountant (it is not
+//! Rényi/moments-accountant based), and it must not be relied upon for a formal
+//! privacy guarantee or for any regulatory privacy claim.
 //!
 //! ## Architecture
 //!
@@ -24,7 +37,7 @@
 //! │  │ Client  │    │ Client  │    │ Client  │    │ Client  │      │
 //! │  └────┬────┘    └────┬────┘    └────┬────┘    └────┬────┘      │
 //! │       │              │              │              │            │
-//! │       │    Encrypted Model Updates (ΔW)           │            │
+//! │       │    Model Updates (ΔW) — PLAINTEXT         │            │
 //! │       └──────────────┼──────────────┼──────────────┘            │
 //! │                      ▼                                          │
 //! │              ┌───────────────┐                                  │

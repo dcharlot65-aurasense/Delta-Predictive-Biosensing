@@ -32,8 +32,6 @@ pub struct FedConfig {
     pub compression_ratio: f64,
     /// Timeout for client responses (seconds).
     pub client_timeout_sec: u64,
-    /// Enable secure aggregation.
-    pub secure_aggregation: bool,
     /// Random seed for reproducibility.
     pub seed: Option<u64>,
     /// Aggregation strategy.
@@ -56,7 +54,6 @@ impl Default for FedConfig {
             compression_enabled: false,
             compression_ratio: 0.1,
             client_timeout_sec: 300,
-            secure_aggregation: false,
             seed: None,
             aggregation: AggregationStrategy::FedAvg,
         }
@@ -113,11 +110,6 @@ impl FedConfig {
         self
     }
 
-    /// Enable secure aggregation.
-    pub fn with_secure_aggregation(mut self) -> Self {
-        self.secure_aggregation = true;
-        self
-    }
 
     /// Set the aggregation strategy.
     pub fn with_aggregation(mut self, strategy: AggregationStrategy) -> Self {

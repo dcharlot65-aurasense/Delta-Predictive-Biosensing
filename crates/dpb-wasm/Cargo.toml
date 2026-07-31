@@ -4,8 +4,8 @@ version = "0.4.0"
 edition = "2021"
 authors = ["AuraSense Tech Corporation"]
 description = "WebAssembly bindings for DPB Framework - browser-based biosignal processing"
-license = "MIT"
-repository = "https://github.com/dcharlot65-aurasense/Delta-Predictive-Biosensing"
+license.workspace = true
+repository.workspace = true
 keywords = ["wasm", "biosignal", "snn", "neuromorphic", "webassembly"]
 categories = ["wasm", "science", "algorithms"]
 
@@ -48,6 +48,7 @@ console_error_panic_hook = { version = "0.1.7", optional = true }
 # Serialization for complex types
 serde = { version = "1.0", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
+serde_json = "1.0"
 
 # For timestamp handling
 getrandom = { version = "0.2", features = ["js"] }

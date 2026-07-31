@@ -162,7 +162,9 @@ impl DifferentialPrivacy {
             }
         }
 
-        // Track budget using basic composition (conservative)
+        // Approximate budget tracking. NOTE: this is NOT a valid composition
+        // bound and NOT a certified DP accountant (no Renyi/moments accountant).
+        // Do not rely on epsilon_spent for a formal privacy guarantee.
         self.epsilon_spent += self.config.epsilon / self.config.noise_multiplier;
         self.delta_spent += self.config.delta;
         self.num_compositions += 1;
