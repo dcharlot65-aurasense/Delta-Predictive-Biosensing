@@ -15,7 +15,7 @@ A comprehensive distributed training infrastructure has been successfully implem
 
 ### Core Implementation
 
-All files located in `/home/user/Delta-Predictive-Biosensing/crates/dpb-snn/src/distributed/`:
+All files located in `crates/dpb-snn/src/distributed/`:
 
 #### 1. **mod.rs** (560 lines)
 **Purpose**: Core distributed runtime and backend abstraction
@@ -201,7 +201,7 @@ let stragglers = metrics.detect_stragglers(0.2); // 20% threshold
 
 ### Example Code
 
-**File**: `/home/user/Delta-Predictive-Biosensing/crates/dpb-snn/examples/distributed_training.rs`
+**File**: `crates/dpb-snn/examples/distributed_training.rs`
 
 A comprehensive example (226 lines) demonstrating:
 - Complete distributed training workflow
@@ -221,7 +221,7 @@ cargo run --example distributed_training --features distributed
 ### Documentation
 
 #### 1. **DISTRIBUTED_TRAINING.md** (Comprehensive Guide)
-**File**: `/home/user/Delta-Predictive-Biosensing/crates/dpb-snn/DISTRIBUTED_TRAINING.md`
+**File**: `crates/dpb-snn/DISTRIBUTED_TRAINING.md`
 
 **Contents**:
 - Architecture overview
@@ -234,7 +234,7 @@ cargo run --example distributed_training --features distributed
 - Future work
 
 #### 2. **DISTRIBUTED_IMPLEMENTATION_SUMMARY.md** (This File)
-**File**: `/home/user/Delta-Predictive-Biosensing/DISTRIBUTED_IMPLEMENTATION_SUMMARY.md`
+**File**: `DISTRIBUTED_IMPLEMENTATION_SUMMARY.md`
 
 Implementation details and statistics.
 
@@ -243,7 +243,7 @@ Implementation details and statistics.
 ## Configuration Files
 
 ### Cargo.toml
-**File**: `/home/user/Delta-Predictive-Biosensing/crates/dpb-snn/Cargo.toml`
+**File**: `crates/dpb-snn/Cargo.toml`
 
 **Added/Updated**:
 ```toml
@@ -254,7 +254,7 @@ distributed = []
 Already present at line 14.
 
 ### lib.rs
-**File**: `/home/user/Delta-Predictive-Biosensing/crates/dpb-snn/src/lib.rs`
+**File**: `crates/dpb-snn/src/lib.rs`
 
 **Added/Updated**:
 ```rust

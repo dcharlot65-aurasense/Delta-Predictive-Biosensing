@@ -9,10 +9,10 @@ The Delta-Predictive Biosensing framework consists of these crates:
 | Crate | Purpose | Documentation |
 |-------|---------|---------------|
 | **dpb-core** | Signal processing, pipelines, I/O | Core types and domain-specific analysis |
-| **dpb-encoders** | Event-based spike encoders | 77+ encoders for biosignal encoding |
+| **dpb-encoders** | Event-based spike encoders | 75 encoders for biosignal encoding |
 | **dpb-neurons** | Neuron models | 19 neuron models + 6 surrogate gradients |
 | **dpb-snn** | SNN architectures and training | Networks, training, calibration, explainability |
-| **dpb-synth** | Synthetic data generation | 200+ generators + augmentation |
+| **dpb-synth** | Synthetic data generation | 163 generators + augmentation |
 | **dpb-norms** | Normative databases | Age/sex-stratified reference values |
 | **dpb-cognitive** | Cognitive assessment | Multi-modal cognitive analysis |
 | **dpb-python** | Python bindings | PyO3-based Python interface |

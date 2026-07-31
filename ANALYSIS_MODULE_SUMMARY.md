@@ -177,13 +177,13 @@ The dpb-snn crate has pre-existing compilation errors in:
 
 ## Files Created
 
-1. `/home/user/Delta-Predictive-Biosensing/crates/dpb-snn/src/analysis/mod.rs` - 223 lines
-2. `/home/user/Delta-Predictive-Biosensing/crates/dpb-snn/src/analysis/convergence.rs` - 471 lines
-3. `/home/user/Delta-Predictive-Biosensing/crates/dpb-snn/src/analysis/learning_curves.rs` - 401 lines
-4. `/home/user/Delta-Predictive-Biosensing/crates/dpb-snn/src/analysis/gradient_analysis.rs` - 456 lines
-5. `/home/user/Delta-Predictive-Biosensing/crates/dpb-snn/src/analysis/spike_statistics.rs` - 476 lines
-6. `/home/user/Delta-Predictive-Biosensing/crates/dpb-snn/src/analysis/weight_analysis.rs` - 537 lines
-7. `/home/user/Delta-Predictive-Biosensing/crates/dpb-snn/src/analysis/comparison.rs` - 563 lines
+1. `crates/dpb-snn/src/analysis/mod.rs` - 223 lines
+2. `crates/dpb-snn/src/analysis/convergence.rs` - 471 lines
+3. `crates/dpb-snn/src/analysis/learning_curves.rs` - 401 lines
+4. `crates/dpb-snn/src/analysis/gradient_analysis.rs` - 456 lines
+5. `crates/dpb-snn/src/analysis/spike_statistics.rs` - 476 lines
+6. `crates/dpb-snn/src/analysis/weight_analysis.rs` - 537 lines
+7. `crates/dpb-snn/src/analysis/comparison.rs` - 563 lines
 
 **Total: 3,127 lines of production code + tests**
 

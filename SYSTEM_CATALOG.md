@@ -57,7 +57,7 @@ The Delta-Predictive Biosensing (DPB) Framework is a comprehensive neuromorphic 
 | **dpb-encoders** | Event-based encoders, population templates | 12,000+ |
 | **dpb-neurons** | 19+ neuron models, surrogates, reservoir, dendritic | 15,000+ |
 | **dpb-snn** | Architectures, training, calibration, explainability, GPU, distributed, distillation, neuromorphic, neuromodulation | 65,000+ |
-| **dpb-synth** | 200+ generators, augmentation, cohorts, pathology | 30,000+ |
+| **dpb-synth** | 163 generators, augmentation, cohorts, pathology | 30,000+ |
 | **dpb-norms** | Normative databases (adult, pediatric, geriatric), longitudinal | 10,000+ |
 | **dpb-viz** | Dashboards, raster plots, heatmaps, network graphs, timeline | 4,500+ |
 | **dpb-mobile** | iOS/Android runtime, FFI, optimization, benchmarking | 4,000+ |

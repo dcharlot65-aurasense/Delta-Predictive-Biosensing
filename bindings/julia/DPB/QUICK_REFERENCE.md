@@ -4,7 +4,7 @@
 
 ```julia
 using Pkg
-Pkg.develop(path="/home/user/Delta-Predictive-Biosensing/bindings/julia/DPB")
+Pkg.develop(path="bindings/julia/DPB")
 ```
 
 ## Basic Workflow

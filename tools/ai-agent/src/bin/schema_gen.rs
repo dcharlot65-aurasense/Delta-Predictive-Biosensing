@@ -190,7 +190,7 @@ fn generate_from_source(workspace: &PathBuf) -> Result<ApiSchema> {
     let crate_configs = [
         ("dpb-core", "Core signal processing primitives, types, and traits"),
         ("dpb-neurons", "Spiking neuron models (LIF, Izhikevich, AdEx, etc.)"),
-        ("dpb-encoders", "Event-based encoders for biosignals (77+ encoders)"),
+        ("dpb-encoders", "Event-based encoders for biosignals (75 encoders)"),
         ("dpb-snn", "Spiking Neural Network architectures and training"),
         ("dpb-synth", "Synthetic biosignal generation and augmentation"),
         ("dpb-clinical", "Clinical analysis, HIPAA compliance, normative data"),

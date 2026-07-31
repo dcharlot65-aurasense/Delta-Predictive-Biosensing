@@ -74,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Run Rust Demo
 
 ```bash
-cd /home/user/Delta-Predictive-Biosensing
+cd 
 cargo run --example level3_audio_demo
 ```
 

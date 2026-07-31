@@ -1,6 +1,6 @@
 //! # DPB Encoders - Event-Based Encoders for Biosignal Processing
 //!
-//! This crate implements 77+ event-based encoders and 61+ population templates for the
+//! This crate implements 75 event-based encoders and 62 population templates for the
 //! Delta-Predictive Biosensing (DPB) Framework.
 //!
 //! ## Overview

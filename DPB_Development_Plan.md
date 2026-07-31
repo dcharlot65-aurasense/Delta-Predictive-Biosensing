@@ -10,7 +10,13 @@
 
 ## Executive Summary
 
-This document analyzes the **547+ algorithms** specified in the DPB Framework documentation, identifies dependencies, common abstractions, and presents a phased development plan enabling **parallel implementation** by multiple developers/teams.
+> **Note on this figure.** The 547 total below counts algorithms *specified* across the
+> framework documents, including third-party front-ends (MediaPipe, OpenPose, ViTPose,
+> Praat, CREPE) that DPB integrates with rather than implements. It is a specification
+> inventory, not a count of algorithms implemented in this repository, and must not be
+> quoted as one.
+
+This document analyzes the **547 specified algorithms** in the DPB Framework documentation, identifies dependencies, common abstractions, and presents a phased development plan enabling **parallel implementation** by multiple developers/teams.
 
 **Key Findings:**
 - **19 core abstractions** can serve 80%+ of algorithm implementations

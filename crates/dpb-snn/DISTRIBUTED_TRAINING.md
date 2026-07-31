@@ -377,7 +377,7 @@ for epoch in 0..num_epochs {
 
 ### Advanced Example
 
-See `/home/user/Delta-Predictive-Biosensing/crates/dpb-snn/examples/distributed_training.rs` for a complete example demonstrating:
+See `crates/dpb-snn/examples/distributed_training.rs` for a complete example demonstrating:
 - All partitioning strategies
 - All aggregation strategies
 - Fault tolerance features

@@ -1,6 +1,6 @@
 //! Population template implementations and utilities
 //!
-//! This module provides access to all 61+ population templates used throughout
+//! This module provides access to all 62 population templates used throughout
 //! the DPB framework for clinical priors and normative data.
 
 use dpb_core::{Context, PopulationTemplate};

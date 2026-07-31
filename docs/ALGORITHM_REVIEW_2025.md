@@ -13,7 +13,7 @@ This document provides a comprehensive comparison between the algorithms impleme
 | Sparse Training | ⚠️ Basic pruning | Dynamic spatio-temporal, u-Ticket | **MEDIUM** | 97% sparsity possible |
 | Delay Learning | ❌ Not implemented | EventProp delays, DelGrad | **MEDIUM** | Exact temporal gradients |
 | Neuron Models | ✅ Comprehensive (19 models) | Current | LOW | Already state-of-the-art |
-| Encoders | ✅ Comprehensive (77+ encoders) | Current | LOW | Already comprehensive |
+| Encoders | ✅ Comprehensive (75 encoders) | Current | LOW | Already comprehensive |
 
 ---
 
@@ -420,7 +420,7 @@ GPU optimization:
 | Eye | Saccade, Fixation, Pupil | ✅ Complete |
 | Balance | CoP sway, Velocity, Stability limits | ✅ Complete |
 
-**Assessment:** 77+ encoders with 61+ population templates. **Comprehensive coverage** of biosignal modalities.
+**Assessment:** 75 encoders with 62 population templates. **Comprehensive coverage** of biosignal modalities.
 
 ---
 

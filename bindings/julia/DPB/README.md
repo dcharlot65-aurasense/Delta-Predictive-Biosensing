@@ -16,14 +16,14 @@ DPB.jl provides Julia wrappers around the DPB C FFI library, enabling:
 
 1. Build the DPB FFI library:
 ```bash
-cd /home/user/Delta-Predictive-Biosensing
+cd 
 cargo build --release -p dpb-ffi
 ```
 
 2. Add the DPB.jl package to your Julia environment:
 ```julia
 using Pkg
-Pkg.develop(path="/home/user/Delta-Predictive-Biosensing/bindings/julia/DPB")
+Pkg.develop(path="bindings/julia/DPB")
 ```
 
 ## Quick Start
@@ -301,7 +301,7 @@ end
 If you see a warning about the library not loading:
 ```
 Build the FFI library with:
-cd /home/user/Delta-Predictive-Biosensing
+cd 
 cargo build --release -p dpb-ffi
 ```
 

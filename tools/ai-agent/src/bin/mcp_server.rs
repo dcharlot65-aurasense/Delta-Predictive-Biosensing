@@ -307,7 +307,7 @@ async fn handle_tool_call(
                  ## Core Crates\n\
                  - **dpb-core**: Signal processing primitives, types, and traits\n\
                  - **dpb-neurons**: 19 spiking neuron models (LIF, Izhikevich, AdEx, etc.)\n\
-                 - **dpb-encoders**: 77+ event-based encoders for biosignals\n\
+                 - **dpb-encoders**: 75 event-based encoders for biosignals\n\
                  - **dpb-snn**: SNN architectures, training, and inference\n\
                  - **dpb-synth**: Synthetic biosignal generation\n\n\
                  ## Clinical & Analysis\n\

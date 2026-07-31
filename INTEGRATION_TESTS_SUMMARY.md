@@ -9,7 +9,7 @@ Comprehensive integration tests have been created to validate end-to-end functio
 ## Test Structure
 
 ### 1. DPB-Core Integration Tests
-**Location**: `/home/user/Delta-Predictive-Biosensing/crates/dpb-core/tests/`
+**Location**: `crates/dpb-core/tests/`
 
 #### signal_processing_integration.rs
 Tests complete signal processing pipelines from raw input through filtering, analysis, and feature extraction:
@@ -62,7 +62,7 @@ Tests data format I/O (WFDB and EDF) with roundtrip consistency:
 - **test_format_conversion_wfdb_to_edf**: Cross-format conversion
 
 ### 2. DPB-SNN Integration Tests
-**Location**: `/home/user/Delta-Predictive-Biosensing/crates/dpb-snn/tests/`
+**Location**: `crates/dpb-snn/tests/`
 
 #### export_integration.rs (Existing)
 Tests ONNX export and weight serialization
@@ -108,7 +108,7 @@ Advanced SNN features including calibration and explainability:
 - **test_training_with_convergence_analysis**: Training loop with analysis
 
 ### 3. Workspace Integration Tests
-**Location**: `/home/user/Delta-Predictive-Biosensing/tests/integration/`
+**Location**: `tests/integration/`
 
 #### full_pipeline_integration.rs (New)
 Full system tests combining multiple crates:

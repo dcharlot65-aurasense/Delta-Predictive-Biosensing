@@ -5,7 +5,7 @@
 ### 1. Build the DPB FFI Library
 
 ```bash
-cd /home/user/Delta-Predictive-Biosensing
+cd 
 cargo build --release -p dpb-ffi
 ```
 
@@ -14,20 +14,20 @@ cargo build --release -p dpb-ffi
 In MATLAB:
 
 ```matlab
-cd /home/user/Delta-Predictive-Biosensing/bindings/matlab
+cd bindings/matlab
 build_mex()
 ```
 
 ### 3. Add to MATLAB Path
 
 ```matlab
-addpath('/home/user/Delta-Predictive-Biosensing/bindings/matlab');
+addpath('bindings/matlab');
 ```
 
 Or permanently:
 
 ```matlab
-addpath('/home/user/Delta-Predictive-Biosensing/bindings/matlab');
+addpath('bindings/matlab');
 savepath
 ```
 
@@ -63,12 +63,12 @@ test_dpb()
 
 **Linux:**
 ```bash
-export LD_LIBRARY_PATH=/home/user/Delta-Predictive-Biosensing/target/release:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=target/release:$LD_LIBRARY_PATH
 ```
 
 **macOS:**
 ```bash
-export DYLD_LIBRARY_PATH=/home/user/Delta-Predictive-Biosensing/target/release:$DYLD_LIBRARY_PATH
+export DYLD_LIBRARY_PATH=target/release:$DYLD_LIBRARY_PATH
 ```
 
 **Windows:**

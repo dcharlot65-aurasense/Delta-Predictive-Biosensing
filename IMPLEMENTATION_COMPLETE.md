@@ -2,7 +2,7 @@
 
 ## ✅ Task Completed
 
-Successfully implemented **28 convergence analyzers** for the DPB framework at `/home/user/Delta-Predictive-Biosensing/crates/dpb-snn/src/analysis/`
+Successfully implemented **28 convergence analyzers** for the DPB framework at `crates/dpb-snn/src/analysis/`
 
 ## 📊 Deliverables
 

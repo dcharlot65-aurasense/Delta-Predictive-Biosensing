@@ -333,7 +333,7 @@ Added 4 new Level 3 generators:
 ## Files Location
 
 ```
-/home/user/Delta-Predictive-Biosensing/
+
 ├── tools/level3_audio/
 │   ├── generator.py
 │   ├── test_generator.py
