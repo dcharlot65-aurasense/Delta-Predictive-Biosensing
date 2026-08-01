@@ -73,11 +73,19 @@ Templates are separable objects, not baked-in constants.
 **Compute.** The event stream is native SNN input, so cost scales with events
 rather than samples.
 
-**Validate.** Every encoder has an inverse generator: an encoder maps
-`Signal → Template + Deviation Events`; a generator maps
-`Template + Deviation Parameters → Signal + event-level ground truth`. That
-symmetry means synthetic data arrives with labels at event resolution, which is
-unusual, and is the main reason the architecture is testable at all.
+**Validate.** Two inverses, and they do different jobs.
+
+A *generator* is the inverse of an encoder for synthesis: it maps
+`Template + Deviation Parameters → Signal + event-level ground truth`, so
+synthetic data arrives with labels at event resolution.
+
+A *decoder* (`EventDecoder`) is the inverse for measurement: it reconstructs the
+signal from the events, so you can ask what the encoding actually cost.
+`ReconstructionQuality` reports RMSE, maximum absolute error, SNR and compression
+ratio together — deliberately together, because a compression figure without an
+error figure is not a result. Level-crossing encoding in `Delta` mode carries a
+proven bound: the reconstruction stays within one threshold quantum of the
+original, and that is asserted in the test suite rather than claimed.
 
 ## Inventory
 
@@ -129,6 +137,11 @@ Note the template figure: 62 are implemented, but only 36 are reachable through
 - **Python** via `dpb-python`
 - **Browser** via `dpb-wasm`
 - **Streaming** via `dpb-lsl` (Lab Streaming Layer)
+- **Neuromorphic**: **NIR** (Neuromorphic Intermediate Representation) export —
+  the portable, vendor-neutral path, verified end-to-end against NIR 1.0.8.
+  SpiNNaker2, BrainScaleS-2 and PyNN targets also exist. The Intel Loihi 2 /
+  Lava target is retained but **deprecated**: Intel archived every `lava-nc`
+  repository on 2026-05-13, so it emits for an unsupported SDK.
 - **Clinical file formats**: EDF, BDF, GDF, WFDB, XDF, with BIDS and FHIR adapters
 
 ## Documentation
@@ -147,6 +160,14 @@ FDA-cleared or CE-marked and has not been validated for diagnosis, treatment,
 monitoring, or any clinical decision. Outputs named after clinical rating scales
 are model estimates, not clinical scores, and must not be interpreted as such.
 See [`NOTICE`](NOTICE) for the full statement.
+
+**If you are building a product on this, read [`REGULATORY.md`](REGULATORY.md)
+first.** FDA's 2026 Clinical Decision Support guidance treats software that
+analyses a pattern or signal from a signal acquisition system — explicitly
+including continuous and streaming physiologic measurement — as being in device
+territory. DPB stays outside that by transforming signals without interpreting
+clinical meaning. A downstream product that *does* interpret meaning does not
+inherit that position.
 
 Being specific about maturity, because the distinction matters:
 
