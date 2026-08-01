@@ -709,6 +709,10 @@ pub unsafe extern "C" fn dpb_encoder_encode(
                             threshold: 0.5, // This should come from the encoder
                             relative: false,
                             refractory_period: 0.001,
+                            // Reference-tracking mode: the only one with a
+                            // bounded reconstruction error, so it is what a
+                            // C ABI caller should get by default.
+                            ..Default::default()
                         };
 
                         match encoder.encode(&ts.buffer as &dyn Signal, &config) {

@@ -59,6 +59,92 @@ pub trait EventEncoder: Send + Sync {
     }
 }
 
+/// Trait for reconstructing an analog signal from spike events.
+///
+/// The inverse of [`EventEncoder`]. Without it an encoder's output cannot be
+/// checked against its input, so no statement about how much information the
+/// encoding discarded can be supported — an events-per-second figure means
+/// nothing on its own.
+///
+/// Implementations should document their error bound. For level-crossing
+/// encoding the bound is one threshold quantum: the encoder emits whenever the
+/// signal departs by `threshold` from the last emitted level, so between events
+/// the signal is known to have stayed inside that band.
+pub trait EventDecoder: Send + Sync {
+    /// Configuration type for this decoder.
+    type Config: Clone + Send + Sync;
+
+    /// Returns the name of this decoder.
+    fn name(&self) -> &str;
+
+    /// Reconstructs `n_samples` at `sample_rate` from `events`.
+    fn reconstruct(
+        &self,
+        events: &[SpikeEvent],
+        sample_rate: f64,
+        n_samples: usize,
+        config: &Self::Config,
+    ) -> Result<Vec<f32>>;
+
+    /// Worst-case absolute error this decoder guarantees, if it guarantees one.
+    ///
+    /// `None` means no bound is claimed — which is itself worth knowing, and is
+    /// the honest answer for encoders that discard information irreversibly.
+    fn error_bound(&self, _config: &Self::Config) -> Option<f32> {
+        None
+    }
+}
+
+/// Reconstruction fidelity of an encode/decode round trip.
+///
+/// Exists so efficiency and fidelity are always reported together. Compression
+/// without an error figure is not a result.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ReconstructionQuality {
+    /// Root-mean-square error between original and reconstruction.
+    pub rmse: f32,
+    /// Largest absolute error at any sample.
+    pub max_abs_error: f32,
+    /// Signal-to-noise ratio in dB. Infinite for an exact reconstruction.
+    pub snr_db: f32,
+    /// Original samples divided by emitted events. 1.0 means no reduction.
+    pub compression_ratio: f32,
+}
+
+impl ReconstructionQuality {
+    /// Compares a reconstruction against the original signal.
+    ///
+    /// `n_events` is carried through so compression and fidelity cannot be
+    /// quoted apart from one another.
+    pub fn compare(original: &[f32], reconstructed: &[f32], n_events: usize) -> Self {
+        let n = original.len().min(reconstructed.len());
+        if n == 0 {
+            return Self { rmse: 0.0, max_abs_error: 0.0, snr_db: f32::INFINITY, compression_ratio: 1.0 };
+        }
+        let mut sq_err = 0.0f64;
+        let mut sq_sig = 0.0f64;
+        let mut max_abs = 0.0f32;
+        for i in 0..n {
+            let e = original[i] - reconstructed[i];
+            sq_err += (e as f64) * (e as f64);
+            sq_sig += (original[i] as f64) * (original[i] as f64);
+            max_abs = max_abs.max(e.abs());
+        }
+        let rmse = (sq_err / n as f64).sqrt() as f32;
+        let snr_db = if sq_err <= f64::EPSILON {
+            f32::INFINITY
+        } else {
+            (10.0 * (sq_sig / sq_err).log10()) as f32
+        };
+        let compression_ratio = if n_events == 0 {
+            f32::INFINITY
+        } else {
+            original.len() as f32 / n_events as f32
+        };
+        Self { rmse, max_abs_error: max_abs, snr_db, compression_ratio }
+    }
+}
+
 /// Trait for population-based encoding templates.
 ///
 /// Population templates provide clinical reference values based on demographic context
