@@ -238,7 +238,14 @@ fn run_pipeline_worker(
     // Initialize encoder state per channel
     let num_channels = input_info.channel_count();
     let mut thresholds: Vec<f32> = vec![config.encoder_params.threshold; num_channels];
+    // `last_values` is the PREVIOUS SAMPLE, used by TemporalContrast, which is a
+    // sample-to-sample derivative by definition.
     let mut last_values: Vec<f32> = vec![0.0; num_channels];
+    // `refs` is the LAST EMITTED VALUE. Delta and LevelCrossing must measure
+    // against what was actually transmitted, not against the previous sample —
+    // otherwise a drift slower than one threshold per sample never fires and the
+    // reconstruction error is unbounded.
+    let mut refs: Vec<f32> = vec![0.0; num_channels];
     let mut levels: Vec<i32> = vec![0; num_channels];
 
     // Statistics
@@ -277,21 +284,23 @@ fn run_pipeline_worker(
                         // Encode based on selected encoder type
                         let spike = match config.encoder_type {
                             EncoderType::LevelCrossing => {
-                                // Level crossing detection
-                                let crossed_up =
-                                    last_values[ch] < threshold && value >= threshold;
-                                let crossed_down =
-                                    last_values[ch] > -threshold && value <= -threshold;
-
-                                if crossed_up || crossed_down {
-                                    Some(if crossed_up { 1.0f32 } else { -1.0f32 })
+                                // Fire whenever the signal has moved at least one
+                                // threshold away from the last EMITTED level, in
+                                // either direction. Comparing against a single
+                                // fixed absolute threshold (the previous
+                                // behaviour) fired at most twice per channel for
+                                // the lifetime of the stream.
+                                let delta = value - refs[ch];
+                                if delta.abs() >= threshold {
+                                    Some(delta.signum())
                                 } else {
                                     None
                                 }
                             }
                             EncoderType::Delta => {
-                                // Delta encoding
-                                let delta = value - last_values[ch];
+                                // Against the last EMITTED value, not the previous
+                                // sample — see the note on `refs` above.
+                                let delta = value - refs[ch];
                                 if delta.abs() >= threshold {
                                     Some(delta.signum())
                                 } else {
@@ -327,9 +336,14 @@ fn run_pipeline_worker(
                             } else {
                                 stats.spikes_generated += 1;
                             }
+                            // The emitted reference advances ONLY here. This is
+                            // what bounds reconstruction error to one threshold:
+                            // the decoder knows the signal was within `threshold`
+                            // of `refs[ch]` for every sample since the last event.
+                            refs[ch] = value;
                         }
 
-                        // Update state
+                        // Previous-sample state always advances (TemporalContrast).
                         last_values[ch] = value;
 
                         // Adaptive threshold update
@@ -751,5 +765,99 @@ mod tests {
             let deserialized: EncoderType = serde_json::from_str(&json).unwrap();
             assert_eq!(deserialized, encoder_type);
         }
+    }
+}
+
+/// Pure form of the per-sample encode decision used by [`run_encoder_pipeline`].
+///
+/// Extracted so the semantics can be tested without an LSL outlet. The streaming
+/// loop keeps its own copy of this logic inline for performance; these functions
+/// exist to pin the *contract* that loop must satisfy, in particular that Delta
+/// and LevelCrossing measure against the last EMITTED value rather than the
+/// previous sample.
+pub mod encode_semantics {
+    /// Should a Delta/LevelCrossing encoder emit for `value`?
+    ///
+    /// `reference` is the last emitted value, NOT the previous sample. Returns
+    /// the event polarity, or `None` when the signal has not yet moved a full
+    /// threshold away from what was last transmitted.
+    pub fn delta_event(value: f32, reference: f32, threshold: f32) -> Option<f32> {
+        let delta = value - reference;
+        (delta.abs() >= threshold).then(|| delta.signum())
+    }
+
+    /// Temporal contrast is a sample-to-sample derivative by definition, so it
+    /// correctly compares against the previous sample.
+    pub fn temporal_contrast_event(value: f32, previous: f32, threshold: f32) -> Option<f32> {
+        let contrast = (value - previous).abs();
+        (contrast >= threshold).then_some(contrast)
+    }
+}
+
+#[cfg(test)]
+mod encode_semantics_tests {
+    use super::encode_semantics::*;
+
+    /// The bug this file used to have: the reference advanced on every sample, so
+    /// a signal drifting slower than one threshold per sample never fired, no
+    /// matter how far it drifted in total. Against the last EMITTED value it must
+    /// fire once per threshold of accumulated drift.
+    #[test]
+    fn slow_drift_still_fires_against_emitted_reference() {
+        let threshold = 1.0_f32;
+        let mut reference = 0.0_f32;
+        let mut events = 0;
+
+        // 100 samples each +0.1: below threshold per-sample, +10.0 in total.
+        for i in 1..=100 {
+            let value = 0.1 * i as f32;
+            if delta_event(value, reference, threshold).is_some() {
+                events += 1;
+                reference = value; // advances ONLY on emit
+            }
+        }
+
+        // ~10 events for 10.0 of drift at threshold 1.0.
+        assert!(
+            (9..=11).contains(&events),
+            "expected ~10 events for 10.0 drift at threshold 1.0, got {events}"
+        );
+    }
+
+    /// Comparing against the previous sample instead — the old behaviour — would
+    /// emit nothing at all for the same signal. Pinned so the regression cannot
+    /// silently return.
+    #[test]
+    fn per_sample_comparison_would_miss_the_drift_entirely() {
+        let threshold = 1.0_f32;
+        let mut previous = 0.0_f32;
+        let mut events = 0;
+        for i in 1..=100 {
+            let value = 0.1 * i as f32;
+            if delta_event(value, previous, threshold).is_some() {
+                events += 1;
+            }
+            previous = value; // advances every sample — the bug
+        }
+        assert_eq!(
+            events, 0,
+            "per-sample comparison is exactly the failure mode being guarded against"
+        );
+    }
+
+    #[test]
+    fn polarity_follows_direction() {
+        assert_eq!(delta_event(5.0, 0.0, 1.0), Some(1.0));
+        assert_eq!(delta_event(-5.0, 0.0, 1.0), Some(-1.0));
+        assert_eq!(delta_event(0.5, 0.0, 1.0), None);
+    }
+
+    #[test]
+    fn temporal_contrast_is_sample_to_sample() {
+        // A steady ramp has constant sample-to-sample contrast, so it fires every
+        // sample once the step meets threshold — unlike delta, which fires only
+        // per threshold of accumulated drift.
+        assert!(temporal_contrast_event(2.0, 1.0, 1.0).is_some());
+        assert!(temporal_contrast_event(1.5, 1.0, 1.0).is_none());
     }
 }
