@@ -2,7 +2,22 @@
 //!
 //! This module provides export capabilities for major neuromorphic platforms:
 //!
-//! - **Intel Loihi 2** (via Lava framework)
+//! - **Intel Loihi 2** (via Lava framework) — see the status note below
+//!
+//! # Status of the Lava target (verified 2026-08-01)
+//!
+//! Intel **archived every `lava-nc` repository on 2026-05-13**. The framework is
+//! read-only and unsupported; there is no announced successor. Code emitted for
+//! the `Loihi2` target therefore targets a dead SDK.
+//!
+//! The target is retained rather than deleted because existing Loihi 2 hardware
+//! and existing Lava installations still run, and removing the exporter would
+//! strand them. It should be treated as **legacy**: do not build new work on it.
+//!
+//! For portable neuromorphic interchange prefer **NIR** (Neuromorphic
+//! Intermediate Representation), which is actively maintained — v1.0.8 released
+//! 2026-07-06 — and is supported across multiple simulators and hardware
+//! backends rather than a single vendor's stack.
 //! - **SpiNNaker 2** (via PyNN/sPyNNaker)
 //! - **BrainScaleS-2** (via PyNN/hxtorch)
 //!
@@ -31,7 +46,16 @@ use std::fmt::Write;
 /// Neuromorphic hardware target.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NeuromorphicTarget {
-    /// Intel Loihi 2 (via Lava framework).
+    /// Intel Loihi 2, via the Lava framework.
+    ///
+    /// **Legacy.** Intel archived all `lava-nc` repositories on 2026-05-13;
+    /// the SDK this emits for is unsupported. Retained so existing Loihi 2
+    /// deployments are not stranded. Prefer NIR for new work.
+    #[deprecated(
+        since = "0.1.0",
+        note = "Lava was archived by Intel on 2026-05-13 and is unsupported; \
+               prefer NIR for portable neuromorphic export"
+    )]
     Loihi2,
     /// SpiNNaker 2 (via sPyNNaker).
     SpiNNaker2,
@@ -45,6 +69,7 @@ impl NeuromorphicTarget {
     /// Get target name.
     pub fn name(&self) -> &'static str {
         match self {
+            #[allow(deprecated)]
             NeuromorphicTarget::Loihi2 => "Intel Loihi 2",
             NeuromorphicTarget::SpiNNaker2 => "SpiNNaker 2",
             NeuromorphicTarget::BrainScaleS2 => "BrainScaleS-2",
@@ -55,6 +80,7 @@ impl NeuromorphicTarget {
     /// Get framework name.
     pub fn framework(&self) -> &'static str {
         match self {
+            #[allow(deprecated)]
             NeuromorphicTarget::Loihi2 => "Lava",
             NeuromorphicTarget::SpiNNaker2 => "sPyNNaker",
             NeuromorphicTarget::BrainScaleS2 => "hxtorch",
@@ -65,6 +91,7 @@ impl NeuromorphicTarget {
     /// Get hardware specifications.
     pub fn specs(&self) -> HardwareSpecs {
         match self {
+            #[allow(deprecated)]
             NeuromorphicTarget::Loihi2 => HardwareSpecs {
                 neurons_per_core: 8192,
                 cores_per_chip: 128,
@@ -380,6 +407,7 @@ impl NeuromorphicExporter {
     /// Export network configuration.
     pub fn export(&self, config: &NetworkConfig) -> Result<String, NeuromorphicExportError> {
         match self.target {
+            #[allow(deprecated)]
             NeuromorphicTarget::Loihi2 => self.export_lava(config),
             NeuromorphicTarget::SpiNNaker2 => self.export_spinnaker(config),
             NeuromorphicTarget::BrainScaleS2 => self.export_brainscales(config),
@@ -794,6 +822,7 @@ impl std::fmt::Display for NeuromorphicExportError {
 impl std::error::Error for NeuromorphicExportError {}
 
 #[cfg(test)]
+#[allow(deprecated)] // exhaustive coverage of targets, including the legacy one
 mod tests {
     use super::*;
 
