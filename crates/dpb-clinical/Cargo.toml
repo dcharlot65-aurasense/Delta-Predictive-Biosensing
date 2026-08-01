@@ -1,7 +1,7 @@
 [package]
 name = "dpb-clinical"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 authors = ["AuraSense Tech Corporation"]
 description = "Clinical utilities for DPB Framework: normative data, treatment response, comorbidity modeling"
 license.workspace = true

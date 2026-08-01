@@ -1,7 +1,7 @@
 [package]
 name = "dpb-federated"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 authors = ["AuraSense Tech Corporation"]
 description = "Privacy-preserving federated learning for DPB Framework"
 license.workspace = true

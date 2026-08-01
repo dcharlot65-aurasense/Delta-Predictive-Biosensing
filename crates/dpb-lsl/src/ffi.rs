@@ -431,14 +431,14 @@ pub fn to_c_string(s: &str) -> std::ffi::CString {
 ///
 /// # Safety
 /// The pointer must be a valid C string pointer.
-pub unsafe fn from_c_string(ptr: *const c_char) -> String {
+pub unsafe fn from_c_string(ptr: *const c_char) -> String { unsafe {
     if ptr.is_null() {
         return String::new();
     }
     std::ffi::CStr::from_ptr(ptr)
         .to_string_lossy()
         .into_owned()
-}
+}}
 
 /// Convert channel format enum to liblsl constant.
 pub fn format_to_lsl(format: super::ChannelFormat) -> c_int {

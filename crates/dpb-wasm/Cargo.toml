@@ -1,7 +1,7 @@
 [package]
 name = "dpb-wasm"
 version = "0.4.0"
-edition = "2021"
+edition.workspace = true
 authors = ["AuraSense Tech Corporation"]
 description = "WebAssembly bindings for DPB Framework - browser-based biosignal processing"
 license.workspace = true

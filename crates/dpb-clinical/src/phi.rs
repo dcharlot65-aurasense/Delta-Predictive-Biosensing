@@ -751,7 +751,7 @@ impl KAnonymityChecker {
 
         let violations: Vec<(String, usize)> = equivalence_classes
             .iter()
-            .filter(|(_, &count)| count < self.k)
+            .filter(|&(_, &count)| count < self.k)
             .map(|(key, &count)| (key.clone(), count))
             .collect();
 

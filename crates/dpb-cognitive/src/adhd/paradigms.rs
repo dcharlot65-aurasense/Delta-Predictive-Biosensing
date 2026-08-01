@@ -60,7 +60,7 @@ impl QbTest {
         let trial_duration_ms = self.stimulus_duration_ms + self.inter_stimulus_interval_ms;
 
         for i in 0..n_stimuli {
-            let is_target: bool = rng.gen::<f64>() < self.target_probability;
+            let is_target: bool = rng.r#gen::<f64>() < self.target_probability;
             stimuli.push(QbTestStimulus {
                 index: i,
                 onset_time_ms: i as f64 * trial_duration_ms,

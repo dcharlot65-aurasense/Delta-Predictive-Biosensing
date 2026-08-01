@@ -93,7 +93,7 @@ impl GoNoGoTask {
         let mut current_time = 0.0;
 
         for i in 0..n_trials {
-            let is_go = rng.gen::<f64>() < self.go_probability;
+            let is_go = rng.r#gen::<f64>() < self.go_probability;
             trials.push(GoNoGoTrial {
                 trial_number: i,
                 is_go,
@@ -281,7 +281,7 @@ impl FlankerTask {
                 trials.push(FlankerTrial {
                     trial_number,
                     condition: *condition,
-                    target_right: rng.gen(),
+                    target_right: rng.r#gen(),
                     onset_time: 0.0, // Will be set after shuffling
                 });
                 trial_number += 1;

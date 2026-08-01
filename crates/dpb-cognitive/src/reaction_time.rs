@@ -110,7 +110,7 @@ impl ChoiceReactionTime {
         let mut trials = Vec::with_capacity(n_trials);
 
         for i in 0..n_trials {
-            let rand_val: f64 = rng.gen();
+            let rand_val: f64 = rng.r#gen();
             let mut cumulative = 0.0;
             let mut stimulus_idx = 0;
 

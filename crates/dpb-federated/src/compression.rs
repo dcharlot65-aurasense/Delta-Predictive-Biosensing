@@ -158,7 +158,7 @@ impl GradientCompressor {
         let mut rng = rand::thread_rng();
 
         for v in tensor.data.iter_mut() {
-            if rng.gen::<f32>() > self.ratio {
+            if rng.r#gen::<f32>() > self.ratio {
                 *v = 0.0;
             } else {
                 // Scale up to maintain expected value
@@ -193,9 +193,28 @@ impl GradientCompressor {
     }
 
     /// Sign-based compression (SignSGD).
+    ///
+    /// Maps each value to -1, 0 or +1. Zero must map to zero: a zero gradient
+    /// means "no update", and turning it into a full-magnitude step is not
+    /// compression, it is fabrication.
+    ///
+    /// `f32::signum` cannot be used here. It follows IEEE-754 sign semantics and
+    /// returns `1.0` for `+0.0` and `-1.0` for `-0.0` — it never returns zero. A
+    /// converged, masked or genuinely unused parameter would therefore receive a
+    /// full positive step every round, from every client, and the error compounds
+    /// across aggregation rather than cancelling.
+    ///
+    /// Non-finite inputs map to 0 so a single NaN gradient cannot poison the
+    /// aggregate for every participant.
     fn compress_sign(&self, tensor: &mut Tensor) -> Result<()> {
         for v in tensor.data.iter_mut() {
-            *v = v.signum();
+            *v = if *v > 0.0 {
+                1.0
+            } else if *v < 0.0 {
+                -1.0
+            } else {
+                0.0 // covers +0.0, -0.0 and NaN
+            };
         }
         Ok(())
     }
@@ -349,6 +368,20 @@ mod tests {
         compressor.compress_sign(&mut tensor).unwrap();
 
         assert_eq!(tensor.data, vec![-1.0, 0.0, 1.0, -1.0]);
+    }
+
+    /// f32::signum returns 1.0 for +0.0 and -1.0 for -0.0, so both forms of zero
+    /// are pinned: a zero gradient must stay a zero update.
+    #[test]
+    fn sign_compression_preserves_both_zeros_and_neutralises_nan() {
+        let compressor = GradientCompressor::sign_sgd();
+        let mut tensor = Tensor::new(vec![0.0, -0.0, f32::NAN, 1e-9, -1e-9], vec![5]);
+        compressor.compress_sign(&mut tensor).unwrap();
+        assert_eq!(tensor.data[0], 0.0, "+0.0 must stay 0");
+        assert_eq!(tensor.data[1], 0.0, "-0.0 must stay 0");
+        assert_eq!(tensor.data[2], 0.0, "NaN must not become a full step");
+        assert_eq!(tensor.data[3], 1.0, "tiny positive is still positive");
+        assert_eq!(tensor.data[4], -1.0, "tiny negative is still negative");
     }
 
     #[test]

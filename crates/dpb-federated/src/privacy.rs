@@ -317,7 +317,7 @@ impl LocalDP {
         let mut rng = rand::thread_rng();
         let p = 1.0 / (1.0 + self.epsilon.exp());
 
-        if rng.gen::<f64>() < p {
+        if rng.r#gen::<f64>() < p {
             !value // Flip with probability p
         } else {
             value
