@@ -246,7 +246,13 @@ impl MultiCompartmentNeuron {
                 ion_current += k_channel.current(voltage);
             }
 
-            comp.set_ion_current(ion_current);
+            // IonChannel::current() is a current DENSITY (nA/cm²) but
+            // Compartment::ion_currents is an absolute current (nA), and the
+            // integrator divides by the area-scaled total capacitance. Passing
+            // the density straight through over-scaled every channel current by
+            // 1/area — about 3e5 for default geometry — so the membrane
+            // integrated to ±1e5 mV and then NaN within two steps, with no input.
+            comp.set_ion_current(ion_current * comp.area());
         }
     }
 

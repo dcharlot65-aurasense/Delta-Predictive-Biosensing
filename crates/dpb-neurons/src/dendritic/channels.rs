@@ -19,7 +19,19 @@ use std::f64::consts::E as EULER;
 
 /// Ion channel trait
 pub trait IonChannel: Send + Sync {
-    /// Get channel current (nA/cm²) at given voltage
+    /// Get channel current (nA/cm²) at given voltage.
+    ///
+    /// # Sign convention: INWARD-POSITIVE
+    ///
+    /// Returns `g * (E_rev - V)`, so a positive value depolarises. This matches
+    /// `Compartment::leak_current` and the integrator, which computes
+    /// `dv = +I/C * dt` and sums channel and leak currents directly.
+    ///
+    /// Note this is the opposite of the outward-positive convention usual in
+    /// electrophysiology (`I = g(V - E)`). Mixing the two here is not cosmetic:
+    /// channel currents summed with the wrong sign become regenerative instead
+    /// of restorative, and the membrane integrates away from rest without any
+    /// input at all.
     fn current(&self, voltage: f64) -> f64;
 
     /// Update gating variables
@@ -161,7 +173,8 @@ impl HodgkinHuxleyChannel {
 impl IonChannel for HodgkinHuxleyChannel {
     fn current(&self, voltage: f64) -> f64 {
         let g = self.g_max * self.m.effective() * self.h.effective();
-        g * (voltage - self.e_rev)
+        // Inward-positive: see IonChannel::current.
+        g * (self.e_rev - voltage)
     }
 
     fn update(&mut self, voltage: f64, dt: f64) {
@@ -293,7 +306,7 @@ impl CalciumChannel {
 impl IonChannel for CalciumChannel {
     fn current(&self, voltage: f64) -> f64 {
         let g = self.g_max * self.m.effective() * self.h.effective();
-        g * (voltage - self.e_ca)
+        g * (self.e_ca - voltage)
     }
 
     fn update(&mut self, voltage: f64, dt: f64) {
@@ -360,7 +373,7 @@ impl PotassiumChannel {
 impl IonChannel for PotassiumChannel {
     fn current(&self, voltage: f64) -> f64 {
         let g = self.g_max * self.m.effective();
-        g * (voltage - self.e_k)
+        g * (self.e_k - voltage)
     }
 
     fn update(&mut self, voltage: f64, dt: f64) {
@@ -441,7 +454,7 @@ impl IonChannel for NmdaReceptor {
     fn current(&self, voltage: f64) -> f64 {
         let mg_block = self.mg_block(voltage);
         let g = self.g_max * self.s * mg_block;
-        g * (voltage - self.e_rev)
+        g * (self.e_rev - voltage)
     }
 
     fn update(&mut self, _voltage: f64, dt: f64) {
@@ -492,7 +505,7 @@ impl AmpaReceptor {
 impl IonChannel for AmpaReceptor {
     fn current(&self, voltage: f64) -> f64 {
         let g = self.g_max * self.s;
-        g * (voltage - self.e_rev)
+        g * (self.e_rev - voltage)
     }
 
     fn update(&mut self, _voltage: f64, dt: f64) {
@@ -542,7 +555,7 @@ impl GabaAReceptor {
 impl IonChannel for GabaAReceptor {
     fn current(&self, voltage: f64) -> f64 {
         let g = self.g_max * self.s;
-        g * (voltage - self.e_rev)
+        g * (self.e_rev - voltage)
     }
 
     fn update(&mut self, _voltage: f64, dt: f64) {
@@ -594,7 +607,7 @@ impl GabaBReceptor {
 impl IonChannel for GabaBReceptor {
     fn current(&self, voltage: f64) -> f64 {
         let g = self.g_max * self.s;
-        g * (voltage - self.e_rev)
+        g * (self.e_rev - voltage)
     }
 
     fn update(&mut self, _voltage: f64, dt: f64) {
@@ -641,9 +654,19 @@ mod tests {
             na.update(-30.0, 0.1);
         }
 
-        // Current should increase (become more positive)
+        // Na influx depolarises, so the current is positive under the crate's
+        // inward-positive convention.
+        assert!(i_rest > 0.0, "Na influx depolarises at rest: got {i_rest}");
+
+        // After sustained depolarisation the h gate inactivates AND the driving
+        // force (E_Na - V) shrinks, so the current FALLS. The previous assertion
+        // expected it to rise, which is the opposite of Na channel inactivation.
         let i_depol = na.current(-30.0);
-        assert!(i_depol > i_rest);
+        assert!(i_depol > 0.0, "still an inward current: got {i_depol}");
+        assert!(
+            i_depol < i_rest,
+            "sustained depolarisation inactivates Na: rest {i_rest}, depol {i_depol}"
+        );
     }
 
     #[test]
@@ -674,22 +697,42 @@ mod tests {
         let i_l = l_type.current(-20.0);
         let i_t = t_type.current(-60.0);
 
-        // Both should allow Ca influx (negative current)
-        assert!(i_l < 0.0);
-        assert!(i_t < 0.0);
+        // Ca influx DEPOLARISES (E_Ca ~ +120 mV), which is a positive current
+        // under the crate's inward-positive convention.
+        assert!(i_l > 0.0, "L-type Ca influx depolarises: got {i_l}");
+        assert!(i_t > 0.0, "T-type Ca influx also depolarises: got {i_t}");
     }
 
     #[test]
     fn test_nmda_mg_block() {
         let nmda = NmdaReceptor::new(1.0);
 
-        // At -70 mV, strong Mg block
+        // mg_block returns the UNBLOCKED fraction, and implements
+        // Jahr & Stevens (1990): 1 / (1 + [Mg]/3.57 * exp(-0.062V)).
+        // Values below are that published model at 1 mM Mg, not round numbers
+        // chosen by eye — the earlier test asserted > 0.8 at 0 mV where the
+        // model gives 0.781, so a correct implementation failed.
         let block_hyperpol = nmda.mg_block(-70.0);
-        assert!(block_hyperpol < 0.2);
+        assert!(
+            (block_hyperpol - 0.044).abs() < 0.01,
+            "Jahr-Stevens at -70 mV is ~0.044 (strong block): got {block_hyperpol}"
+        );
 
-        // At 0 mV, weak Mg block
-        let block_depol = nmda.mg_block(0.0);
-        assert!(block_depol > 0.8);
+        let block_zero = nmda.mg_block(0.0);
+        assert!(
+            (block_zero - 0.781).abs() < 0.01,
+            "Jahr-Stevens at 0 mV is ~0.781: got {block_zero}"
+        );
+
+        let block_depol = nmda.mg_block(20.0);
+        assert!(
+            block_depol > 0.9,
+            "block is largely relieved by +20 mV: got {block_depol}"
+        );
+
+        // The property that matters for coincidence detection: relief of the
+        // block is monotonic in depolarisation.
+        assert!(block_hyperpol < block_zero && block_zero < block_depol);
     }
 
     #[test]
@@ -731,12 +774,15 @@ mod tests {
         gaba_a.activate(1.0);
         gaba_b.activate(1.0);
 
-        // Both should be inhibitory (hyperpolarizing at typical V)
+        // Both are inhibitory: at -60 mV they pull toward E_rev below it.
+        // Under the crate's inward-positive convention (see IonChannel::current)
+        // a hyperpolarising current is NEGATIVE.
         let i_a = gaba_a.current(-60.0);
         let i_b = gaba_b.current(-60.0);
 
-        assert!(i_a > 0.0); // Pulls toward -70 mV
-        assert!(i_b > 0.0); // Pulls toward -90 mV
+        assert!(i_a < 0.0, "GABA_A pulls toward -70 mV from -60 mV: got {i_a}");
+        assert!(i_b < 0.0, "GABA_B pulls toward -90 mV from -60 mV: got {i_b}");
+        assert!(i_b < i_a, "GABA_B (E=-90) hyperpolarises harder than GABA_A (E=-70)");
     }
 
     #[test]
