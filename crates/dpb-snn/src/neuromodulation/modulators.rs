@@ -133,13 +133,24 @@ impl ModulatorConcentration {
         // Release increases concentration
         self.concentration += release;
 
-        // Decay toward baseline
-        let decay = (self.concentration - self.baseline) * (dt / self.tau_clearance);
-        self.concentration -= decay;
+        // Clearance acts on the excess over the tonic baseline, not on the
+        // absolute concentration.
+        //
+        // Reuptake and enzymatic degradation are the mechanisms BY WHICH
+        // released transmitter is cleared -- they are not a separate drain
+        // competing with clearance, so they belong in the same rate term.
+        // Summing them as an additional decay toward zero put the resting fixed
+        // point below `baseline` (0.077 rather than 0.1 at the defaults), which
+        // made `baseline` untrue and left `relative_concentration` reading ~0.77
+        // at rest instead of 1.0 -- miscalibrating every `is_phasic` threshold
+        // downstream. Tonic release holds the floor at `baseline`; these rates
+        // set how fast a phasic transient returns to it.
+        let rate = 1.0 / self.tau_clearance + self.reuptake_rate + self.degradation_rate;
 
-        // Reuptake and degradation
-        let clearance = (self.reuptake_rate + self.degradation_rate) * self.concentration * dt;
-        self.concentration -= clearance;
+        // Clamp the step fraction so a large `dt` relaxes to baseline rather
+        // than overshooting past it and oscillating.
+        let fraction = (rate * dt).clamp(0.0, 1.0);
+        self.concentration -= (self.concentration - self.baseline) * fraction;
 
         // Apply bounds
         self.concentration = self.concentration.max(0.0).min(self.max_concentration);
@@ -285,6 +296,39 @@ impl ReceptorBinding {
         self.occupancy = self.occupancy.max(0.0).min(1.0);
     }
 
+    /// Fractional occupancy this receptor settles at for a steady ligand level.
+    ///
+    /// Setting `dR/dt = k_on*[L]*(1-R) - k_off*R` to zero gives the standard
+    /// binding isotherm `R = [L] / (Kd + [L])`.
+    pub fn equilibrium_occupancy(&self, ligand: f64) -> f64 {
+        if ligand <= 0.0 {
+            return 0.0;
+        }
+        let kd = self.kd();
+        ligand / (kd + ligand)
+    }
+
+    /// Jump this receptor straight to its equilibrium occupancy for `ligand`.
+    ///
+    /// Used when concentration is *set* rather than integrated, so the receptor
+    /// state stays consistent with the concentration it is supposed to reflect.
+    pub fn equilibrate(&mut self, ligand: f64) {
+        self.occupancy = self.equilibrium_occupancy(ligand);
+    }
+
+    /// Construct a receptor already at equilibrium for `ligand`.
+    ///
+    /// A modulator at rest is at its tonic level, not at zero occupancy: every
+    /// receptor here is deliberately given `Kd` equal to the tonic baseline, so
+    /// resting occupancy is 0.5 by design. Starting at 0.0 instead left a freshly
+    /// constructed system in a state it can never return to, and made every
+    /// receptor-derived gain read zero until enough steps had been simulated.
+    pub fn at_equilibrium(receptor_type: String, k_on: f64, k_off: f64, ligand: f64) -> Self {
+        let mut r = Self::new(receptor_type, k_on, k_off);
+        r.equilibrate(ligand);
+        r
+    }
+
     /// Get the equilibrium dissociation constant (Kd)
     pub fn kd(&self) -> f64 {
         self.k_off / self.k_on
@@ -307,6 +351,12 @@ impl ReceptorBinding {
     }
 }
 
+/// Tonic (resting) concentration shared by the bundled modulators.
+///
+/// Every bundled receptor is given `Kd` equal to this value, which puts resting
+/// occupancy at exactly 0.5.
+pub const TONIC_BASELINE: f64 = 0.1;
+
 /// Dopamine neuromodulator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Dopamine {
@@ -324,8 +374,8 @@ impl Default for Dopamine {
                 effective_radius: 100.0,
                 ..Default::default()
             },
-            d1_receptors: ReceptorBinding::new("D1".to_string(), 0.01, 0.001),
-            d2_receptors: ReceptorBinding::new("D2".to_string(), 0.02, 0.002),
+            d1_receptors: ReceptorBinding::at_equilibrium("D1".to_string(), 0.01, 0.001, TONIC_BASELINE),
+            d2_receptors: ReceptorBinding::at_equilibrium("D2".to_string(), 0.02, 0.002, TONIC_BASELINE),
         }
     }
 }
@@ -347,8 +397,8 @@ impl Default for Acetylcholine {
                 effective_radius: 50.0,
                 ..Default::default()
             },
-            nicotinic_receptors: ReceptorBinding::new("Nicotinic".to_string(), 0.05, 0.005),
-            muscarinic_receptors: ReceptorBinding::new("Muscarinic".to_string(), 0.01, 0.001),
+            nicotinic_receptors: ReceptorBinding::at_equilibrium("Nicotinic".to_string(), 0.05, 0.005, TONIC_BASELINE),
+            muscarinic_receptors: ReceptorBinding::at_equilibrium("Muscarinic".to_string(), 0.01, 0.001, TONIC_BASELINE),
         }
     }
 }
@@ -370,8 +420,8 @@ impl Default for Serotonin {
                 effective_radius: 200.0,
                 ..Default::default()
             },
-            receptors_5ht1a: ReceptorBinding::new("5-HT1A".to_string(), 0.008, 0.0008),
-            receptors_5ht2a: ReceptorBinding::new("5-HT2A".to_string(), 0.01, 0.001),
+            receptors_5ht1a: ReceptorBinding::at_equilibrium("5-HT1A".to_string(), 0.008, 0.0008, TONIC_BASELINE),
+            receptors_5ht2a: ReceptorBinding::at_equilibrium("5-HT2A".to_string(), 0.01, 0.001, TONIC_BASELINE),
         }
     }
 }
@@ -393,8 +443,8 @@ impl Default for Norepinephrine {
                 effective_radius: 150.0,
                 ..Default::default()
             },
-            alpha_receptors: ReceptorBinding::new("Alpha".to_string(), 0.015, 0.0015),
-            beta_receptors: ReceptorBinding::new("Beta".to_string(), 0.02, 0.002),
+            alpha_receptors: ReceptorBinding::at_equilibrium("Alpha".to_string(), 0.015, 0.0015, TONIC_BASELINE),
+            beta_receptors: ReceptorBinding::at_equilibrium("Beta".to_string(), 0.02, 0.002, TONIC_BASELINE),
         }
     }
 }

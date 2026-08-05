@@ -501,7 +501,7 @@ mod tests {
 
         let result = exporter.export_model(&weights, &layers, &input_shape);
 
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "export failed: {:?}", result.as_ref().err());
         let export = result.unwrap();
         assert!(!export.model_bytes.is_empty());
         assert_eq!(export.metadata.export_format, "tflite");

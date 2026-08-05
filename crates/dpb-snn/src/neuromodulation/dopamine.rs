@@ -249,14 +249,28 @@ impl DopamineSystem {
     }
 
     /// Compute reward prediction error
+    /// Computes the RPE **without** learning from it.
+    ///
+    /// Use [`update_from_rpe`](Self::update_from_rpe) to advance the system;
+    /// this is the read-only variant for inspecting what the error would be.
     pub fn compute_rpe(&mut self, reward: f64, next_value: f64) -> f64 {
         self.rpe.compute(reward, next_value)
     }
 
     /// Update dopamine release based on RPE
     pub fn update_from_rpe(&mut self, dt: f64, reward: f64, next_value: f64) -> NeuromodResult<()> {
-        // Compute RPE
-        let rpe = self.compute_rpe(reward, next_value);
+        // Compute the RPE *and learn from it*.
+        //
+        // This previously called `compute_rpe`, which reads the error without
+        // touching the value estimate, so `value` stayed 0.0 for the lifetime of
+        // the system and `alpha` did nothing. A TD learner that never updates
+        // its estimate has no predictions to err against: `rpe` collapsed to
+        // `reward + gamma * next_value`, so the system could neither habituate
+        // to a fully predicted reward nor pause when an expected reward was
+        // withheld -- the two phenomena that define phasic dopamine coding
+        // (Schultz, Dayan & Montague 1997).
+        self.rpe.update_value(reward, next_value);
+        let rpe = self.rpe.rpe;
 
         // Update VTA response
         if self.config.use_vta {
@@ -264,7 +278,6 @@ impl DopamineSystem {
         }
 
         // Determine release mode
-        let baseline_conc = self.dopamine.concentration.baseline;
         self.mode = if rpe > 0.1 {
             DopamineMode::Phasic
         } else if rpe < -0.1 {
@@ -369,7 +382,15 @@ impl DopamineSystem {
             DopamineMode::Pause => 0.1,     // Suppress
         };
 
-        base_weight_change * modulation * self.get_receptor_effect().abs()
+        // The receptor term keeps its SIGN. `d2_weight` is negative by
+        // construction, so a D2-dominated state yields a net negative effect and
+        // inverts the weight change -- D1 (Go/LTP) and D2 (NoGo/LTD) push in
+        // opposite directions, which is the reason the two families carry
+        // opposite-signed weights. Taking `.abs()` here made a D2-dominated
+        // state potentiate exactly as strongly as a D1-dominated one, erasing
+        // that opposition and leaving `d2_weight`'s sign with no effect on
+        // anything.
+        base_weight_change * modulation * self.get_receptor_effect()
     }
 }
 
@@ -387,6 +408,12 @@ impl ModulatorySystem for DopamineSystem {
             });
         }
         self.dopamine.concentration.concentration = concentration;
+        // Setting a concentration outright must carry the receptors with
+        // it; leaving them at their previous occupancy would report a
+        // receptor-derived effect for a concentration that is no longer
+        // present.
+        self.dopamine.d1_receptors.equilibrate(concentration);
+        self.dopamine.d2_receptors.equilibrate(concentration);
         Ok(())
     }
 
@@ -458,9 +485,27 @@ mod tests {
         assert!(system.is_phasic());
         assert!(system.get_concentration() > 0.1);
 
-        // Test with negative reward
-        system.update_from_rpe(1.0, 0.0, 1.0).unwrap();
-        assert!(system.is_pause());
+        // A dopamine pause comes from OMITTING AN EXPECTED reward, not from a
+        // zero reward as such (Schultz 1997). Under the TD rule
+        // `rpe = reward + gamma * next_value - value`, passing a high
+        // `next_value` is a POSITIVE prediction error -- the successor state is
+        // valuable -- so it produces a burst, not a pause.
+        //
+        // Build up an expectation first, then withhold the reward.
+        for _ in 0..20 {
+            system.update_from_rpe(1.0, 1.0, 0.0).unwrap();
+        }
+        assert!(
+            !system.is_pause(),
+            "a trained, rewarded system must not be in pause"
+        );
+
+        // Reward omitted, and no valuable successor state: rpe goes negative.
+        system.update_from_rpe(1.0, 0.0, 0.0).unwrap();
+        assert!(
+            system.is_pause(),
+            "omitting an expected reward must produce a pause"
+        );
     }
 
     #[test]
@@ -486,16 +531,35 @@ mod tests {
         let mut system = DopamineSystem::new(DopamineConfig::default());
         let base_change = 0.1;
 
-        // Phasic mode should enhance
-        system.mode = DopamineMode::Phasic;
         system.dopamine.d1_receptors.occupancy = 0.5;
-        let modulated = system.modulate_plasticity(base_change);
-        assert!(modulated.abs() > base_change);
 
-        // Pause mode should suppress
+        // The contract is ORDERING ACROSS MODES at a fixed receptor state:
+        // phasic potentiates more than tonic, tonic more than pause. Comparing
+        // a single mode against the raw `base_change` instead is not a property
+        // of the design -- it holds only when the receptor term happens to
+        // exceed 0.5, and at exactly 0.5 the phasic gain of 2.0 cancels it to
+        // give back `base_change` unchanged.
+        system.mode = DopamineMode::Phasic;
+        let phasic = system.modulate_plasticity(base_change);
+        system.mode = DopamineMode::Tonic;
+        let tonic = system.modulate_plasticity(base_change);
         system.mode = DopamineMode::Pause;
-        let modulated = system.modulate_plasticity(base_change);
-        assert!(modulated.abs() < base_change);
+        let pause = system.modulate_plasticity(base_change);
+
+        assert!(phasic > tonic, "phasic {phasic} must exceed tonic {tonic}");
+        assert!(tonic > pause, "tonic {tonic} must exceed pause {pause}");
+        assert!(pause < base_change, "pause {pause} must suppress below {base_change}");
+
+        // D2 dominance inverts the sign: dopamine acting through D2 drives
+        // depression, not potentiation.
+        system.mode = DopamineMode::Phasic;
+        system.dopamine.d1_receptors.occupancy = 0.0;
+        system.dopamine.d2_receptors.occupancy = 0.5;
+        let d2_dominated = system.modulate_plasticity(base_change);
+        assert!(
+            d2_dominated < 0.0,
+            "D2-dominated modulation must invert the weight change, got {d2_dominated}"
+        );
     }
 
     #[test]
@@ -522,4 +586,41 @@ mod tests {
         assert_eq!(system.rpe.value, 0.0);
         assert_eq!(system.rpe.rpe, 0.0);
     }
+
+    /// The value estimate must actually track experience.
+    ///
+    /// Regression: `update_from_rpe` called the read-only `compute_rpe`, so
+    /// `value` never moved off 0.0 and the prediction error was just the reward.
+    /// The signature of phasic dopamine is that the response SHRINKS as a reward
+    /// becomes predicted, and goes negative when a predicted reward is withheld;
+    /// neither is possible if nothing is ever learned.
+    #[test]
+    fn test_value_estimate_learns() {
+        let mut system = DopamineSystem::new(DopamineConfig::default());
+
+        let first = system.compute_rpe(1.0, 0.0);
+        system.update_from_rpe(1.0, 1.0, 0.0).unwrap();
+        for _ in 0..30 {
+            system.update_from_rpe(1.0, 1.0, 0.0).unwrap();
+        }
+
+        // Same reward, now predicted: the error must have shrunk toward zero.
+        let predicted = system.compute_rpe(1.0, 0.0);
+        assert!(
+            predicted < first,
+            "a repeated reward must become predicted: {first} -> {predicted}"
+        );
+        assert!(
+            predicted.abs() < 0.2,
+            "a fully predicted reward should elicit little error, got {predicted}"
+        );
+
+        // Withhold it: the error must go negative.
+        let omitted = system.compute_rpe(0.0, 0.0);
+        assert!(
+            omitted < 0.0,
+            "omitting a predicted reward must give a negative error, got {omitted}"
+        );
+    }
+
 }

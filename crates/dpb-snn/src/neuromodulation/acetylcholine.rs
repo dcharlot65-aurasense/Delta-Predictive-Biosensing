@@ -243,18 +243,29 @@ impl AcetylcholineSystem {
     pub fn get_consolidation_factor(&self, phase: ConsolidationPhase) -> f64 {
         let conc = self.acetylcholine.concentration.relative_concentration();
 
+        // `conc` is RELATIVE to the tonic baseline: 1.0 at rest, above 1.0 when
+        // elevated, and unbounded above. The other two arms previously used
+        // constants chosen for an absolute 0-1 concentration, which does not
+        // hold here -- `1.0 - conc.min(0.8)` saturated for any relative level
+        // at or above 0.8, so the consolidation factor was pinned at 0.2 for
+        // every concentration at or above rest and could not express "low ACh
+        // favours consolidation" at all. Each arm below is therefore written
+        // against the ratio directly, and each is neutral (1.0) at baseline.
         match phase {
             ConsolidationPhase::Encoding => {
-                // High ACh during encoding
+                // High ACh favours encoding: rises with concentration.
                 conc
             }
             ConsolidationPhase::Consolidation => {
-                // Low ACh during consolidation
-                1.0 - conc.min(0.8)
+                // Low ACh favours consolidation -- the hyperbolic dual of the
+                // encoding arm. Neutral at baseline, 2.0 as ACh goes to zero,
+                // falling toward zero as ACh rises. Bounded, so no singularity.
+                2.0 / (1.0 + conc)
             }
             ConsolidationPhase::Retrieval => {
-                // Moderate ACh during retrieval
-                1.0 - (conc - 0.5).abs()
+                // Moderate ACh favours retrieval: peaks at the tonic baseline
+                // and falls off in either direction.
+                1.0 / (1.0 + (conc - 1.0).abs())
             }
         }
     }
@@ -314,6 +325,12 @@ impl ModulatorySystem for AcetylcholineSystem {
             });
         }
         self.acetylcholine.concentration.concentration = concentration;
+        // Setting a concentration outright must carry the receptors with
+        // it; leaving them at their previous occupancy would report a
+        // receptor-derived effect for a concentration that is no longer
+        // present.
+        self.acetylcholine.nicotinic_receptors.equilibrate(concentration);
+        self.acetylcholine.muscarinic_receptors.equilibrate(concentration);
         self.update_attention_state();
         Ok(())
     }

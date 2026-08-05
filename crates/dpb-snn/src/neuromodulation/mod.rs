@@ -57,7 +57,7 @@
 //! // Simulate reward prediction error
 //! let reward = 1.0;
 //! let predicted_value = 0.5;
-//! let rpe = da_system.compute_rpe(reward, predicted_value);
+//! let rpe = da_system.compute_rpe(reward, next_state_value);
 //!
 //! // Apply three-factor learning rule
 //! # let pre_trace = 0.5;

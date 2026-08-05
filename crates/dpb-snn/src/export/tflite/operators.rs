@@ -22,14 +22,25 @@ pub struct TFLiteOperator {
 }
 
 impl TFLiteOperator {
-    /// Create a new operator
+    /// Create a new operator.
+    ///
+    /// For a [`OperatorType::Custom`] op the custom code is derived from
+    /// [`CustomOperator::name`], because TFLite resolves a custom operator by
+    /// exactly that registration string and a model carrying a custom op with no
+    /// code is invalid. Deriving it here rather than leaving it to each call site
+    /// keeps that invalid state unreachable by default; use
+    /// [`with_custom_code`](Self::with_custom_code) to override the name.
     pub fn new(op_type: OperatorType, inputs: Vec<usize>, outputs: Vec<usize>) -> Self {
+        let custom_code = match &op_type {
+            OperatorType::Custom(op) => Some(op.name().to_string()),
+            OperatorType::Builtin(_) => None,
+        };
         Self {
             op_type,
             inputs,
             outputs,
             options: OperatorOptions::None,
-            custom_code: None,
+            custom_code,
         }
     }
 
@@ -641,4 +652,41 @@ mod tests {
         assert_eq!(opts.stride_w, 2);
         assert_eq!(opts.filter_width, 2);
     }
+    /// Every custom operator must validate straight out of `new()`.
+    ///
+    /// Regression: the exporter built SNN layers as custom ops without setting
+    /// `custom_code`, so validation rejected every exported model containing a
+    /// spiking layer — the exact case this exporter exists for.
+    #[test]
+    fn test_custom_operators_carry_registration_name() {
+        let all = [
+            CustomOperator::LIFNeuron,
+            CustomOperator::AdaptiveLIFNeuron,
+            CustomOperator::IzhikevichNeuron,
+            CustomOperator::SpikeEncoder,
+            CustomOperator::SpikeDecoder,
+            CustomOperator::SpikePooling,
+            CustomOperator::TemporalConv,
+        ];
+        for op in all {
+            let expected = op.name();
+            let operator = TFLiteOperator::new(OperatorType::Custom(op), vec![0], vec![1]);
+            assert_eq!(
+                operator.custom_code.as_deref(),
+                Some(expected),
+                "{expected} must carry its own registration name"
+            );
+            assert!(
+                operator.validate().is_ok(),
+                "{expected} must validate without extra setup"
+            );
+        }
+
+        // A builtin has no custom code, and must not acquire one.
+        let builtin =
+            TFLiteOperator::new(OperatorType::Builtin(BuiltinOperator::Add), vec![0], vec![1]);
+        assert!(builtin.custom_code.is_none());
+        assert!(builtin.validate().is_ok());
+    }
+
 }

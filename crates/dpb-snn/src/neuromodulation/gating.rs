@@ -308,7 +308,15 @@ impl ThresholdModulation {
     pub fn new(baseline_threshold: f64) -> Self {
         Self {
             baseline_threshold,
-            modulation_strength: 0.5,
+            // Modulation arrives on [0, 1] centred at 0.5, so the deviation from
+            // centre is at most +/-0.5 and the threshold shift is
+            // `deviation * strength * baseline`. At strength 0.5 the reachable
+            // span was only [0.75, 1.25] * baseline, so the declared
+            // min/max_threshold bounds below could never be hit and the clamp
+            // was dead code. Strength 1.0 makes full modulation reach
+            // `min_threshold` exactly, so the declared range and the parameter
+            // that drives it agree.
+            modulation_strength: 1.0,
             max_threshold: baseline_threshold * 2.0,
             min_threshold: baseline_threshold * 0.5,
         }
