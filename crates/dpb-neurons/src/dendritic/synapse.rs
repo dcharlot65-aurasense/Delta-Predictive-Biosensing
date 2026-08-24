@@ -22,6 +22,13 @@ pub enum SynapseType {
     Modulatory,  // Neuromodulatory
 }
 
+/// Fraction of the still-closed receptors recruited by one release event at
+/// unit synaptic weight.
+///
+/// Well below 1 so that a train of spikes sums toward saturation instead of a
+/// single spike reaching it.
+const QUANTAL_RELEASE_FRACTION: f64 = 0.5;
+
 /// Synaptic conductance model
 #[derive(Debug, Clone)]
 pub enum SynapticConductance {
@@ -156,6 +163,15 @@ impl SynapticConductance {
 
     /// Trigger synaptic event
     pub fn trigger(&mut self, weight: f64) {
+        // Scale the synaptic weight into a per-release open fraction.
+        //
+        // `weight` is the plastic efficacy of the synapse and sits around 1;
+        // receptor `activate` takes a FRACTION of the closed receptors to
+        // recruit. Passing the weight through unscaled asked a single vesicle
+        // to open every receptor at the synapse, so occupancy saturated on the
+        // first spike, temporal summation was impossible, and the synapse's
+        // output no longer depended on input rate.
+        let released = (weight * QUANTAL_RELEASE_FRACTION).clamp(0.0, 1.0);
         match self {
             Self::Alpha { time_since_spike, .. } => {
                 *time_since_spike = 0.0;
@@ -164,13 +180,13 @@ impl SynapticConductance {
                 *time_since_spike = 0.0;
             }
             Self::DualReceptor { ampa, nmda } => {
-                ampa.activate(weight);
-                nmda.activate(weight);
+                ampa.activate(released);
+                nmda.activate(released);
             }
             Self::GabaReceptors { gaba_a, gaba_b } => {
-                gaba_a.activate(weight);
+                gaba_a.activate(released);
                 if let Some(g) = gaba_b {
-                    g.activate(weight);
+                    g.activate(released);
                 }
             }
         }
@@ -252,7 +268,7 @@ pub struct DendriticSynapse {
     /// Synaptic conductance model
     conductance: SynapticConductance,
     /// Last spike time (ms)
-    last_spike_time: f64,
+    last_spike_time: Option<f64>,
     /// Total number of spikes received
     spike_count: usize,
     /// Running average of inter-spike interval (ms)
@@ -265,7 +281,7 @@ impl DendriticSynapse {
         Self {
             config,
             conductance,
-            last_spike_time: -1000.0,
+            last_spike_time: None,
             spike_count: 0,
             avg_isi: 0.0,
         }
@@ -324,14 +340,28 @@ impl DendriticSynapse {
 
     /// Receive presynaptic spike
     pub fn receive_spike(&mut self, time: f64) {
-        // Update ISI statistics
-        if self.last_spike_time > 0.0 {
-            let isi = time - self.last_spike_time;
-            let alpha = 0.1; // Running average factor
-            self.avg_isi = (1.0 - alpha) * self.avg_isi + alpha * isi;
+        // Update ISI statistics.
+        //
+        // `last_spike_time` is an Option because a spike at t = 0 is legitimate
+        // and the old `> 0.0` sentinel test silently discarded the first
+        // interval of any train starting at the origin.
+        if let Some(previous) = self.last_spike_time {
+            let isi = time - previous;
+            // Seed the running average with the FIRST interval instead of
+            // blending it into an initial 0.0 that was never a measurement.
+            // With alpha = 0.1 that bias took ~30 spikes to wash out: after two
+            // 10 ms intervals the estimate read 1.9 ms, and `firing_rate`
+            // reported 526 Hz for a 100 Hz train.
+            self.avg_isi = match self.avg_isi {
+                v if v <= 0.0 => isi,
+                v => {
+                    let alpha = 0.1; // Running average factor
+                    (1.0 - alpha) * v + alpha * isi
+                }
+            };
         }
 
-        self.last_spike_time = time;
+        self.last_spike_time = Some(time);
         self.spike_count += 1;
 
         // Trigger synaptic conductance
@@ -352,7 +382,7 @@ impl DendriticSynapse {
     /// Reset synapse
     pub fn reset(&mut self) {
         self.conductance.reset();
-        self.last_spike_time = -1000.0;
+        self.last_spike_time = None;
         self.spike_count = 0;
         self.avg_isi = 0.0;
     }

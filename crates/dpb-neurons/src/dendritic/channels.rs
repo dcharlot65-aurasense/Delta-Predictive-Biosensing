@@ -443,11 +443,21 @@ impl NmdaReceptor {
 
     /// Activate receptor (neurotransmitter release)
     pub fn activate(&mut self, strength: f64) {
-        self.s += strength;
-        if self.s > 1.0 {
-            self.s = 1.0;
-        }
+        self.s = saturating_open(self.s, strength);
     }
+}
+
+/// Advance a receptor's open fraction by one release event.
+///
+/// `s` is fractional occupancy, so an increment is applied to what is still
+/// CLOSED: from rest `activate(x)` opens exactly `x`, and repeated events
+/// approach full occupancy without ever passing it. The previous
+/// `s += strength; if s > 1.0 { s = 1.0 }` hit the bound discontinuously and
+/// then stuck there, at which point the receptor answered one spike and a
+/// hundred identically.
+fn saturating_open(s: f64, strength: f64) -> f64 {
+    let recruited = strength.clamp(0.0, 1.0);
+    (s + recruited * (1.0 - s)).clamp(0.0, 1.0)
 }
 
 impl IonChannel for NmdaReceptor {
@@ -495,10 +505,7 @@ impl AmpaReceptor {
     }
 
     pub fn activate(&mut self, strength: f64) {
-        self.s += strength;
-        if self.s > 1.0 {
-            self.s = 1.0;
-        }
+        self.s = saturating_open(self.s, strength);
     }
 }
 
@@ -545,10 +552,7 @@ impl GabaAReceptor {
     }
 
     pub fn activate(&mut self, strength: f64) {
-        self.s += strength;
-        if self.s > 1.0 {
-            self.s = 1.0;
-        }
+        self.s = saturating_open(self.s, strength);
     }
 }
 
@@ -597,10 +601,7 @@ impl GabaBReceptor {
     }
 
     pub fn activate(&mut self, strength: f64) {
-        self.s += strength;
-        if self.s > 1.0 {
-            self.s = 1.0;
-        }
+        self.s = saturating_open(self.s, strength);
     }
 }
 

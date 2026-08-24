@@ -89,18 +89,30 @@ impl DendriticStdp {
     }
 
     /// Calculate weight change
+    /// STDP kernel for a spike pairing.
+    ///
+    /// `dt_spike` is `post - pre`, so a POSITIVE value means the presynaptic
+    /// spike came first. That is the causal order, and causal order potentiates
+    /// (Bi & Poo 1998); the anti-causal order depresses.
+    ///
+    /// The two branches were previously swapped -- `dt_spike > 0` was labelled
+    /// "post before pre" and depressed. Every causal pairing therefore weakened
+    /// its synapse and every anti-causal pairing strengthened it, inverting the
+    /// learning rule itself while the magnitudes stayed plausible enough for the
+    /// error to pass unnoticed.
     fn delta_w(&self, dt_spike: f64, dendritic_active: bool) -> f64 {
         if dt_spike > 0.0 {
-            // Post before pre (LTD)
-            -self.a_minus * (-dt_spike / self.tau_minus).exp()
-        } else if dt_spike < 0.0 {
-            // Pre before post (LTP)
+            // Pre before post: causal, potentiating.
             if dendritic_active {
-                self.a_plus * (dt_spike / self.tau_plus).exp()
+                self.a_plus * (-dt_spike / self.tau_plus).exp()
             } else {
                 0.0 // No potentiation without dendritic spike
             }
+        } else if dt_spike < 0.0 {
+            // Post before pre: anti-causal, depressing.
+            -self.a_minus * (dt_spike / self.tau_minus).exp()
         } else {
+            // Exact simultaneity establishes no order, so no signed change.
             0.0
         }
     }
@@ -396,7 +408,7 @@ pub struct Metaplasticity {
     /// Threshold adaptation rate
     tau_theta: f64,
     /// Recent postsynaptic activity
-    recent_activity: Vec<f64>,
+    recent_activity: Vec<(f64, f64)>,
     /// Activity time constant (ms)
     tau_activity: f64,
     /// Learning rate
@@ -404,6 +416,9 @@ pub struct Metaplasticity {
 }
 
 impl Metaplasticity {
+    /// How far back the sliding threshold averages postsynaptic activity.
+    const ACTIVITY_WINDOW_MS: f64 = 500.0;
+
     /// Create metaplasticity rule
     pub fn new(initial_theta: f64) -> Self {
         Self {
@@ -419,11 +434,7 @@ impl Metaplasticity {
     /// Update threshold based on recent activity
     pub fn update_threshold(&mut self, dt: f64) {
         // Calculate average recent activity
-        let avg_activity = if !self.recent_activity.is_empty() {
-            self.recent_activity.iter().sum::<f64>() / self.recent_activity.len() as f64
-        } else {
-            0.0
-        };
+        let avg_activity = self.mean_activity();
 
         // Update target threshold (BCM-like)
         self.theta_target = avg_activity.powi(2);
@@ -434,15 +445,32 @@ impl Metaplasticity {
     }
 
     /// Register postsynaptic activity
+    ///
+    /// Samples are stored with their timestamps so the averaging window is an
+    /// actual 500 ms of history. The previous version computed a cutoff time
+    /// and then discarded it -- keeping the last 50 samples regardless of when
+    /// they arrived -- so the sliding threshold averaged over a sample count
+    /// rather than over time, and its adaptation rate depended on how often the
+    /// caller happened to sample.
     pub fn register_activity(&mut self, activity: f64, time: f64) {
-        self.recent_activity.push(activity);
+        self.recent_activity.push((time, activity));
 
-        // Keep only recent activity
-        let cutoff_time = time - 500.0; // Last 500 ms
-        // In a real implementation, we'd store timestamps too
-        if self.recent_activity.len() > 50 {
-            self.recent_activity.remove(0);
+        let cutoff_time = time - Self::ACTIVITY_WINDOW_MS;
+        self.recent_activity.retain(|(t, _)| *t >= cutoff_time);
+    }
+
+    /// Mean postsynaptic activity over the retained window.
+    fn mean_activity(&self) -> f64 {
+        if self.recent_activity.is_empty() {
+            return 0.0;
         }
+        self.recent_activity.iter().map(|(_, a)| *a).sum::<f64>()
+            / self.recent_activity.len() as f64
+    }
+
+    /// Most recently registered postsynaptic activity.
+    fn latest_activity(&self) -> f64 {
+        self.recent_activity.last().map_or(0.0, |(_, a)| *a)
     }
 
     /// BCM learning rule: dw = activity * (activity - theta)
@@ -462,10 +490,14 @@ impl DendriticPlasticity for Metaplasticity {
         // Update threshold
         self.update_threshold(dt);
 
-        // Simplified activity measure (would be more complex in reality)
-        let activity = 1.0; // Assume unit activity for spike
-
-        // BCM learning
+        // BCM learning, against the activity that was actually registered.
+        //
+        // This previously hardcoded `activity = 1.0`, discarding every value
+        // passed to `register_activity`. That reduces `dw` to
+        // `learning_rate * (1 - theta)`, a constant drift with a fixed sign:
+        // the rule could never depress, so the sliding threshold had nothing to
+        // slide against and the entire BCM mechanism was inert.
+        let activity = self.latest_activity();
         let dw = self.bcm_rule(activity);
 
         (current_weight + dw).max(0.0).min(2.0)
