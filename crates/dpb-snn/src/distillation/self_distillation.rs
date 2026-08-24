@@ -407,7 +407,22 @@ impl ProgressiveDistillation {
         })
     }
 
+    /// Get the current stage configuration, or `None` once every stage has run.
+    pub fn try_current_stage_config(&self) -> Option<StageConfig> {
+        if self.is_complete() {
+            return None;
+        }
+        Some(self.current_stage_config())
+    }
+
     /// Get current stage configuration
+    ///
+    /// # Panics
+    ///
+    /// Panics once [`is_complete`](Self::is_complete) is true, since there is no
+    /// current stage to describe. Use
+    /// [`try_current_stage_config`](Self::try_current_stage_config) when the
+    /// schedule may already have finished.
     pub fn current_stage_config(&self) -> StageConfig {
         let idx = self.current_stage;
         StageConfig {
@@ -420,6 +435,13 @@ impl ProgressiveDistillation {
 
     /// Advance to next stage
     pub fn advance_stage(&mut self, accuracy: f32, model_size: usize) -> bool {
+        // Indexing `stage_compression[current_stage]` below panics once every
+        // stage has been run, so an extra call would abort rather than simply
+        // report that there is nothing left to do.
+        if self.is_complete() {
+            return false;
+        }
+
         self.stages.push(StageInfo {
             stage: self.current_stage,
             compression_ratio: self.config.stage_compression[self.current_stage],
@@ -442,8 +464,22 @@ impl ProgressiveDistillation {
     }
 
     /// Check if final stage
+    /// Whether the stage now in progress is the last one.
+    ///
+    /// Distinct from [`is_complete`](Self::is_complete): being ON the final
+    /// stage is not the same as having finished it. The previous
+    /// `current_stage >= num_stages - 1` was true in both states, so callers
+    /// could not tell "one stage left to run" from "nothing left to run" --
+    /// and it underflowed for a zero-stage config.
     pub fn is_final_stage(&self) -> bool {
-        self.current_stage >= self.config.num_stages - 1
+        self.current_stage + 1 == self.config.num_stages
+    }
+
+    /// Whether every stage has been run.
+    ///
+    /// The complement of [`advance_stage`](Self::advance_stage)'s return value.
+    pub fn is_complete(&self) -> bool {
+        self.current_stage >= self.config.num_stages
     }
 }
 
@@ -597,11 +633,20 @@ mod tests {
         let mut progressive = ProgressiveDistillation::new(config).unwrap();
 
         progressive.advance_stage(0.85, 7000);
-        assert!(!progressive.is_final_stage());
+        // One of two stages is done: we are now ON the final stage, but the
+        // schedule is not finished.
+        assert!(progressive.is_final_stage());
+        assert!(!progressive.is_complete());
 
         let has_next = progressive.advance_stage(0.83, 5000);
         assert!(!has_next); // No more stages
-        assert!(progressive.is_final_stage());
+        assert!(progressive.is_complete());
+        assert!(progressive.try_current_stage_config().is_none());
+
+        // Advancing again is a no-op, not a panic, and records no extra stage.
+        let completed = progressive.completed_stages();
+        assert!(!progressive.advance_stage(0.80, 4000));
+        assert_eq!(progressive.completed_stages(), completed);
     }
 
     #[test]

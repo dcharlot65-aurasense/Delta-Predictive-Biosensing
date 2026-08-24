@@ -118,14 +118,24 @@ impl PruningStrategy {
         }
     }
 
-    fn structured_prune(&self, weights: &mut Array2<f64>, ratio: f64, seed: u64) -> PruningStats {
-        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+    /// Prunes whole rows (neurons), ranked by L1 magnitude.
+    ///
+    /// Deterministic: rows are selected by magnitude, so `_seed` is unused. It
+    /// is kept in the signature to match the other strategies' shape.
+    fn structured_prune(&self, weights: &mut Array2<f64>, ratio: f64, _seed: u64) -> PruningStats {
         let total = weights.len();
         let n_rows = weights.nrows();
         let n_cols = weights.ncols();
 
-        // Prune entire rows (neurons)
-        let n_prune_rows = (n_rows as f64 * ratio) as usize;
+        // Prune entire rows (neurons).
+        //
+        // Round rather than truncate. `as usize` truncates, so a 3-row layer at
+        // ratio 0.33 gave `0.99 -> 0` and pruning silently did nothing at all --
+        // a no-op the caller could only detect by inspecting the returned stats.
+        // Rounding honours the request at the granularity a row-wise method
+        // actually has, and still yields zero rows when the ratio genuinely
+        // rounds to none.
+        let n_prune_rows = (n_rows as f64 * ratio).round() as usize;
         let mut pruned = 0;
 
         // Calculate row magnitudes

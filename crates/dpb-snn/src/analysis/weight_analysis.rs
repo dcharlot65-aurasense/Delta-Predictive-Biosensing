@@ -8,7 +8,7 @@ pub struct WeightDistributionTracker {
     weight_snapshots: Vec<Vec<f64>>,
     snapshot_epochs: Vec<usize>,
     snapshot_interval: usize,
-    last_snapshot_epoch: usize,
+    last_snapshot_epoch: Option<usize>,
     converged: bool,
 }
 
@@ -18,16 +18,30 @@ impl WeightDistributionTracker {
             weight_snapshots: Vec::new(),
             snapshot_epochs: Vec::new(),
             snapshot_interval,
-            last_snapshot_epoch: 0,
+            last_snapshot_epoch: None,
             converged: false,
         }
     }
 
+    /// Records a snapshot if `snapshot_interval` epochs have passed since the
+    /// last one. The first snapshot is always recorded.
     pub fn add_weight_snapshot(&mut self, epoch: usize, weights: Vec<f64>) {
-        if epoch >= self.last_snapshot_epoch + self.snapshot_interval {
+        // `last_snapshot_epoch` is an Option because 0 is a legitimate epoch.
+        // Initialising it to 0 instead made "nothing recorded yet" and
+        // "recorded at epoch 0" the same state, so the gate below always
+        // rejected the FIRST call -- discarding the initial weight distribution
+        // that every later snapshot is compared against. At interval 1 it
+        // discarded epoch 0 and then recorded everything after, and any caller
+        // passing a single snapshot at epoch 0 got an empty tracker and an
+        // empty report.
+        let due = match self.last_snapshot_epoch {
+            None => true,
+            Some(last) => epoch >= last + self.snapshot_interval,
+        };
+        if due {
             self.weight_snapshots.push(weights);
             self.snapshot_epochs.push(epoch);
-            self.last_snapshot_epoch = epoch;
+            self.last_snapshot_epoch = Some(epoch);
         }
     }
 }
@@ -103,7 +117,7 @@ impl ConvergenceAnalyzer for WeightDistributionTracker {
     fn reset(&mut self) {
         self.weight_snapshots.clear();
         self.snapshot_epochs.clear();
-        self.last_snapshot_epoch = 0;
+        self.last_snapshot_epoch = None;
         self.converged = false;
     }
 }

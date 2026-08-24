@@ -99,7 +99,18 @@ impl STDP {
     /// # Returns
     /// Weight change according to STDP rule
     pub fn stdp_kernel(&self, delta_t: f64) -> f64 {
-        if delta_t > 0.0 {
+        // The exponential STDP kernel is genuinely discontinuous at the origin
+        // (Bi & Poo 1998), so the value AT zero is a convention rather than a
+        // limit. Exact simultaneity establishes no causal ordering between the
+        // two spikes, so the neutral value is the only non-arbitrary choice.
+        //
+        // This previously fell through to the LTD branch, where `exp(0) = 1`
+        // returned `-a_minus`: the single most depressing value the kernel can
+        // produce, awarded to the one time difference that carries no evidence
+        // of anti-causal ordering at all.
+        if delta_t == 0.0 {
+            0.0
+        } else if delta_t > 0.0 {
             // LTP: pre before post
             self.a_plus * (-delta_t / self.tau_plus).exp()
         } else {
@@ -459,9 +470,13 @@ mod tests {
         let ltd = stdp.stdp_kernel(-10.0);
         assert!(ltd < 0.0);
 
-        // At t=0, slight LTP bias
+        // Exact simultaneity carries no ordering, so no directed change.
         let zero = stdp.stdp_kernel(0.0);
-        assert!(zero >= 0.0);
+        assert_eq!(zero, 0.0, "simultaneous spikes must not drive a signed change");
+
+        // The kernel stays one-sided either side of the origin.
+        assert!(stdp.stdp_kernel(0.001) > 0.0);
+        assert!(stdp.stdp_kernel(-0.001) < 0.0);
     }
 
     #[test]

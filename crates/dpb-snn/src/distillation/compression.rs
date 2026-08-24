@@ -110,26 +110,71 @@ impl ArchitectureSearch {
     }
 
     /// Generate candidates by reducing depth
+    /// Enumerates architectures formed by dropping interior layers.
+    ///
+    /// Input and output widths are always preserved -- they are fixed by the
+    /// task, not by the search.
+    ///
+    /// Two things were wrong here before. The outer loop bound `num_to_remove`
+    /// was never read in the body, so the loop ran the same two strided patterns
+    /// twice and only ever produced two distinct shapes; and the loop bound
+    /// `1..num_layers - 2` underflows for a teacher with fewer than two layers.
+    /// Enumerating removal sets directly covers every removal count without a
+    /// stride heuristic, and needs no such bound.
+    ///
+    /// Candidates are admitted if they are smaller than the teacher, NOT if they
+    /// already meet `compression_ratio`. Selecting against the target is
+    /// [`get_best_candidate`](Self::get_best_candidate)'s job, and it ranks by
+    /// closeness to it. Pre-filtering on the same target discarded the entire
+    /// search space whenever depth reduction alone could not reach the ratio --
+    /// which is the common case, since dropping a layer cannot shrink the widest
+    /// weight matrices -- leaving the caller an empty set rather than the
+    /// closest achievable architecture.
     fn generate_depth_reduced_candidates(&mut self) {
         let num_layers = self.teacher_layers.len();
-        let target_params = (self.compute_total_params(&self.teacher_layers) as f32 * self.compression_ratio) as usize;
 
-        // Try removing different layers
-        for num_to_remove in 1..num_layers - 2 {
-            for skip_pattern in 1..=2 {
-                let mut candidate = Vec::new();
-                candidate.push(self.teacher_layers[0]); // Keep input layer
+        // Nothing to remove without at least one interior layer.
+        if num_layers < 3 {
+            return;
+        }
 
-                for (i, &size) in self.teacher_layers.iter().enumerate().skip(1) {
-                    if i % (skip_pattern + 1) != 0 || i == self.teacher_layers.len() - 1 {
-                        candidate.push(size);
-                    }
+        let teacher_params = self.compute_total_params(&self.teacher_layers);
+        let input = self.teacher_layers[0];
+        let output = *self.teacher_layers.last().expect("non-empty, checked above");
+        let interior: Vec<usize> = self.teacher_layers[1..num_layers - 1].to_vec();
+        let n = interior.len();
+
+        // Exhaustive subset enumeration is 2^n; past this depth fall back to
+        // strided removal so the search stays bounded.
+        const MAX_EXHAUSTIVE_INTERIOR: usize = 12;
+
+        let removal_masks: Vec<u32> = if n <= MAX_EXHAUSTIVE_INTERIOR {
+            (1u32..(1u32 << n)).collect()
+        } else {
+            // Keep every k-th interior layer, for each stride.
+            (2..=n)
+                .map(|stride| {
+                    (0..n).fold(0u32, |m, i| {
+                        if i % stride != 0 { m | (1 << i) } else { m }
+                    })
+                })
+                .filter(|&m| m != 0)
+                .collect()
+        };
+
+        for mask in removal_masks {
+            let mut candidate = Vec::with_capacity(n + 2);
+            candidate.push(input);
+            for (i, &size) in interior.iter().enumerate() {
+                if mask & (1u32 << i) == 0 {
+                    candidate.push(size);
                 }
+            }
+            candidate.push(output);
 
-                let params = self.compute_total_params(&candidate);
-                if params <= target_params as usize {
-                    self.candidates.push(candidate);
-                }
+            let params = self.compute_total_params(&candidate);
+            if params > 0 && params < teacher_params {
+                self.candidates.push(candidate);
             }
         }
     }

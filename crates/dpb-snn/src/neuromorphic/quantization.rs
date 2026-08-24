@@ -145,9 +145,20 @@ impl WeightQuantizer {
             .map(|&w| w.abs())
             .fold(0.0f32, f32::max);
 
+        // The SCALE is what must be a power of two -- that is the whole point of
+        // this scheme, since dequantization then becomes a shift rather than a
+        // multiply. Rounding `max_abs` to a power of two and *then* dividing by
+        // `max_int` does not achieve that: `max_int` is 127 at 8 bits, so the
+        // quotient was never a power of two and the scheme silently degenerated
+        // into ordinary symmetric quantization with a worse scale.
+        //
+        // Pick the exponent on the scale itself. `ceil` guarantees
+        // `scale >= max_abs / max_int`, so `max_abs / scale <= max_int` and no
+        // weight clips; the cost is at most one extra factor of two of
+        // resolution, which is inherent to a power-of-two scale.
         let scale = if max_abs > 0.0 {
-            let log2 = max_abs.log2().ceil();
-            2.0f32.powf(log2) / max_int as f32
+            let ideal = max_abs / max_int as f32;
+            2.0f32.powf(ideal.log2().ceil())
         } else {
             1.0
         };
@@ -401,7 +412,20 @@ mod tests {
 
         // Scale should be a power of 2
         let log2_scale = result.scale.log2();
-        assert!((log2_scale - log2_scale.round()).abs() < 1e-5);
+        assert!(
+            (log2_scale - log2_scale.round()).abs() < 1e-5,
+            "scale {} is not a power of two (log2 = {log2_scale})",
+            result.scale
+        );
+
+        // ...and nothing may clip, or the scale was chosen too small.
+        let (min_int, max_int) = WeightBitDepth::Bits8.range();
+        for (w, q) in weights.iter().zip(result.quantized_weights.iter()) {
+            assert!(
+                *q > min_int && *q < max_int,
+                "weight {w} quantized to {q}, at the edge of [{min_int}, {max_int}]"
+            );
+        }
     }
 
     #[test]
