@@ -87,8 +87,15 @@ impl CableParams {
         let conductance = config.g_leak * area;
 
         // Axial resistance: (R_a * L) / A
+        // Axial resistance in kOhm, NOT MOhm.
+        //
+        // The rest of this model works in mV, ms, uF, mS and uA. Conductance is
+        // in mS, so a resistance must be in kOhm to be its reciprocal, and only
+        // then does `dV / R` yield uA to match the leak current `g * dV`.
+        // Converting to MOhm made every axial current 1000x too large relative
+        // to every other current in the same sum.
         let axial_resistance = (config.r_axial * length_cm) / cross_section;
-        let axial_resistance = axial_resistance / 1e6; // Convert to MΩ
+        let axial_resistance = axial_resistance / 1e3; // Ohm -> kOhm
 
         Self {
             area,
@@ -98,6 +105,28 @@ impl CableParams {
             axial_resistance,
         }
     }
+}
+
+/// Coupling of a compartment to its neighbours over one timestep.
+///
+/// The conductance is carried separately from the current because the
+/// compartment's own voltage appears on both sides of `sum_j g_j * (V_j - V)`.
+/// Collapsing that into a single current term forces the coupling to be
+/// integrated explicitly, which diverges once `dt * g / C` exceeds 2 -- routine
+/// for fine dendritic compartments at millisecond timesteps, where the axial
+/// conductance is orders of magnitude larger than the membrane conductance.
+/// Keeping the conductance lets the implicit solvers put `V` on the left.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct AxialCoupling {
+    /// Net current flowing in from neighbours at their present voltages (uA).
+    pub current: f64,
+    /// Total coupling conductance to those neighbours (mS).
+    pub conductance: f64,
+}
+
+impl AxialCoupling {
+    /// An isolated compartment: no neighbours, no coupling.
+    pub const NONE: Self = Self { current: 0.0, conductance: 0.0 };
 }
 
 /// Single compartment in a multi-compartment neuron model
@@ -226,16 +255,61 @@ impl Compartment {
     }
 
     /// Get total current
+    /// Membrane current from ion channels and synapses (uA).
+    ///
+    /// Excludes the leak, which the solvers handle separately because it is
+    /// linear in `V` and therefore belongs on the implicit side.
+    pub fn membrane_current(&self) -> f64 {
+        self.ion_currents + self.synaptic_current
+    }
+
     pub fn total_current(&self, axial_current: f64, external_current: f64) -> f64 {
         self.leak_current() + self.ion_currents + axial_current
             + self.synaptic_current + external_current
     }
 
     /// Update membrane potential using forward Euler
-    pub fn update_voltage_euler(&mut self, dt: f64, axial_current: f64, external_current: f64) {
-        let total_i = self.total_current(axial_current, external_current);
-        let dv = (total_i / self.cable.capacitance) * dt;
+    pub fn update_voltage_euler(&mut self, dt: f64, axial: AxialCoupling, external_current: f64) {
+        let (g, drive) = self.conductance_and_drive(axial, external_current);
+        let dv = ((drive - g * self.voltage) / self.cable.capacitance) * dt;
         self.voltage += dv;
+    }
+
+    /// Total conductance seen by this compartment's voltage, and the drive term
+    /// it is pulled toward.
+    ///
+    /// Writes the membrane equation as `C dV/dt = drive - g * V`, which is what
+    /// lets the implicit solvers below place `V` on the left-hand side. The
+    /// neighbour contribution `sum_j g_j * V_j` is recovered from the coupling
+    /// as `current + V * conductance`, since
+    /// `current = sum_j g_j * (V_j - V)`.
+    fn conductance_and_drive(&self, axial: AxialCoupling, external_current: f64) -> (f64, f64) {
+        let g_leak = self.cable.conductance;
+        let g = g_leak + axial.conductance;
+        let neighbour_drive = axial.current + self.voltage * axial.conductance;
+        let drive = g_leak * self.config.e_leak
+            + neighbour_drive
+            + self.ion_currents
+            + self.synaptic_current
+            + external_current;
+        (g, drive)
+    }
+
+    /// Fully implicit (backward Euler) voltage update.
+    ///
+    /// Unconditionally stable and monotone: the result is a convex combination
+    /// of the present voltage and the drive, so it cannot overshoot the range of
+    /// voltages present. Preferred over Crank-Nicolson at large timesteps, where
+    /// CN stays bounded but rings.
+    pub fn update_voltage_backward_euler(
+        &mut self,
+        dt: f64,
+        axial: AxialCoupling,
+        external_current: f64,
+    ) {
+        let (g, drive) = self.conductance_and_drive(axial, external_current);
+        let c = self.cable.capacitance;
+        self.voltage = (self.voltage + (dt / c) * drive) / (1.0 + dt * g / c);
     }
 
     /// Update membrane potential using Crank-Nicolson (implicit)
@@ -243,25 +317,22 @@ impl Compartment {
     pub fn update_voltage_crank_nicolson(
         &mut self,
         dt: f64,
-        axial_current: f64,
+        axial: AxialCoupling,
         external_current: f64,
     ) {
-        // For linear terms, we can solve analytically
-        // dV/dt = (1/C) * [g(E-V) + I]
-        // Using CN: (V_new - V_old)/dt = 0.5 * [f(V_old) + f(V_new)]
-
+        // dV/dt = (drive - g*V) / C
+        // CN: (V_new - V_old)/dt = 0.5 * [f(V_old) + f(V_new)]
+        //  => V_new * (1 + 0.5*dt*g/C) = V_old * (1 - 0.5*dt*g/C) + dt/C * drive
+        //
+        // `g` here includes the AXIAL conductance, not just the leak. Treating
+        // only the leak implicitly and passing the axial term through as a fixed
+        // current made this explicit in the very conductance that dominates a
+        // dendritic cable, so it diverged at any realistic timestep.
         let c = self.cable.capacitance;
-        let g = self.cable.conductance;
-        let e = self.config.e_leak;
+        let (g, drive) = self.conductance_and_drive(axial, external_current);
 
-        // Total driving current (excluding leak which is handled implicitly)
-        let i_total = self.ion_currents + axial_current + self.synaptic_current + external_current;
-
-        // Solve: V_new * (1 + 0.5*dt*g/C) = V_old * (1 - 0.5*dt*g/C) + dt/C * (g*E + I)
         let alpha = 0.5 * dt * g / c;
-        let v_new = (self.voltage * (1.0 - alpha) + (dt / c) * (g * e + i_total)) / (1.0 + alpha);
-
-        self.voltage = v_new;
+        self.voltage = (self.voltage * (1.0 - alpha) + (dt / c) * drive) / (1.0 + alpha);
     }
 
     /// Reset compartment to resting state
@@ -297,8 +368,13 @@ impl Compartment {
     pub fn space_constant(&self) -> f64 {
         // λ = sqrt(d / (4 * R_a * g_leak))
         let d = self.config.diameter * 1e-4; // convert to cm
-        let ra = self.config.r_axial;
-        let g_leak = self.config.g_leak;
+        let ra = self.config.r_axial; // Ohm.cm
+        // g_leak is stored in mS/cm^2; the cable formula needs S/cm^2, since
+        // 1/g_leak has to come out as the specific membrane resistance in
+        // Ohm.cm^2. Using the mS figure directly understated lambda by a factor
+        // of sqrt(1000) -- 41 um instead of ~1290 um for the default geometry,
+        // i.e. shorter than a single compartment.
+        let g_leak = self.config.g_leak * 1e-3; // mS/cm^2 -> S/cm^2
 
         let lambda_cm = (d / (4.0 * ra * g_leak)).sqrt();
         lambda_cm * 1e4 // convert back to μm
@@ -374,8 +450,15 @@ mod tests {
 
         let v_initial = comp.voltage();
 
-        // Apply depolarizing current
-        comp.update_voltage_euler(1.0, 0.0, 0.5); // 1ms timestep, 0.5nA current
+        // Apply a depolarizing current sized from the compartment's own input
+        // resistance, rather than a fixed figure.
+        //
+        // The default geometry is a 50x2 um dendritic segment: ~3 pF and ~94 pS,
+        // so its input resistance is ~10 GOhm and a few PICOamps move it tens of
+        // millivolts. The literal 0.5 here (documented as "0.5nA", though this
+        // model's currents are uA) drove it by ~5 volts.
+        let i_inject = 20.0 / comp.input_resistance(); // ~20 mV at steady state
+        comp.update_voltage_euler(1.0, AxialCoupling::NONE, i_inject);
 
         // Voltage should increase
         assert!(comp.voltage() > v_initial);
@@ -390,15 +473,27 @@ mod tests {
         let dt = 5.0; // 5ms
         let v_initial = comp.voltage();
 
+        // ~20 mV of steady-state depolarization -- see `test_voltage_update` for
+        // why this is derived from the input resistance and not a fixed figure.
+        let i_inject = 20.0 / comp.input_resistance();
+
         // Should remain stable
         for _ in 0..100 {
-            comp.update_voltage_crank_nicolson(dt, 0.0, 0.1);
+            comp.update_voltage_crank_nicolson(dt, AxialCoupling::NONE, i_inject);
         }
 
         // Should converge to steady state, not explode
         assert!(comp.voltage().is_finite());
         assert!(comp.voltage() > v_initial);
         assert!(comp.voltage() < 0.0); // Still below 0 mV
+
+        // Steady state of `C dV/dt = g(E - V) + I` is `E + I/g`.
+        let expected = comp.config().e_leak + i_inject * comp.input_resistance();
+        assert!(
+            (comp.voltage() - expected).abs() < 0.1,
+            "settled at {} rather than {expected}",
+            comp.voltage()
+        );
     }
 
     #[test]
