@@ -101,7 +101,7 @@ Counted from the source tree, not quoted from documentation:
 | Decoders (`impl Decoder`) | **71** |
 | Synthetic generators (`impl SyntheticGenerator`) | **163** |
 | ANN baselines (`impl ANNBaseline`) | **44** |
-| `#[test]` functions in `crates/` | **2,844** |
+| `#[test]` functions in `crates/` | **2,865** |
 
 Signal domains with dedicated encoder modules: EEG, cardiopulmonary, voice, eye,
 pose, hand, force, balance, vestibular, cognitive, pain, and contact sensors.
@@ -182,9 +182,22 @@ Being specific about maturity, because the distinction matters:
   this code.
 - **No benchmark results are committed.** Harnesses exist; measured numbers do
   not.
-- **Test suites are not uniformly green.** Several had never been executed;
-  running them surfaced real defects that are being worked through. Do not read
-  the test count above as a pass count.
+- **The library test suites pass; two integration suites do not compile.**
+  Every crate's `--lib` tests are green (2,527 passing, 0 failing, excluding
+  `dpb-python`, which needs Python development headers). Getting there meant
+  fixing real defects, not adjusting expectations: a DWT with no working
+  inverse, an ICA that panicked on its own use case, an AUC that varied with the
+  order of tied scores, INT8 quantization that saturated its whole positive
+  range, an STDP rule with its causal and anti-causal branches transposed, and a
+  "multi-compartment" neuron whose compartments were never connected to one
+  another.
+
+  `dpb-federated` and `dpb-clinical` each carry a `tests/integration_tests.rs`
+  that has **never compiled**. They reference an API that does not exist --
+  `FedConfigBuilder`, `TreatmentResponse::cohens_d`,
+  `PopulationNorms::percentile_rank` and others -- so they are a specification
+  of intended functionality rather than coverage of current behaviour. They
+  contribute nothing to the numbers above.
 - **The bundled normative values in `dpb-norms` are illustrative placeholders**,
   not sourced cohorts, and must not be used to interpret a real measurement.
 
