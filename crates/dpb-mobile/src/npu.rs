@@ -315,9 +315,18 @@ impl NpuEncoder {
 
         // Calculate quantization parameters for INT8
         let (quant_scale, quant_zero_point) = if config.use_int8 {
-            // Assume signal range [-1, 1]
-            let scale = 2.0 / 255.0;
-            let zero_point = 128;
+            // Signal range [-1, 1] into a SIGNED i8, so quantization is
+            // symmetric: zero point 0, scale 1/127.
+            //
+            // This previously used the UINT8 convention -- zero point 128 with
+            // scale 2/255 -- in an i8 container whose range is [-128, 127].
+            // Every positive input then exceeded 127 and saturated: 0.5
+            // quantized to 191.75, clamped to 127, and dequantized back to
+            // -0.0078. The entire positive half of the range collapsed to
+            // approximately zero, so any encoder configured for int8 emitted
+            // meaningless values.
+            let scale = 1.0 / 127.0;
+            let zero_point = 0;
             (scale, zero_point)
         } else {
             (1.0, 0)
@@ -351,6 +360,24 @@ impl NpuEncoder {
 
     /// CPU fallback encoding.
     fn encode_cpu(&mut self, signal: &[f32]) -> Result<Vec<i8>, NpuError> {
+        // The signal is channel-interleaved, so its length must be a whole
+        // number of frames. Integer division alone silently discarded a partial
+        // frame -- and returned an EMPTY result for any signal shorter than
+        // `num_channels`, which looks like "no spikes" rather than "your data
+        // did not match the configured channel count".
+        if self.config.num_channels == 0 {
+            return Err(NpuError::InvalidConfig(
+                "num_channels must be non-zero".to_string(),
+            ));
+        }
+        if !signal.is_empty() && signal.len() % self.config.num_channels != 0 {
+            return Err(NpuError::InvalidConfig(format!(
+                "signal length {} is not a multiple of num_channels {}",
+                signal.len(),
+                self.config.num_channels
+            )));
+        }
+
         let num_samples = signal.len() / self.config.num_channels;
         let mut spikes = Vec::with_capacity(signal.len());
 
@@ -412,8 +439,11 @@ impl NpuEncoder {
     /// Quantize float to INT8.
     #[inline]
     pub fn quantize(&self, value: f32) -> i8 {
+        // `.round()` before the cast: `as i8` truncates toward zero, which
+        // doubles the worst-case error to a full LSB and biases every magnitude
+        // downward. Round-to-nearest keeps it at half an LSB and unbiased.
         let scaled = value / self.quant_scale + self.quant_zero_point as f32;
-        scaled.clamp(-128.0, 127.0) as i8
+        scaled.round().clamp(-128.0, 127.0) as i8
     }
 
     /// Dequantize INT8 to float.
@@ -640,7 +670,10 @@ mod tests {
 
     #[test]
     fn test_npu_encoder_cpu_fallback() {
-        let config = NpuConfig::default();
+        // The signal below is single-channel, so the config must say so; the
+        // default is 32 channels, under which five samples are not even one
+        // complete frame.
+        let config = NpuConfig { num_channels: 1, ..NpuConfig::default() };
         let mut encoder = NpuEncoder::new(NpuBackend::Cpu, config, 0.1).unwrap();
 
         let signal = vec![0.0, 0.05, 0.15, 0.1, 0.05]; // 5 samples, 1 channel
@@ -675,4 +708,36 @@ mod tests {
         // Should be approximately equal (quantization error)
         assert!((original - dequantized).abs() < 0.01);
     }
+    /// INT8 quantization must round-trip across the whole declared range.
+    ///
+    /// Regression: the scale and zero point followed the UINT8 convention in a
+    /// signed container, so everything above zero saturated to 127 and came
+    /// back as approximately zero. A single-value check near the top of the
+    /// range would have caught it; one near the bottom would not.
+    #[test]
+    fn test_quantization_round_trip_over_range() {
+        let config = NpuConfig::default();
+        let encoder = NpuEncoder::new(NpuBackend::Cpu, config, 0.1).unwrap();
+
+        for step in 0..=40 {
+            let original = -1.0 + (step as f32) * 0.05;
+            let round_tripped = encoder.dequantize(encoder.quantize(original));
+            assert!(
+                (original - round_tripped).abs() <= 0.5 / 127.0 + 1e-6,
+                "{original} -> {round_tripped} exceeds half an LSB"
+            );
+        }
+    }
+
+    /// A signal that is not a whole number of frames is an error, not silence.
+    #[test]
+    fn test_encode_rejects_partial_frame() {
+        let config = NpuConfig { num_channels: 4, ..NpuConfig::default() };
+        let mut encoder = NpuEncoder::new(NpuBackend::Cpu, config, 0.1).unwrap();
+
+        // Six samples across four channels is one frame and a half.
+        assert!(encoder.encode(&vec![0.0; 6]).is_err());
+        assert!(encoder.encode(&vec![0.0; 8]).is_ok());
+    }
+
 }
