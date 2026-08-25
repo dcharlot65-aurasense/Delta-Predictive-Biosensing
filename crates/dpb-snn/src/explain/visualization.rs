@@ -269,20 +269,27 @@ pub fn export_explanation_json(
     attribution: Option<&FeatureAttribution>,
     importance: Option<&[SpikeImportance]>,
 ) -> String {
-    let mut json_parts = Vec::new();
-
-    json_parts.push("{".to_string());
+    // Only the object's MEMBERS go in here; the braces are added at the end.
+    //
+    // They were previously pushed as elements and then joined with the members
+    // using ", ", so the result was `{, "importance": [...], }` -- a comma
+    // immediately after the opening brace and before the closing one. That is
+    // invalid JSON for every input, including the empty case `{, }`, so this
+    // function never once produced parseable output.
+    let mut json_parts: Vec<String> = Vec::new();
 
     // Export attention
     if let Some(att) = attention {
         let spatial_json = format!(
-            "\"spatial_attention\": {{\"channels\": {:?}, \"weights\": {:?}}}",
-            att.spatial.channel_ids, att.spatial.attention_weights
+            "\"spatial_attention\": {{\"channels\": {:?}, \"weights\": {}}}",
+            att.spatial.channel_ids,
+            json_number_array(&att.spatial.attention_weights)
         );
 
         let temporal_json = format!(
-            "\"temporal_attention\": {{\"times\": {:?}, \"weights\": {:?}}}",
-            att.temporal.time_steps, att.temporal.attention_weights
+            "\"temporal_attention\": {{\"times\": {}, \"weights\": {}}}",
+            json_number_array(&att.temporal.time_steps),
+            json_number_array(&att.temporal.attention_weights)
         );
 
         json_parts.push(spatial_json);
@@ -292,11 +299,11 @@ pub fn export_explanation_json(
     // Export attribution
     if let Some(attr) = attribution {
         let attr_json = format!(
-            "\"attribution\": {{\"features\": {:?}, \"values\": {:?}, \"baseline\": {}, \"output\": {}}}",
+            "\"attribution\": {{\"features\": {:?}, \"values\": {}, \"baseline\": {}, \"output\": {}}}",
             attr.feature_names,
-            attr.attribution_values,
-            attr.baseline_output,
-            attr.actual_output
+            json_number_array(&attr.attribution_values),
+            json_number(attr.baseline_output),
+            json_number(attr.actual_output)
         );
 
         json_parts.push(attr_json);
@@ -309,7 +316,11 @@ pub fn export_explanation_json(
             .map(|s| {
                 format!(
                     "{{\"neuron\": {}, \"layer\": {}, \"time\": {}, \"importance\": {}, \"contribution\": {}}}",
-                    s.neuron_id, s.layer, s.spike_time, s.importance_score, s.contribution_to_output
+                    s.neuron_id,
+                    s.layer,
+                    json_number(s.spike_time),
+                    json_number(s.importance_score),
+                    json_number(s.contribution_to_output)
                 )
             })
             .collect();
@@ -318,9 +329,25 @@ pub fn export_explanation_json(
         json_parts.push(imp_json);
     }
 
-    json_parts.push("}".to_string());
+    format!("{{{}}}", json_parts.join(", "))
+}
 
-    json_parts.join(", ")
+/// Format an `f64` as a JSON number.
+///
+/// JSON has no NaN or infinity, so non-finite values become `null` rather than
+/// bare `NaN`/`inf` tokens, which no parser accepts.
+fn json_number(value: f64) -> String {
+    if value.is_finite() {
+        format!("{value}")
+    } else {
+        "null".to_string()
+    }
+}
+
+/// Format a slice of `f64` as a JSON array, via [`json_number`].
+fn json_number_array(values: &[f64]) -> String {
+    let items: Vec<String> = values.iter().copied().map(json_number).collect();
+    format!("[{}]", items.join(", "))
 }
 
 #[cfg(test)]
@@ -531,4 +558,53 @@ mod tests {
         assert!(json.contains("features"));
         assert!(json.contains("values"));
     }
+    /// Whatever the inputs, the exporter must emit parseable JSON.
+    ///
+    /// Regression: the braces were pushed into the same vector as the members
+    /// and joined with them, so every output carried a comma straight after `{`
+    /// and before `}` -- `{, }` for the empty case. Nothing this function
+    /// produced had ever parsed.
+    #[test]
+    fn test_export_explanation_json_is_valid_json() {
+        // Empty: the degenerate case that produced `{, }`.
+        let empty = export_explanation_json(None, None, None);
+        assert_eq!(empty, "{}", "empty export should be an empty object");
+        serde_json::from_str::<serde_json::Value>(&empty).expect("empty export must parse");
+
+        // With importance records, including non-finite values, which have no
+        // JSON representation and must become null rather than bare NaN.
+        let importance = vec![
+            SpikeImportance {
+                neuron_id: 3,
+                layer: 1,
+                spike_time: 12.5,
+                importance_score: 0.75,
+                contribution_to_output: -0.25,
+            },
+            SpikeImportance {
+                neuron_id: 4,
+                layer: 1,
+                spike_time: 20.0,
+                importance_score: f64::NAN,
+                contribution_to_output: f64::INFINITY,
+            },
+        ];
+
+        let json = export_explanation_json(None, None, Some(&importance));
+        let parsed: serde_json::Value =
+            serde_json::from_str(&json).expect("export with importance must parse");
+
+        let records = parsed
+            .get("importance")
+            .and_then(|v| v.as_array())
+            .expect("importance array present");
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0]["neuron"], 3);
+        assert!(
+            records[1]["importance"].is_null(),
+            "NaN must serialise as null, got {}",
+            records[1]["importance"]
+        );
+    }
+
 }

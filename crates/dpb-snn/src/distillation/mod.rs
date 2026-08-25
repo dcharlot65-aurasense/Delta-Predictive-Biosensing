@@ -21,10 +21,10 @@
 //!
 //! # fn example() -> SNNResult<()> {
 //! // Create teacher (large model)
-//! let teacher = FeedforwardSNN::new(vec![128, 256, 128, 10], SNNConfig::default());
+//! let teacher = FeedforwardSNN::new(vec![128, 256, 128, 10], SNNConfig::default(), true)?;
 //!
 //! // Create student (smaller model)
-//! let student = FeedforwardSNN::new(vec![128, 64, 10], SNNConfig::default());
+//! let student = FeedforwardSNN::new(vec![128, 64, 10], SNNConfig::default(), true)?;
 //!
 //! // Configure distillation
 //! let config = DistillationConfig {
@@ -32,6 +32,7 @@
 //!     alpha: 0.7,  // Weight for distillation loss
 //!     beta: 0.3,   // Weight for student loss
 //!     mode: DistillationMode::ResponseBased,
+//!     ..DistillationConfig::default()
 //! };
 //!
 //! // Create distillation framework

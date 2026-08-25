@@ -10,7 +10,7 @@ pub mod tflite;
 
 pub use onnx::{OnnxExporter, OnnxConfig, ExportResult};
 pub use weights::{WeightExporter, WeightFormat, ModelWeights};
-pub use config::{ModelConfig, LayerConfig, ExportMetadata};
+pub use config::{ExportMetadata, LayerConfig, LayerType, ModelConfig};
 pub use tflite::{
     TFLiteExporter, TFLiteConfig, TFLiteExportResult,
     QuantizationConfig, QuantizationMode,

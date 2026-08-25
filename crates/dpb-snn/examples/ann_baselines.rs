@@ -5,6 +5,9 @@
 //!
 //! Run with: cargo run --example ann_baselines
 
+// The crate root aliases these as `BaselineTensor` and `BaselineConverter` to
+// disambiguate from the spiking `Tensor`; inside a glob import of the module
+// itself they carry their own names.
 use dpb_snn::baselines::*;
 
 fn main() {
@@ -78,7 +81,7 @@ fn main() {
     // Example 6: Forward pass
     println!("6. Forward Pass Example:");
     let mlp = MLP3Layer::new(10, 20, 15, 5, 42);
-    let input = BaselineTensor::randn(vec![1, 10], 123);
+    let input = Tensor::randn(vec![1, 10], 123);
     let output = mlp.forward(&input);
     println!("  Input shape: {:?}", input.shape);
     println!("  Output shape: {:?}", output.shape);
@@ -86,19 +89,19 @@ fn main() {
 
     // Example 7: ANN-to-SNN Conversion
     println!("7. ANN-to-SNN Conversion:");
-    let mut converter = BaselineConverter::new();
+    let mut converter = ANNToSNNConverter::new();
 
     // Create sample weights and data
     let weights = vec![
-        BaselineTensor::randn(vec![10, 20], 42),
-        BaselineTensor::randn(vec![20, 10], 43),
+        Tensor::randn(vec![10, 20], 42),
+        Tensor::randn(vec![20, 10], 43),
     ];
     let biases = vec![
-        BaselineTensor::zeros(vec![20]),
-        BaselineTensor::zeros(vec![10]),
+        Tensor::zeros(vec![20]),
+        Tensor::zeros(vec![10]),
     ];
     let sample_data = vec![
-        BaselineTensor::randn(vec![10], 123),
+        Tensor::randn(vec![10], 123),
     ];
 
     // Calibrate and convert

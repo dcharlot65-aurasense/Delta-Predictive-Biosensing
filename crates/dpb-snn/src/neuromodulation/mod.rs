@@ -56,7 +56,9 @@
 //!
 //! // Simulate reward prediction error
 //! let reward = 1.0;
-//! let predicted_value = 0.5;
+//! // The second argument is the value of the SUCCESSOR state, which the TD
+//! // rule adds to the reward -- not a prediction to be subtracted.
+//! let next_state_value = 0.5;
 //! let rpe = da_system.compute_rpe(reward, next_state_value);
 //!
 //! // Apply three-factor learning rule

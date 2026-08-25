@@ -18,7 +18,6 @@
 //!
 //! ```rust
 //! use dpb_snn::*;
-//! use dpb_neurons::prelude::*;
 //!
 //! # fn example() -> SNNResult<()> {
 //! // Build a feedforward SNN
@@ -26,13 +25,12 @@
 //! let mut network = FeedforwardSNN::new(
 //!     vec![128, 64, 10],  // layer sizes
 //!     config,
-//! );
+//!     true,               // use bias
+//! )?;
 //!
-//! // Configure training
-//! let mut trainer = BPTT::new(
-//!     FastSigmoid::default(),  // surrogate gradient
-//!     0.001,                    // learning rate
-//! );
+//! // Configure training. `BPTT` selects a surrogate gradient by kind; the
+//! // second argument caps how many timesteps to unroll (None = all of them).
+//! let mut trainer = BPTT::new(SurrogateType::FastSigmoid, None);
 //! # Ok(())
 //! # }
 //! ```
@@ -42,19 +40,33 @@
 //! ```rust
 //! use dpb_snn::calibration::*;
 //!
-//! # fn example() -> dpb_snn::SNNResult<()> {
-//! # let logits = vec![vec![1.0, 2.0, 3.0]];
-//! # let labels = vec![2];
-//! # let predictions = vec![vec![0.1, 0.3, 0.6]];
+//! # fn example() {
+//! let logits = vec![vec![1.0, 2.0, 3.0], vec![0.5, 0.2, 3.5]];
+//! let labels = vec![2usize, 2];
+//!
 //! // Calibrate model confidence scores
 //! let mut calibrator = TemperatureScaling::new();
-//! calibrator.fit(&logits, &labels)?;
-//! let calibrated = calibrator.calibrate(&predictions);
+//! calibrator.fit(&logits, &labels).expect("fit");
+//! let calibrated = calibrator.calibrate_batch(&logits);
 //!
-//! // Evaluate calibration quality
-//! let ece = expected_calibration_error(&calibrated, &labels, 10);
+//! // `expected_calibration_error` is binary: it takes the confidence assigned
+//! // to each prediction and whether that prediction was correct.
+//! let (confidences, correct): (Vec<f64>, Vec<bool>) = calibrated
+//!     .iter()
+//!     .zip(labels.iter())
+//!     .map(|(probs, &label)| {
+//!         let (predicted, confidence) = probs
+//!             .iter()
+//!             .enumerate()
+//!             .max_by(|(_, a), (_, b)| a.total_cmp(b))
+//!             .map(|(i, &p)| (i, p))
+//!             .unwrap();
+//!         (confidence, predicted == label)
+//!     })
+//!     .unzip();
+//!
+//! let ece = expected_calibration_error(&confidences, &correct, 10);
 //! println!("Expected Calibration Error: {:.4}", ece);
-//! # Ok(())
 //! # }
 //! ```
 //!
@@ -62,22 +74,25 @@
 //!
 //! ```rust
 //! use dpb_snn::explain::*;
-//! use ndarray::Array2;
 //!
-//! # fn example() -> dpb_snn::SNNResult<()> {
-//! # let spikes = Array2::from_shape_vec((10, 100), vec![false; 1000]).unwrap();
-//! # let gradients = Array2::from_shape_vec((10, 100), vec![0.1; 1000]).unwrap();
-//! # let weights = Array2::from_shape_vec((10, 100), vec![0.5; 1000]).unwrap();
+//! # fn example() {
+//! // Spike TIMES per neuron, the output gradients, and the layer weights.
+//! let spike_times = vec![
+//!     vec![2.0, 11.5, 30.0],  // neuron 0
+//!     vec![5.0, 18.0],        // neuron 1
+//! ];
+//! let output_gradients = vec![0.8, -0.3];
+//! let layer_weights = vec![vec![0.5, 0.2], vec![-0.1, 0.7]];
+//!
 //! // Compute spike importance for interpretability
 //! let importance = compute_spike_importance(
-//!     &spikes,
-//!     &gradients,
-//!     &weights,
+//!     &spike_times,
+//!     &output_gradients,
+//!     &layer_weights,
 //! );
 //!
 //! // Aggregate to neuron-level importance
 //! let neuron_importance = aggregate_to_neurons(&importance);
-//! # Ok(())
 //! # }
 //! ```
 //!
@@ -89,10 +104,10 @@
 //! # fn example() -> dpb_snn::SNNResult<()> {
 //! // Create a cross-modal attention fusion network
 //! let config = FusionConfig {
-//!     ecg_channels: 12,
-//!     imu_channels: 6,
-//!     video_channels: 3,
-//!     num_classes: 5,
+//!     modalities: vec![Modality::Contact, Modality::Pose, Modality::Voice],
+//!     hidden_size: 128,
+//!     output_size: 5,
+//!     ..FusionConfig::default()
 //! };
 //!
 //! let network = CrossModalAttentionSNN::new(config)?;
@@ -215,7 +230,7 @@ pub use architectures::{
     SpikingGCN, SpikingTransformer,
 };
 pub use training::{
-    SurrogateGradient, BPTT, OTTT, SLTT,
+    SurrogateGradient, SurrogateType, BPTT, OTTT, SLTT,
     SpikingCrossEntropy, SpikeCountLoss, SpikeTimingLoss,
     AdamOptimizer, SGDOptimizer,
 };

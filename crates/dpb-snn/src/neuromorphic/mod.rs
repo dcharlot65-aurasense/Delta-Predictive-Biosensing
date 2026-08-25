@@ -32,6 +32,8 @@
 //!     num_chips: 1,
 //!     weight_precision: 8,
 //!     enable_learning: true,
+//!     // Spread the default so a new field does not silently break this.
+//!     ..LoihiConfig::default()
 //! };
 //!
 //! let mut exporter = LoihiExporter::new(config);
@@ -54,6 +56,7 @@
 //!     board: "SpiNNaker2-48".to_string(),
 //!     timestep_ms: 1.0,
 //!     enable_live_io: true,
+//!     ..SpiNNakerConfig::default()
 //! };
 //!
 //! let mut exporter = SpiNNakerExporter::new(config);

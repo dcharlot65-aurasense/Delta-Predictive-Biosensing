@@ -5,6 +5,9 @@
 //!
 //! Run with: cargo run --example ann_to_snn_conversion
 
+// The crate root aliases these with a `Baseline` prefix to disambiguate from
+// the spiking types; inside a glob import of the module they carry their own
+// names.
 use dpb_snn::baselines::*;
 
 fn main() {
@@ -19,21 +22,21 @@ fn main() {
 
     // Simulate model weights
     let weights = vec![
-        BaselineTensor::randn(vec![100, 128], 42),
-        BaselineTensor::randn(vec![128, 64], 43),
-        BaselineTensor::randn(vec![64, 10], 44),
+        Tensor::randn(vec![100, 128], 42),
+        Tensor::randn(vec![128, 64], 43),
+        Tensor::randn(vec![64, 10], 44),
     ];
 
     let biases = vec![
-        BaselineTensor::zeros(vec![128]),
-        BaselineTensor::zeros(vec![64]),
-        BaselineTensor::zeros(vec![10]),
+        Tensor::zeros(vec![128]),
+        Tensor::zeros(vec![64]),
+        Tensor::zeros(vec![10]),
     ];
 
     // Generate sample calibration data
     let mut sample_data = Vec::new();
     for i in 0..10 {
-        sample_data.push(BaselineTensor::randn(vec![100], 1000 + i));
+        sample_data.push(Tensor::randn(vec![100], 1000 + i));
     }
 
     println!("Calibration Data:");
@@ -52,7 +55,7 @@ fn main() {
 
     // Example 2: Model-based normalization
     println!("\n2. Model-based Normalization:");
-    let config2 = BaselineConversionConfig {
+    let config2 = ConversionConfig {
         weight_norm: WeightNormalizationMethod::ModelBased,
         threshold_strategy: ThresholdBalancingStrategy::Fixed(1.0),
         num_timesteps: 100,
@@ -72,7 +75,7 @@ fn main() {
 
     // Example 3: Hybrid normalization with percentile threshold
     println!("\n3. Hybrid Normalization with Percentile Threshold:");
-    let config3 = BaselineConversionConfig {
+    let config3 = ConversionConfig {
         weight_norm: WeightNormalizationMethod::Hybrid,
         threshold_strategy: ThresholdBalancingStrategy::Percentile(0.95),
         num_timesteps: 200,
@@ -92,14 +95,14 @@ fn main() {
 
     // Example 4: BatchNorm folding demonstration
     println!("\n4. Batch Normalization Folding:");
-    let conv_weight = BaselineTensor::randn(vec![64, 32, 3], 100);
-    let conv_bias = BaselineTensor::zeros(vec![64]);
-    let bn_mean = BaselineTensor::zeros(vec![64]);
-    let bn_var = BaselineTensor::ones(vec![64]);
-    let bn_gamma = BaselineTensor::ones(vec![64]);
-    let bn_beta = BaselineTensor::zeros(vec![64]);
+    let conv_weight = Tensor::randn(vec![64, 32, 3], 100);
+    let conv_bias = Tensor::zeros(vec![64]);
+    let bn_mean = Tensor::zeros(vec![64]);
+    let bn_var = Tensor::ones(vec![64]);
+    let bn_gamma = Tensor::ones(vec![64]);
+    let bn_beta = Tensor::zeros(vec![64]);
 
-    let converter = BaselineConverter::new();
+    let converter = ANNToSNNConverter::new();
     let (folded_weight, folded_bias) = converter.fold_batchnorm_into_conv(
         &conv_weight,
         Some(&conv_bias),
@@ -115,12 +118,12 @@ fn main() {
 
     // Example 5: Activation to spike conversion
     println!("\n5. Activation to Spike Conversion:");
-    let activation = BaselineTensor::from_vec(
+    let activation = Tensor::from_vec(
         vec![0.0, 0.25, 0.5, 0.75, 1.0, 1.5],
         vec![6]
     );
 
-    let converter = BaselineConverter::new();
+    let converter = ANNToSNNConverter::new();
     let spikes = converter.convert_activation_to_spikes(&activation);
 
     println!("  Activation values: {:?}", activation.data);
@@ -129,7 +132,7 @@ fn main() {
     // Example 6: Comparing different timestep counts
     println!("\n6. Impact of Timestep Count:");
     for num_steps in [50, 100, 200, 500] {
-        let config = BaselineConversionConfig {
+        let config = ConversionConfig {
             weight_norm: WeightNormalizationMethod::DataBased,
             threshold_strategy: ThresholdBalancingStrategy::LayerWise,
             num_timesteps: num_steps,

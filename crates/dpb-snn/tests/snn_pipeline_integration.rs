@@ -48,9 +48,9 @@ fn test_encoder_to_snn_to_decoder() {
     let input_spikes = create_test_spike_tensor(batch_size, num_input_neurons, num_timesteps);
 
     println!("  Input tensor shape: {:?}", input_spikes.shape());
-    let input_spike_count: usize = (0..batch_size)
-        .map(|b| input_spikes.get_spikes(b).len())
-        .sum();
+    // `SpikeTensor` exposes no per-batch spike list; count from the dense form.
+    let dense_input = input_spikes.to_dense();
+    let input_spike_count: usize = dense_input.iter().filter(|&&v| v > 0.0).count();
     println!("  Total input spikes: {}", input_spike_count);
 
     // Step 2: Build simple feedforward SNN
@@ -78,10 +78,12 @@ fn test_encoder_to_snn_to_decoder() {
     println!("  Output tensor shape: {:?}", output_spikes.shape());
 
     // Verify output shape
-    assert_eq!(output_spikes.shape(), &[batch_size, num_output, num_timesteps]);
+    // shape() is (batch_size, num_steps, num_neurons) -- a tuple, and the
+    // step count precedes the neuron count.
+    assert_eq!(output_spikes.shape(), (batch_size, num_timesteps, num_output));
 
     // Step 4: Decode using rate decoder
-    let rate_decoder = SpikeRateDecoder::new(num_output);
+    let rate_decoder = SpikeRateDecoder::new(num_output, None, false);
     let decoded = rate_decoder
         .decode(&output_spikes)
         .expect("Failed to decode spikes");
@@ -133,7 +135,7 @@ fn test_calibrated_snn_predictions() {
         let input = create_test_spike_tensor(1, num_input, num_timesteps);
         let output = snn.forward(&input).expect("Forward pass failed");
 
-        let decoder = SpikeRateDecoder::new(num_classes);
+        let decoder = SpikeRateDecoder::new(num_classes, None, false);
         let logits = decoder.decode(&output).expect("Decoding failed");
 
         all_logits.push(logits.row(0).to_owned());
@@ -159,32 +161,35 @@ fn test_calibrated_snn_predictions() {
     // Step 2: Apply temperature scaling calibration
     let mut temp_scaling = TemperatureScaling::new();
 
+    // `TemperatureScaling` takes rows of logits as `Vec<f64>`, not an ndarray.
+    let logits_rows: Vec<Vec<f64>> = logits_array
+        .rows()
+        .into_iter()
+        .map(|row| row.iter().map(|&v| v as f64).collect())
+        .collect();
+
     // Split into train/val for calibration
     let split = batch_size * 7 / 10;
-    let train_logits = logits_array.slice(s![..split, ..]).to_owned();
+    let train_logits = logits_rows[..split].to_vec();
     let train_labels = all_labels[..split].to_vec();
 
     temp_scaling
         .fit(&train_logits, &train_labels)
         .expect("Temperature scaling fit failed");
 
-    println!("  Fitted temperature: {:.4}", temp_scaling.temperature);
+    // `temperature` is private; read it through the accessor.
+    println!("  Fitted temperature: {:.4}", temp_scaling.temperature());
 
     // Step 3: Apply calibration to validation set
-    let val_logits = logits_array.slice(s![split.., ..]).to_owned();
+    let val_logits = logits_rows[split..].to_vec();
     let val_labels = &all_labels[split..];
 
-    let calibrated_probs = temp_scaling
-        .predict_proba(&val_logits)
-        .expect("Calibration failed");
+    let calibrated_probs = temp_scaling.calibrate_batch(&val_logits);
 
-    println!("  Calibrated {} validation samples", calibrated_probs.nrows());
+    println!("  Calibrated {} validation samples", calibrated_probs.len());
 
     // Step 4: Verify calibrated probabilities
-    for i in 0..calibrated_probs.nrows() {
-        let probs = calibrated_probs.row(i);
-
-        // Check probabilities sum to 1
+    for probs in &calibrated_probs {
         let sum: f64 = probs.iter().sum();
         assert!(
             (sum - 1.0).abs() < 1e-5,
@@ -192,20 +197,33 @@ fn test_calibrated_snn_predictions() {
             sum
         );
 
-        // Check all probabilities are in [0, 1]
         for &p in probs.iter() {
-            assert!(
-                p >= 0.0 && p <= 1.0,
-                "Probability out of range: {}",
-                p
-            );
+            assert!(p >= 0.0 && p <= 1.0, "Probability out of range: {}", p);
         }
     }
 
     // Step 5: Compute calibration metrics
-    let ece = expected_calibration_error(&calibrated_probs, val_labels, 10)
-        .expect("ECE computation failed");
-    let brier = brier_score(&calibrated_probs, val_labels).expect("Brier score failed");
+    //
+    // `expected_calibration_error` and `brier_score` are BINARY: they take a
+    // confidence per sample and whether that sample was right. The multiclass
+    // reduction is the standard one -- the probability assigned to the
+    // predicted class, paired with whether that prediction matched the label.
+    let (confidences, correct): (Vec<f64>, Vec<bool>) = calibrated_probs
+        .iter()
+        .zip(val_labels.iter())
+        .map(|(probs, &label)| {
+            let (predicted, confidence) = probs
+                .iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.total_cmp(b))
+                .map(|(i, &p)| (i, p))
+                .expect("non-empty probability vector");
+            (confidence, predicted == label)
+        })
+        .unzip();
+
+    let ece = expected_calibration_error(&confidences, &correct, 10);
+    let brier = brier_score(&confidences, &correct);
 
     println!("  Expected Calibration Error: {:.4}", ece);
     println!("  Brier Score: {:.4}", brier);
@@ -249,67 +267,87 @@ fn test_explainability_pipeline() {
     println!("  Model: {} → {} → {}", num_input, num_hidden, num_output);
 
     // Step 2: Compute spike importance
-    let importance = compute_spike_importance(&input_spikes, &output_spikes)
-        .expect("Spike importance computation failed");
+    //
+    // `compute_spike_importance` works on per-neuron spike TIMES with the output
+    // gradients and layer weights -- not on `SpikeTensor` values -- so derive
+    // those from the tensors the network produced.
+    let dense_out = output_spikes.to_dense();
+    let spike_times: Vec<Vec<f64>> = (0..num_output)
+        .map(|n| {
+            (0..num_timesteps)
+                .filter(|&t| dense_out[[0, t, n]] > 0.0)
+                .map(|t| t as f64)
+                .collect()
+        })
+        .collect();
 
-    println!("  Computed spike importance for {} spikes", importance.spike_importance.len());
+    // Uniform gradients and weights: this test covers the plumbing and the
+    // invariants, not the numerical attribution itself.
+    let output_gradients = vec![1.0_f64; num_output];
+    let layer_weights: Vec<Vec<f64>> = (0..num_output)
+        .map(|n| vec![1.0 / (n + 1) as f64; num_output])
+        .collect();
 
-    // Verify importance values
-    assert_eq!(
-        importance.spike_importance.len(),
-        importance.spike_times.len()
-    );
-    assert_eq!(
-        importance.spike_importance.len(),
-        importance.spike_neurons.len()
-    );
+    let importance = compute_spike_importance(&spike_times, &output_gradients, &layer_weights);
 
-    // All importance values should be non-negative
-    for &imp in &importance.spike_importance {
-        assert!(imp >= 0.0, "Importance should be non-negative: {}", imp);
+    println!("  Computed spike importance for {} spikes", importance.len());
+
+    // Every record must name a real neuron and a spike time the network emitted.
+    for record in &importance {
+        assert!(record.neuron_id < num_output, "neuron {} out of range", record.neuron_id);
+        assert!(
+            spike_times[record.neuron_id].contains(&record.spike_time),
+            "importance reported for a spike at t={} that neuron {} never emitted",
+            record.spike_time,
+            record.neuron_id
+        );
+        assert!(record.importance_score.is_finite());
     }
 
     // Step 3: Aggregate to neuron-level importance
-    let neuron_importance = aggregate_to_neurons(&importance, num_input);
-    println!("  Neuron importance shape: {:?}", neuron_importance.shape());
+    let neuron_importance = aggregate_to_neurons(&importance);
+    println!("  Aggregated to {} neurons", neuron_importance.len());
 
-    assert_eq!(neuron_importance.len(), num_input);
-
-    // Step 4: Generate attention maps (temporal)
-    let temporal_attention = TemporalAttention::compute(&output_spikes, num_timesteps)
-        .expect("Temporal attention failed");
-
-    println!("  Temporal attention shape: {:?}", temporal_attention.attention_weights.shape());
-
-    // Verify attention weights sum to 1 (or close to it)
-    for b in 0..batch_size {
-        let sum: f64 = temporal_attention
-            .attention_weights
-            .row(b)
-            .iter()
-            .sum();
-        assert!(
-            (sum - 1.0).abs() < 0.1 || sum == 0.0,
-            "Attention weights should sum to ~1, got {}",
-            sum
-        );
+    // Aggregation must conserve spikes and must not invent neurons.
+    let aggregated_spikes: usize = neuron_importance.iter().map(|n| n.total_spikes).sum();
+    assert_eq!(
+        aggregated_spikes,
+        importance.len(),
+        "aggregation lost or invented spikes"
+    );
+    for n in &neuron_importance {
+        assert!(n.max_importance >= n.mean_importance);
     }
 
-    // Step 5: Compute gradient-based attribution
-    let gradient_attr = GradientAttribution::compute(
-        &input_spikes,
-        &output_spikes,
-        0, // target class
-    )
-    .expect("Gradient attribution failed");
+    // Step 4: Temporal attention over the same spike train
+    let mut temporal_attention = TemporalAttention::new(num_timesteps as f64, 1.0);
+    let flat_times: Vec<f64> = spike_times.iter().flatten().copied().collect();
+    let flat_weights = vec![1.0_f64; flat_times.len()];
+    temporal_attention.update_from_spikes(&flat_times, &flat_weights);
 
-    println!("  Gradient attribution shape: {:?}", gradient_attr.attributions.shape());
+    println!(
+        "  Temporal attention over {} bins",
+        temporal_attention.attention_weights.len()
+    );
+    assert_eq!(
+        temporal_attention.attention_weights.len(),
+        temporal_attention.time_steps.len()
+    );
+    for &w in &temporal_attention.attention_weights {
+        assert!(w >= 0.0 && w.is_finite(), "attention weight {w} invalid");
+    }
 
-    assert_eq!(gradient_attr.attributions.shape(), &[batch_size, num_input]);
+    // Step 5: Gradient-based attribution
+    let inputs: Vec<f64> = (0..num_output).map(|n| spike_times[n].len() as f64).collect();
+    let gradient_attr = GradientAttribution::compute(&inputs, &output_gradients);
+
+    assert_eq!(gradient_attr.len(), inputs.len());
+    for a in &gradient_attr {
+        assert!(a.is_finite(), "attribution {a} not finite");
+    }
 
     // Step 6: Export explanation to JSON
-    let explanation_json = export_explanation_json(&importance, &temporal_attention)
-        .expect("JSON export failed");
+    let explanation_json = export_explanation_json(None, None, Some(&importance));
 
     println!("  Exported explanation JSON ({} bytes)", explanation_json.len());
     assert!(!explanation_json.is_empty());
@@ -384,7 +422,13 @@ fn test_onnx_export_import_consistency() {
     weights.update_checksum();
 
     println!("  Created model weights: {} layers", weights.layers.len());
-    println!("  Total parameters: {}", weights.total_parameters());
+    // `ModelWeights` exposes its layers rather than a parameter count.
+    let total_parameters: usize = weights
+        .layers
+        .iter()
+        .map(|l| l.weights.len() + l.bias.as_ref().map_or(0, |b| b.len()))
+        .sum();
+    println!("  Total parameters: {}", total_parameters);
 
     // Step 3: Export to ONNX
     let exporter = OnnxExporter::with_default_config();
@@ -398,12 +442,12 @@ fn test_onnx_export_import_consistency() {
     // Step 4: Verify export metadata
     assert_eq!(export_result.metadata.model_name, "integration_test_model");
     assert_eq!(export_result.metadata.export_format, "onnx");
-    assert!(!export_result.metadata.timestamp.is_empty());
+    assert!(!export_result.metadata.created_at.is_empty());
 
     println!("  Export metadata:");
     println!("    Model: {}", export_result.metadata.model_name);
     println!("    Format: {}", export_result.metadata.export_format);
-    println!("    Timestamp: {}", export_result.metadata.timestamp);
+    println!("    Created at: {}", export_result.metadata.created_at);
 
     // Step 5: Validate exported model
     let validation_result = exporter.validate(&export_result.model_bytes);
@@ -461,52 +505,71 @@ fn test_uncertainty_estimation_pipeline() {
     let input = create_test_spike_tensor(batch_size, num_input, num_timesteps);
     let mut all_predictions = Vec::new();
 
-    for (i, model) in models.iter().enumerate() {
+    for (i, model) in models.iter_mut().enumerate() {
         let output = model.forward(&input).expect("Forward pass failed");
-        let decoder = SpikeRateDecoder::new(num_classes);
+        let decoder = SpikeRateDecoder::new(num_classes, None, false);
         let logits = decoder.decode(&output).expect("Decoding failed");
-        all_predictions.push(logits);
 
         if i == 0 {
             println!("  Prediction shape per model: {:?}", logits.shape());
         }
+
+        all_predictions.push(logits);
     }
 
     // Step 3: Compute ensemble uncertainty
-    let uncertainty_estimator = EnsembleUncertainty::new(all_predictions);
-    let predictions = uncertainty_estimator
-        .predict_proba()
-        .expect("Ensemble prediction failed");
-    let uncertainties = uncertainty_estimator
-        .estimate_uncertainty()
-        .expect("Uncertainty estimation failed");
+    //
+    // `EnsembleUncertainty::new` takes the NUMBER of models; the predictions are
+    // passed to `compute_statistics`, which returns per-class mean and variance
+    // rather than a probability matrix.
+    let uncertainty_estimator = EnsembleUncertainty::new(all_predictions.len());
+
+    // Per sample, gather each model's class scores and reduce across the
+    // ensemble.
+    let mut means = Vec::with_capacity(batch_size);
+    let mut variances = Vec::with_capacity(batch_size);
+    for i in 0..batch_size {
+        let per_model: Vec<Vec<f64>> = all_predictions
+            .iter()
+            .map(|pred| (0..num_classes).map(|c| pred[[i, c]] as f64).collect())
+            .collect();
+        let (mean, variance) = uncertainty_estimator.compute_statistics(&per_model);
+        means.push(mean);
+        variances.push(variance);
+    }
 
     println!("  Computed predictions and uncertainties for {} samples", batch_size);
 
-    // Verify predictions
-    assert_eq!(predictions.shape(), &[batch_size, num_classes]);
+    // Every sample must yield one statistic per class.
+    for (i, (mean, variance)) in means.iter().zip(variances.iter()).enumerate() {
+        assert_eq!(mean.len(), num_classes, "sample {i}");
+        assert_eq!(variance.len(), num_classes, "sample {i}");
 
-    for i in 0..batch_size {
-        let probs = predictions.row(i);
-        let sum: f64 = probs.iter().sum();
-        assert!(
-            (sum - 1.0).abs() < 1e-5,
-            "Probabilities should sum to 1"
-        );
+        // Variance of a real ensemble is non-negative and finite.
+        for &v in variance {
+            assert!(
+                v >= 0.0 && v.is_finite(),
+                "variance {v} invalid for sample {i}"
+            );
+        }
+        for &m in mean {
+            assert!(m.is_finite(), "mean {m} invalid for sample {i}");
+        }
     }
 
-    // Verify uncertainties
-    assert_eq!(uncertainties.len(), batch_size);
-
-    for &uncertainty in &uncertainties {
-        assert!(
-            uncertainty >= 0.0,
-            "Uncertainty should be non-negative: {}",
-            uncertainty
-        );
+    // Identical models must produce zero ensemble variance -- the property that
+    // makes this an uncertainty estimate rather than an arbitrary spread.
+    let identical: Vec<Vec<f64>> = vec![vec![0.25, 0.75]; 4];
+    let (_, zero_variance) = uncertainty_estimator.compute_statistics(&identical);
+    for &v in &zero_variance {
+        assert!(v.abs() < 1e-12, "identical predictions gave variance {v}");
     }
 
-    let mean_uncertainty: f64 = uncertainties.iter().sum::<f64>() / batch_size as f64;
+    let mean_uncertainty: f64 = variances
+        .iter()
+        .map(|v| v.iter().sum::<f64>() / v.len() as f64)
+        .sum::<f64>()
+        / batch_size as f64;
     println!("  Mean uncertainty: {:.4}", mean_uncertainty);
 
     // Step 4: Compute confidence intervals using bootstrap
@@ -548,7 +611,13 @@ fn test_multi_decoder_comparison() {
     let decoders: Vec<(&str, Box<dyn Decoder>)> = vec![
         ("Rate", Box::new(SpikeRateDecoder::new(num_neurons, None, false))),
         ("First Spike", Box::new(FirstSpikeDecoder::new(num_neurons, num_timesteps))),
-        ("Population", Box::new(PopulationDecoder::new(num_neurons, 10))),
+        // PopulationDecoder::new takes (num_classes, neurons_per_class) and
+        // therefore expects `classes * per_class` input neurons. Passing
+        // `num_neurons` as the class count asked for 200 where the tensor has 20.
+        (
+            "Population",
+            Box::new(PopulationDecoder::new(num_neurons / 10, 10)),
+        ),
         ("Max Spike", Box::new(MaxSpikeDecoder::new(num_neurons))),
     ];
 

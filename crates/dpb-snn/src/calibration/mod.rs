@@ -32,7 +32,7 @@
 //! ```rust
 //! use dpb_snn::calibration::*;
 //!
-//! # fn example() -> dpb_snn::SNNResult<()> {
+//! # fn example() {
 //! // Validation set logits and labels
 //! let logits = vec![
 //!     vec![2.0, 1.0, 0.5],  // Sample 1
@@ -43,14 +43,15 @@
 //!
 //! // Fit temperature parameter
 //! let mut calibrator = TemperatureScaling::new();
-//! calibrator.fit(&logits, &labels)?;
+//! // `fit` reports its own error type, so it is not a `?` candidate here.
+//! calibrator.fit(&logits, &labels).expect("fit");
 //!
-//! // Calibrate test predictions
+//! // Calibrate test predictions. `calibrate` takes ONE row of logits;
+//! // `calibrate_batch` takes many.
 //! let test_logits = vec![vec![1.8, 1.2, 0.3]];
-//! let calibrated = calibrator.calibrate(&test_logits);
+//! let calibrated = calibrator.calibrate_batch(&test_logits);
 //!
 //! println!("Temperature: {:.3}", calibrator.temperature());
-//! # Ok(())
 //! # }
 //! ```
 //!
@@ -59,17 +60,16 @@
 //! ```rust
 //! use dpb_snn::calibration::*;
 //!
-//! # fn example() -> dpb_snn::SNNResult<()> {
-//! // For binary classification
+//! # fn example() {
+//! // For binary classification. Labels are `f64` so that soft targets work too.
 //! let probs = vec![0.1, 0.3, 0.5, 0.7, 0.9];
-//! let labels = vec![0, 0, 1, 1, 1];
+//! let labels = vec![0.0, 0.0, 1.0, 1.0, 1.0];
 //!
 //! let mut calibrator = IsotonicCalibration::new();
-//! calibrator.fit(&probs, &labels)?;
+//! calibrator.fit(&probs, &labels).expect("fit");
 //!
 //! let test_probs = vec![0.4, 0.6, 0.8];
-//! let calibrated = calibrator.calibrate(&test_probs);
-//! # Ok(())
+//! let calibrated = calibrator.calibrate_batch(&test_probs);
 //! # }
 //! ```
 //!
@@ -79,18 +79,16 @@
 //! use dpb_snn::calibration::*;
 //!
 //! # fn example() {
-//! // Model predictions (probabilities)
-//! let predictions = vec![
-//!     vec![0.7, 0.2, 0.1],
-//!     vec![0.1, 0.8, 0.1],
-//!     vec![0.2, 0.3, 0.5],
-//! ];
-//! let labels = vec![0, 1, 2];
+//! // These metrics are BINARY: a confidence per sample, and whether that
+//! // sample was correct. For a multiclass model, take the probability assigned
+//! // to the predicted class and whether it matched the label.
+//! let confidences = vec![0.7, 0.8, 0.5];
+//! let correct = vec![true, true, false];
 //!
 //! // Compute calibration metrics
-//! let ece = expected_calibration_error(&predictions, &labels, 10);
-//! let mce = maximum_calibration_error(&predictions, &labels, 10);
-//! let brier = brier_score(&predictions, &labels);
+//! let ece = expected_calibration_error(&confidences, &correct, 10);
+//! let mce = maximum_calibration_error(&confidences, &correct, 10);
+//! let brier = brier_score(&confidences, &correct);
 //!
 //! println!("Expected Calibration Error: {:.4}", ece);
 //! println!("Maximum Calibration Error: {:.4}", mce);
@@ -104,8 +102,9 @@
 //! use dpb_snn::calibration::uncertainty::*;
 //!
 //! # fn example() {
-//! // Monte Carlo Dropout for uncertainty estimation
-//! let mut mc_dropout = MCDropout::new(0.2, 100);  // 20% dropout, 100 samples
+//! // Monte Carlo Dropout for uncertainty estimation.
+//! // Note the argument order: samples first, then dropout rate.
+//! let mut mc_dropout = MCDropout::new(100, 0.2);  // 100 samples, 20% dropout
 //!
 //! // Ensemble uncertainty
 //! let predictions = vec![
@@ -114,13 +113,15 @@
 //!     vec![0.8, 0.1, 0.1],  // Model 3
 //! ];
 //!
-//! let ensemble = EnsembleUncertainty::new(predictions);
-//! let mean = ensemble.mean();
-//! let variance = ensemble.variance();
-//! let entropy = ensemble.entropy();
+//! // The estimator is constructed with the model COUNT; the predictions are
+//! // passed to each call.
+//! let ensemble = EnsembleUncertainty::new(predictions.len());
+//! let (mean, variance) = ensemble.compute_statistics(&predictions);
+//! let entropy = ensemble.entropy(&predictions);
 //!
 //! println!("Prediction: {:?}", mean);
-//! println!("Uncertainty (entropy): {:.4}", entropy);
+//! println!("Per-class variance: {:?}", variance);
+//! println!("Uncertainty (entropy): {:?}", entropy);
 //! # }
 //! ```
 //!
@@ -132,15 +133,15 @@
 //! use dpb_snn::calibration::*;
 //!
 //! # fn example() {
-//! # let predictions = vec![vec![0.7, 0.3], vec![0.6, 0.4]];
-//! # let labels = vec![0, 1];
+//! # let confidences = vec![0.7, 0.6, 0.9, 0.55];
+//! # let correct = vec![true, false, true, true];
 //! // Generate reliability diagram data
-//! let bins = reliability_diagram(&predictions, &labels, 10);
+//! let bins = reliability_diagram(&confidences, &correct, 10);
 //!
 //! for bin in bins {
 //!     println!("Confidence: {:.2}, Accuracy: {:.2}, Count: {}",
-//!         bin.avg_confidence,
-//!         bin.avg_accuracy,
+//!         bin.predicted_prob,
+//!         bin.actual_freq,
 //!         bin.count
 //!     );
 //! }
