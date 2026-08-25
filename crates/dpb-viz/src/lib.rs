@@ -16,8 +16,8 @@
 //! ```rust
 //! use dpb_viz::{RasterPlot, DashboardConfig, NetworkGraph};
 //!
-//! // Create a spike raster plot
-//! let mut raster = RasterPlot::new(100, 1000); // 100 neurons, 1000ms duration
+//! // Create a spike raster plot. The duration is in milliseconds as f32.
+//! let mut raster = RasterPlot::new(100, 1000.0); // 100 neurons, 1000ms duration
 //! raster.add_spike(0, 10.5); // Neuron 0 spikes at 10.5ms
 //! let svg = raster.to_svg();
 //!
@@ -26,11 +26,12 @@
 //!     .with_update_interval_ms(100)
 //!     .with_port(8080);
 //!
-//! // Visualize network topology
-//! let graph = NetworkGraph::new()
-//!     .add_layer("input", 784)
-//!     .add_layer("hidden", 256)
-//!     .add_layer("output", 10);
+//! // Visualize network topology. `add_layer` mutates and returns the new
+//! // layer's index, so it does not chain as a builder.
+//! let mut graph = NetworkGraph::new();
+//! let input = graph.add_layer("input", 784);
+//! let hidden = graph.add_layer("hidden", 256);
+//! let output = graph.add_layer("output", 10);
 //! ```
 //!
 //! ## Architecture

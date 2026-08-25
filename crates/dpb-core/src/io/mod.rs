@@ -42,7 +42,7 @@
 //! use std::path::Path;
 //!
 //! # fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! let reader = EdfReader::open(Path::new("data/sleep.edf"))?;
+//! let mut reader = EdfReader::open(Path::new("data/sleep.edf"))?;
 //! let signal = reader.read_signal(0)?;
 //! println!("Read {} samples", signal.len());
 //! # Ok(())
@@ -56,7 +56,7 @@
 //! use std::path::Path;
 //!
 //! # fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! let reader = BdfReader::open(Path::new("data/biosemi.bdf"))?;
+//! let mut reader = BdfReader::open(Path::new("data/biosemi.bdf"))?;
 //! let signal = reader.read_signal(0)?;
 //! let triggers = reader.read_triggers()?;
 //! println!("Read {} samples and {} triggers", signal.len(), triggers.len());
@@ -71,7 +71,7 @@
 //! use std::path::Path;
 //!
 //! # fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! let reader = GdfReader::open(Path::new("data/recording.gdf"))?;
+//! let mut reader = GdfReader::open(Path::new("data/recording.gdf"))?;
 //! println!("GDF version: {:?}", reader.header().version);
 //! let signal = reader.read_signal(0)?;
 //! # Ok(())

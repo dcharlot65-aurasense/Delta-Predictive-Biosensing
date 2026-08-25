@@ -15,22 +15,22 @@
 //!
 //! ```rust
 //! use dpb_synth::contact::ecg::*;
-//! use rand::SeedableRng;
-//! use rand_chacha::ChaCha8Rng;
+//! use dpb_synth::traits::SyntheticGenerator;
 //!
 //! # fn example() -> dpb_synth::Result<()> {
-//! // Generate synthetic ECG
-//! let mut rng = ChaCha8Rng::seed_from_u64(42);
-//! let generator = EcgGenerator::new(250.0);  // 250 Hz
+//! // Generators are unit structs; their parameters carry the configuration,
+//! // and each generator supplies a physiologically sensible starting set.
+//! let generator = EcgMorphologyGenerator;
+//! let params = EcgMorphologyParams {
+//!     heart_rate: 70.0,  // bpm
+//!     ..EcgMorphologyGenerator::default_params()
+//! };
 //!
-//! let (signal, ground_truth) = generator.generate(
-//!     10.0,   // 10 seconds
-//!     70.0,   // 70 bpm heart rate
-//!     &mut rng,
-//! )?;
+//! // The seed makes the output reproducible.
+//! let output = generator.generate(&params, 42)?;
 //!
-//! println!("Generated {} samples", signal.len());
-//! println!("R-peaks: {:?}", ground_truth.r_peaks);
+//! println!("Generated {} samples", output.signal.len());
+//! println!("Ground-truth events: {}", output.ground_truth.events.len());
 //! # Ok(())
 //! # }
 //! ```
@@ -91,20 +91,23 @@
 //! let mut rng = ChaCha8Rng::seed_from_u64(42);
 //!
 //! // Create streaming ECG generator
-//! let config = StreamingConfig {
+//! let _config = StreamingConfig {
 //!     sample_rate: 250.0,
 //!     buffer_size: 1024,
+//!     ..StreamingConfig::default()
 //! };
 //! let params = StreamingEcgParams {
 //!     heart_rate: 75.0,
-//!     hrv_enabled: true,
+//!     ..StreamingEcgParams::default()
 //! };
 //!
-//! let mut generator = StreamingEcg::new(config, params);
+//! // The generator is a unit struct; the STATE it hands back is what advances.
+//! let generator = StreamingEcg;
+//! let mut state = generator.init_state(&params, 42);
 //!
 //! // Generate samples in real-time
 //! for _ in 0..1000 {
-//!     let sample = generator.next_sample(&mut rng);
+//!     let _sample = generator.next_sample(&mut state);
 //!     // Process sample...
 //! }
 //! # Ok(())

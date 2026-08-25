@@ -43,21 +43,24 @@
 //! ```rust
 //! use dpb_core::signal::ecg::*;
 //! use dpb_core::signal::hrv::*;
-//! use ndarray::Array1;
 //!
 //! # fn example() -> dpb_core::Result<()> {
-//! # let ecg_signal = Array1::from_vec(vec![0.0; 1000]);
+//! # let ecg_signal = vec![0.0f64; 1000];
 //! # let sample_rate = 250.0;
 //! // Detect R-peaks
 //! let detector = PanTompkinsDetector::new(sample_rate)?;
-//! let peaks = detector.detect(&ecg_signal)?;
+//! let peaks = detector.detect_r_peaks(&ecg_signal)?;
+//!
+//! // HRV is computed from RR INTERVALS in milliseconds, which each peak
+//! // already carries relative to its predecessor.
+//! let rr_intervals: Vec<f64> = peaks.iter().filter_map(|p| p.rr_interval_ms).collect();
 //!
 //! // Analyze HRV
 //! let analyzer = HrvAnalyzer::new();
-//! let metrics = analyzer.compute_time_domain(&peaks, sample_rate)?;
+//! let metrics = analyzer.compute_time_domain(&rr_intervals)?;
 //!
-//! println!("Heart Rate: {:.1} bpm", metrics.mean_hr);
-//! println!("RMSSD: {:.1} ms", metrics.rmssd);
+//! println!("Mean RR: {:.1} ms", metrics.mean_rr_ms);
+//! println!("RMSSD: {:.1} ms", metrics.rmssd_ms);
 //! # Ok(())
 //! # }
 //! ```

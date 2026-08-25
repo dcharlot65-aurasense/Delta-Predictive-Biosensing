@@ -223,9 +223,20 @@ pub fn relative_band_power(band_power: f64, total_power: f64) -> f64 {
 ///
 /// ```
 /// use dpb_core::signal::eeg::theta_beta_ratio;
+/// use std::f64::consts::PI;
 ///
-/// let eeg_signal = vec![0.1, 0.2, -0.1, 0.3, -0.2, 0.1]; // example data
 /// let sample_rate = 250.0; // Hz
+///
+/// // Two seconds of a theta (6 Hz) and beta (20 Hz) mixture. A handful of
+/// // arbitrary samples will not do: with no power in the beta band the
+/// // function correctly refuses to divide, and the example panics.
+/// let eeg_signal: Vec<f64> = (0..500)
+///     .map(|i| {
+///         let t = i as f64 / sample_rate;
+///         (2.0 * PI * 6.0 * t).sin() + 0.5 * (2.0 * PI * 20.0 * t).sin()
+///     })
+///     .collect();
+///
 /// let tbr = theta_beta_ratio(&eeg_signal, sample_rate).unwrap();
 /// println!("Theta/Beta ratio: {:.2}", tbr);
 /// ```
@@ -267,10 +278,20 @@ pub fn theta_beta_ratio(signal: &[f64], sample_rate: f64) -> Result<f64> {
 ///
 /// ```
 /// use dpb_core::signal::eeg::alpha_asymmetry;
+/// use std::f64::consts::PI;
 ///
-/// let left_eeg = vec![0.1, 0.2, -0.1, 0.3, -0.2, 0.1]; // F3
-/// let right_eeg = vec![0.15, 0.25, -0.15, 0.35, -0.25, 0.15]; // F4
 /// let sample_rate = 250.0; // Hz
+///
+/// // Two seconds of 10 Hz alpha on each channel, stronger on the right.
+/// // Both channels need real alpha power for the ratio to be defined.
+/// let alpha = |amplitude: f64| -> Vec<f64> {
+///     (0..500)
+///         .map(|i| amplitude * (2.0 * PI * 10.0 * i as f64 / sample_rate).sin())
+///         .collect()
+/// };
+/// let left_eeg = alpha(1.0);  // F3
+/// let right_eeg = alpha(1.5); // F4
+///
 /// let asymmetry = alpha_asymmetry(&left_eeg, &right_eeg, sample_rate).unwrap();
 /// println!("Alpha asymmetry: {:.3}", asymmetry);
 /// ```

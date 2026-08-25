@@ -35,6 +35,8 @@
 //!     threshold: 0.3,
 //!     relative: false,
 //!     refractory_period: 0.01,
+//!     // Defaults to `LevelCrossingMode::Delta`, the reconstructable mode.
+//!     ..LevelCrossingConfig::default()
 //! };
 //!
 //! // Encode signal

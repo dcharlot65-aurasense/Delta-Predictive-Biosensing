@@ -39,15 +39,16 @@
 //!
 //! ### Creating an Observation
 //!
-//! ```rust,no_run
-//! use dpb_core::io::fhir::{Observation, CodeableConcept, Coding, Quantity};
+//! ```rust
+//! use dpb_core::io::fhir::VitalSignsObservation;
 //!
-//! let obs = Observation::new_vital_sign(
+//! // `VitalSignsObservation` carries the LOINC code and units for each vital
+//! // sign, so the caller supplies the value and the time.
+//! let obs = VitalSignsObservation::heart_rate(
 //!     "obs-hr-001".to_string(),
 //!     "patient-001".to_string(),
-//!     CodeableConcept::loinc("8867-4", "Heart rate"),
-//!     Quantity::new(72.0, "beats/min", "/min"),
-//!     chrono::Utc::now(),
+//!     72.0,
+//!     "2026-08-01T12:00:00Z".to_string(),
 //! );
 //! ```
 

@@ -10,6 +10,15 @@ pub mod rand_helpers;
 
 pub use rand_helpers::{random_f64, random_f64_range, random_usize_range, random_i32_range};
 
+// Re-export the augmentations themselves.
+//
+// They were declared `pub` in their submodules but never surfaced here, so
+// `use dpb_synth::augmentation::*` -- which is what this crate's own
+// documentation tells you to write -- brought in only the RNG helpers.
+pub use noise::{BaselineWander, GaussianNoise, MotionArtifact, PinkNoise, PowerlineNoise};
+pub use spectral::{FrequencyMask, MagnitudeScale, TimeMask};
+pub use temporal::{RandomDropout, Resample, TimeShift, TimeWarp, WindowCrop};
+
 use rand::RngCore;
 
 /// Trait for signal augmentation operations

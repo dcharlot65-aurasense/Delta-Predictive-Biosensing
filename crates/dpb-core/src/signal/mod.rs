@@ -39,21 +39,24 @@
 //! ```rust
 //! use dpb_core::signal::ecg::*;
 //! use dpb_core::signal::hrv::*;
-//! use ndarray::Array1;
 //!
 //! # fn example() -> dpb_core::Result<()> {
-//! # let ecg_signal = Array1::from_vec(vec![0.0; 1000]);
+//! # let ecg_signal = vec![0.0f64; 1000];
 //! # let sample_rate = 250.0;
 //! // Detect R-peaks
 //! let detector = PanTompkinsDetector::new(sample_rate)?;
-//! let peaks = detector.detect(&ecg_signal)?;
+//! let peaks = detector.detect_r_peaks(&ecg_signal)?;
+//!
+//! // HRV is computed from RR INTERVALS in milliseconds, which each peak
+//! // already carries relative to its predecessor.
+//! let rr_intervals: Vec<f64> = peaks.iter().filter_map(|p| p.rr_interval_ms).collect();
 //!
 //! // Compute HRV metrics
 //! let analyzer = HrvAnalyzer::new();
-//! let time_domain = analyzer.compute_time_domain(&peaks, sample_rate)?;
-//! let freq_domain = analyzer.compute_frequency_domain(&peaks, sample_rate)?;
+//! let time_domain = analyzer.compute_time_domain(&rr_intervals)?;
+//! let freq_domain = analyzer.compute_frequency_domain(&rr_intervals, sample_rate)?;
 //!
-//! println!("RMSSD: {:.1} ms", time_domain.rmssd);
+//! println!("RMSSD: {:.1} ms", time_domain.rmssd_ms);
 //! println!("LF/HF: {:.2}", freq_domain.lf_hf_ratio);
 //! # Ok(())
 //! # }
@@ -63,10 +66,9 @@
 //!
 //! ```rust
 //! use dpb_core::signal::eeg::*;
-//! use ndarray::Array1;
 //!
 //! # fn example() -> dpb_core::Result<()> {
-//! # let eeg_signal = Array1::from_vec(vec![0.0; 1000]);
+//! # let eeg_signal = vec![0.0f64; 1000];
 //! # let sample_rate = 250.0;
 //! // Compute band powers
 //! let band_powers = compute_band_powers(&eeg_signal, sample_rate)?;
@@ -77,8 +79,9 @@
 //! println!("Beta: {:.2}", band_powers.beta);
 //! println!("Gamma: {:.2}", band_powers.gamma);
 //!
-//! // Compute theta/beta ratio (ADHD marker)
-//! let ratio = theta_beta_ratio(&band_powers);
+//! // Compute theta/beta ratio (ADHD marker). It works from the SIGNAL, not
+//! // from already-extracted band powers.
+//! let ratio = theta_beta_ratio(&eeg_signal, sample_rate)?;
 //! # Ok(())
 //! # }
 //! ```
@@ -91,9 +94,10 @@
 //!
 //! # fn example() -> dpb_core::Result<()> {
 //! # let signal = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
-//! // Apply bandpass filter
-//! let mut filter = IirFilter::bandpass(0.5, 40.0, 250.0, 4)?;
-//! let filtered = filter.apply(signal.view())?;
+//! // Apply bandpass filter. The constructor names the family and takes the
+//! // order first; `filter` returns the result directly.
+//! let mut filter = IirFilter::butterworth_bandpass(4, 0.5, 40.0, 250.0)?;
+//! let filtered = filter.filter(signal.view());
 //!
 //! // Normalize signal
 //! let normalized = normalize(filtered.view(), NormalizationMethod::ZScore)?;

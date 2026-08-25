@@ -297,9 +297,8 @@ impl UnifiedReader {
     /// use std::path::Path;
     ///
     /// # fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let mut reader = UnifiedReader::open(Path::new("data/recording.edf"))?;
-    /// let n_signals = reader.n_signals();
-    /// println!("File has {} signals", n_signals);
+    /// let reader = UnifiedReader::open(Path::new("data/recording.edf"))?;
+    /// println!("Detected format: {:?}", reader.format_type());
     /// # Ok(())
     /// # }
     /// ```

@@ -41,9 +41,12 @@
 //! # fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let dataset = BidsDataset::open(Path::new("/data/bids_dataset"))?;
 //! println!("Dataset: {}", dataset.name());
-//! println!("Subjects: {}", dataset.subjects().len());
+//! // `subjects` walks the filesystem, so it reports failure rather than
+//! // returning a bare Vec.
+//! let subjects = dataset.subjects()?;
+//! println!("Subjects: {}", subjects.len());
 //!
-//! for subject in dataset.subjects() {
+//! for subject in subjects {
 //!     println!("Subject: {}", subject.id());
 //!     for session in subject.sessions()? {
 //!         println!("  Session: {}", session.id());
@@ -57,6 +60,7 @@
 //!
 //! ```rust,no_run
 //! use dpb_core::io::bids::{BidsDataset, Modality};
+//! use dpb_core::io::EdfReader;
 //! use std::path::Path;
 //!
 //! # fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -64,11 +68,17 @@
 //! let subject = dataset.subject("01")?;
 //! let session = subject.session("01")?;
 //!
+//! // `files_for_modality` yields PATHS; open them with the reader for the
+//! // format at hand.
 //! let eeg_files = session.files_for_modality(Modality::Eeg)?;
-//! for eeg_file in eeg_files {
-//!     let eeg_data = eeg_file.read()?;
-//!     println!("EEG data: {} channels, {} samples",
-//!              eeg_data.channels().len(), eeg_data.n_samples());
+//! for eeg_path in eeg_files {
+//!     if eeg_path.extension().is_some_and(|e| e == "edf") {
+//!         let mut reader = EdfReader::open(&eeg_path)?;
+//!         let n_channels = reader.signals().len();
+//!         let channel_0 = reader.read_signal(0)?;
+//!         println!("EEG data: {} channels, {} samples",
+//!                  n_channels, channel_0.len());
+//!     }
 //! }
 //! # Ok(())
 //! # }
