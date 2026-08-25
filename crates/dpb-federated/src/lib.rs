@@ -90,13 +90,27 @@ pub mod aggregation;
 pub mod privacy;
 pub mod compression;
 
+// Re-export the crate's public surface.
+//
+// These types were public in their modules but invisible at the crate root, so
+// `use dpb_federated::*` -- the obvious way to reach for them, and what the
+// integration suite does -- brought in barely a third of the API.
 pub use error::{FederatedError, Result};
-pub use config::FedConfig;
-pub use model::{ModelUpdate, ModelWeights, ParameterDelta};
-pub use client::FederatedClient;
-pub use server::FederatedServer;
-pub use aggregation::{Aggregator, FedAvg, WeightedAvg};
-pub use privacy::{PrivacyConfig, DifferentialPrivacy};
+pub use config::{AggregationStrategy, ClientSelection, FedConfig};
+pub use model::{
+    CompressionInfo, ModelMetadata, ModelUpdate, ModelWeights, ParameterDelta, Tensor,
+};
+pub use client::{ClientState, FederatedClient, LocalDataset, TrainingHistory};
+pub use server::{
+    ClientInfo, ClientStatus, FederatedServer, RoundInfo, ServerHistory, ServerState,
+};
+pub use aggregation::{
+    Aggregator, FedAvg, MedianAggregator, TrimmedMeanAggregator, WeightedAvg,
+};
+pub use privacy::{
+    DifferentialPrivacy, LocalDP, PrivacyAccountant, PrivacyConfig, PrivacyMechanism,
+};
+pub use compression::{CompressionStrategy, GradientCompressor, SparseTensor};
 
 /// Federated learning protocol version.
 pub const PROTOCOL_VERSION: &str = "1.0";
