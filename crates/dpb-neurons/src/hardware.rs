@@ -14,11 +14,23 @@ use serde::{Deserialize, Serialize};
 // ============================================================================
 
 /// Xylo LIF neuron state (hardware-constrained).
+///
+/// Xylo carries **16-bit** synaptic and membrane state per neuron, with 8-bit
+/// synaptic weights. The doc comments here previously described these as 8-bit
+/// while the fields were already `i16`, so the stated hardware constraint and
+/// the actual one disagreed.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Pod, Zeroable)]
 pub struct XyloLifState {
-    /// Membrane potential (8-bit fixed point, scaled)
+    /// Membrane potential (16-bit hardware state).
     pub v: i16,
+    /// Synaptic current (16-bit hardware state).
+    ///
+    /// Xylo accumulates weighted input into a synaptic state that decays on its
+    /// own time constant before reaching the membrane. Injecting input straight
+    /// into `v` collapses two state variables into one and removes the synaptic
+    /// filter entirely.
+    pub i_syn: i16,
     /// Refractory counter (hardware cycles)
     pub refrac_counter: u8,
     pub _padding: u8,
@@ -28,27 +40,54 @@ impl Default for XyloLifState {
     fn default() -> Self {
         Self {
             v: 0, // Represents resting potential in hardware units
+            i_syn: 0,
             refrac_counter: 0,
             _padding: 0,
         }
     }
 }
 
+/// Bit-shift decay, as Xylo approximates an exponential.
+///
+/// The hardware computes `v' = v - (v >> dash)`. When the shift underflows to
+/// zero the decay is linear instead, so a small state still reaches rest rather
+/// than sticking. Negative values need no special case: an arithmetic shift
+/// right already yields -1 for small magnitudes, which steps them toward zero.
+#[inline]
+fn xylo_bitshift_decay(value: i16, dash: u8) -> i16 {
+    let shifted = value >> dash.min(15);
+    let decay = if shifted == 0 && value > 0 { 1 } else { shifted };
+    value.saturating_sub(decay)
+}
+
 /// Xylo LIF configuration (hardware parameter ranges).
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Pod, Zeroable)]
 pub struct XyloLifConfig {
-    /// Threshold (8-bit)
+    /// Firing threshold (16-bit)
     pub v_thresh: i16,
-    /// Reset value (8-bit)
+    /// Reset value (16-bit)
     pub v_reset: i16,
-    /// Leak factor (0-255, represents decay rate)
-    pub leak: u8,
+    /// Membrane decay, as a right-bit-shift amount.
+    ///
+    /// Xylo decays state by `v -= v >> dash`, so this is a SHIFT COUNT and not a
+    /// rate: the field is 4 bits wide on the hardware, valid over 0..=15, and
+    /// **smaller values decay faster** -- `dash_mem = 1` halves the membrane
+    /// each step while `dash_mem = 15` barely moves it.
+    ///
+    /// This replaces a `leak` field that was applied as `(v * leak) >> 8`, a
+    /// multiplicative rate the hardware does not implement, and one that
+    /// overflowed: `v * leak` is `i16` arithmetic, so any membrane above 6553
+    /// panicked in debug and wrapped in release, reachable through
+    /// `set_membrane_potential` with the DEFAULT config.
+    pub dash_mem: u8,
+    /// Synaptic decay, as a right-bit-shift amount. Same 0..=15 range and the
+    /// same "smaller is faster" sense as [`Self::dash_mem`].
+    pub dash_syn: u8,
     /// Refractory period in hardware cycles
     pub refrac_cycles: u8,
     /// Scaling factor for inputs
     pub input_scale: u8,
-    pub _padding: u8,
 }
 
 impl Default for XyloLifConfig {
@@ -56,10 +95,10 @@ impl Default for XyloLifConfig {
         Self {
             v_thresh: 100,
             v_reset: 0,
-            leak: 5,
+            dash_mem: 4,
+            dash_syn: 3,
             refrac_cycles: 2,
             input_scale: 1,
-            _padding: 0,
         }
     }
 }
@@ -67,9 +106,11 @@ impl Default for XyloLifConfig {
 impl XyloLifConfig {
     /// Fast dynamics configuration.
     pub fn fast() -> Self {
+        // Smaller dash = faster decay.
         Self {
             v_thresh: 80,
-            leak: 10,
+            dash_mem: 2,
+            dash_syn: 1,
             refrac_cycles: 1,
             ..Default::default()
         }
@@ -77,9 +118,11 @@ impl XyloLifConfig {
 
     /// Slow dynamics configuration.
     pub fn slow() -> Self {
+        // Larger dash = slower decay.
         Self {
             v_thresh: 120,
-            leak: 2,
+            dash_mem: 8,
+            dash_syn: 6,
             refrac_cycles: 4,
             ..Default::default()
         }
@@ -90,6 +133,13 @@ impl NeuronConfig for XyloLifConfig {
     fn validate(&self) -> Result<(), String> {
         if self.v_thresh <= self.v_reset {
             return Err("Threshold must be greater than reset".to_string());
+        }
+        // The dash fields are 4 bits wide on the hardware.
+        if self.dash_mem > 15 {
+            return Err(format!("dash_mem must be 0..=15, got {}", self.dash_mem));
+        }
+        if self.dash_syn > 15 {
+            return Err(format!("dash_syn must be 0..=15, got {}", self.dash_syn));
         }
         Ok(())
     }
@@ -121,10 +171,10 @@ impl XyloLifNeuron {
             ((self.config.v_thresh >> 8) & 0xFF) as u8,
             (self.config.v_reset & 0xFF) as u8,
             ((self.config.v_reset >> 8) & 0xFF) as u8,
-            self.config.leak,
+            self.config.dash_mem,
+            self.config.dash_syn,
             self.config.refrac_cycles,
             self.config.input_scale,
-            0, // padding
         ]
     }
 }
@@ -155,16 +205,21 @@ impl NeuronModel for XyloLifNeuron {
             return false;
         }
 
-        // Apply leak (decay)
-        let leak_amount = (self.state.v * self.config.leak as i16) >> 8;
-        self.state.v -= leak_amount;
-
-        // Add input (scaled and quantized)
+        // Weighted input accumulates into the SYNAPTIC state, which then drives
+        // the membrane -- the two-stage path the hardware implements. Float to
+        // int casts saturate in Rust, so an out-of-range input pins at the
+        // 16-bit bound rather than wrapping.
         let scaled_input = (input_current * self.config.input_scale as f32).round() as i16;
-        self.state.v = self.state.v.saturating_add(scaled_input);
+        self.state.i_syn = self.state.i_syn.saturating_add(scaled_input);
+        self.state.v = self.state.v.saturating_add(self.state.i_syn);
 
-        // Clamp to hardware range
-        self.state.v = self.state.v.clamp(-32768, 32767);
+        // Each state decays on its own bit-shift constant.
+        self.state.i_syn = xylo_bitshift_decay(self.state.i_syn, self.config.dash_syn);
+        self.state.v = xylo_bitshift_decay(self.state.v, self.config.dash_mem);
+
+        // No clamp to [-32768, 32767] here: that is exactly the range of `i16`,
+        // so the previous clamp could never do anything, and the saturating
+        // arithmetic above already holds the bound.
 
         // Check for spike
         if self.state.v >= self.config.v_thresh {
@@ -580,7 +635,8 @@ mod tests {
         let params = neuron.to_hardware_params();
 
         assert_eq!(params.len(), 8);
-        assert_eq!(params[4], neuron.config.leak);
+        assert_eq!(params[4], neuron.config.dash_mem);
+        assert_eq!(params[5], neuron.config.dash_syn);
     }
 
     #[test]
@@ -588,7 +644,11 @@ mod tests {
         let fast = XyloLifConfig::fast();
         let slow = XyloLifConfig::slow();
 
-        assert!(fast.leak > slow.leak);
+        // Bit-shift decay: a SMALLER dash decays faster, so the fast preset
+        // must have the smaller value. Read as a rate -- which is what the old
+        // `leak` field was -- this comparison points the other way, and did.
+        assert!(fast.dash_mem < slow.dash_mem);
+        assert!(fast.dash_syn < slow.dash_syn);
         assert!(fast.refrac_cycles < slow.refrac_cycles);
     }
 
@@ -680,4 +740,75 @@ mod tests {
 
         assert!(xylo_spiked || pulsar_spiked || quantized_spiked);
     }
+
+    /// The membrane update must not overflow for any reachable state.
+    ///
+    /// Regression: decay was `(v * leak) >> 8` in `i16` arithmetic, so any
+    /// membrane above 6553 overflowed -- a panic in debug, a silent wrap in
+    /// release -- and `set_membrane_potential` reaches that with the DEFAULT
+    /// config.
+    #[test]
+    fn test_xylo_no_overflow_across_range() {
+        for v in [i16::MIN, -20000, -1, 0, 1, 6553, 20000, i16::MAX] {
+            for dash in 0u8..=15 {
+                let config = XyloLifConfig { dash_mem: dash, dash_syn: dash, ..Default::default() };
+                let mut neuron = XyloLifNeuron::new(config);
+                neuron.state.v = v;
+                neuron.state.i_syn = v;
+                // Must not panic, and must stay inside the 16-bit state.
+                let _ = neuron.update(1000.0, 1.0);
+            }
+        }
+    }
+
+    /// Bit-shift decay must move state toward rest and actually reach it.
+    #[test]
+    fn test_xylo_bitshift_decay_reaches_rest() {
+        // `v - (v >> dash)`, with a linear step when the shift underflows.
+        assert_eq!(xylo_bitshift_decay(1024, 1), 512);
+        assert_eq!(xylo_bitshift_decay(1024, 4), 960);
+        assert_eq!(xylo_bitshift_decay(0, 4), 0);
+
+        // Without the linear fallback a small positive state would stick
+        // forever, since `1 >> 4 == 0`.
+        assert_eq!(xylo_bitshift_decay(1, 4), 0);
+
+        // Left to itself the membrane must settle at rest, not stall short.
+        let config = XyloLifConfig { v_thresh: 30000, ..Default::default() };
+        let mut neuron = XyloLifNeuron::new(config);
+        neuron.state.v = 5000;
+        for _ in 0..10_000 {
+            neuron.update(0.0, 1.0);
+        }
+        assert_eq!(neuron.state.v, 0, "membrane stalled at {}", neuron.state.v);
+    }
+
+    /// A smaller dash must decay faster -- the sense that a rate-shaped field
+    /// gets backwards.
+    #[test]
+    fn test_xylo_smaller_dash_decays_faster() {
+        let decay_after = |dash: u8| {
+            let config = XyloLifConfig { dash_mem: dash, v_thresh: 30000, ..Default::default() };
+            let mut neuron = XyloLifNeuron::new(config);
+            neuron.state.v = 10000;
+            for _ in 0..10 {
+                neuron.update(0.0, 1.0);
+            }
+            neuron.state.v
+        };
+        assert!(
+            decay_after(1) < decay_after(8),
+            "dash 1 must decay further in 10 steps than dash 8"
+        );
+    }
+
+    /// Configuration must reject dash values wider than the hardware field.
+    #[test]
+    fn test_xylo_rejects_out_of_range_dash() {
+        assert!(XyloLifConfig::default().validate().is_ok());
+        assert!(XyloLifConfig { dash_mem: 16, ..Default::default() }.validate().is_err());
+        assert!(XyloLifConfig { dash_syn: 16, ..Default::default() }.validate().is_err());
+        assert!(XyloLifConfig { dash_mem: 15, dash_syn: 15, ..Default::default() }.validate().is_ok());
+    }
+
 }
