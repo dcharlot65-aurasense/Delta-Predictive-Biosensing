@@ -1,280 +1,351 @@
 //! Integration tests for dpb-clinical
 //!
 //! Tests clinical utilities end-to-end.
+//!
+//! The first half of this file was rewritten against the crate's actual API.
+//! It had never compiled: it referenced `SRBCalculator`, `InteractionType`,
+//! `TreatmentResponse::cohens_d`, `PopulationNorms::percentile_rank`,
+//! `SerialAssessment::add_score` and others that do not exist, so it
+//! contributed no coverage while appearing to, and blocked
+//! `cargo test --workspace` outright. The PHI half below was already sound.
 
-use dpb_clinical::*;
 use dpb_clinical::phi::*;
+use dpb_clinical::*;
 
 // ============================================================================
-// Demographics Tests
+// Demographics
 // ============================================================================
 
 #[test]
-fn test_demographics_creation() {
+fn test_demographics_are_built_incrementally() {
+    // Every field is optional: nothing is assumed about a subject who has not
+    // reported it.
+    let empty = Demographics::new();
+    assert!(empty.age.is_none());
+    assert!(empty.sex.is_none());
+
     let demo = Demographics::new()
         .with_age(45)
         .with_sex(Sex::Female)
-        .with_ethnicity(Ethnicity::EastAsian);
+        .with_ethnicity(Ethnicity::European)
+        .with_education(16);
 
     assert_eq!(demo.age, Some(45));
     assert_eq!(demo.sex, Some(Sex::Female));
-    assert_eq!(demo.ethnicity, Some(Ethnicity::EastAsian));
+    assert_eq!(demo.ethnicity, Some(Ethnicity::European));
+    assert_eq!(demo.education_years, Some(16));
 }
 
 #[test]
-fn test_age_group_classification() {
-    assert_eq!(AgeGroup::from_age(5), AgeGroup::Pediatric);
-    assert_eq!(AgeGroup::from_age(17), AgeGroup::Pediatric);
-    assert_eq!(AgeGroup::from_age(18), AgeGroup::Adult);
-    assert_eq!(AgeGroup::from_age(64), AgeGroup::Adult);
-    assert_eq!(AgeGroup::from_age(65), AgeGroup::Geriatric);
-    assert_eq!(AgeGroup::from_age(90), AgeGroup::Geriatric);
+fn test_age_group_classification_is_monotone_and_contiguous() {
+    // A child and an older adult must not land in the same group.
+    assert_ne!(AgeGroup::from_age(8), AgeGroup::from_age(78));
+
+    // Classification never revisits a group it has already left, which is what
+    // makes the groups contiguous bands rather than an arbitrary mapping.
+    let mut seen: Vec<AgeGroup> = Vec::new();
+    for age in 0u8..=100 {
+        let g = AgeGroup::from_age(age);
+        if seen.last() != Some(&g) {
+            assert!(!seen.contains(&g), "age group {g:?} recurs at age {age}");
+            seen.push(g);
+        }
+    }
+    assert!(seen.len() > 1, "every age fell into a single group");
+
+    // Each group's declared range must contain the ages mapped to it.
+    for age in 0u8..=100 {
+        let (min, max) = AgeGroup::from_age(age).age_range();
+        assert!(
+            (min..=max).contains(&age),
+            "age {age} maps to a group spanning [{min}, {max}]"
+        );
+    }
 }
 
 #[test]
-fn test_ethnicity_variants() {
-    let ethnicities = vec![
-        Ethnicity::White,
-        Ethnicity::Black,
-        Ethnicity::Hispanic,
+fn test_ethnicity_variants_are_distinct() {
+    let variants = [
+        Ethnicity::European,
         Ethnicity::EastAsian,
         Ethnicity::SouthAsian,
-        Ethnicity::MiddleEastern,
-        Ethnicity::NativeAmerican,
-        Ethnicity::PacificIslander,
-        Ethnicity::Mixed,
+        Ethnicity::African,
+        Ethnicity::Hispanic,
         Ethnicity::Other,
+        Ethnicity::Unknown,
     ];
-
-    assert_eq!(ethnicities.len(), 10);
+    for (i, a) in variants.iter().enumerate() {
+        for b in variants.iter().skip(i + 1) {
+            assert_ne!(a, b);
+        }
+    }
 }
 
 // ============================================================================
-// Normative Database Tests
+// Normative comparison
 // ============================================================================
 
-#[test]
-fn test_normative_database() {
-    let mut db = NormativeDatabase::new("test_norms");
-
-    // Add a reference
-    let reference = NormativeReference {
-        metric_name: "alpha_power".to_string(),
-        description: "Alpha band power".to_string(),
-        unit: "µV²".to_string(),
-        population_norms: vec![
-            PopulationNorms {
-                age_group: AgeGroup::Adult,
-                sex: Some(Sex::Male),
-                ethnicity: None,
-                mean: 10.0,
-                std: 2.0,
-                percentiles: Some(vec![
-                    (5, 6.7),
-                    (25, 8.6),
-                    (50, 10.0),
-                    (75, 11.4),
-                    (95, 13.3),
-                ]),
-            },
-        ],
-    };
-
-    db.add_reference(reference);
-
-    // Test lookup
-    let demo = Demographics::new()
-        .with_age(35)
-        .with_sex(Sex::Male);
-
-    let norms = db.get_reference(&demo, "alpha_power");
-    assert!(norms.is_some());
+fn norms_with(measure: &str, mean: f64, sd: f64) -> PopulationNorms {
+    let mut norms = PopulationNorms::new("test population");
+    norms.add_reference(measure, NormativeReference::new(mean, sd));
+    norms
 }
 
 #[test]
-fn test_z_score_calculation() {
-    let norms = PopulationNorms {
-        age_group: AgeGroup::Adult,
-        sex: None,
-        ethnicity: None,
-        mean: 100.0,
-        std: 15.0,
-        percentiles: None,
-    };
+fn test_normative_database_round_trip() {
+    let mut db = NormativeDatabase::new("Test Norms", "1.0");
+    db.add_norms("adult_female", norms_with("alpha_power", 10.0, 2.0), 250);
 
-    // Value at mean
-    let z = norms.z_score(100.0);
-    assert!((z - 0.0).abs() < 0.001);
+    assert_eq!(db.sample_size("adult_female"), Some(250));
+    assert!(db.get_norms("adult_female").is_some());
+    assert!(db.get_norms("missing_population").is_none());
+    assert!(db.population_keys().iter().any(|k| *k == "adult_female"));
+}
 
-    // Value 1 SD above
-    let z = norms.z_score(115.0);
-    assert!((z - 1.0).abs() < 0.001);
-
-    // Value 2 SD below
-    let z = norms.z_score(70.0);
-    assert!((z - (-2.0)).abs() < 0.001);
+/// A database holding one measure's norms, keyed off the demographics that
+/// will be used to look them up.
+fn db_for(demo: &Demographics, measure: &str, mean: f64, sd: f64) -> NormativeDatabase {
+    let mut db = NormativeDatabase::new("Test Norms", "1.0");
+    db.add_norms(&demo.population_key(), norms_with(measure, mean, sd), 100);
+    db
 }
 
 #[test]
-fn test_percentile_rank() {
-    let norms = PopulationNorms {
-        age_group: AgeGroup::Adult,
-        sex: None,
-        ethnicity: None,
-        mean: 100.0,
-        std: 15.0,
-        percentiles: None,
-    };
+fn test_z_score_is_signed_and_scaled() {
+    let demo = Demographics::new().with_age(45).with_sex(Sex::Female);
+    let db = db_for(&demo, "alpha_power", 10.0, 2.0);
 
-    // Approximate percentile from z-score
-    let percentile = norms.percentile_rank(100.0);
-    assert!((percentile - 50.0).abs() < 1.0); // ~50th percentile
+    // Exactly one SD above the mean.
+    let z = db.z_score("alpha_power", 12.0, &demo).expect("z-score");
+    assert!((z - 1.0).abs() < 1e-9, "expected z = 1.0, got {z}");
+
+    // ...and one below.
+    let z = db.z_score("alpha_power", 8.0, &demo).expect("z-score");
+    assert!((z + 1.0).abs() < 1e-9, "expected z = -1.0, got {z}");
+
+    // At the mean.
+    let z = db.z_score("alpha_power", 10.0, &demo).expect("z-score");
+    assert!(z.abs() < 1e-9);
+
+    // An unknown measure has no reference to compare against.
+    assert!(db.z_score("not_a_measure", 1.0, &demo).is_err());
+}
+
+#[test]
+fn test_percentile_tracks_the_normal_curve() {
+    let demo = Demographics::new().with_age(45).with_sex(Sex::Female);
+    let db = db_for(&demo, "alpha_power", 10.0, 2.0);
+
+    // The mean sits at the 50th percentile by construction.
+    let p = db.percentile("alpha_power", 10.0, &demo).expect("percentile");
+    assert!((p - 50.0).abs() < 1.0, "mean should be ~50th percentile, got {p}");
+
+    // +1 SD is ~84th, -1 SD ~16th.
+    let high = db.percentile("alpha_power", 12.0, &demo).expect("percentile");
+    let low = db.percentile("alpha_power", 8.0, &demo).expect("percentile");
+    assert!((high - 84.13).abs() < 1.0, "got {high}");
+    assert!((low - 15.87).abs() < 1.0, "got {low}");
+
+    // Percentile must be monotone in the score.
+    assert!(low < p && p < high);
 }
 
 // ============================================================================
-// Treatment Response Tests
+// Treatment response and effect size
 // ============================================================================
 
 #[test]
-fn test_effect_size_cohens_d() {
-    let response = TreatmentResponse::new(
-        vec![10.0, 12.0, 11.0, 13.0, 10.0], // Pre
-        vec![15.0, 17.0, 16.0, 18.0, 15.0], // Post
+fn test_cohens_d_matches_its_definition() {
+    // Means one pooled SD apart => d = 1.0.
+    let d = EffectSize::cohens_d(12.0, 10.0, 2.0, 2.0, 30, 30).expect("effect size");
+    assert!((d.value - 1.0).abs() < 1e-6, "expected d = 1.0, got {}", d.value);
+
+    // A confidence interval must bracket the estimate.
+    if let (Some(lo), Some(hi)) = (d.ci_lower, d.ci_upper) {
+        assert!(lo < d.value && d.value < hi, "CI [{lo}, {hi}] excludes {}", d.value);
+    }
+
+    // No difference => no effect.
+    let none = EffectSize::cohens_d(10.0, 10.0, 2.0, 2.0, 30, 30).expect("effect size");
+    assert!(none.value.abs() < 1e-9);
+
+    // The sign follows the direction of the difference.
+    let negative = EffectSize::cohens_d(8.0, 10.0, 2.0, 2.0, 30, 30).expect("effect size");
+    assert!(negative.value < 0.0, "expected a negative effect, got {}", negative.value);
+
+    // A zero pooled SD leaves the effect undefined rather than infinite.
+    assert!(EffectSize::cohens_d(12.0, 10.0, 0.0, 0.0, 30, 30).is_err());
+}
+
+#[test]
+fn test_hedges_g_is_cohens_d_corrected_downward() {
+    let d = EffectSize::cohens_d(12.0, 10.0, 2.0, 2.0, 10, 10).expect("d");
+    let g = EffectSize::hedges_g(12.0, 10.0, 2.0, 2.0, 10, 10).expect("g");
+
+    // Hedges' g applies a small-sample correction, so it is strictly smaller in
+    // magnitude and approaches d as n grows.
+    assert!(
+        g.value.abs() < d.value.abs(),
+        "g {} should be below d {}",
+        g.value,
+        d.value
     );
 
-    let effect = response.cohens_d();
-
-    // Large effect (d > 0.8)
-    assert!(effect.value > 0.8);
-    assert_eq!(effect.interpretation(), "Large");
+    let d_large = EffectSize::cohens_d(12.0, 10.0, 2.0, 2.0, 500, 500).expect("d");
+    let g_large = EffectSize::hedges_g(12.0, 10.0, 2.0, 2.0, 500, 500).expect("g");
+    assert!(
+        (g_large.value - d_large.value).abs() < (g.value - d.value).abs(),
+        "the correction should shrink with sample size"
+    );
 }
 
 #[test]
-fn test_effect_size_hedges_g() {
-    let response = TreatmentResponse::new(
-        vec![10.0, 12.0, 11.0],
-        vec![15.0, 17.0, 16.0],
+fn test_treatment_response_tracks_change() {
+    let mut baseline = Assessment::new(0.0, "baseline");
+    baseline.add_value("updrs", 40.0);
+
+    let mut response = TreatmentResponse::new("P001", "levodopa", baseline);
+
+    let mut followup = Assessment::new(12.0, "week-12");
+    followup.add_value("updrs", 30.0);
+    response.add_followup(followup);
+
+    assert!(response.latest_followup().is_some());
+
+    // A 10-point drop from 40 is -10 absolute and -25%.
+    let change = response.change_from_baseline("updrs").expect("change");
+    assert!((change + 10.0).abs() < 1e-9, "got {change}");
+
+    let percent = response.percent_change("updrs").expect("percent change");
+    assert!((percent + 25.0).abs() < 1e-6, "got {percent}");
+
+    // An unmeasured variable has no change to report.
+    assert!(response.change_from_baseline("not_measured").is_none());
+
+    // The trajectory carries both timepoints.
+    assert_eq!(response.trajectory("updrs").len(), 2);
+}
+
+// ============================================================================
+// Comorbidity
+// ============================================================================
+
+#[test]
+fn test_comorbidity_index_grows_with_burden() {
+    let mut model = ComorbidityModel::new("test");
+    model.add_condition(
+        Condition::new("E11", "Type 2 diabetes", ConditionCategory::Metabolic).with_severity(0.5),
+    );
+    model.add_condition(
+        Condition::new("I10", "Hypertension", ConditionCategory::Cardiovascular)
+            .with_severity(0.3),
     );
 
-    let hedges = response.hedges_g();
+    assert_eq!(model.conditions().len(), 2);
+    assert!(model.get_condition("E11").is_some());
+    assert!(model.get_condition("nonexistent").is_none());
 
-    // Hedges' g should be slightly smaller than Cohen's d for small samples
-    let cohens = response.cohens_d();
-    assert!(hedges.value <= cohens.value);
+    let one = model.comorbidity_index(&["E11"]);
+    let both = model.comorbidity_index(&["E11", "I10"]);
+    assert!(
+        both > one,
+        "two conditions should not score below one: {both} vs {one}"
+    );
+    assert!(model.comorbidity_index(&[]) <= one);
 }
 
 #[test]
-fn test_clinical_significance() {
-    let response = TreatmentResponse::new(
-        vec![50.0, 55.0, 52.0, 48.0, 51.0],
-        vec![35.0, 40.0, 38.0, 32.0, 36.0],
+fn test_condition_interactions_are_symmetric_lookups() {
+    let mut model = ComorbidityModel::new("test");
+    model.add_condition(Condition::new("E11", "Diabetes", ConditionCategory::Metabolic));
+    model.add_condition(Condition::new(
+        "I10",
+        "Hypertension",
+        ConditionCategory::Cardiovascular,
+    ));
+    model.add_interaction(
+        "E11",
+        "I10",
+        Interaction::new("E11", "I10", InteractionType::Synergistic),
     );
 
-    let is_significant = response.is_clinically_significant(1.96);
-    assert!(is_significant);
-}
-
-#[test]
-fn test_intervention_model() {
-    let model = InterventionModel::new()
-        .add_timepoint("baseline", vec![50.0, 52.0, 48.0])
-        .add_timepoint("week4", vec![45.0, 47.0, 43.0])
-        .add_timepoint("week8", vec![40.0, 42.0, 38.0]);
-
-    assert_eq!(model.timepoints().len(), 3);
-
-    // Check trend
-    let trend = model.compute_trend();
-    assert!(trend < 0.0); // Decreasing trend
+    assert!(model.get_interaction("E11", "I10").is_some());
+    // Order must not matter: the pair is unordered.
+    assert!(model.get_interaction("I10", "E11").is_some());
+    assert!(model.get_interaction("E11", "Z99").is_none());
 }
 
 // ============================================================================
-// Comorbidity Tests
+// Practice effects
 // ============================================================================
 
 #[test]
-fn test_comorbidity_model() {
-    let mut model = ComorbidityModel::new();
+fn test_practice_effect_correction_reduces_a_repeat_score() {
+    let mut corrector =
+        PracticeEffectCorrector::new("test", CorrectionMethod::SimpleSubtraction);
+    corrector.add_effect("trails_b", PracticeEffect::new("trails_b", 5.0));
 
-    let diabetes = Condition::new("Diabetes Type 2")
-        .with_severity(0.6)
-        .with_duration_years(5.0);
+    assert!(corrector.get_effect("trails_b").is_some());
 
-    let hypertension = Condition::new("Hypertension")
-        .with_severity(0.4)
-        .with_duration_years(8.0);
+    // The first assessment carries no practice effect to remove.
+    let first = corrector
+        .correct_score("trails_b", 50.0, 1, None)
+        .expect("correction");
+    assert!(
+        (first.corrected_score - 50.0).abs() < 1e-9,
+        "first session adjusted to {}",
+        first.corrected_score
+    );
+    assert!(first.correction_applied.abs() < 1e-9);
 
-    model.add_condition(diabetes);
-    model.add_condition(hypertension);
+    // A later one does.
+    let second = corrector
+        .correct_score("trails_b", 50.0, 2, None)
+        .expect("correction");
+    assert!(
+        second.corrected_score < 50.0,
+        "a repeat score should be corrected downward, got {}",
+        second.corrected_score
+    );
+    assert_eq!(second.raw_score, 50.0);
+    assert_eq!(second.assessment_number, 2);
 
-    // Add interaction
-    model.add_interaction(Interaction {
-        condition_a: "Diabetes Type 2".to_string(),
-        condition_b: "Hypertension".to_string(),
-        interaction_type: InteractionType::Synergistic,
-        modifier: 1.3, // 30% increase in combined effect
-    });
-
-    let profile = model.compute_profile();
-    assert!(profile.total_burden > 0.0);
+    // An unknown measure has no effect on record to correct for.
+    assert!(corrector.correct_score("unknown", 50.0, 2, None).is_err());
 }
 
 #[test]
-fn test_condition_interactions() {
-    let synergistic = InteractionType::Synergistic;
-    let antagonistic = InteractionType::Antagonistic;
-    let independent = InteractionType::Independent;
+fn test_practice_effect_expected_score_rises_then_settles() {
+    let effect = PracticeEffect::new("trails_b", 5.0)
+        .with_second_gain(2.0)
+        .with_asymptote(8.0);
 
-    assert_ne!(format!("{:?}", synergistic), format!("{:?}", antagonistic));
-    assert_ne!(format!("{:?}", antagonistic), format!("{:?}", independent));
-}
+    let first = effect.expected_score(50.0, 1);
+    let second = effect.expected_score(50.0, 2);
+    let tenth = effect.expected_score(50.0, 10);
 
-// ============================================================================
-// Practice Effects Tests
-// ============================================================================
-
-#[test]
-fn test_practice_effect_corrector() {
-    let corrector = PracticeEffectCorrector::new()
-        .with_expected_gain(3.0)  // Expected 3-point gain from practice
-        .with_reliability(0.85);
-
-    let baseline = 100.0;
-    let retest = 108.0;
-
-    let corrected = corrector.correct(baseline, retest);
-
-    // Corrected score should be lower than raw retest
-    assert!(corrected < retest);
-    // But still higher than baseline (real improvement)
-    assert!(corrected > baseline);
+    assert!(second > first, "the second exposure should gain: {first} -> {second}");
+    assert!(
+        tenth <= 50.0 + 8.0 + 1e-6,
+        "gains must respect the asymptote, got {tenth}"
+    );
 }
 
 #[test]
-fn test_srb_calculator() {
-    let calc = SRBCalculator::new(0.85, 15.0); // reliability, SD
+fn test_serial_assessment_accumulates_sessions() {
+    let mut serial = SerialAssessment::new("P001");
+    assert_eq!(serial.session_count(), 0);
 
-    let baseline = 100.0;
-    let retest = 110.0;
+    for n in 1..=3 {
+        let mut session = AssessmentSession::new(n, &format!("visit-{n}"));
+        session.add_score("trails_b", 50.0 - n as f64);
+        serial.add_session(session);
+    }
 
-    let srb = calc.compute_srb(baseline, retest);
-
-    // SRB is standardized
-    assert!(srb.abs() < 5.0); // Reasonable range
-}
-
-#[test]
-fn test_serial_assessment() {
-    let mut assessment = SerialAssessment::new("memory_test");
-
-    assessment.add_score(0, 100.0);  // Baseline
-    assessment.add_score(6, 105.0);  // 6 months
-    assessment.add_score(12, 108.0); // 12 months
-
-    assert_eq!(assessment.num_timepoints(), 3);
-
-    let change = assessment.total_change();
-    assert!((change - 8.0).abs() < 0.001);
+    assert_eq!(serial.session_count(), 3);
+    assert_eq!(serial.sessions().len(), 3);
+    assert!(serial.get_session(0).is_some());
+    assert!(serial.get_session(99).is_none());
 }
 
 // ============================================================================
@@ -537,7 +608,7 @@ fn test_deidentification_config_builder() {
 fn test_clinical_error_variants() {
     let err1 = ClinicalError::MissingNormativeData("alpha_power".to_string());
     let err2 = ClinicalError::InvalidConfiguration("bad config".to_string());
-    let err3 = ClinicalError::InsufficientData(5, 10);
+    let err3 = ClinicalError::InsufficientData { required: 10, available: 5 };
 
     assert!(format!("{:?}", err1).contains("alpha_power"));
     assert!(format!("{:?}", err2).contains("bad config"));

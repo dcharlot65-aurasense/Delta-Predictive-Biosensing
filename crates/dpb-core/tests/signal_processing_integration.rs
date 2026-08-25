@@ -107,8 +107,12 @@ fn generate_respiratory_with_apnea(
             // Add some variability
             signal[i] += 0.1 * (2.0 * PI * t / (breath_period * 0.7)).sin();
         } else {
-            // Minimal amplitude during apnea
-            signal[i] = 0.05 * (2.0 * PI * t / breath_period).sin();
+            // Apnea is CESSATION of airflow, which is what a gap-based
+            // detector looks for. This previously kept breathing at 5%
+            // amplitude, which is hypopnea -- reduced airflow, not absent --
+            // and the breath detector duly went on finding breaths, leaving no
+            // gap to flag. Only a small amount of noise remains here.
+            signal[i] = 0.001 * (2.0 * PI * t * 3.7).sin();
         }
     }
 
@@ -502,3 +506,4 @@ fn test_signal_quality_assessment() {
         "Clean signal should have higher SNR"
     );
 }
+

@@ -463,9 +463,17 @@ mod cuda_tests {
         let signal = vec![0.0, 0.5, 1.0, 0.5, 0.0, -0.5, 0.0, 0.5];
         let spikes = simulate_level_crossing(&signal, 0.3);
 
-        assert_eq!(spikes.len(), 4);
+        // This simulation compares only against +threshold, never -threshold,
+        // so [0, .5, 1, .5, 0, -.5, 0, .5] crosses it three times: up at i=1,
+        // down at i=4, up again at i=7. The excursion to -0.5 stays below the
+        // threshold throughout and produces nothing.
+        assert_eq!(spikes.len(), 3);
         assert_eq!(spikes[0].polarity, 1);  // Up-crossing
         assert_eq!(spikes[1].polarity, -1); // Down-crossing
+        assert_eq!(spikes[2].polarity, 1);  // Up-crossing again
+        assert_eq!(spikes[0].sample_index, 1);
+        assert_eq!(spikes[1].sample_index, 4);
+        assert_eq!(spikes[2].sample_index, 7);
     }
 
     /// Test async operation tracking.
@@ -502,7 +510,9 @@ mod cuda_tests {
             }
 
             fn update(&mut self, id: u64, status: OperationStatus) {
-                if let Some((_, ref mut s)) = self.operations.iter_mut().find(|(i, _)| *i == id) {
+                // Edition 2024: the binding is already by mutable reference here,
+                // so an explicit `ref mut` is rejected.
+                if let Some((_, s)) = self.operations.iter_mut().find(|(i, _)| *i == id) {
                     *s = status;
                 }
             }

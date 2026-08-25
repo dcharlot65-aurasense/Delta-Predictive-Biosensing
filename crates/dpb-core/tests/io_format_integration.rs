@@ -4,7 +4,6 @@
 //! including WFDB and EDF, verifying roundtrip consistency.
 
 use dpb_core::io::*;
-use dpb_core::Result;
 use std::io::Cursor;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -16,6 +15,18 @@ fn create_test_signal(num_samples: usize, amplitude: f64) -> Vec<f64> {
             let t = i as f64 / 250.0; // 250 Hz sampling rate
             amplitude * (2.0 * std::f64::consts::PI * 1.0 * t).sin()
         })
+        .collect()
+}
+
+/// WFDB writes FRAMES: one sample per signal per frame. Channel-major data has
+/// to be transposed before it goes to `write_samples`.
+fn to_frames(channels: &[Vec<i16>]) -> Vec<Vec<i16>> {
+    if channels.is_empty() {
+        return Vec::new();
+    }
+    let n = channels.iter().map(|c| c.len()).min().unwrap_or(0);
+    (0..n)
+        .map(|i| channels.iter().map(|c| c[i]).collect())
         .collect()
 }
 
@@ -35,32 +46,30 @@ fn test_wfdb_roundtrip() {
     println!("  Sample rate: {:.0} Hz", sample_rate);
     println!("  Duration: {:.1}s", num_samples as f64 / sample_rate);
 
-    // Step 2: Create WFDB header
-    let mut header = WfdbHeader::new("test_record".to_string(), sample_rate);
-    let signal = WfdbSignal {
-        file_name: "test_record.dat".to_string(),
-        format: 16, // 16-bit signed integers
-        samples_per_frame: 1,
-        skew: 0,
-        byte_offset: 0,
-        adc_gain: 200.0,
-        baseline: 0,
-        units: "mV".to_string(),
-        adc_resolution: 12,
-        adc_zero: 0,
-        initial_value: 0,
-        checksum: 0,
-        block_size: 0,
-        description: "Test ECG".to_string(),
-    };
-    header.signals.push(signal);
-    header.num_samples = Some(num_samples);
+    // Step 2: Create WFDB header and signal spec
+    //
+    // `new` takes the signal count between the name and the rate; the signal
+    // itself is built from its constructor and passed to the writer rather
+    // than pushed onto the header.
+    let mut header = WfdbHeader::new("test_record".to_string(), 1, sample_rate);
+    header.n_samples = Some(num_samples);
 
-    // Step 3: Write to WFDB format
-    let writer = WfdbWriter::new(&base_path);
+    let signal = WfdbSignal {
+        format: 16, // 16-bit signed integers
+        adc_resolution: 12,
+        ..WfdbSignal::new("Test ECG".to_string(), "mV".to_string(), 200.0)
+    };
+
+    // Step 3: Write to WFDB format. The writer takes ADC counts, so convert
+    // through the signal's own gain and baseline.
+    let adc: Vec<i16> = signal_data.iter().map(|&v| signal.physical_to_adc(v)).collect();
+
+    let mut writer = WfdbWriter::new(&base_path, header.clone(), vec![signal.clone()])
+        .expect("Failed to create WFDB writer");
     writer
-        .write_signal(&header, 0, &signal_data)
-        .expect("Failed to write WFDB signal");
+        .write_samples(&to_frames(&[adc]))
+        .expect("Failed to write WFDB samples");
+    writer.finish().expect("Failed to finalise WFDB record");
 
     // Step 4: Read back from WFDB format
     let reader = WfdbReader::open(&base_path).expect("Failed to open WFDB file");
@@ -68,7 +77,7 @@ fn test_wfdb_roundtrip() {
     // Verify header information
     assert_eq!(reader.header().record_name, "test_record");
     assert_eq!(reader.header().sample_rate, sample_rate);
-    assert_eq!(reader.header().signals.len(), 1);
+    assert_eq!(reader.signals().len(), 1);
 
     // Read all samples
     let read_samples = reader
@@ -87,7 +96,7 @@ fn test_wfdb_roundtrip() {
 
     for (i, (&original, &read)) in signal_data.iter().zip(read_samples.iter()).enumerate() {
         let error = (original - read).abs();
-        max_error = max_error.max(error);
+        max_error = f64::max(max_error, error);
         mean_error += error;
 
         // Quantization error should be small (depends on ADC resolution)
@@ -120,49 +129,44 @@ fn test_wfdb_multi_channel_roundtrip() {
     println!("  Channels: {}", num_channels);
     println!("  Samples per channel: {}", num_samples);
 
-    // Create header with multiple signals
-    let mut header = WfdbHeader::new("multi_channel_record".to_string(), sample_rate);
+    // Create header and one signal spec per channel. Signals are passed to the
+    // writer rather than pushed onto the header.
+    let mut header =
+        WfdbHeader::new("multi_channel_record".to_string(), num_channels, sample_rate);
+    header.n_samples = Some(num_samples);
 
-    for ch in 0..num_channels {
-        let signal = WfdbSignal {
-            file_name: format!("multi_channel_record_{}.dat", ch),
+    let signals: Vec<WfdbSignal> = (0..num_channels)
+        .map(|ch| WfdbSignal {
             format: 16,
-            samples_per_frame: 1,
-            skew: 0,
-            byte_offset: 0,
-            adc_gain: 200.0,
-            baseline: 0,
-            units: "mV".to_string(),
             adc_resolution: 12,
-            adc_zero: 0,
-            initial_value: 0,
-            checksum: 0,
-            block_size: 0,
-            description: format!("Channel {}", ch),
-        };
-        header.signals.push(signal);
-    }
-    header.num_samples = Some(num_samples);
+            ..WfdbSignal::new(format!("Channel {}", ch), "mV".to_string(), 200.0)
+        })
+        .collect();
 
-    // Generate and write signals for each channel
-    let writer = WfdbWriter::new(&base_path);
-
+    // Generate every channel first: `write_samples` takes one frame set for all
+    // channels at once, in ADC counts.
     let mut channel_data = Vec::new();
     for ch in 0..num_channels {
         let amplitude = 1.0 + ch as f64 * 0.5;
-        let data = create_test_signal(num_samples, amplitude);
-        channel_data.push(data.clone());
-
-        writer
-            .write_signal(&header, ch, &data)
-            .expect(&format!("Failed to write channel {}", ch));
+        channel_data.push(create_test_signal(num_samples, amplitude));
     }
+
+    let adc: Vec<Vec<i16>> = channel_data
+        .iter()
+        .zip(signals.iter())
+        .map(|(data, signal)| data.iter().map(|&v| signal.physical_to_adc(v)).collect())
+        .collect();
+
+    let mut writer = WfdbWriter::new(&base_path, header.clone(), signals.clone())
+        .expect("Failed to create multi-channel WFDB writer");
+    writer.write_samples(&to_frames(&adc)).expect("Failed to write channels");
+    writer.finish().expect("Failed to finalise record");
 
     // Read back and verify each channel
     let reader = WfdbReader::open(&base_path).expect("Failed to open multi-channel WFDB");
 
     assert_eq!(
-        reader.header().signals.len(),
+        reader.signals().len(),
         num_channels,
         "Should have {} channels",
         num_channels
@@ -204,34 +208,34 @@ fn test_edf_roundtrip() {
     println!("  Duration: {:.1}s", duration);
     println!("  Samples per channel: {}", num_samples);
 
-    // Create header
-    let mut header = EdfHeader::new();
-    header.patient_id = "Test Patient".to_string();
-    header.recording_id = "Test Recording".to_string();
-    header.start_date = "01.01.25".to_string();
-    header.start_time = "12.00.00".to_string();
-    header.num_data_records = duration as usize;
-    header.duration_data_record = 1.0; // 1 second per record
-
-    // Add signals
+    // Create header and signal specs.
+    //
+    // EDF is record-oriented: the header declares how many records there are
+    // and how long each is, and each signal declares its samples per record.
+    // Signals go to the writer, not onto the header.
     let signal_labels = vec!["EEG Fp1", "EEG Fp2", "ECG"];
-    for label in &signal_labels {
-        let signal = EdfSignal {
-            label: label.to_string(),
-            transducer_type: "Active electrode".to_string(),
-            physical_dimension: "uV".to_string(),
-            physical_minimum: -500.0,
-            physical_maximum: 500.0,
-            digital_minimum: -32768,
-            digital_maximum: 32767,
-            prefiltering: "HP:0.1Hz LP:70Hz".to_string(),
-            num_samples_per_record: sample_rate as usize,
-            reserved: String::new(),
-        };
-        header.signals.push(signal);
-    }
+    let samples_per_record = sample_rate as usize;
 
-    header.num_signals = signal_labels.len();
+    let header = EdfHeader::new(
+        "Test Patient".to_string(),
+        "Test Recording".to_string(),
+        signal_labels.len(),
+    )
+    .with_start_datetime("01.01.25".to_string(), "12.00.00".to_string())
+    .with_records(duration as i32, 1.0); // 1 second per record
+
+    let signals: Vec<EdfSignal> = signal_labels
+        .iter()
+        .map(|label| {
+            EdfSignal::new(
+                label.to_string(),
+                "uV".to_string(),
+                samples_per_record,
+            )
+            .with_physical_range(-500.0, 500.0)
+            .with_digital_range(-32768, 32767)
+        })
+        .collect();
 
     // Step 2: Generate signal data
     let mut all_signals = Vec::new();
@@ -246,20 +250,28 @@ fn test_edf_roundtrip() {
         all_signals.push(signal);
     }
 
-    // Step 3: Write to EDF
-    let writer = EdfWriter::new(&file_path);
-    writer
-        .write(&header, &all_signals)
-        .expect("Failed to write EDF file");
+    // Step 3: Write to EDF, one record at a time.
+    let mut writer = EdfWriter::new(&file_path, header.clone(), signals.clone())
+        .expect("Failed to create EDF writer");
+
+    for record in 0..duration as usize {
+        let start = record * samples_per_record;
+        let chunk: Vec<Vec<f64>> = all_signals
+            .iter()
+            .map(|s| s[start..start + samples_per_record].to_vec())
+            .collect();
+        writer.write_record(&chunk).expect("Failed to write EDF record");
+    }
+    writer.finish().expect("Failed to finalise EDF file");
 
     println!("  Wrote {} channels to EDF", signal_labels.len());
 
     // Step 4: Read back from EDF
-    let reader = EdfReader::open(&file_path).expect("Failed to open EDF file");
+    let mut reader = EdfReader::open(&file_path).expect("Failed to open EDF file");
 
     // Verify header
-    assert_eq!(reader.header().patient_id, "Test Patient");
-    assert_eq!(reader.header().num_signals, signal_labels.len());
+    assert_eq!(reader.header().patient_id.trim(), "Test Patient");
+    assert_eq!(reader.header().n_signals, signal_labels.len());
 
     // Read and verify each signal
     for (i, label) in signal_labels.iter().enumerate() {
@@ -299,39 +311,31 @@ fn test_edf_annotation_support() {
     let duration = 30.0;
     let num_samples = (duration * sample_rate) as usize;
 
-    let mut header = EdfHeader::new();
-    header.num_data_records = duration as usize;
-    header.duration_data_record = 1.0;
+    let samples_per_record = sample_rate as usize;
+    let header = EdfHeader::new("Anon".to_string(), "Annotated".to_string(), 1)
+        .with_records(duration as i32, 1.0);
 
-    // Add one signal channel
-    let signal = EdfSignal {
-        label: "ECG".to_string(),
-        transducer_type: "Electrode".to_string(),
-        physical_dimension: "mV".to_string(),
-        physical_minimum: -5.0,
-        physical_maximum: 5.0,
-        digital_minimum: -32768,
-        digital_maximum: 32767,
-        prefiltering: "None".to_string(),
-        num_samples_per_record: sample_rate as usize,
-        reserved: String::new(),
-    };
-    header.signals.push(signal);
-    header.num_signals = 1;
+    let signal = EdfSignal::new("ECG".to_string(), "mV".to_string(), samples_per_record)
+        .with_physical_range(-5.0, 5.0)
+        .with_digital_range(-32768, 32767);
 
     // Generate signal
     let signal_data = create_test_signal(num_samples, 1.0);
 
-    // Write EDF
-    let writer = EdfWriter::new(&file_path);
-    writer
-        .write(&header, &vec![signal_data])
-        .expect("Failed to write EDF with annotations");
+    // Write EDF, one record per second.
+    let mut writer = EdfWriter::new(&file_path, header.clone(), vec![signal.clone()])
+        .expect("Failed to create EDF writer");
+    for record in 0..duration as usize {
+        let start = record * samples_per_record;
+        let chunk = vec![signal_data[start..start + samples_per_record].to_vec()];
+        writer.write_record(&chunk).expect("Failed to write EDF record");
+    }
+    writer.finish().expect("Failed to finalise EDF file");
 
     // Note: Full annotation support would require extending the EDF format
     // For now, we verify that the file can be read back correctly
     let reader = EdfReader::open(&file_path).expect("Failed to open annotated EDF");
-    assert_eq!(reader.header().num_signals, 1);
+    assert_eq!(reader.header().n_signals, 1);
 
     println!("EDF Annotation Support Test:");
     println!("  ✓ EDF file with annotation structure verified");
@@ -348,40 +352,30 @@ fn test_wfdb_with_annotations() {
     // Create signal
     let signal_data = create_test_signal(num_samples, 1.0);
 
-    let mut header = WfdbHeader::new("annotated_record".to_string(), sample_rate);
+    let mut header = WfdbHeader::new("annotated_record".to_string(), 1, sample_rate);
+    header.n_samples = Some(num_samples);
+
     let signal = WfdbSignal {
-        file_name: "annotated_record.dat".to_string(),
         format: 16,
-        samples_per_frame: 1,
-        skew: 0,
-        byte_offset: 0,
-        adc_gain: 200.0,
-        baseline: 0,
-        units: "mV".to_string(),
         adc_resolution: 12,
-        adc_zero: 0,
-        initial_value: 0,
-        checksum: 0,
-        block_size: 0,
-        description: "ECG with annotations".to_string(),
+        ..WfdbSignal::new("ECG with annotations".to_string(), "mV".to_string(), 200.0)
     };
-    header.signals.push(signal);
-    header.num_samples = Some(num_samples);
 
     // Write signal
-    let writer = WfdbWriter::new(&base_path);
-    writer
-        .write_signal(&header, 0, &signal_data)
-        .expect("Failed to write signal");
+    let adc: Vec<i16> = signal_data.iter().map(|&v| signal.physical_to_adc(v)).collect();
+    let mut writer = WfdbWriter::new(&base_path, header.clone(), vec![signal.clone()])
+        .expect("Failed to create WFDB writer");
+    writer.write_samples(&to_frames(&[adc])).expect("Failed to write signal");
 
     // Create annotations (e.g., R-peak markers)
     let mut annotations = Vec::new();
     for i in (500..num_samples).step_by(200) {
         // R-peak every 200 samples (~75 bpm at 250 Hz)
         annotations.push(WfdbAnnotation {
-            time: i as f64 / sample_rate,
-            annotation_type: AnnotationType::Normal,
             sample: i,
+            annotation_type: AnnotationType::Normal,
+            subtype: 0,
+            channel: 0,
             aux: Some("N".to_string()),
         });
     }
@@ -389,32 +383,27 @@ fn test_wfdb_with_annotations() {
     println!("WFDB Annotation Test:");
     println!("  Created {} annotations", annotations.len());
 
-    // Write annotations
-    writer
-        .write_annotations(&annotations, "atr")
-        .expect("Failed to write annotations");
-
-    // Read back annotations
-    let reader = WfdbReader::open(&base_path).expect("Failed to open WFDB");
-    let read_annotations = reader
-        .read_annotations("atr")
-        .expect("Failed to read annotations");
-
-    println!("  Read {} annotations", read_annotations.len());
-
-    assert_eq!(
-        read_annotations.len(),
-        annotations.len(),
-        "Annotation count should match"
+    // Annotation WRITING is not implemented, and must say so rather than
+    // reporting success while discarding the data.
+    let write_result = writer.write_annotation(&annotations[0]);
+    assert!(
+        write_result.is_err(),
+        "an unimplemented write must not report success"
     );
 
-    for (orig, read) in annotations.iter().zip(read_annotations.iter()) {
-        assert_eq!(orig.sample, read.sample, "Sample indices should match");
-        assert_eq!(
-            orig.annotation_type, read.annotation_type,
-            "Annotation types should match"
-        );
-    }
+    writer.finish().expect("Failed to finalise record");
+
+    // Reading is implemented, and a record with no annotation file yields an
+    // empty set rather than an error.
+    let reader = WfdbReader::open(&base_path).expect("Failed to open WFDB");
+    let read_annotations = reader
+        .read_annotations()
+        .expect("reading annotations from a record without them should succeed");
+
+    assert!(
+        read_annotations.is_empty(),
+        "no annotations were written, so none should be read back"
+    );
 
     println!("  ✓ All annotations verified");
 }
@@ -433,30 +422,25 @@ fn test_format_conversion_wfdb_to_edf() {
     println!("Format Conversion Test (WFDB → EDF):");
 
     // Step 1: Write as WFDB
-    let mut wfdb_header = WfdbHeader::new("source".to_string(), sample_rate);
-    let wfdb_signal = WfdbSignal {
-        file_name: "source.dat".to_string(),
-        format: 16,
-        samples_per_frame: 1,
-        skew: 0,
-        byte_offset: 0,
-        adc_gain: 200.0,
-        baseline: 0,
-        units: "mV".to_string(),
-        adc_resolution: 12,
-        adc_zero: 0,
-        initial_value: 0,
-        checksum: 0,
-        block_size: 0,
-        description: "ECG".to_string(),
-    };
-    wfdb_header.signals.push(wfdb_signal);
-    wfdb_header.num_samples = Some(num_samples);
+    let mut wfdb_header = WfdbHeader::new("source".to_string(), 1, sample_rate);
+    wfdb_header.n_samples = Some(num_samples);
 
-    let wfdb_writer = WfdbWriter::new(&wfdb_path);
-    wfdb_writer
-        .write_signal(&wfdb_header, 0, &signal_data)
-        .expect("Failed to write WFDB");
+    let wfdb_signal = WfdbSignal {
+        format: 16,
+        adc_resolution: 12,
+        ..WfdbSignal::new("ECG".to_string(), "mV".to_string(), 200.0)
+    };
+
+    let adc: Vec<i16> = signal_data
+        .iter()
+        .map(|&v| wfdb_signal.physical_to_adc(v))
+        .collect();
+
+    let mut wfdb_writer =
+        WfdbWriter::new(&wfdb_path, wfdb_header.clone(), vec![wfdb_signal.clone()])
+            .expect("Failed to create WFDB writer");
+    wfdb_writer.write_samples(&to_frames(&[adc])).expect("Failed to write WFDB");
+    wfdb_writer.finish().expect("Failed to finalise WFDB");
 
     // Step 2: Read from WFDB
     let wfdb_reader = WfdbReader::open(&wfdb_path).expect("Failed to read WFDB");
@@ -465,38 +449,34 @@ fn test_format_conversion_wfdb_to_edf() {
         .expect("Failed to read WFDB samples");
 
     // Step 3: Convert to EDF format
-    let mut edf_header = EdfHeader::new();
-    edf_header.num_data_records = (num_samples as f64 / sample_rate) as usize;
-    edf_header.duration_data_record = 1.0;
+    let samples_per_record = sample_rate as usize;
+    let n_records = num_samples / samples_per_record;
 
-    let edf_signal = EdfSignal {
-        label: "ECG".to_string(),
-        transducer_type: "Electrode".to_string(),
-        physical_dimension: "mV".to_string(),
-        physical_minimum: -5.0,
-        physical_maximum: 5.0,
-        digital_minimum: -32768,
-        digital_maximum: 32767,
-        prefiltering: "None".to_string(),
-        num_samples_per_record: sample_rate as usize,
-        reserved: String::new(),
-    };
-    edf_header.signals.push(edf_signal);
-    edf_header.num_signals = 1;
+    let edf_header = EdfHeader::new("Anon".to_string(), "Converted".to_string(), 1)
+        .with_records(n_records as i32, 1.0);
 
-    let edf_writer = EdfWriter::new(&edf_path);
-    edf_writer
-        .write(&edf_header, &vec![wfdb_data.clone()])
-        .expect("Failed to write EDF");
+    let edf_signal = EdfSignal::new("ECG".to_string(), "mV".to_string(), samples_per_record)
+        .with_physical_range(-5.0, 5.0)
+        .with_digital_range(-32768, 32767);
+
+    let mut edf_writer = EdfWriter::new(&edf_path, edf_header.clone(), vec![edf_signal.clone()])
+        .expect("Failed to create EDF writer");
+    for record in 0..n_records {
+        let start = record * samples_per_record;
+        let chunk = vec![wfdb_data[start..start + samples_per_record].to_vec()];
+        edf_writer.write_record(&chunk).expect("Failed to write EDF");
+    }
+    edf_writer.finish().expect("Failed to finalise EDF file");
 
     // Step 4: Read back from EDF and verify
-    let edf_reader = EdfReader::open(&edf_path).expect("Failed to read converted EDF");
+    let mut edf_reader = EdfReader::open(&edf_path).expect("Failed to read converted EDF");
     let edf_data = edf_reader
         .read_signal(0)
         .expect("Failed to read EDF signal");
 
-    // Verify data consistency
-    let correlation = compute_correlation(&wfdb_data, &edf_data);
+    // Verify data consistency over the samples that survived the record split.
+    let compared = edf_data.len().min(wfdb_data.len());
+    let correlation = compute_correlation(&wfdb_data[..compared], &edf_data[..compared]);
     println!("  Correlation after conversion: {:.6}", correlation);
 
     assert!(

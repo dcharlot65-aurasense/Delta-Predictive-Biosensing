@@ -140,21 +140,29 @@ impl EdfSignal {
 
     /// Convert digital value to physical value
     pub fn digital_to_physical(&self, digital: i16) -> f64 {
-        let digital_range = self.digital_max - self.digital_min;
+        // Widen before subtracting.
+        //
+        // The standard EDF digital range is [-32768, 32767], whose span is
+        // 65535 -- twice `i16::MAX`. Computed in `i16` this overflows: a panic
+        // in debug, a wrapped negative range in release, for the single most
+        // common EDF configuration there is. The same applies to
+        // `digital - self.digital_min` below.
+        let digital_range = self.digital_max as i32 - self.digital_min as i32;
         let physical_range = self.physical_max - self.physical_min;
 
         if digital_range == 0 {
             return self.physical_min;
         }
 
-        let normalized = (digital - self.digital_min) as f64 / digital_range as f64;
+        let normalized = (digital as i32 - self.digital_min as i32) as f64 / digital_range as f64;
         self.physical_min + normalized * physical_range
     }
 
     /// Convert physical value to digital value
     pub fn physical_to_digital(&self, physical: f64) -> i16 {
+        // Widened for the same reason as `digital_to_physical`.
         let physical_range = self.physical_max - self.physical_min;
-        let digital_range = self.digital_max - self.digital_min;
+        let digital_range = self.digital_max as i32 - self.digital_min as i32;
 
         if physical_range == 0.0 {
             return self.digital_min;
@@ -484,12 +492,25 @@ impl EdfWriter {
 
         let file = File::create(path)?;
 
-        Ok(Self {
+        let mut writer = Self {
             file,
             header,
             signals,
             records_written: 0,
-        })
+        };
+
+        // Write the headers up front so the sample data that follows starts
+        // after them.
+        //
+        // Without this the first `write_record` began at offset 0, and
+        // `finish` -- which seeks to 0 to rewrite the header with the final
+        // record count -- then overwrote the first 256 + 256*n bytes of SAMPLE
+        // data with it. Every file was both truncated at the front and
+        // unreadable, since a reader looking for a header found signal values.
+        // `finish` still rewrites this in place once the record count is known.
+        writer.write_headers()?;
+
+        Ok(writer)
     }
 
     /// Write EDF headers
@@ -687,4 +708,30 @@ mod tests {
         assert_eq!(header.n_records, 100);
         assert_eq!(header.record_duration, 1.0);
     }
+    /// The standard EDF digital range must not overflow the conversion.
+    ///
+    /// Regression: `digital_max - digital_min` was computed in `i16`, and the
+    /// standard range [-32768, 32767] spans 65535 -- twice `i16::MAX`. Every
+    /// conversion panicked in debug and wrapped in release for the most common
+    /// configuration the format has.
+    #[test]
+    fn test_edf_full_digital_range_round_trip() {
+        let signal = EdfSignal::new("ECG".to_string(), "mV".to_string(), 256)
+            .with_physical_range(-5.0, 5.0)
+            .with_digital_range(i16::MIN, i16::MAX);
+
+        for physical in [-5.0, -2.5, 0.0, 1.234, 4.999] {
+            let digital = signal.physical_to_digital(physical);
+            let back = signal.digital_to_physical(digital);
+            assert!(
+                (physical - back).abs() < 0.001,
+                "{physical} -> {digital} -> {back}"
+            );
+        }
+
+        // The extremes must map to the extremes, not wrap around.
+        assert_eq!(signal.physical_to_digital(-5.0), i16::MIN);
+        assert_eq!(signal.physical_to_digital(5.0), i16::MAX);
+    }
+
 }

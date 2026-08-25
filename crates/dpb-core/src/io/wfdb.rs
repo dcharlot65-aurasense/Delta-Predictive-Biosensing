@@ -630,10 +630,17 @@ impl WfdbWriter {
     }
 
     /// Write an annotation
-    pub fn write_annotation(&mut self, ann: &WfdbAnnotation) -> Result<()> {
-        // Annotation writing is not implemented in this simplified version
-        tracing::warn!("Annotation writing not implemented");
-        Ok(())
+    pub fn write_annotation(&mut self, _ann: &WfdbAnnotation) -> Result<()> {
+        // Annotation writing is not implemented.
+        //
+        // This used to log a warning and return `Ok(())`, which tells the
+        // caller their annotations were persisted when nothing was written --
+        // silent data loss, and only visible if someone happened to be reading
+        // the logs. Reporting the gap is the honest answer; `read_annotations`
+        // still works for records annotated elsewhere.
+        Err(DpbError::Other(
+            "WFDB annotation writing is not implemented; annotations were not saved".to_string(),
+        ))
     }
 
     /// Finalize the record and close files

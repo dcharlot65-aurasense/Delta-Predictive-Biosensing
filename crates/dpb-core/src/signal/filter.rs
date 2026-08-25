@@ -88,33 +88,40 @@ impl IirFilter {
 
     /// Filters a single sample.
     pub fn filter_sample(&mut self, x: f64) -> f64 {
-        // Shift history
-        self.x_hist.insert(0, x);
-        self.x_hist.pop();
+        // Direct form I:  y[n] = (sum_i b[i]*x[n-i] - sum_{i>=1} a[i]*y[n-i]) / a[0]
+        //
+        // The histories are shifted AFTER the output is computed. Shifting first
+        // put the CURRENT sample at `x_hist[0]`, so `b[1]` -- which must weight
+        // x[n-1] -- was applied to x[n] as well, and the previous sample was
+        // dropped entirely. For a first-order highpass, where
+        // `b = [1-a, -(1-a)]`, that made every output exactly
+        // `(1-a)x - (1-a)x = 0`: the filter returned silence for any input.
+        let mut y = self.b[0] * x;
 
-        // Compute output
-        let mut y = 0.0;
-        for (i, &b_i) in self.b.iter().enumerate() {
-            if i < self.x_hist.len() {
-                y += b_i * self.x_hist[i];
-            } else if i == self.x_hist.len() {
-                y += b_i * x;
+        for (i, &b_i) in self.b.iter().enumerate().skip(1) {
+            if let Some(&past) = self.x_hist.get(i - 1) {
+                y += b_i * past;
             }
         }
 
         for (i, &a_i) in self.a.iter().enumerate().skip(1) {
-            if i - 1 < self.y_hist.len() {
-                y -= a_i * self.y_hist[i - 1];
+            if let Some(&past) = self.y_hist.get(i - 1) {
+                y -= a_i * past;
             }
         }
 
-        if !self.a.is_empty() && self.a[0] != 0.0 {
+        if self.a[0] != 0.0 {
             y /= self.a[0];
         }
 
-        // Update output history
-        self.y_hist.insert(0, y);
-        self.y_hist.pop();
+        if !self.x_hist.is_empty() {
+            self.x_hist.insert(0, x);
+            self.x_hist.pop();
+        }
+        if !self.y_hist.is_empty() {
+            self.y_hist.insert(0, y);
+            self.y_hist.pop();
+        }
 
         y
     }

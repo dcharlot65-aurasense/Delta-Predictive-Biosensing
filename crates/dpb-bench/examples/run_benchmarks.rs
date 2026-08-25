@@ -72,6 +72,7 @@ fn run_encoder_benchmarks(report: &mut BenchmarkReport) -> anyhow::Result<()> {
             threshold: 0.3,
             relative: false,
             refractory_period: 0.01,
+            ..LevelCrossingConfig::default()
         };
 
         let mut profiler = TimeProfiler::new("LevelCrossing");
@@ -286,6 +287,7 @@ fn run_scenario_benchmarks(report: &mut BenchmarkReport) -> anyhow::Result<()> {
                 threshold: 0.3,
                 relative: false,
                 refractory_period: 0.01,
+                ..LevelCrossingConfig::default()
             };
 
             let sig_buf = SignalBuffer::single_channel(signal.to_vec(), 250.0);
