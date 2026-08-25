@@ -125,6 +125,45 @@ impl SpikeTensor {
         Self::from_dense(data, requires_grad)
     }
 
+    /// Set a single element.
+    ///
+    /// Indices follow the same `(batch, step, neuron)` order as
+    /// [`zeros`](Self::zeros) and [`shape`](Self::shape). A sparse tensor is
+    /// densified first, since a sparse store cannot represent an arbitrary
+    /// value at an arbitrary position.
+    ///
+    /// Without this there was no way to build a `SpikeTensor` element by
+    /// element -- callers had to assemble an `Array3` by hand and hand it to
+    /// `from_dense`.
+    pub fn set_spike(
+        &mut self,
+        batch: usize,
+        step: usize,
+        neuron: usize,
+        value: f32,
+    ) -> SNNResult<()> {
+        let (batches, steps, neurons) = self.shape();
+        if batch >= batches || step >= steps || neuron >= neurons {
+            return Err(SNNError::InvalidConfig(format!(
+                "index ({batch}, {step}, {neuron}) is outside a tensor of shape \
+                 ({batches}, {steps}, {neurons})"
+            )));
+        }
+
+        if let SpikeRepresentation::Sparse(_) = &self.data {
+            let dense = self.to_dense();
+            self.data = SpikeRepresentation::Dense(dense);
+        }
+
+        match &mut self.data {
+            SpikeRepresentation::Dense(arr) => {
+                arr[[batch, step, neuron]] = value;
+                Ok(())
+            }
+            SpikeRepresentation::Sparse(_) => unreachable!("densified above"),
+        }
+    }
+
     /// Get shape (batch_size, num_steps, num_neurons)
     pub fn shape(&self) -> (usize, usize, usize) {
         match &self.data {

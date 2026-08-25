@@ -11,7 +11,7 @@ use dpb_snn::{
 };
 use dpb_snn::architectures::SNNArchitecture;
 use dpb_synth::contact::ecg::{EcgMorphologyGenerator, EcgMorphologyParams, WaveParams};
-use dpb_synth::contact::respiratory::{RespiratoryGenerator, RespiratoryParams};
+use dpb_synth::contact::respiratory::{RespiratoryWaveformGenerator, RespiratoryParams};
 use dpb_synth::traits::SyntheticGenerator;
 use dpb_core::signal::*;
 
@@ -65,15 +65,19 @@ fn test_synthetic_to_analysis_pipeline() {
     let highpass = IirFilter::butterworth_highpass(4, 0.5, sampling_rate)
         .expect("Failed to create highpass");
 
-    let filtered_low = lowpass.filter(&signal_data.iter().map(|&x| x as f64).collect::<Vec<_>>())
-        .expect("Failed to apply lowpass");
-    let filtered = highpass.filter(&filtered_low).expect("Failed to apply highpass");
+    // `filter` takes an ArrayView and returns an Array directly.
+    let as_f64: Vec<f64> = signal_data.iter().map(|&x| x as f64).collect();
+    let mut lowpass = lowpass;
+    let mut highpass = highpass;
+    let filtered_low = lowpass.filter(ndarray::ArrayView1::from(&as_f64));
+    let filtered_arr = highpass.filter(filtered_low.view());
+    let filtered: Vec<f64> = filtered_arr.to_vec();
 
     println!("  ✓ Applied bandpass filtering (0.5-40 Hz)");
 
     // Detect R-peaks
-    let detector = PanTompkinsDetector::new(sampling_rate);
-    let detected_peaks = detector.detect(&filtered).expect("Failed to detect R-peaks");
+    let detector = PanTompkinsDetector::new(sampling_rate).expect("detector");
+    let detected_peaks = detector.detect_r_peaks(&filtered).expect("Failed to detect R-peaks");
 
     println!("  ✓ Detected {} R-peaks", detected_peaks.len());
 
@@ -84,15 +88,15 @@ fn test_synthetic_to_analysis_pipeline() {
             .map(|w| (w[1].index - w[0].index) as f64 / sampling_rate * 1000.0)
             .collect();
 
-        let hrv_analyzer = HrvAnalyzer::new(sampling_rate);
+        let hrv_analyzer = HrvAnalyzer::new();
         let hrv = hrv_analyzer
-            .analyze_time_domain(&rr_intervals)
+            .compute_time_domain(&rr_intervals)
             .expect("Failed to compute HRV");
 
         println!("  ✓ HRV Analysis:");
-        println!("    Mean RR: {:.1} ms", hrv.mean_rr);
-        println!("    SDNN: {:.1} ms", hrv.sdnn);
-        println!("    RMSSD: {:.1} ms", hrv.rmssd);
+        println!("    Mean RR: {:.1} ms", hrv.mean_rr_ms);
+        println!("    SDNN: {:.1} ms", hrv.sdnn_ms);
+        println!("    RMSSD: {:.1} ms", hrv.rmssd_ms);
     }
 
     // Step 3: Encode with dpb-encoders
@@ -101,6 +105,11 @@ fn test_synthetic_to_analysis_pipeline() {
         threshold: 0.3,
         relative: false,
         refractory_period: 0.2,
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let spike_train = encoder
@@ -117,7 +126,7 @@ fn test_synthetic_to_analysis_pipeline() {
     // Create dense spike tensor
     let mut spike_tensor_dense = ndarray::Array3::zeros((1, num_timesteps, num_channels));
 
-    for event in &spike_train.events {
+    for event in &spike_train {
         let timestep = (event.timestamp * 1000.0).min((num_timesteps - 1) as f64) as usize;
         let channel = (event.channel as usize) % num_channels;
         spike_tensor_dense[[0, timestep, channel]] = 1.0;
@@ -130,16 +139,16 @@ fn test_synthetic_to_analysis_pipeline() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 16, num_output], snn_config, true);
+    let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 16, num_output], snn_config, true).expect("SNN");
     let output_spikes = snn.forward(&spike_tensor).expect("Failed to run SNN");
 
     println!("  ✓ SNN inference completed");
 
     // Step 5: Decode output
-    let decoder = SpikeRateDecoder::new(num_output);
+    let decoder = SpikeRateDecoder::new(num_output, None, false);
     let decoded = decoder.decode(&output_spikes).expect("Failed to decode");
 
     println!("  ✓ Decoded output shape: {:?}", decoded.shape());
@@ -190,12 +199,12 @@ fn test_multimodal_synthesis_and_fusion() {
     let resp_params = RespiratoryParams {
         duration,
         sampling_rate,
-        breath_rate: 15.0, // breaths per minute
-        tidal_volume: 0.5,  // liters
-        pattern: dpb_synth::contact::respiratory::RespiratoryPattern::Normal,
+        respiratory_rate: 15.0, // breaths per minute
+        amplitude: 0.5,
+        inspiration_ratio: 0.4,
     };
 
-    let resp_generator = RespiratoryGenerator;
+    let resp_generator = RespiratoryWaveformGenerator;
     let resp_data = resp_generator
         .generate(&resp_params, TEST_SEED + 1)
         .expect("Failed to generate respiratory signal");
@@ -212,21 +221,21 @@ fn test_multimodal_synthesis_and_fusion() {
     println!("  ✓ Created signal buffers");
 
     // Step 4: Analyze ECG
-    let ecg_detector = PanTompkinsDetector::new(sampling_rate);
-    let ecg_signal_f64: Vec<f64> = ecg_data.signal.clone();
+    let ecg_detector = PanTompkinsDetector::new(sampling_rate).expect("detector");
+    let ecg_signal_f64: Vec<f64> = ecg_data.signal.to_vec();
     let r_peaks = ecg_detector
-        .detect(&ecg_signal_f64)
+        .detect_r_peaks(&ecg_signal_f64)
         .expect("Failed to detect R-peaks");
 
     println!("  ✓ ECG: Detected {} R-peaks", r_peaks.len());
 
     // Step 5: Analyze Respiratory
     let resp_analyzer = RespiratoryAnalyzer::new(sampling_rate);
-    let resp_metrics = resp_analyzer
-        .analyze(&resp_data.signal)
+    let resp_rate = resp_analyzer
+        .calculate_respiratory_rate(resp_data.signal.view())
         .expect("Failed to analyze respiratory");
 
-    println!("  ✓ Respiratory: Rate = {:.1} br/min", resp_metrics.breath_rate);
+    println!("  ✓ Respiratory: Rate = {:.1} br/min", resp_rate);
 
     // Step 6: Encode both modalities
     let ecg_encoder = LevelCrossingEncoder::new("ecg");
@@ -236,12 +245,22 @@ fn test_multimodal_synthesis_and_fusion() {
         threshold: 0.3,
         relative: false,
         refractory_period: 0.2,
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let resp_config = LevelCrossingConfig {
         threshold: 0.2,
         relative: false,
         refractory_period: 0.5,
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let ecg_spikes = ecg_encoder
@@ -264,14 +283,14 @@ fn test_multimodal_synthesis_and_fusion() {
     let mut fused_tensor_dense = ndarray::Array3::zeros((1, num_timesteps, total_channels));
 
     // Add ECG spikes to first channels
-    for event in &ecg_spikes.events {
+    for event in &ecg_spikes {
         let t = (event.timestamp * 1000.0).min((num_timesteps - 1) as f64) as usize;
         let c = (event.channel as usize) % ecg_channels;
         fused_tensor_dense[[0, t, c]] = 1.0;
     }
 
     // Add respiratory spikes to remaining channels
-    for event in &resp_spikes.events {
+    for event in &resp_spikes {
         let t = (event.timestamp * 1000.0).min((num_timesteps - 1) as f64) as usize;
         let c = ecg_channels + ((event.channel as usize) % resp_channels);
         fused_tensor_dense[[0, t, c]] = 1.0;
@@ -287,10 +306,10 @@ fn test_multimodal_synthesis_and_fusion() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let mut fusion_snn = FeedforwardSNN::new(vec![total_channels, 32, 8], snn_config, true);
+    let mut fusion_snn = FeedforwardSNN::new(vec![total_channels, 32, 8], snn_config, true).expect("SNN");
     let output = fusion_snn
         .forward(&fused_tensor)
         .expect("Failed to run fusion SNN");
@@ -298,7 +317,7 @@ fn test_multimodal_synthesis_and_fusion() {
     println!("  ✓ Fusion SNN output shape: {:?}", output.shape());
 
     // Step 9: Decode fused output
-    let decoder = SpikeRateDecoder::new(8);
+    let decoder = SpikeRateDecoder::new(8, None, false);
     let decoded = decoder.decode(&output).expect("Failed to decode");
 
     println!("  ✓ Decoded fusion output: {:?}", decoded.shape());
@@ -346,9 +365,10 @@ fn test_normative_comparison_pipeline() {
             .expect("Failed to generate ECG");
 
         // Detect R-peaks
-        let detector = PanTompkinsDetector::new(sampling_rate);
+        let detector = PanTompkinsDetector::new(sampling_rate).expect("detector");
+        let signal_f64: Vec<f64> = generated.signal.to_vec();
         let peaks = detector
-            .detect(&generated.signal)
+            .detect_r_peaks(&signal_f64)
             .expect("Failed to detect R-peaks");
 
         if peaks.len() >= 2 {
@@ -357,19 +377,19 @@ fn test_normative_comparison_pipeline() {
                 .map(|w| (w[1].index - w[0].index) as f64 / sampling_rate * 1000.0)
                 .collect();
 
-            let analyzer = HrvAnalyzer::new(sampling_rate);
+            let analyzer = HrvAnalyzer::new();
             let hrv = analyzer
-                .analyze_time_domain(&rr_intervals)
+                .compute_time_domain(&rr_intervals)
                 .expect("Failed to compute HRV");
 
-            all_hrv_metrics.push((hr, hrv.mean_rr, hrv.sdnn));
+            all_hrv_metrics.push((hr, hrv.mean_rr_ms, hrv.sdnn_ms));
 
             println!(
                 "  Sample {}: HR={:.0} bpm, Mean RR={:.1} ms, SDNN={:.1} ms",
                 i + 1,
                 hr,
-                hrv.mean_rr,
-                hrv.sdnn
+                hrv.mean_rr_ms,
+                hrv.sdnn_ms
             );
         }
     }
@@ -469,6 +489,11 @@ fn test_real_time_streaming_simulation() {
         threshold: 0.3,
         relative: false,
         refractory_period: 0.2,
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let mut total_latency = 0.0;
@@ -566,9 +591,10 @@ fn test_end_to_end_feature_extraction() {
     let mut features = std::collections::HashMap::new();
 
     // 1. Time-domain features (R-peaks, HRV)
-    let detector = PanTompkinsDetector::new(sampling_rate);
+    let detector = PanTompkinsDetector::new(sampling_rate).expect("detector");
+    let signal_f64: Vec<f64> = generated.signal.to_vec();
     let peaks = detector
-        .detect(&generated.signal)
+        .detect_r_peaks(&signal_f64)
         .expect("Failed to detect R-peaks");
 
     features.insert("num_peaks", peaks.len() as f64);
@@ -579,23 +605,29 @@ fn test_end_to_end_feature_extraction() {
             .map(|w| (w[1].index - w[0].index) as f64 / sampling_rate * 1000.0)
             .collect();
 
-        let analyzer = HrvAnalyzer::new(sampling_rate);
+        let analyzer = HrvAnalyzer::new();
         let hrv = analyzer
-            .analyze_time_domain(&rr_intervals)
+            .compute_time_domain(&rr_intervals)
             .expect("Failed to compute HRV");
 
-        features.insert("mean_rr", hrv.mean_rr);
-        features.insert("sdnn", hrv.sdnn);
-        features.insert("rmssd", hrv.rmssd);
+        features.insert("mean_rr", hrv.mean_rr_ms);
+        features.insert("sdnn", hrv.sdnn_ms);
+        features.insert("rmssd", hrv.rmssd_ms);
     }
 
     // 2. Frequency-domain features
+    // `PpgAnalyzer` exposes stagewise methods rather than one `analyze`.
     let ppg_analyzer = PpgAnalyzer::new(sampling_rate);
-    let ppg_features = ppg_analyzer
-        .analyze(&generated.signal)
-        .expect("Failed to analyze PPG features");
+    let ppg_peaks = ppg_analyzer
+        .detect_peaks(generated.signal.view())
+        .expect("Failed to detect PPG peaks");
+    let mean_amplitude = if ppg_peaks.is_empty() {
+        0.0
+    } else {
+        ppg_peaks.iter().map(|&i| generated.signal[i]).sum::<f64>() / ppg_peaks.len() as f64
+    };
 
-    features.insert("mean_amplitude", ppg_features.mean_amplitude);
+    features.insert("mean_amplitude", mean_amplitude);
 
     // 3. Spike-based features
     let signal_f32: Vec<f32> = generated.signal.iter().map(|&x| x as f32).collect();
@@ -606,6 +638,11 @@ fn test_end_to_end_feature_extraction() {
         threshold: 0.3,
         relative: false,
         refractory_period: 0.2,
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let spikes = encoder

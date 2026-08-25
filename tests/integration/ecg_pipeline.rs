@@ -13,6 +13,9 @@ use dpb_snn::{
     FeedforwardSNN, SpikeTensor, SpikeRateDecoder,
     NeuronModel, NeuronParams, SNNConfig,
 };
+// `forward` and `decode` are trait methods.
+use dpb_snn::architectures::SNNArchitecture;
+use dpb_snn::decoders::Decoder;
 use dpb_synth::contact::ecg::{EcgMorphologyGenerator, EcgMorphologyParams, WaveParams};
 use dpb_synth::traits::SyntheticGenerator;
 
@@ -75,6 +78,11 @@ fn test_ecg_pipeline_end_to_end() {
         threshold: 0.3,
         relative: false,
         refractory_period: 0.2, // 200ms refractory (300 bpm max)
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let spike_train = encoder.encode(&signal, &encoder_config)
@@ -96,13 +104,13 @@ fn test_ecg_pipeline_end_to_end() {
     let num_timesteps = (duration * 1000.0) as usize; // 1ms bins
     let num_channels = 64; // Small SNN for testing
 
-    let mut spike_tensor = SpikeTensor::zeros(1, num_channels, num_timesteps);
+    let mut spike_tensor = SpikeTensor::zeros(1, num_timesteps, num_channels, false);
 
     // Map spike events to tensor (simple rate-based encoding)
-    for event in &spike_train.events {
+    for event in &spike_train {
         let timestep = (event.timestamp * 1000.0).min((num_timesteps - 1) as f64) as usize;
         let channel = (event.channel as usize) % num_channels;
-        spike_tensor.set_spike(0, channel, timestep, 1.0);
+        spike_tensor.set_spike(0, timestep, channel, 1.0).ok();
     }
 
     // Step 5: Create and run SNN
@@ -111,15 +119,15 @@ fn test_ecg_pipeline_end_to_end() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let snn = FeedforwardSNN::new(vec![num_channels, 32, 16, 1], snn_config.clone());
+    let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 16, 1], snn_config.clone(), true).expect("SNN");
     let output_spikes = snn.forward(&spike_tensor)
         .expect("Failed to run SNN forward pass");
 
     // Step 6: Decode output to heart rate
-    let decoder = SpikeRateDecoder::new(1);
+    let decoder = SpikeRateDecoder::new(1, None, false);
     let decoded = decoder.decode(&output_spikes)
         .expect("Failed to decode SNN output");
 
@@ -280,6 +288,11 @@ fn test_ecg_encoder_threshold_sensitivity() {
             threshold,
             relative: false,
             refractory_period: 0.2,
+            // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
         };
 
         let spike_train = encoder.encode(&signal, &config)

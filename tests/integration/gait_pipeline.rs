@@ -13,6 +13,9 @@ use dpb_snn::{
     RecurrentSNN, SpikeTensor, SpikeRateDecoder, GaitScoreDecoder,
     NeuronModel, NeuronParams, SNNConfig,
 };
+// `forward` and `decode` are trait methods.
+use dpb_snn::architectures::SNNArchitecture;
+use dpb_snn::decoders::Decoder;
 use dpb_synth::pose::gait::{GaitCycleGenerator, GaitCycleParams};
 use dpb_synth::traits::SyntheticGenerator;
 
@@ -66,8 +69,7 @@ fn test_gait_pipeline_end_to_end() {
     let encoder = DerivativeEncoder::new("gait_encoder");
     let encoder_config = DerivativeConfig {
         threshold: 0.01, // Detect vertical motion changes
-        direction: DerivativeDirection::Both,
-        smoothing_window: 3,
+        ..DerivativeConfig::default()
     };
 
     let right_spikes = encoder.encode(&right_signal, &encoder_config)
@@ -91,20 +93,20 @@ fn test_gait_pipeline_end_to_end() {
     let num_timesteps = (params.duration * 100.0) as usize; // 10ms bins
     let num_channels = 64;
 
-    let mut spike_tensor = SpikeTensor::zeros(1, num_channels, num_timesteps);
+    let mut spike_tensor = SpikeTensor::zeros(1, num_timesteps, num_channels, false);
 
     // Map right ankle spikes to first half of channels
-    for event in &right_spikes.events {
+    for event in &right_spikes {
         let timestep = ((event.timestamp * 100.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = (event.channel as usize % (num_channels / 2));
-        spike_tensor.set_spike(0, channel, timestep, event.magnitude);
+        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
     }
 
     // Map left ankle spikes to second half of channels
-    for event in &left_spikes.events {
+    for event in &left_spikes {
         let timestep = ((event.timestamp * 100.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = (num_channels / 2) + (event.channel as usize % (num_channels / 2));
-        spike_tensor.set_spike(0, channel, timestep, event.magnitude);
+        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
     }
 
     // Step 6: Create and run recurrent SNN
@@ -113,15 +115,15 @@ fn test_gait_pipeline_end_to_end() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let snn = RecurrentSNN::new(num_channels, 32, 4, snn_config.clone());
+    let mut snn = RecurrentSNN::new(num_channels, vec![32], 4, snn_config.clone()).expect("SNN");
     let output_spikes = snn.forward(&spike_tensor)
         .expect("Failed to run SNN forward pass");
 
     // Step 7: Decode output to gait score
-    let decoder = GaitScoreDecoder::new();
+    let decoder = GaitScoreDecoder::new(1);
     let gait_score = decoder.decode(&output_spikes)
         .expect("Failed to decode gait score");
 

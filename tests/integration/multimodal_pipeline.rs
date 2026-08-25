@@ -13,6 +13,9 @@ use dpb_snn::{
     FeedforwardSNN, SpikeTensor, SpikeRateDecoder,
     NeuronModel, NeuronParams, SNNConfig,
 };
+// `forward` and `decode` are trait methods.
+use dpb_snn::architectures::SNNArchitecture;
+use dpb_snn::decoders::Decoder;
 use dpb_synth::contact::ecg::{EcgMorphologyGenerator, EcgMorphologyParams, WaveParams};
 use dpb_synth::contact::tremor::{PhysiologicalTremorGenerator, PhysiologicalTremorParams};
 use dpb_synth::voice::phonation::{SustainedVowelGenerator, SustainedVowelParams};
@@ -59,6 +62,11 @@ fn test_multimodal_ecg_tremor_fusion() {
         threshold: 0.3,
         relative: false,
         refractory_period: 0.2,
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let ecg_spikes = ecg_encoder.encode(&ecg_buffer, &ecg_config)
@@ -71,8 +79,7 @@ fn test_multimodal_ecg_tremor_fusion() {
     let tremor_encoder = DerivativeEncoder::new("tremor");
     let tremor_config = DerivativeConfig {
         threshold: 0.05,
-        direction: DerivativeDirection::Both,
-        smoothing_window: 3,
+        ..DerivativeConfig::default()
     };
 
     let tremor_spikes = tremor_encoder.encode(&tremor_buffer, &tremor_config)
@@ -84,20 +91,20 @@ fn test_multimodal_ecg_tremor_fusion() {
     let tremor_channels = 64;
     let total_channels = ecg_channels + tremor_channels;
 
-    let mut spike_tensor = SpikeTensor::zeros(1, total_channels, num_timesteps);
+    let mut spike_tensor = SpikeTensor::zeros(1, num_timesteps, total_channels, false);
 
     // Map ECG spikes to first 64 channels
-    for event in &ecg_spikes.events {
+    for event in &ecg_spikes {
         let timestep = ((event.timestamp * 1000.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = (event.channel as usize) % ecg_channels;
-        spike_tensor.set_spike(0, channel, timestep, event.magnitude);
+        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
     }
 
     // Map tremor spikes to next 64 channels
-    for event in &tremor_spikes.events {
+    for event in &tremor_spikes {
         let timestep = ((event.timestamp * 1000.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = ecg_channels + ((event.channel as usize) % tremor_channels);
-        spike_tensor.set_spike(0, channel, timestep, event.magnitude);
+        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
     }
 
     // Step 6: Create fusion SNN
@@ -106,15 +113,15 @@ fn test_multimodal_ecg_tremor_fusion() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let snn = FeedforwardSNN::new(vec![total_channels, 64, 32, 8], snn_config.clone());
+    let mut snn = FeedforwardSNN::new(vec![total_channels, 64, 32, 8], snn_config.clone(), true).expect("SNN");
     let output_spikes = snn.forward(&spike_tensor)
         .expect("Failed to run fusion SNN");
 
     // Step 7: Decode output
-    let decoder = SpikeRateDecoder::new(8);
+    let decoder = SpikeRateDecoder::new(8, None, false);
     let decoded = decoder.decode(&output_spikes)
         .expect("Failed to decode");
 

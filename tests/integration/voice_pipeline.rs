@@ -13,6 +13,9 @@ use dpb_snn::{
     SpikingTransformer, SpikeTensor, SpikeRateDecoder,
     NeuronModel, NeuronParams, SNNConfig,
 };
+// `forward` and `decode` are trait methods.
+use dpb_snn::architectures::SNNArchitecture;
+use dpb_snn::decoders::Decoder;
 use dpb_synth::voice::phonation::{SustainedVowelGenerator, SustainedVowelParams};
 use dpb_synth::traits::SyntheticGenerator;
 
@@ -56,6 +59,11 @@ fn test_voice_pipeline_sustained_vowel() {
         threshold: 0.1,
         relative: false,
         refractory_period: 0.001, // 1ms refractory
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let spike_train = encoder.encode(&signal, &encoder_config)
@@ -86,13 +94,13 @@ fn test_voice_pipeline_sustained_vowel() {
     let num_timesteps = (params.duration * 1000.0) as usize; // 1ms bins
     let num_channels = 128;
 
-    let mut spike_tensor = SpikeTensor::zeros(1, num_channels, num_timesteps);
+    let mut spike_tensor = SpikeTensor::zeros(1, num_timesteps, num_channels, false);
 
     // Map spike events to tensor
-    for event in &spike_train.events {
+    for event in &spike_train {
         let timestep = ((event.timestamp * 1000.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = (event.channel as usize) % num_channels;
-        spike_tensor.set_spike(0, channel, timestep, event.magnitude);
+        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
     }
 
     // Step 6: Create and run SNN with attention
@@ -101,15 +109,15 @@ fn test_voice_pipeline_sustained_vowel() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let snn = SpikingTransformer::new(num_channels, 4, 64, 4, snn_config.clone());
+    let mut snn = SpikingTransformer::new(num_channels, 4, 64, 4, 4, snn_config.clone());
     let output_spikes = snn.forward(&spike_tensor)
         .expect("Failed to run SNN forward pass");
 
     // Step 7: Decode output
-    let decoder = SpikeRateDecoder::new(4);
+    let decoder = SpikeRateDecoder::new(4, None, false);
     let decoded = decoder.decode(&output_spikes)
         .expect("Failed to decode SNN output");
 

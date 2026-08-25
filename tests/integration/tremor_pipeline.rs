@@ -13,6 +13,9 @@ use dpb_snn::{
     ConvolutionalSNN, SpikeTensor, TremorSeverityDecoder,
     NeuronModel, NeuronParams, SNNConfig,
 };
+// `forward` and `decode` are trait methods.
+use dpb_snn::architectures::SNNArchitecture;
+use dpb_snn::decoders::Decoder;
 use dpb_synth::contact::tremor::{
     PhysiologicalTremorGenerator, PhysiologicalTremorParams,
     ParkinsonianTremorGenerator, ParkinsonianTremorParams,
@@ -66,8 +69,7 @@ fn test_tremor_pipeline_physiological() {
     let encoder = DerivativeEncoder::new("tremor_encoder");
     let encoder_config = DerivativeConfig {
         threshold: 0.05,
-        direction: DerivativeDirection::Both,
-        smoothing_window: 3,
+        ..DerivativeConfig::default()
     };
 
     let spikes_x = encoder.encode(&signal_x, &encoder_config)
@@ -93,25 +95,25 @@ fn test_tremor_pipeline_physiological() {
     let num_timesteps = (params.duration * 100.0) as usize; // 10ms bins
     let num_channels = 96; // 32 per axis
 
-    let mut spike_tensor = SpikeTensor::zeros(1, num_channels, num_timesteps);
+    let mut spike_tensor = SpikeTensor::zeros(1, num_timesteps, num_channels, false);
 
     // Map spikes to different channel groups
-    for event in &spikes_x.events {
+    for event in &spikes_x {
         let timestep = ((event.timestamp * 100.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = event.channel as usize % 32;
-        spike_tensor.set_spike(0, channel, timestep, event.magnitude);
+        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
     }
 
-    for event in &spikes_y.events {
+    for event in &spikes_y {
         let timestep = ((event.timestamp * 100.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = 32 + (event.channel as usize % 32);
-        spike_tensor.set_spike(0, channel, timestep, event.magnitude);
+        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
     }
 
-    for event in &spikes_z.events {
+    for event in &spikes_z {
         let timestep = ((event.timestamp * 100.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = 64 + (event.channel as usize % 32);
-        spike_tensor.set_spike(0, channel, timestep, event.magnitude);
+        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
     }
 
     // Step 6: Create and run convolutional SNN
@@ -120,15 +122,15 @@ fn test_tremor_pipeline_physiological() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let snn = ConvolutionalSNN::new(num_channels, vec![32, 16], 3, snn_config.clone());
+    let mut snn = ConvolutionalSNN::new(num_channels, 3, snn_config.clone());
     let output_spikes = snn.forward(&spike_tensor)
         .expect("Failed to run SNN forward pass");
 
     // Step 7: Decode output to tremor classification
-    let decoder = TremorSeverityDecoder::new();
+    let decoder = TremorSeverityDecoder::new(250.0);
     let tremor_class = decoder.decode(&output_spikes)
         .expect("Failed to decode tremor classification");
 

@@ -42,6 +42,11 @@ fn test_level_crossing_accuracy() {
         threshold: threshold as f32,
         relative: false,
         refractory_period: 0.0, // No refractory to count all crossings
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let spike_train = encoder.encode(&signal_buffer, &config)
@@ -86,9 +91,8 @@ fn test_derivative_encoder_zero_crossings() {
     // Encode using derivative encoder
     let encoder = DerivativeEncoder::new("derivative_test");
     let config = DerivativeConfig {
-        threshold: 0.01,
-        direction: DerivativeDirection::Both,
-        smoothing_window: 1, // No smoothing for accuracy
+        threshold: 0.01, // No smoothing for accuracy
+        ..DerivativeConfig::default()
     };
 
     let spike_train = encoder.encode(&signal, &config)
@@ -136,6 +140,11 @@ fn test_encoder_event_timing_precision() {
         threshold: 0.5,
         relative: false,
         refractory_period: 0.3, // 300ms refractory for R-peaks
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let spike_train = encoder.encode(&signal, &config)
@@ -185,6 +194,11 @@ fn test_encoder_threshold_sensitivity() {
             threshold,
             relative: false,
             refractory_period: 0.0,
+            // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
         };
 
         let spike_train = encoder.encode(&signal_buffer, &config)
@@ -228,6 +242,11 @@ fn test_encoder_refractory_period() {
         threshold: 0.5,
         relative: false,
         refractory_period: 0.0,
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let spikes_no_refrac = encoder.encode(&signal_buffer, &config_no_refrac)
@@ -238,6 +257,11 @@ fn test_encoder_refractory_period() {
         threshold: 0.5,
         relative: false,
         refractory_period: 0.05, // 50ms
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let spikes_with_refrac = encoder.encode(&signal_buffer, &config_with_refrac)
@@ -283,13 +307,18 @@ fn test_encoder_polarity_preservation() {
         threshold: 0.5,
         relative: false,
         refractory_period: 0.1,
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let spike_train = encoder.encode(&signal_buffer, &config)
         .expect("Failed to encode");
 
     // Should have spikes with different polarities
-    let polarities: Vec<i8> = spike_train.events.iter()
+    let polarities: Vec<i8> = spike_train.iter()
         .map(|e| e.polarity)
         .collect();
 
@@ -334,6 +363,11 @@ fn test_encoder_output_validation() {
         threshold: 0.3,
         relative: false,
         refractory_period: 0.01,
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let spike_train = encoder.encode(&signal, &config)
@@ -343,7 +377,7 @@ fn test_encoder_output_validation() {
     assert!(!spike_train.is_empty(), "Should produce spikes");
 
     // All timestamps should be within signal duration
-    for event in &spike_train.events {
+    for event in &spike_train {
         assert!(
             event.timestamp >= 0.0 && event.timestamp <= params.duration,
             "Event timestamp {:.3} should be in [0, {:.1}]",
@@ -355,7 +389,7 @@ fn test_encoder_output_validation() {
     // Events should be sorted by time
     for i in 1..spike_train.len() {
         assert!(
-            spike_train.events[i].timestamp >= spike_train.events[i - 1].timestamp,
+            spike_train[i].timestamp >= spike_train[i - 1].timestamp,
             "Events should be time-sorted"
         );
     }

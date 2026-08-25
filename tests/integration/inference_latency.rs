@@ -12,6 +12,9 @@ use dpb_snn::{
     FeedforwardSNN, RecurrentSNN, ConvolutionalSNN, SpikeTensor,
     SpikeRateDecoder, NeuronModel, NeuronParams, SNNConfig,
 };
+// `forward` and `decode` are trait methods.
+use dpb_snn::architectures::SNNArchitecture;
+use dpb_snn::decoders::Decoder;
 use std::time::Instant;
 
 use super::utils::*;
@@ -34,6 +37,11 @@ fn test_encoder_throughput() {
         threshold: 0.5,
         relative: false,
         refractory_period: 0.01,
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     // Benchmark encoding
@@ -66,17 +74,17 @@ fn test_snn_inference_latency() {
     let num_channels = 64;
     let num_timesteps = 1000;
 
-    let spike_tensor = SpikeTensor::zeros(batch_size, num_channels, num_timesteps);
+    let spike_tensor = SpikeTensor::zeros(batch_size, num_timesteps, num_channels, false);
 
     let snn_config = SNNConfig {
         dt: 1.0,
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let snn = FeedforwardSNN::new(vec![num_channels, 32, 16, 4], snn_config);
+    let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 16, 4], snn_config, true).expect("SNN");
 
     // Warmup run
     let _ = snn.forward(&spike_tensor);
@@ -112,9 +120,9 @@ fn test_decoder_latency() {
     let num_classes = 4;
 
     // Create dummy spike tensor
-    let spike_tensor = SpikeTensor::zeros(batch_size, num_channels, num_timesteps);
+    let spike_tensor = SpikeTensor::zeros(batch_size, num_timesteps, num_channels, false);
 
-    let decoder = SpikeRateDecoder::new(num_classes);
+    let decoder = SpikeRateDecoder::new(num_classes, None, false);
 
     // Benchmark decoding
     let start = Instant::now();
@@ -155,6 +163,11 @@ fn test_end_to_end_pipeline_latency() {
         threshold: 0.5,
         relative: false,
         refractory_period: 0.01,
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     // SNN
@@ -165,12 +178,12 @@ fn test_end_to_end_pipeline_latency() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
-    let snn = FeedforwardSNN::new(vec![num_channels, 32, 4], snn_config);
+    let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 4], snn_config, true).expect("SNN");
 
     // Decoder
-    let decoder = SpikeRateDecoder::new(4);
+    let decoder = SpikeRateDecoder::new(4, None, false);
 
     // Benchmark end-to-end
     let start = Instant::now();
@@ -180,11 +193,11 @@ fn test_end_to_end_pipeline_latency() {
         .expect("Failed to encode");
 
     // Step 2: Convert to tensor
-    let mut spike_tensor = SpikeTensor::zeros(1, num_channels, num_timesteps);
-    for event in &spike_train.events {
+    let mut spike_tensor = SpikeTensor::zeros(1, num_timesteps, num_channels, false);
+    for event in &spike_train {
         let timestep = ((event.timestamp * 1000.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = (event.channel as usize) % num_channels;
-        spike_tensor.set_spike(0, channel, timestep, event.magnitude);
+        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
     }
 
     // Step 3: SNN inference
@@ -221,15 +234,15 @@ fn test_batch_inference_throughput() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let snn = FeedforwardSNN::new(vec![num_channels, 32, 4], snn_config);
+    let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 4], snn_config, true).expect("SNN");
 
     let batch_sizes = vec![1, 4, 8, 16];
 
     for batch_size in batch_sizes {
-        let spike_tensor = SpikeTensor::zeros(batch_size, num_channels, num_timesteps);
+        let spike_tensor = SpikeTensor::zeros(batch_size, num_timesteps, num_channels, false);
 
         // Warmup
         let _ = snn.forward(&spike_tensor);
@@ -259,17 +272,17 @@ fn test_recurrent_snn_latency() {
     let num_channels = 64;
     let num_timesteps = 500;
 
-    let spike_tensor = SpikeTensor::zeros(batch_size, num_channels, num_timesteps);
+    let spike_tensor = SpikeTensor::zeros(batch_size, num_timesteps, num_channels, false);
 
     let snn_config = SNNConfig {
         dt: 1.0,
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let snn = RecurrentSNN::new(num_channels, 32, 4, snn_config);
+    let mut snn = RecurrentSNN::new(num_channels, vec![32], 4, snn_config).expect("SNN");
 
     // Warmup
     let _ = snn.forward(&spike_tensor);
@@ -296,17 +309,17 @@ fn test_convolutional_snn_latency() {
     let num_channels = 64;
     let num_timesteps = 500;
 
-    let spike_tensor = SpikeTensor::zeros(batch_size, num_channels, num_timesteps);
+    let spike_tensor = SpikeTensor::zeros(batch_size, num_timesteps, num_channels, false);
 
     let snn_config = SNNConfig {
         dt: 1.0,
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let snn = ConvolutionalSNN::new(num_channels, vec![32, 16], 4, snn_config);
+    let mut snn = ConvolutionalSNN::new(num_channels, 4, snn_config);
 
     // Warmup
     let _ = snn.forward(&spike_tensor);
@@ -341,7 +354,7 @@ fn test_memory_footprint() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
     // Network layers
@@ -385,16 +398,16 @@ fn test_scalability_timesteps() {
         num_steps: 100,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
     for num_timesteps in timestep_counts {
-        let spike_tensor = SpikeTensor::zeros(1, num_channels, num_timesteps);
+        let spike_tensor = SpikeTensor::zeros(1, num_timesteps, num_channels, false);
 
         let mut snn_config = base_config.clone();
         snn_config.num_steps = num_timesteps;
 
-        let snn = FeedforwardSNN::new(vec![num_channels, 32, 4], snn_config);
+        let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 4], snn_config, true).expect("SNN");
 
         let start = Instant::now();
         let _ = snn.forward(&spike_tensor)

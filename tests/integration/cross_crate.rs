@@ -15,6 +15,9 @@ use dpb_snn::{
     FeedforwardSNN, SpikeTensor, SpikeRateDecoder,
     NeuronModel, NeuronParams, SNNConfig,
 };
+// `forward` and `decode` are trait methods.
+use dpb_snn::architectures::SNNArchitecture;
+use dpb_snn::decoders::Decoder;
 use dpb_synth::contact::ecg::{EcgMorphologyGenerator, EcgMorphologyParams, WaveParams};
 use dpb_synth::traits::{SyntheticGenerator};
 
@@ -66,8 +69,9 @@ fn test_context_usage_across_crates() {
     let context = Context {
         age: Some(30.0),
         sex: Some("Male".to_string()),
-        height: Some(175.0),
-        weight: Some(75.0),
+        height_cm: Some(175.0),
+        weight_kg: Some(75.0),
+        ..Context::default()
     };
 
     // Use with population template from dpb-encoders
@@ -113,6 +117,11 @@ fn test_synth_to_encoder_pipeline() {
         threshold: 0.3,
         relative: false,
         refractory_period: 0.2,
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let spike_train = encoder.encode(&signal, &config)
@@ -139,6 +148,11 @@ fn test_encoder_to_snn_pipeline() {
         threshold: 0.3,
         relative: false,
         refractory_period: 0.0,
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
 
     let spike_train = encoder.encode(&signal, &config)
@@ -147,12 +161,12 @@ fn test_encoder_to_snn_pipeline() {
     // Convert to SpikeTensor (dpb-snn)
     let num_timesteps = 100;
     let num_channels = 16;
-    let mut spike_tensor = SpikeTensor::zeros(1, num_channels, num_timesteps);
+    let mut spike_tensor = SpikeTensor::zeros(1, num_timesteps, num_channels, false);
 
-    for event in &spike_train.events {
+    for event in &spike_train {
         let timestep = ((event.timestamp * 100.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = (event.channel as usize) % num_channels;
-        spike_tensor.set_spike(0, channel, timestep, event.magnitude);
+        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
     }
 
     // Run through SNN
@@ -161,14 +175,14 @@ fn test_encoder_to_snn_pipeline() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let snn = FeedforwardSNN::new(vec![num_channels, 8, 4], snn_config);
+    let mut snn = FeedforwardSNN::new(vec![num_channels, 8, 4], snn_config, true).expect("SNN");
     let output = snn.forward(&spike_tensor)
         .expect("Failed to run SNN");
 
-    assert!(output.shape()[0] == 1, "Batch size should match");
+    assert!(output.shape().0 == 1, "Batch size should match");
 
     println!(
         "Encoder→SNN pipeline: {} spikes → SNN output shape {:?}",
@@ -205,18 +219,23 @@ fn test_full_pipeline_integration() {
         threshold: 0.3,
         relative: false,
         refractory_period: 0.2,
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
     let spike_train = encoder.encode(&signal, &config).unwrap();
 
     // 4. Convert to SpikeTensor (dpb-snn)
     let num_timesteps = (duration * 1000.0) as usize;
     let num_channels = 64;
-    let mut spike_tensor = SpikeTensor::zeros(1, num_channels, num_timesteps);
+    let mut spike_tensor = SpikeTensor::zeros(1, num_timesteps, num_channels, false);
 
-    for event in &spike_train.events {
+    for event in &spike_train {
         let timestep = ((event.timestamp * 1000.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = (event.channel as usize) % num_channels;
-        spike_tensor.set_spike(0, channel, timestep, event.magnitude);
+        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
     }
 
     // 5. SNN inference (dpb-snn)
@@ -225,13 +244,13 @@ fn test_full_pipeline_integration() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
-    let snn = FeedforwardSNN::new(vec![num_channels, 32, 4], snn_config);
+    let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 4], snn_config, true).expect("SNN");
     let output = snn.forward(&spike_tensor).unwrap();
 
     // 6. Decode (dpb-snn)
-    let decoder = SpikeRateDecoder::new(4);
+    let decoder = SpikeRateDecoder::new(4, None, false);
     let predictions = decoder.decode(&output).unwrap();
 
     println!(
@@ -259,6 +278,11 @@ fn test_event_encoder_trait() {
         threshold: 0.5,
         relative: false,
         refractory_period: 0.0,
+        // Detection semantics: one event per crossing of the level. The
+        // default `Delta` mode instead emits one event per threshold of
+        // travel, which is the reconstructable sampling behaviour.
+        mode: LevelCrossingMode::FixedLevel,
+        ..LevelCrossingConfig::default()
     };
     let spikes1 = encoder1.encode(&signal, &config1).unwrap();
 
@@ -266,8 +290,7 @@ fn test_event_encoder_trait() {
     let encoder2 = DerivativeEncoder::new("trait_test_2");
     let config2 = DerivativeConfig {
         threshold: 0.1,
-        direction: DerivativeDirection::Both,
-        smoothing_window: 1,
+        ..DerivativeConfig::default()
     };
     let spikes2 = encoder2.encode(&signal, &config2).unwrap();
 
@@ -321,11 +344,11 @@ fn test_neuron_model_compatibility() {
             num_steps: num_timesteps,
             neuron_model: model,
             neuron_params: NeuronParams::default(),
-            use_gpu: false,
+            ..SNNConfig::default()
         };
 
-        let snn = FeedforwardSNN::new(vec![num_channels, 8, 4], snn_config);
-        let spike_tensor = SpikeTensor::zeros(1, num_channels, num_timesteps);
+        let mut snn = FeedforwardSNN::new(vec![num_channels, 8, 4], snn_config, true).expect("SNN");
+        let spike_tensor = SpikeTensor::zeros(1, num_timesteps, num_channels, false);
 
         let output = snn.forward(&spike_tensor)
             .expect(&format!("Failed with neuron model {:?}", model));
@@ -342,8 +365,9 @@ fn test_template_registry_integration() {
     let context = Context {
         age: Some(30.0),
         sex: Some("Male".to_string()),
-        height: Some(175.0),
-        weight: Some(75.0),
+        height_cm: Some(175.0),
+        weight_kg: Some(75.0),
+        ..Context::default()
     };
 
     let results = registry.evaluate_all(&context);

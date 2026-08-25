@@ -11,6 +11,11 @@ use dpb_snn::{
     BPTT, AdamOptimizer, SpikingCrossEntropy,
     NeuronModel, NeuronParams, SNNConfig,
 };
+// `forward` and `decode` are trait methods.
+use dpb_snn::architectures::SNNArchitecture;
+use dpb_snn::decoders::Decoder;
+// `compute` is a trait method.
+use dpb_snn::training::LossFunction;
 use ndarray::{Array2, Array1};
 
 use super::utils::*;
@@ -24,7 +29,7 @@ fn test_training_loss_decreases() {
     let num_classes = 3;
 
     // Create random spike data
-    let mut spike_tensor = SpikeTensor::zeros(batch_size, num_channels, num_timesteps);
+    let mut spike_tensor = SpikeTensor::zeros(batch_size, num_timesteps, num_channels, false);
 
     // Set some spikes (different patterns for different classes)
     for b in 0..batch_size {
@@ -37,7 +42,7 @@ fn test_training_loss_decreases() {
 
         for &ch in &spike_channels {
             for t in (0..num_timesteps).step_by(10) {
-                spike_tensor.set_spike(b, ch, t, 1.0);
+                spike_tensor.set_spike(b, t, ch, 1.0).ok();
             }
         }
     }
@@ -55,13 +60,13 @@ fn test_training_loss_decreases() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let mut snn = FeedforwardSNN::new(vec![num_channels, 16, num_classes], snn_config);
+    let mut snn = FeedforwardSNN::new(vec![num_channels, 16, num_classes], snn_config, true).expect("SNN");
 
     // Create optimizer and loss
-    let optimizer = AdamOptimizer::new(0.001);
+    let optimizer = AdamOptimizer::new(0.001, 0.9, 0.999, 0.0);
     let loss_fn = SpikingCrossEntropy::new();
 
     // Training loop
@@ -74,12 +79,12 @@ fn test_training_loss_decreases() {
             .expect("Forward pass failed");
 
         // Decode output
-        let decoder = SpikeRateDecoder::new(num_classes);
+        let decoder = SpikeRateDecoder::new(num_classes, None, false);
         let predictions = decoder.decode(&output)
             .expect("Decoding failed");
 
         // Compute loss
-        let loss = loss_fn.compute(&predictions, &labels)
+        let loss = loss_fn.compute(&output, &labels)
             .expect("Loss computation failed");
 
         losses.push(loss);
@@ -110,11 +115,11 @@ fn test_bptt_gradient_computation() {
     let num_classes = 2;
 
     // Create spike tensor
-    let mut spike_tensor = SpikeTensor::zeros(batch_size, num_channels, num_timesteps);
+    let mut spike_tensor = SpikeTensor::zeros(batch_size, num_timesteps, num_channels, false);
     for b in 0..batch_size {
         for ch in 0..4 {
             for t in (0..num_timesteps).step_by(5) {
-                spike_tensor.set_spike(b, ch, t, 1.0);
+                spike_tensor.set_spike(b, t, ch, 1.0).ok();
             }
         }
     }
@@ -125,17 +130,17 @@ fn test_bptt_gradient_computation() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let snn = FeedforwardSNN::new(vec![num_channels, 8, num_classes], snn_config);
+    let mut snn = FeedforwardSNN::new(vec![num_channels, 8, num_classes], snn_config, true).expect("SNN");
 
     // Forward pass
     let output = snn.forward(&spike_tensor)
         .expect("Forward pass failed");
 
     // BPTT should work with the output
-    assert_eq!(output.shape()[0], batch_size, "Batch size should match");
+    assert_eq!(output.shape().0, batch_size, "Batch size should match");
 
     println!(
         "BPTT gradient test: output shape = {:?}",
@@ -147,7 +152,7 @@ fn test_bptt_gradient_computation() {
 fn test_optimizer_parameter_updates() {
     // Test that optimizer updates parameters
     let learning_rate = 0.01;
-    let optimizer = AdamOptimizer::new(learning_rate);
+    let optimizer = AdamOptimizer::new(learning_rate, 0.9, 0.999, 0.0);
 
     // Create dummy parameters and gradients
     let params = Array1::from_vec(vec![1.0, 2.0, 3.0]);
@@ -155,7 +160,7 @@ fn test_optimizer_parameter_updates() {
 
     // In a real implementation, optimizer.step() would update parameters
     // This test verifies the optimizer is configured correctly
-    assert_eq!(optimizer.learning_rate(), learning_rate);
+    assert_eq!(optimizer.learning_rate, learning_rate);
 
     println!(
         "Optimizer test: LR = {}, params = {:?}",
@@ -179,13 +184,26 @@ fn test_loss_function_range() {
         if i % num_classes == j { 1.0 } else { 0.0 }
     });
 
+    // `compute` takes predictions as a SpikeTensor, so lift each (sample,
+    // class) matrix into a single-timestep tensor.
+    let as_tensor = |m: &Array2<f32>| {
+        let (rows, cols) = m.dim();
+        let mut tensor = SpikeTensor::zeros(rows, 1, cols, false);
+        for i in 0..rows {
+            for j in 0..cols {
+                tensor.set_spike(i, 0, j, m[[i, j]]).ok();
+            }
+        }
+        tensor
+    };
+
     let loss_fn = SpikingCrossEntropy::new();
-    let perfect_loss = loss_fn.compute(&perfect_pred, &labels)
+    let perfect_loss = loss_fn.compute(&as_tensor(&perfect_pred), &labels)
         .expect("Loss computation failed");
 
     // Random predictions (should give higher loss)
     let random_pred = Array2::from_shape_fn((num_samples, num_classes), |(_, _)| 0.33);
-    let random_loss = loss_fn.compute(&random_pred, &labels)
+    let random_loss = loss_fn.compute(&as_tensor(&random_pred), &labels)
         .expect("Loss computation failed");
 
     // Perfect predictions should have lower loss than random
@@ -213,7 +231,7 @@ fn test_training_convergence_simple_task() {
 
     // Create simple spike pattern: class 0 = spikes in first half of channels
     // class 1 = spikes in second half
-    let mut spike_tensor = SpikeTensor::zeros(batch_size, num_channels, num_timesteps);
+    let mut spike_tensor = SpikeTensor::zeros(batch_size, num_timesteps, num_channels, false);
 
     for b in 0..batch_size {
         let class = b % 2;
@@ -226,7 +244,7 @@ fn test_training_convergence_simple_task() {
         for ch in channel_range {
             for t in 0..num_timesteps {
                 if t % 5 == 0 {
-                    spike_tensor.set_spike(b, ch, t, 1.0);
+                    spike_tensor.set_spike(b, t, ch, 1.0).ok();
                 }
             }
         }
@@ -244,17 +262,17 @@ fn test_training_convergence_simple_task() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let snn = FeedforwardSNN::new(vec![num_channels, 4, num_classes], snn_config);
+    let mut snn = FeedforwardSNN::new(vec![num_channels, 4, num_classes], snn_config, true).expect("SNN");
 
     // Forward pass to verify network works
     let output = snn.forward(&spike_tensor)
         .expect("Forward pass failed");
 
-    assert_eq!(output.shape()[0], batch_size);
-    assert!(output.shape()[1] > 0);
+    assert_eq!(output.shape().0, batch_size);
+    assert!(output.shape().1 > 0);
 
     println!(
         "Simple task convergence test: output shape = {:?}",
@@ -275,19 +293,19 @@ fn test_batch_processing() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let snn = FeedforwardSNN::new(vec![num_channels, 8, 4], snn_config);
+    let mut snn = FeedforwardSNN::new(vec![num_channels, 8, 4], snn_config, true).expect("SNN");
 
     for batch_size in batch_sizes {
-        let spike_tensor = SpikeTensor::zeros(batch_size, num_channels, num_timesteps);
+        let spike_tensor = SpikeTensor::zeros(batch_size, num_timesteps, num_channels, false);
 
         let output = snn.forward(&spike_tensor)
             .expect(&format!("Forward pass failed for batch size {}", batch_size));
 
         assert_eq!(
-            output.shape()[0],
+            output.shape().0,
             batch_size,
             "Output batch size should match input"
         );
@@ -306,10 +324,10 @@ fn test_learning_rate_effect() {
     let learning_rates = vec![0.001, 0.01, 0.1];
 
     for lr in learning_rates {
-        let optimizer = AdamOptimizer::new(lr);
+        let optimizer = AdamOptimizer::new(lr, 0.9, 0.999, 0.0);
 
         assert_eq!(
-            optimizer.learning_rate(),
+            optimizer.learning_rate,
             lr,
             "Learning rate should be set correctly"
         );
@@ -325,25 +343,25 @@ fn test_surrogate_gradient_backprop() {
     let num_channels = 8;
     let num_timesteps = 30;
 
-    let spike_tensor = SpikeTensor::zeros(batch_size, num_channels, num_timesteps);
+    let spike_tensor = SpikeTensor::zeros(batch_size, num_timesteps, num_channels, false);
 
     let snn_config = SNNConfig {
         dt: 1.0,
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
-    let snn = FeedforwardSNN::new(vec![num_channels, 4, 2], snn_config);
+    let mut snn = FeedforwardSNN::new(vec![num_channels, 4, 2], snn_config, true).expect("SNN");
 
     // Forward pass should work
     let output = snn.forward(&spike_tensor)
         .expect("Forward pass failed");
 
     // Verify output is valid
-    assert!(output.shape()[0] == batch_size);
-    assert!(output.shape()[1] > 0);
+    assert!(output.shape().0 == batch_size);
+    assert!(output.shape().1 > 0);
 
     println!(
         "Surrogate gradient test: network forward pass successful"
