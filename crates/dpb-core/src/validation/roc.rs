@@ -61,7 +61,7 @@ impl RocAnalyzer {
             youden_index: -1.0,
         });
 
-        for (score, label) in &indexed {
+        for (i, (score, label)) in indexed.iter().enumerate() {
             if *label {
                 tp += 1;
             } else {
@@ -97,6 +97,22 @@ impl RocAnalyzer {
             };
 
             let youden = sensitivity + specificity - 1.0;
+
+            // Emit one point per DISTINCT threshold, not per instance.
+            //
+            // Instances sharing a score cannot be separated by any threshold, so
+            // they must advance the curve together. Emitting a point inside a
+            // tie group draws a staircase whose shape depends on the order the
+            // tied instances happen to be sorted into, and the trapezoidal AUC
+            // then depends on that order too: eight instances all scored 0.5,
+            // four positive and four negative, gave 0.375 with negatives first
+            // and 0.625 with positives first, where the only correct answer for
+            // a score that carries no information is 0.5.
+            let last_of_tie_group =
+                i + 1 == indexed.len() || indexed[i + 1].0 != *score;
+            if !last_of_tie_group {
+                continue;
+            }
 
             points.push(RocPoint {
                 threshold: *score,
@@ -454,8 +470,22 @@ mod tests {
 
         let curve = analyzer.analyze(&scores, &labels);
 
-        // AUC should be around 0.5
-        assert!(curve.auc >= 0.4 && curve.auc <= 0.6);
+        // A score carrying no information has AUC exactly 0.5.
+        assert!(
+            (curve.auc - 0.5).abs() < 1e-9,
+            "tied scores must give AUC 0.5, got {}",
+            curve.auc
+        );
+
+        // ...and that must not depend on how the ties happen to be ordered.
+        let reversed_labels: Vec<bool> = labels.iter().rev().cloned().collect();
+        let reversed = analyzer.analyze(&scores, &reversed_labels);
+        assert!(
+            (reversed.auc - curve.auc).abs() < 1e-9,
+            "AUC changed with tie order: {} vs {}",
+            curve.auc,
+            reversed.auc
+        );
     }
 
     #[test]
@@ -479,4 +509,5 @@ mod tests {
         assert_eq!(RocAnalyzer::interpret_auc(0.85), AucInterpretation::Good);
         assert_eq!(RocAnalyzer::interpret_auc(0.95), AucInterpretation::Excellent);
     }
+
 }

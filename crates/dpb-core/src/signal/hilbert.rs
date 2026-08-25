@@ -240,14 +240,27 @@ mod tests {
         // Envelope should follow the modulation
         assert_eq!(env.len(), n);
 
-        // Check that envelope captures the modulation pattern
-        // At peaks of modulation (t=0), envelope should be near 1.5
-        // At troughs (t=0.25), envelope should be near 1.0
-        let peak_idx = 0;
-        let trough_idx = n / 4;
+        // The envelope must track `1 + 0.5*cos(2*pi*f_m*t)` sample for sample.
+        //
+        // The previous assertions expected 1.0 at t = 0.25 and called it a
+        // trough. With f_m = 2 Hz over a 1 s record, t = 0.25 is half a
+        // modulation period in: cos(pi) = -1, so the modulation there is 0.5 --
+        // the actual trough. The envelope was returning 0.5 correctly and being
+        // marked wrong for it. The modulation passes through 1.0 at t = 0.125,
+        // a quarter period in.
+        for (i, e) in env.iter().enumerate() {
+            let t = i as f64 / n as f64;
+            let expected = 1.0 + 0.5 * (2.0 * PI * modulation_freq * t).cos();
+            assert!(
+                (e - expected).abs() < 0.05,
+                "sample {i} (t={t:.4}): envelope {e} vs modulation {expected}"
+            );
+        }
 
-        assert!(env[peak_idx] > 1.3); // Near 1.5
-        assert!(env[trough_idx] < 1.2 && env[trough_idx] > 0.8); // Near 1.0
+        // Spot-check the three landmarks explicitly.
+        assert!(env[0] > 1.45, "peak: {}", env[0]);              // t=0     -> 1.5
+        assert!((env[n / 8] - 1.0).abs() < 0.05, "{}", env[n / 8]); // t=0.125 -> 1.0
+        assert!(env[n / 4] < 0.55, "trough: {}", env[n / 4]);    // t=0.25  -> 0.5
     }
 
     #[test]
@@ -361,4 +374,5 @@ mod tests {
 
         assert!(late_freq > early_freq);
     }
+
 }

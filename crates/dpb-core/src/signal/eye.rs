@@ -650,23 +650,39 @@ mod tests {
         let mut x = Array1::zeros(n_samples);
         let mut y = Array1::zeros(n_samples);
 
-        // Generate step-like pattern with smooth transitions
-        let saccade_times = vec![0.5, 1.5, 2.5];
-        let positions = vec![(0.0, 0.0), (5.0, 0.0), (5.0, 5.0), (0.0, 5.0)];
+        // Saccades of ~5 degrees take roughly 40 ms.
+        //
+        // This previously jumped between positions in a SINGLE sample, despite
+        // the comment promising smooth transitions. An instantaneous jump is not
+        // a saccade -- it is a one-sample velocity spike, exactly what a
+        // detector should reject as noise, and `detect_saccades` rejected it
+        // correctly for falling short of the 10 ms minimum. The fixture, not the
+        // detector, was wrong.
+        const SACCADE_DURATION_S: f64 = 0.04;
 
-        let mut current_pos = 0;
+        let saccade_times = [0.5, 1.5, 2.5];
+        let positions = [(0.0, 0.0), (5.0, 0.0), (5.0, 5.0), (0.0, 5.0)];
+
         for i in 0..n_samples {
             let t = i as f64 / sample_rate;
 
-            // Check if saccade should occur
-            for (j, &saccade_t) in saccade_times.iter().enumerate() {
-                if t >= saccade_t && t < saccade_t + 0.05 && current_pos == j {
-                    current_pos = j + 1;
+            let mut pos = positions[0];
+            for (j, &start) in saccade_times.iter().enumerate() {
+                if t >= start {
+                    let (from, to) = (positions[j], positions[j + 1]);
+                    // Raised cosine: velocity starts and ends at zero and peaks
+                    // mid-flight, which is the shape of a real saccade.
+                    let frac = ((t - start) / SACCADE_DURATION_S).clamp(0.0, 1.0);
+                    let s = 0.5 * (1.0 - (std::f64::consts::PI * frac).cos());
+                    pos = (
+                        from.0 + (to.0 - from.0) * s,
+                        from.1 + (to.1 - from.1) * s,
+                    );
                 }
             }
 
-            x[i] = positions[current_pos.min(positions.len() - 1)].0;
-            y[i] = positions[current_pos.min(positions.len() - 1)].1;
+            x[i] = pos.0;
+            y[i] = pos.1;
         }
 
         (x, y)
@@ -696,12 +712,29 @@ mod tests {
         let analyzer = EyeAnalyzer::new(sample_rate);
         let saccades = analyzer.detect_saccades(x.view(), y.view()).unwrap();
 
-        // Should detect some saccades
-        assert!(!saccades.is_empty());
+        // Three saccades were generated, so three should be found.
+        assert_eq!(
+            saccades.len(),
+            3,
+            "expected 3 saccades, got {}",
+            saccades.len()
+        );
 
         for saccade in &saccades {
-            assert!(saccade.amplitude > 0.0);
-            assert!(saccade.peak_velocity > 0.0);
+            // Each generated movement is 5 degrees.
+            assert!(
+                (saccade.amplitude - 5.0).abs() < 1.0,
+                "amplitude {} should be near 5 degrees",
+                saccade.amplitude
+            );
+            // Above the 30 deg/s detection threshold, and physiologically
+            // plausible for a 5 degree saccade.
+            assert!(
+                saccade.peak_velocity > 30.0 && saccade.peak_velocity < 1000.0,
+                "peak velocity {} implausible",
+                saccade.peak_velocity
+            );
+            assert!(saccade.duration > 0.0);
         }
     }
 

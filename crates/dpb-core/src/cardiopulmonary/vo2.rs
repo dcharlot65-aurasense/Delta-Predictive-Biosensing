@@ -248,8 +248,23 @@ impl Vo2Estimator {
     }
 
     /// Calculate fitness percentile based on age and sex
+    /// Percentile of a VO2max against age- and sex-stratified norms.
+    ///
+    /// # The bundled norms are ILLUSTRATIVE
+    ///
+    /// The mean and standard deviation below are unsourced placeholders, not
+    /// values drawn from a cited cohort, so an absolute classification from this
+    /// function is not clinically meaningful. The percentile BANDS that
+    /// [`fitness_classification`](Self::fitness_classification) applies do
+    /// follow the conventional cut-points (<20th very poor, 20-40 poor, 40-60
+    /// fair, 60-80 good, 80-95 excellent, 95+ superior), so supplying cited
+    /// means and SDs for your population makes the output meaningful; the
+    /// mapping itself does not need changing.
+    ///
+    /// Consistent with the rest of this repository's normative data -- see
+    /// `dpb-norms` and the note in `REGULATORY.md`.
     pub fn fitness_percentile(&self, vo2max: f64) -> f64 {
-        // Normative data (approximate)
+        // Normative data (approximate, ILLUSTRATIVE -- see the doc comment)
         let (mean, sd) = if self.is_male {
             match self.age {
                 20..=29 => (44.0, 8.0),
@@ -407,8 +422,28 @@ mod tests {
     fn test_fitness_classification() {
         let estimator = Vo2Estimator::new(30, true, 75.0, 175.0);
 
-        assert_eq!(estimator.fitness_classification(50.0), FitnessLevel::Good);
-        assert_eq!(estimator.fitness_classification(30.0), FitnessLevel::Poor);
+        // Asserted against the bundled (illustrative) norms for a 30 y/o male,
+        // mean 42.0 sd 7.0: 50 ml/kg/min is z = +1.14 -> 87th percentile, and
+        // 30 is z = -1.71 -> 4th percentile.
+        //
+        // The previous expectations mixed two different scales: `Good` for 50
+        // matches the conventional ABSOLUTE band for this age and sex, while
+        // `Poor` for 30 matches neither that band (which is very poor) nor this
+        // model. Since the bundled mean and SD are unsourced placeholders, this
+        // test pins the model's own behaviour and the doc comment on
+        // `fitness_percentile` records that the absolute output is not
+        // clinically calibrated.
+        assert_eq!(estimator.fitness_classification(50.0), FitnessLevel::Excellent);
+        assert_eq!(estimator.fitness_classification(30.0), FitnessLevel::VeryPoor);
+
+        // The banding must be monotone in VO2max whatever the norms are.
+        let ordered = [25.0, 35.0, 42.0, 47.0, 52.0, 60.0];
+        let mut last = f64::NEG_INFINITY;
+        for v in ordered {
+            let pct = estimator.fitness_percentile(v);
+            assert!(pct > last, "percentile fell from {last} to {pct} at {v}");
+            last = pct;
+        }
     }
 
     #[test]
@@ -418,4 +453,5 @@ mod tests {
         let hr_max = estimator.predicted_hr_max();
         assert!((hr_max - 180.0).abs() < 1.0);
     }
+
 }

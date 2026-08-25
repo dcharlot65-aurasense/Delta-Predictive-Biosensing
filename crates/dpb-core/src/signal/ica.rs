@@ -141,9 +141,11 @@ impl FastICA {
         self.mean = Some(mean);
 
         // Whiten the data if requested
+        let mut dewhitening_matrix = None;
         let x_white = if self.whiten {
-            let (whitened, whitening_matrix) = self.whiten_data(&centered)?;
-            self.whitening_matrix = Some(whitening_matrix);
+            let (whitened, whitening, dewhitening) = self.whiten_data(&centered)?;
+            self.whitening_matrix = Some(whitening);
+            dewhitening_matrix = Some(dewhitening);
             whitened
         } else {
             centered
@@ -158,9 +160,18 @@ impl FastICA {
         // Compute mixing matrix (pseudo-inverse of unmixing matrix)
         let mixing = self.pseudo_inverse(&unmixing)?;
 
-        // If whitening was applied, adjust mixing matrix
-        if let Some(ref whitening) = self.whitening_matrix {
-            self.mixing_matrix = Some(whitening.dot(&mixing));
+        // If whitening was applied, adjust mixing matrix.
+        //
+        // The forward model is `s = U * W_white * x`, so recovering `x` from the
+        // sources needs `pinv(W_white) * pinv(U)`. The whitening matrix itself
+        // was used here instead of its pseudo-inverse, which is not only the
+        // wrong operator but the wrong SHAPE: `W_white` is
+        // (components x features) and `pinv(U)` is (components x components),
+        // so the product was rejected outright by ndarray -- `get_result`
+        // panicked for any input with more features than components, which is
+        // the case ICA exists for.
+        if let Some(dewhitening) = dewhitening_matrix {
+            self.mixing_matrix = Some(dewhitening.dot(&mixing));
         } else {
             self.mixing_matrix = Some(mixing);
         }
@@ -234,7 +245,10 @@ impl FastICA {
     }
 
     /// Whitens the data using eigenvalue decomposition.
-    fn whiten_data(&self, data: &Array2<f64>) -> Result<(Array2<f64>, Array2<f64>)> {
+    fn whiten_data(
+        &self,
+        data: &Array2<f64>,
+    ) -> Result<(Array2<f64>, Array2<f64>, Array2<f64>)> {
         let (n_features, n_samples) = data.dim();
 
         // Compute covariance matrix
@@ -243,18 +257,28 @@ impl FastICA {
         // Eigenvalue decomposition (simplified using SVD approximation)
         let (u, s, _) = self.svd(&cov)?;
 
-        // Compute whitening matrix: K = D^(-1/2) @ U^T
+        // Compute whitening matrix: K = D^(-1/2) @ U_k^T   (components x features)
+        // and its exact inverse map K^+ = U_k @ D^(1/2)     (features x components).
+        //
+        // `U_k` has orthonormal columns, so `K @ K^+ = I` exactly and no general
+        // pseudo-inverse is needed. That matters: `pseudo_inverse` here relies
+        // on a simplified `svd` valid only for square matrices, and `K` is not
+        // square whenever there are more features than components -- the case
+        // ICA exists for.
         let mut whitening = Array2::zeros((self.n_components, n_features));
+        let mut dewhitening = Array2::zeros((n_features, self.n_components));
         for i in 0..self.n_components {
-            let scale = 1.0 / (s[i].sqrt() + 1e-10);
+            let sqrt_s = s[i].sqrt();
+            let scale = 1.0 / (sqrt_s + 1e-10);
             for j in 0..n_features {
                 whitening[[i, j]] = scale * u[[j, i]];
+                dewhitening[[j, i]] = sqrt_s * u[[j, i]];
             }
         }
 
         let whitened = whitening.dot(data);
 
-        Ok((whitened, whitening))
+        Ok((whitened, whitening, dewhitening))
     }
 
     /// Performs the FastICA algorithm.
@@ -448,6 +472,12 @@ impl FastICA {
     }
 
     /// Computes pseudo-inverse using SVD.
+    /// Moore-Penrose pseudo-inverse.
+    ///
+    /// Relies on [`svd`](Self::svd), which is a simplified symmetric-eigenvalue
+    /// routine and is only valid for SQUARE input. Both call sites pass square
+    /// matrices (a covariance and the unmixing matrix); do not extend it to
+    /// rectangular input without replacing `svd` first.
     fn pseudo_inverse(&self, matrix: &Array2<f64>) -> Result<Array2<f64>> {
         let (u, s, vt) = self.svd(matrix)?;
         let k = s.len();
@@ -589,6 +619,14 @@ mod tests {
         let ica_result = result.unwrap();
         assert_eq!(ica_result.n_components(), 2);
         assert_eq!(ica_result.unmixing_matrix.nrows(), 2);
+
+        // The mixing matrix maps components back to the ORIGINAL feature space,
+        // so it must be (n_features x n_components).
+        assert_eq!(
+            ica_result.mixing_matrix.dim(),
+            (n_features, 2),
+            "mixing matrix must map components back to feature space"
+        );
     }
 
     #[test]

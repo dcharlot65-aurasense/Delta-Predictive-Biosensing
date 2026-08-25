@@ -86,8 +86,21 @@ pub fn detect_artifacts(
     let mut artifact_start = 0;
     let mut artifact_peak = 0.0;
 
-    // Minimum artifact duration in samples (e.g., 100ms)
-    let min_duration = (0.1 * sample_rate) as usize;
+    // Minimum artifact duration, in samples.
+    //
+    // An amplitude artifact is DEFINED by exceeding the threshold, not by
+    // lasting a particular time, so this only rejects an empty run. The
+    // previous floor of 100 ms discarded anything briefer -- 25 samples at
+    // 250 Hz, 100 at 1 kHz -- which covers electrode pops and movement spikes,
+    // typically 10-50 ms and the most common amplitude artifacts there are. A
+    // 10-sample excursion to 200 uV was reported as no artifact at all. It was
+    // also a hidden policy: derived from the sample rate, absent from the
+    // signature, and not adjustable by the caller.
+    //
+    // Flatline detection below keeps its own duration criterion, where a
+    // minimum span genuinely is part of the definition.
+    const MIN_AMPLITUDE_ARTIFACT_SAMPLES: usize = 1;
+    let min_duration = MIN_AMPLITUDE_ARTIFACT_SAMPLES;
 
     for (i, &value) in eeg.iter().enumerate() {
         let abs_value = value.abs();
@@ -352,6 +365,20 @@ mod tests {
 
         assert!(amplitude_artifacts.len() >= 1);
         assert!(amplitude_artifacts[0].amplitude > 100.0);
+
+        // The segment must cover the samples that actually breached threshold.
+        let seg = amplitude_artifacts[0];
+        assert_eq!(seg.start_sample, 40);
+        assert_eq!(seg.end_sample, 49);
+        assert_eq!(seg.amplitude, 200.0);
+
+        // A clean signal must yield nothing.
+        let clean = vec![10.0; 100];
+        let none = detect_artifacts(&clean, sample_rate, 100.0).unwrap();
+        assert!(
+            !none.iter().any(|a| a.artifact_type == ArtifactType::Amplitude),
+            "flagged an amplitude artifact in a flat 10 uV signal"
+        );
     }
 
     #[test]

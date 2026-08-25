@@ -242,8 +242,21 @@ impl DiscreteWaveletTransform {
                     0.836516303738,
                     -0.482962913145,
                 ];
-                let g_low = h_high.iter().rev().cloned().collect();
-                let g_high = h_low.iter().rev().map(|x| -x).collect();
+                // Synthesis filters equal the analysis filters.
+                //
+                // `dwt_step` computes `a[i] = sum_j x[2i+j] * h[j]` and
+                // `idwt_step` scatters `a[i] * g[j]` back to index `2i+j`, so
+                // synthesis is the TRANSPOSE of analysis -- and for an
+                // orthogonal wavelet the inverse is exactly the transpose.
+                //
+                // These were built from the opposite band and time-reversed:
+                // `g_low` came from `h_high` and `g_high` from `h_low`, so
+                // reconstruction convolved the approximation coefficients with a
+                // highpass-derived filter and the detail coefficients with a
+                // lowpass-derived one. Perfect reconstruction was impossible for
+                // every wavelet family here.
+                let g_low = h_low.clone();
+                let g_high = h_high.clone();
                 (h_low, h_high, g_low, g_high)
             }
             WaveletFamily::Daubechies(4) => {
@@ -264,16 +277,18 @@ impl DiscreteWaveletTransform {
                     .map(|(i, &x)| if i % 2 == 0 { x } else { -x })
                     .rev()
                     .collect();
-                let g_low = h_high.iter().rev().cloned().collect();
-                let g_high = h_low.iter().rev().map(|x| -x).collect();
+                // See the db2 arm: synthesis is the transpose of analysis.
+                let g_low = h_low.clone();
+                let g_high = h_high.clone();
                 (h_low, h_high, g_low, g_high)
             }
             _ => {
                 // Default to Haar wavelet (Daubechies-2)
                 let h_low = vec![0.7071067811865476, 0.7071067811865476];
                 let h_high = vec![0.7071067811865476, -0.7071067811865476];
-                let g_low = vec![-0.7071067811865476, 0.7071067811865476];
-                let g_high = vec![0.7071067811865476, 0.7071067811865476];
+                // See the db2 arm: synthesis is the transpose of analysis.
+                let g_low = h_low.clone();
+                let g_high = h_high.clone();
                 (h_low, h_high, g_low, g_high)
             }
         }
@@ -467,4 +482,41 @@ mod tests {
         assert!(frequencies[0] > frequencies[1]);
         assert!(frequencies[1] > frequencies[2]);
     }
+    /// Orthogonal wavelets must reconstruct essentially exactly.
+    ///
+    /// Regression: the synthesis filters were built from the opposite band, so
+    /// reconstruction bore no fixed relationship to the input. The loose
+    /// epsilon on the neighbouring test would not have caught a subtler version
+    /// of the same error; an orthogonal transform round-trips to numerical
+    /// precision, so that is what is asserted.
+    #[test]
+    fn test_dwt_perfect_reconstruction() {
+        let signal: Vec<f64> = (0..64)
+            .map(|i| {
+                let t = i as f64 / 64.0;
+                (2.0 * PI * 3.0 * t).sin() + 0.5 * (2.0 * PI * 11.0 * t).cos()
+            })
+            .collect();
+
+        // Daubechies(1) falls through to the Haar default arm.
+        for wavelet in [
+            WaveletFamily::Daubechies(1),
+            WaveletFamily::Daubechies(2),
+            WaveletFamily::Daubechies(4),
+        ] {
+            for levels in 1..=2 {
+                let dwt = DiscreteWaveletTransform::new(wavelet.clone(), levels);
+                let reconstructed = dwt.reconstruct(&dwt.decompose(&signal));
+
+                assert_eq!(reconstructed.len(), signal.len());
+                for (i, (orig, recon)) in signal.iter().zip(reconstructed.iter()).enumerate() {
+                    assert!(
+                        (orig - recon).abs() < 1e-9,
+                        "{wavelet:?} level {levels} sample {i}: {orig} -> {recon}"
+                    );
+                }
+            }
+        }
+    }
+
 }
