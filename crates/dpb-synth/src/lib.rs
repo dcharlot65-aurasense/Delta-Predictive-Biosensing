@@ -315,7 +315,10 @@ mod tests {
 
     #[test]
     fn test_virtual_patient() {
-        let demographics = Demographics::new(45.0, Sex::Male, 25.0, None);
+        // BMI 22.0 is unambiguously normal. The previous value of 25.0 sits
+        // exactly ON the WHO cut-point, where "overweight" begins (normal is
+        // 18.5-24.9), so the classifier was right to call it Overweight.
+        let demographics = Demographics::new(45.0, Sex::Male, 22.0, None);
         let patient = VirtualPatient::new(
             "VP001".to_string(),
             demographics,
@@ -332,4 +335,38 @@ mod tests {
         assert!(patient.takes_medication("ACE Inhibitor"));
         assert!(!patient.has_condition("Diabetes"));
     }
+    /// WHO BMI cut-points, asserted exactly ON each boundary.
+    ///
+    /// Boundary values are where a classifier is worth testing, and picking one
+    /// by accident is how the neighbouring test came to expect the wrong side
+    /// of it.
+    #[test]
+    fn test_bmi_category_boundaries() {
+        let categorize = |bmi: f64| {
+            VirtualPatient::new(
+                "VP".to_string(),
+                Demographics::new(45.0, Sex::Male, bmi, None),
+                70.0,
+                40.0,
+                vec![],
+                vec![],
+            )
+            .bmi_category()
+            .to_string()
+        };
+
+        for (bmi, expected) in [
+            (16.0, "Underweight"),
+            (18.4, "Underweight"),
+            (18.5, "Normal"),
+            (24.9, "Normal"),
+            (25.0, "Overweight"),
+            (29.9, "Overweight"),
+            (30.0, "Obese"),
+            (45.0, "Obese"),
+        ] {
+            assert_eq!(categorize(bmi), expected, "BMI {bmi}");
+        }
+    }
+
 }
