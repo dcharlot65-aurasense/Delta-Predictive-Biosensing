@@ -8,7 +8,14 @@ description = "Python bindings for DPB Framework"
 
 [lib]
 name = "dpb"
-crate-type = ["cdylib"]
+# `rlib` alongside `cdylib` so the crate can be built and tested by plain cargo;
+# maturin takes the cdylib for the wheel.
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# Enabled by maturin when building a wheel. Leaving it off lets `cargo build`
+# and `cargo test` link against libpython and run.
+extension-module = ["pyo3/extension-module"]
 
 [dependencies]
 dpb-core.workspace = true

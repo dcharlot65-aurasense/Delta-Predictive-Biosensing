@@ -165,9 +165,9 @@ impl PyGpuContext {
 
     fn __exit__(
         &mut self,
-        _exc_type: PyObject,
-        _exc_value: PyObject,
-        _traceback: PyObject,
+        _exc_type: Py<PyAny>,
+        _exc_value: Py<PyAny>,
+        _traceback: Py<PyAny>,
     ) -> PyResult<bool> {
         self.release()?;
         Ok(false)
@@ -212,7 +212,7 @@ impl PyGpuBuffer {
     }
 
     /// Write data to buffer
-    fn write(&mut self, _data: PyObject) -> PyResult<()> {
+    fn write(&mut self, _data: Py<PyAny>) -> PyResult<()> {
         if !self.allocated {
             return Err(pyo3::exceptions::PyRuntimeError::new_err(
                 "Buffer not allocated",
@@ -224,7 +224,7 @@ impl PyGpuBuffer {
     }
 
     /// Read data from buffer
-    fn read(&self, py: Python) -> PyResult<PyObject> {
+    fn read(&self, py: Python) -> PyResult<Py<PyAny>> {
         if !self.allocated {
             return Err(pyo3::exceptions::PyRuntimeError::new_err(
                 "Buffer not allocated",

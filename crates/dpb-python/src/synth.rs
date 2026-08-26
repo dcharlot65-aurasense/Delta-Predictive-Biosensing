@@ -411,7 +411,7 @@ pub struct PyBatchGenerator {
 #[pymethods]
 impl PyBatchGenerator {
     #[new]
-    fn new(generator: PyObject, batch_size: usize) -> Self {
+    fn new(generator: Py<PyAny>, batch_size: usize) -> Self {
         Self { batch_size }
     }
 
@@ -452,28 +452,28 @@ impl PyBatchGenerator {
 /// Example:
 ///     >>> gen = create_generator('ecg', {'heart_rate': 70, 'hrv_sdnn': 50})
 #[pyfunction]
-fn create_generator(name: &str, config: Option<&Bound<'_, PyDict>>) -> PyResult<PyObject> {
-    Python::with_gil(|py| {
-        let generator: PyObject = match name {
+fn create_generator(name: &str, config: Option<&Bound<'_, PyDict>>) -> PyResult<Py<PyAny>> {
+    Python::attach(|py| {
+        let generator: Py<PyAny> = match name {
             "ecg" => {
                 let heart_rate = config
                     .and_then(|c| c.get_item("heart_rate").ok().flatten())
                     .map(|v| v.extract::<f64>().unwrap_or(70.0))
                     .unwrap_or(70.0);
 
-                Py::new(py, PyEcgGenerator::new(heart_rate, 50.0, 0.05, false))?.into_py(py)
+                Py::new(py, PyEcgGenerator::new(heart_rate, 50.0, 0.05, false))?.into_any()
             }
             "ppg" => {
-                Py::new(py, PyPpgGenerator::new(75.0, 40.0, 0.03, 0.5))?.into_py(py)
+                Py::new(py, PyPpgGenerator::new(75.0, 40.0, 0.03, 0.5))?.into_any()
             }
             "accelerometer" => {
-                Py::new(py, PyAccelerometerGenerator::new("rest", 0.02, 0.001))?.into_py(py)
+                Py::new(py, PyAccelerometerGenerator::new("rest", 0.02, 0.001))?.into_any()
             }
             "emg" => {
-                Py::new(py, PyEmgGenerator::new(0.5, 0.01, 0.05))?.into_py(py)
+                Py::new(py, PyEmgGenerator::new(0.5, 0.01, 0.05))?.into_any()
             }
             "eeg" => {
-                Py::new(py, PyEegGenerator::new(8, 10.0, 0.1))?.into_py(py)
+                Py::new(py, PyEegGenerator::new(8, 10.0, 0.1))?.into_any()
             }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(format!(

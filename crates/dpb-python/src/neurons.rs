@@ -430,9 +430,9 @@ impl PyHodgkinHuxleyNeuron {
 /// Example:
 ///     >>> neuron = create_neuron('lif', {'tau': 0.02, 'threshold': 1.0})
 #[pyfunction]
-fn create_neuron(name: &str, config: Option<&Bound<'_, PyDict>>) -> PyResult<PyObject> {
-    Python::with_gil(|py| {
-        let neuron: PyObject = match name {
+fn create_neuron(name: &str, config: Option<&Bound<'_, PyDict>>) -> PyResult<Py<PyAny>> {
+    Python::attach(|py| {
+        let neuron: Py<PyAny> = match name {
             "lif" => {
                 let tau = config
                     .and_then(|c| c.get_item("tau").ok().flatten())
@@ -443,16 +443,16 @@ fn create_neuron(name: &str, config: Option<&Bound<'_, PyDict>>) -> PyResult<PyO
                     .map(|v| v.extract::<f64>().unwrap_or(1.0))
                     .unwrap_or(1.0);
 
-                Py::new(py, PyLifNeuron::new(tau, threshold, 0.0, 0.002))?.into_py(py)
+                Py::new(py, PyLifNeuron::new(tau, threshold, 0.0, 0.002))?.into_any()
             }
             "alif" => {
-                Py::new(py, PyAlifNeuron::new(0.02, 1.0, 0.0, 0.1, 0.1))?.into_py(py)
+                Py::new(py, PyAlifNeuron::new(0.02, 1.0, 0.0, 0.1, 0.1))?.into_any()
             }
             "izhikevich" => {
-                Py::new(py, PyIzhikevichNeuron::new(0.02, 0.2, -65.0, 8.0))?.into_py(py)
+                Py::new(py, PyIzhikevichNeuron::new(0.02, 0.2, -65.0, 8.0))?.into_any()
             }
             "hodgkin_huxley" => {
-                Py::new(py, PyHodgkinHuxleyNeuron::new(120.0, 36.0, 0.3, 50.0, -77.0, -54.387))?.into_py(py)
+                Py::new(py, PyHodgkinHuxleyNeuron::new(120.0, 36.0, 0.3, 50.0, -77.0, -54.387))?.into_any()
             }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(format!(

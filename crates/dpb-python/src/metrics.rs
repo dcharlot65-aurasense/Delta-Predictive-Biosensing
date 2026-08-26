@@ -27,7 +27,7 @@ impl PyMetric {
     ///
     /// Returns:
     ///     float: Metric value
-    fn compute(&self, _predictions: PyObject, _targets: PyObject) -> PyResult<f64> {
+    fn compute(&self, _predictions: Py<PyAny>, _targets: Py<PyAny>) -> PyResult<f64> {
         // Base implementation
         Ok(0.0)
     }
@@ -519,21 +519,21 @@ impl PySpikeDistance {
 ///     >>> results = collection.compute(predictions, targets)
 #[pyclass(name = "MetricCollection")]
 pub struct PyMetricCollection {
-    metrics: Vec<PyObject>,
+    metrics: Vec<Py<PyAny>>,
 }
 
 #[pymethods]
 impl PyMetricCollection {
     #[new]
-    fn new(metrics: Vec<PyObject>) -> Self {
+    fn new(metrics: Vec<Py<PyAny>>) -> Self {
         Self { metrics }
     }
 
     /// Compute all metrics
     fn compute(
         &self,
-        predictions: PyObject,
-        targets: PyObject,
+        predictions: Py<PyAny>,
+        targets: Py<PyAny>,
         py: Python,
     ) -> PyResult<HashMap<String, f64>> {
         let mut results = HashMap::new();

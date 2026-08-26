@@ -27,7 +27,7 @@ impl PyLossFunction {
     ///
     /// Returns:
     ///     float: Loss value
-    fn compute(&self, _predictions: PyObject, _targets: PyObject) -> PyResult<f32> {
+    fn compute(&self, _predictions: Py<PyAny>, _targets: Py<PyAny>) -> PyResult<f32> {
         // Base implementation
         Ok(0.0)
     }
@@ -70,7 +70,7 @@ impl PySpikeCountLoss {
         )
     }
 
-    fn compute(&self, predictions: PyObject, targets: PyObject, py: Python) -> PyResult<f32> {
+    fn compute(&self, predictions: Py<PyAny>, targets: Py<PyAny>, py: Python) -> PyResult<f32> {
         // Placeholder - would compute actual spike count loss
         Ok(0.0)
     }
@@ -109,7 +109,7 @@ impl PySpikeTimeLoss {
         )
     }
 
-    fn compute(&self, predictions: PyObject, targets: PyObject, py: Python) -> PyResult<f32> {
+    fn compute(&self, predictions: Py<PyAny>, targets: Py<PyAny>, py: Python) -> PyResult<f32> {
         // Placeholder
         Ok(0.0)
     }
@@ -140,7 +140,7 @@ impl PyCrossEntropyLoss {
         )
     }
 
-    fn compute(&self, predictions: PyObject, targets: PyObject, py: Python) -> PyResult<f32> {
+    fn compute(&self, predictions: Py<PyAny>, targets: Py<PyAny>, py: Python) -> PyResult<f32> {
         // Placeholder
         Ok(0.0)
     }
@@ -333,7 +333,7 @@ pub struct PyTrainer {
     loss_name: String,
     optimizer_name: String,
     learning_rate: f32,
-    callbacks: Vec<PyObject>,
+    callbacks: Vec<Py<PyAny>>,
     history: HashMap<String, Vec<f32>>,
 }
 
@@ -342,7 +342,7 @@ impl PyTrainer {
     #[new]
     #[pyo3(signature = (model, loss="spike_count", optimizer="adam", learning_rate=0.001))]
     fn new(
-        model: PyObject,
+        model: Py<PyAny>,
         loss: &str,
         optimizer: &str,
         learning_rate: f32,
@@ -357,7 +357,7 @@ impl PyTrainer {
     }
 
     /// Add a training callback
-    fn add_callback(&mut self, callback: PyObject) {
+    fn add_callback(&mut self, callback: Py<PyAny>) {
         self.callbacks.push(callback);
     }
 
@@ -374,9 +374,9 @@ impl PyTrainer {
     #[pyo3(signature = (train_data, epochs, validation_data=None, verbose=false))]
     fn fit(
         &mut self,
-        train_data: PyObject,
+        train_data: Py<PyAny>,
         epochs: usize,
-        validation_data: Option<PyObject>,
+        validation_data: Option<Py<PyAny>>,
         verbose: bool,
         py: Python,
     ) -> PyResult<HashMap<String, Vec<f32>>> {
@@ -428,7 +428,7 @@ impl PyTrainer {
     ///
     /// Returns:
     ///     dict: Evaluation metrics
-    fn evaluate(&self, data: PyObject, py: Python) -> PyResult<HashMap<String, f32>> {
+    fn evaluate(&self, data: Py<PyAny>, py: Python) -> PyResult<HashMap<String, f32>> {
         // Placeholder
         let mut metrics = HashMap::new();
         metrics.insert("loss".to_string(), 0.0);
@@ -471,7 +471,7 @@ impl PyLRScheduler {
     #[new]
     #[pyo3(signature = (optimizer, schedule_type="step", step_size=10, gamma=0.1))]
     fn new(
-        optimizer: PyObject,
+        optimizer: Py<PyAny>,
         schedule_type: &str,
         step_size: usize,
         gamma: f32,

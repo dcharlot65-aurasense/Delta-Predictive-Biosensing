@@ -330,13 +330,13 @@ impl PySpikingPooling {
 ///     >>> output = model.forward(input_spikes, dt=0.001)
 #[pyclass(name = "Sequential")]
 pub struct PySequential {
-    layers: Vec<PyObject>,
+    layers: Vec<Py<PyAny>>,
 }
 
 #[pymethods]
 impl PySequential {
     #[new]
-    fn new(layers: Vec<PyObject>) -> Self {
+    fn new(layers: Vec<Py<PyAny>>) -> Self {
         Self { layers }
     }
 
@@ -368,7 +368,7 @@ impl PySequential {
     }
 
     /// Get layer by index
-    fn __getitem__(&self, idx: usize, py: Python) -> PyResult<PyObject> {
+    fn __getitem__(&self, idx: usize, py: Python) -> PyResult<Py<PyAny>> {
         self.layers
             .get(idx)
             .map(|obj| obj.clone_ref(py))
@@ -391,7 +391,7 @@ impl PySequential {
 ///     >>> model = builder.build()
 #[pyclass(name = "SNNBuilder")]
 pub struct PySNNBuilder {
-    layers: Vec<PyObject>,
+    layers: Vec<Py<PyAny>>,
     config: HashMap<String, String>,
 }
 
@@ -418,7 +418,7 @@ impl PySNNBuilder {
             py,
             PySpikingLinear::new(input_size, output_size, neuron_type, "uniform"),
         )?;
-        self.layers.push(layer.into_py(py));
+        self.layers.push(layer.into_any());
         Ok(())
     }
 
@@ -435,7 +435,7 @@ impl PySNNBuilder {
             py,
             PySpikingConv2d::new(in_channels, out_channels, kernel, 1, 0, "lif"),
         )?;
-        self.layers.push(layer.into_py(py));
+        self.layers.push(layer.into_any());
         Ok(())
     }
 
@@ -447,7 +447,7 @@ impl PySNNBuilder {
         hidden_size: usize,
     ) -> PyResult<()> {
         let layer = Py::new(py, PySpikingRecurrent::new(input_size, hidden_size, "lif"))?;
-        self.layers.push(layer.into_py(py));
+        self.layers.push(layer.into_any());
         Ok(())
     }
 
@@ -455,13 +455,13 @@ impl PySNNBuilder {
     fn add_pooling(&mut self, py: Python, pool_size: Option<usize>) -> PyResult<()> {
         let size = pool_size.unwrap_or(2);
         let layer = Py::new(py, PySpikingPooling::new(size, "max"))?;
-        self.layers.push(layer.into_py(py));
+        self.layers.push(layer.into_any());
         Ok(())
     }
 
     /// Build the sequential model
     fn build(&self, py: Python) -> PyResult<PySequential> {
-        let layers: Vec<PyObject> = self.layers.iter().map(|obj| obj.clone_ref(py)).collect();
+        let layers: Vec<Py<PyAny>> = self.layers.iter().map(|obj| obj.clone_ref(py)).collect();
         Ok(PySequential::new(layers))
     }
 

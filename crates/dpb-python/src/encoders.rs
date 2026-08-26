@@ -352,16 +352,16 @@ impl PyPpgPeakEncoder {
 /// Example:
 ///     >>> encoder = create_encoder('level_crossing', {'threshold': 0.5})
 #[pyfunction]
-fn create_encoder(name: &str, config: Option<&Bound<'_, PyDict>>) -> PyResult<PyObject> {
-    Python::with_gil(|py| {
-        let encoder: PyObject = match name {
+fn create_encoder(name: &str, config: Option<&Bound<'_, PyDict>>) -> PyResult<Py<PyAny>> {
+    Python::attach(|py| {
+        let encoder: Py<PyAny> = match name {
             "level_crossing" => {
                 let threshold = config
                     .and_then(|c| c.get_item("threshold").ok().flatten())
                     .map(|v| v.extract::<f64>().unwrap_or(0.5))
                     .unwrap_or(0.5);
 
-                Py::new(py, PyLevelCrossingEncoder::new(threshold, true, true))?.into_py(py)
+                Py::new(py, PyLevelCrossingEncoder::new(threshold, true, true))?.into_any()
             }
             "template_deviation" => {
                 let template_type = config
@@ -369,7 +369,7 @@ fn create_encoder(name: &str, config: Option<&Bound<'_, PyDict>>) -> PyResult<Py
                     .map(|v| v.extract::<String>().unwrap_or_else(|_| "generic".to_string()))
                     .unwrap_or_else(|| "generic".to_string());
 
-                Py::new(py, PyTemplateDeviationEncoder::new(&template_type, 0.1, 100))?.into_py(py)
+                Py::new(py, PyTemplateDeviationEncoder::new(&template_type, 0.1, 100))?.into_any()
             }
             "derivative" => {
                 let threshold = config
@@ -377,13 +377,13 @@ fn create_encoder(name: &str, config: Option<&Bound<'_, PyDict>>) -> PyResult<Py
                     .map(|v| v.extract::<f64>().unwrap_or(0.1))
                     .unwrap_or(0.1);
 
-                Py::new(py, PyDerivativeEncoder::new(threshold, 1))?.into_py(py)
+                Py::new(py, PyDerivativeEncoder::new(threshold, 1))?.into_any()
             }
             "ecg_rpeak" => {
-                Py::new(py, PyEcgRPeakEncoder::new(0.5, 200.0, 0.4))?.into_py(py)
+                Py::new(py, PyEcgRPeakEncoder::new(0.5, 200.0, 0.4))?.into_any()
             }
             "ppg_peak" => {
-                Py::new(py, PyPpgPeakEncoder::new(0.3, 0.5))?.into_py(py)
+                Py::new(py, PyPpgPeakEncoder::new(0.3, 0.5))?.into_any()
             }
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(format!(

@@ -77,7 +77,7 @@ impl PySpikeEvent {
     }
 
     /// Convert to dictionary
-    fn to_dict(&self, py: Python) -> PyResult<PyObject> {
+    fn to_dict(&self, py: Python) -> PyResult<Py<PyAny>> {
         let dict = PyDict::new(py);
         dict.set_item("timestamp", self.timestamp)?;
         dict.set_item("channel", self.channel)?;
@@ -229,7 +229,7 @@ impl PyTimeSeries {
 
     /// Get the data array
     #[getter]
-    fn data(&self, py: Python) -> PyObject {
+    fn data(&self, py: Python) -> Py<PyAny> {
         self.data.clone_ref(py).into_any().into()
     }
 
@@ -288,7 +288,7 @@ impl PyTimeSeries {
             .map(|i| array[[i, channel]])
             .collect();
 
-        Ok(PyArray1::from_vec_bound(py, data).into())
+        Ok(PyArray1::from_vec(py, data).into())
     }
 }
 

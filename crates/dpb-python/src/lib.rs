@@ -1,7 +1,27 @@
 //! Python bindings for the Delta-Predictive Biosensing Framework
 //!
-//! This crate provides Python bindings using PyO3 for the DPB framework,
-//! enabling Python users to access neuromorphic signal processing capabilities.
+//! # These bindings do not yet call the library
+//!
+//! **Every algorithm exposed here is a standalone placeholder, not a binding.**
+//! The crate declares `dpb-core`, `dpb-encoders`, `dpb-neurons`, `dpb-snn` and
+//! `dpb-synth` as dependencies and imports none of them: `grep` for them across
+//! `src/` returns nothing. Several functions say so in a comment --
+//! "Placeholder implementation - would call Rust encoder".
+//!
+//! What that means in practice:
+//!
+//! - The Python API has the SHAPE of the Rust library but its own behaviour.
+//!   `LevelCrossingEncoder` here re-implements threshold detection inline; it
+//!   does not use [`dpb_encoders::LevelCrossingEncoder`], and so does not have
+//!   that encoder's default `Delta` mode or its bounded-reconstruction
+//!   guarantee.
+//! - Corrections made to the Rust crates do not reach Python users, because
+//!   nothing connects the two.
+//! - Results obtained through this module should not be attributed to DPB.
+//!
+//! The API surface is worth keeping as a specification of what the bindings
+//! should expose. It is not usable as bindings until each function is wired to
+//! the crate it names.
 
 use pyo3::prelude::*;
 
