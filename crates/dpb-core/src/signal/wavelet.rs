@@ -284,8 +284,10 @@ impl DiscreteWaveletTransform {
             }
             _ => {
                 // Default to Haar wavelet (Daubechies-2)
-                let h_low = vec![0.7071067811865476, 0.7071067811865476];
-                let h_high = vec![0.7071067811865476, -0.7071067811865476];
+                // Haar coefficients are exactly 1/sqrt(2).
+                let c = std::f64::consts::FRAC_1_SQRT_2;
+                let h_low = vec![c, c];
+                let h_high = vec![c, -c];
                 // See the db2 arm: synthesis is the transpose of analysis.
                 let g_low = h_low.clone();
                 let g_high = h_high.clone();

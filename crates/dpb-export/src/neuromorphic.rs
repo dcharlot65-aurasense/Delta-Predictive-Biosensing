@@ -183,6 +183,9 @@ pub struct HardwareSpecs {
     pub time_resolution_us: f32,
 }
 
+// LIF/ALIF/CUBA/COBA and STDP/STP/R-STDP are how these models and
+// plasticity rules are written in the neuromorphic literature.
+#[allow(clippy::upper_case_acronyms)]
 /// Neuron model type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NeuronModel {
@@ -226,6 +229,9 @@ impl NeuronModel {
     }
 }
 
+// LIF/ALIF/CUBA/COBA and STDP/STP/R-STDP are how these models and
+// plasticity rules are written in the neuromorphic literature.
+#[allow(clippy::upper_case_acronyms)]
 /// Synapse model type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SynapseModel {

@@ -499,10 +499,14 @@ impl QrsMorphology {
     }
 }
 
-/// Arrhythmia detection and analysis
-pub struct ArrhythmiaDetector {
-    sample_rate: f64,
-}
+/// Arrhythmia detection and analysis.
+///
+/// This works from already-detected R-peaks whose `rr_interval_ms` is in
+/// milliseconds, so it needs no sample rate of its own. It used to take one
+/// and ignore it, which meant a caller passing the wrong rate saw neither an
+/// error nor an effect.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ArrhythmiaDetector;
 
 /// Arrhythmia detection result
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -526,9 +530,9 @@ pub struct ArrhythmiaAnalysis {
 }
 
 impl ArrhythmiaDetector {
-    /// Create a new arrhythmia detector
-    pub fn new(sample_rate: f64) -> Self {
-        Self { sample_rate }
+    /// Create a new arrhythmia detector.
+    pub fn new() -> Self {
+        Self
     }
 
     /// Analyze ECG for arrhythmias
@@ -696,7 +700,7 @@ mod tests {
     #[test]
     fn test_arrhythmia_detector() {
         let sample_rate = 250.0;
-        let detector = ArrhythmiaDetector::new(sample_rate);
+        let detector = ArrhythmiaDetector::new();
 
         // Create synthetic R-peaks with regular intervals (60 bpm)
         let rr_interval = 1000.0; // 1 second = 60 bpm
@@ -767,7 +771,7 @@ mod tests {
 
     #[test]
     fn test_afib_detection() {
-        let detector = ArrhythmiaDetector::new(250.0);
+        let detector = ArrhythmiaDetector::new();
 
         // Irregular RR intervals (AFib-like)
         let irregular_rr = vec![800.0, 650.0, 950.0, 700.0, 850.0, 600.0, 900.0, 750.0];
