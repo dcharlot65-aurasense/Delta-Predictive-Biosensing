@@ -152,13 +152,11 @@ impl BidsSession {
             let entry = entry.map_err(DpbError::Io)?;
             let path = entry.path();
 
-            if path.is_dir() {
-                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if let Some(modality) = Modality::from_dir_name(name) {
+            if path.is_dir()
+                && let Some(name) = path.file_name().and_then(|n| n.to_str())
+                    && let Some(modality) = Modality::from_dir_name(name) {
                         modalities.push(modality);
                     }
-                }
-            }
         }
 
         Ok(modalities)

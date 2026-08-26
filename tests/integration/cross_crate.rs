@@ -139,7 +139,7 @@ fn test_synth_to_encoder_pipeline() {
 #[test]
 fn test_encoder_to_snn_pipeline() {
     // Test dpb-encoders → dpb-snn integration
-    let data = vec![0.0, 0.5, 1.0, 0.5, 0.0, -0.5, -1.0, -0.5];
+    let data = [0.0, 0.5, 1.0, 0.5, 0.0, -0.5, -1.0, -0.5];
     let signal = SignalBuffer::single_channel(data.iter().map(|&x| x as f32).collect(), 100.0);
 
     // Encode
@@ -269,7 +269,7 @@ fn test_full_pipeline_integration() {
 #[test]
 fn test_event_encoder_trait() {
     // Verify EventEncoder trait works across implementations
-    let data = vec![0.0, 1.0, 0.0, -1.0];
+    let data = [0.0, 1.0, 0.0, -1.0];
     let signal = SignalBuffer::single_channel(data.iter().map(|&x| x as f32).collect(), 100.0);
 
     // Test with LevelCrossingEncoder
@@ -351,7 +351,7 @@ fn test_neuron_model_compatibility() {
         let spike_tensor = SpikeTensor::zeros(1, num_timesteps, num_channels, false);
 
         let output = snn.forward(&spike_tensor)
-            .expect(&format!("Failed with neuron model {:?}", model));
+            .unwrap_or_else(|_| panic!("Failed with neuron model {:?}", model));
 
         println!("Neuron model {:?}: output shape {:?}", model, output.shape());
     }

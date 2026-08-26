@@ -56,7 +56,7 @@ use types::{DpbEncoder, DpbErrorCode, DpbSpikeTrain, DpbTimeSeries};
 
 // Thread-local storage for error messages
 thread_local! {
-    static LAST_ERROR: std::cell::RefCell<Option<String>> = std::cell::RefCell::new(None);
+    static LAST_ERROR: std::cell::RefCell<Option<String>> = const { std::cell::RefCell::new(None) };
 }
 
 /// Sets the last error message.
@@ -131,7 +131,7 @@ pub extern "C" fn dpb_last_error() -> *const c_char {
             // This is a bit tricky - we need to return a C string that outlives this function
             // We'll use a thread-local static to store the C string
             thread_local! {
-                static ERROR_CSTRING: std::cell::RefCell<Option<CString>> = std::cell::RefCell::new(None);
+                static ERROR_CSTRING: std::cell::RefCell<Option<CString>> = const { std::cell::RefCell::new(None) };
             }
 
             ERROR_CSTRING.with(|cs| {
@@ -753,7 +753,7 @@ mod tests {
     #[test]
     fn test_timeseries_lifecycle() {
         unsafe {
-            let data = vec![1.0f32, 2.0, 3.0, 4.0, 5.0];
+            let data = [1.0f32, 2.0, 3.0, 4.0, 5.0];
             let ts = dpb_timeseries_new(data.as_ptr(), 5, 1, 1000.0);
             assert!(!ts.is_null());
 

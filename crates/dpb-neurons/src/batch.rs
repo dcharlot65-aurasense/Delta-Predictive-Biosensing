@@ -305,7 +305,7 @@ mod tests {
     fn test_batch_network() {
         let config = LifConfig::default();
         let layer_sizes = vec![10, 20, 10];
-        let mut network = BatchNetwork::new(&layer_sizes, config);
+        let network = BatchNetwork::new(&layer_sizes, config);
 
         assert_eq!(network.layers.len(), 3);
         assert_eq!(network.weights.len(), 2);

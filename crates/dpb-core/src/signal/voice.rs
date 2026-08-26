@@ -462,7 +462,7 @@ impl VoiceAnalyzer {
         let normalized_corr = r_period / r0;
 
         // HNR in dB
-        if normalized_corr >= 0.0 && normalized_corr < 1.0 {
+        if (0.0..1.0).contains(&normalized_corr) {
             Ok(10.0 * (normalized_corr / (1.0 - normalized_corr)).log10())
         } else if normalized_corr >= 1.0 {
             Ok(30.0) // Very high HNR

@@ -222,9 +222,7 @@ impl DendriticPlasticity for BranchSpecificPlasticity {
     }
 
     fn reset(&mut self) {
-        for activity in &mut self.branch_activity {
-            *activity = 0.0;
-        }
+        self.branch_activity.fill(0.0);
     }
 }
 
@@ -577,7 +575,7 @@ mod tests {
 
     #[test]
     fn test_compartment_plasticity() {
-        let mut plasticity = CompartmentPlasticity::new(5).with_distance_scaling(true);
+        let plasticity = CompartmentPlasticity::new(5).with_distance_scaling(true);
 
         // Distal synapses should have higher learning rate
         let proximal_rate = plasticity.learning_rate(0, 50.0);

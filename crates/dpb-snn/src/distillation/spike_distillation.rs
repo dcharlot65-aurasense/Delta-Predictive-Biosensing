@@ -211,7 +211,7 @@ impl SpikeRateDistillation {
             dense.shape()[2],
         );
 
-        let num_windows = (num_steps + self.window_size - 1) / self.window_size;
+        let num_windows = num_steps.div_ceil(self.window_size);
         let mut rates = Array3::zeros((batch_size, num_windows, num_neurons));
 
         for b in 0..batch_size {

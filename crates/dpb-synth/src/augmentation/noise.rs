@@ -61,7 +61,7 @@ impl PinkNoise {
     /// Generate pink noise using the Voss-McCartney algorithm
     fn generate_pink_noise(&self, length: usize, rng: &mut dyn Rng) -> Vec<f64> {
         const NUM_GENERATORS: usize = 16;
-        let mut generators = vec![0.0; NUM_GENERATORS];
+        let mut generators = [0.0; NUM_GENERATORS];
         let mut counter = 0u32;
         let mut pink = Vec::with_capacity(length);
 
@@ -240,7 +240,7 @@ impl SignalAugmentation for MotionArtifact {
         // Determine number of artifacts to add
         let expected_artifacts = self.probability * duration_sec;
         let num_artifacts = if expected_artifacts >= 1.0 {
-            random_usize_range(rng, 0, (expected_artifacts.ceil() as usize))
+            random_usize_range(rng, 0, expected_artifacts.ceil() as usize)
         } else if ((rng.next_u64() as f64) / (u64::MAX as f64)) < expected_artifacts {
             1
         } else {
@@ -249,7 +249,7 @@ impl SignalAugmentation for MotionArtifact {
 
         for _ in 0..num_artifacts {
             // Random artifact location
-            let start_idx = random_usize_range(rng, 0, (signal.len().saturating_sub(1)));
+            let start_idx = random_usize_range(rng, 0, signal.len().saturating_sub(1));
 
             // Random artifact duration
             let duration_sec = random_f64_range(rng, self.duration_range.0, self.duration_range.1);

@@ -196,7 +196,7 @@ impl MultiCompartmentNeuron {
 
     /// Get soma voltage
     pub fn soma_voltage(&self) -> f64 {
-        self.compartments.get(0).map_or(-70.0, |c| c.voltage())
+        self.compartments.first().map_or(-70.0, |c| c.voltage())
     }
 
     /// Get compartment voltage
@@ -248,11 +248,10 @@ impl MultiCompartmentNeuron {
             };
 
             // Current from parent
-            if let Some(parent_idx) = comp.parent() {
-                if let Some(parent) = self.compartments.get(parent_idx) {
+            if let Some(parent_idx) = comp.parent()
+                && let Some(parent) = self.compartments.get(parent_idx) {
                     couple(parent);
                 }
-            }
 
             // Current from children
             for &child_idx in comp.children() {
@@ -383,11 +382,10 @@ impl MultiCompartmentNeuron {
             let cable = comp.cable_params();
             let mut g = cable.conductance;
 
-            if let Some(parent) = comp.parent() {
-                if let Some(p) = self.compartments.get(parent) {
+            if let Some(parent) = comp.parent()
+                && let Some(p) = self.compartments.get(parent) {
                     g += 1.0 / (comp.axial_resistance() + p.axial_resistance());
                 }
-            }
             for &child in comp.children() {
                 if let Some(c) = self.compartments.get(child) {
                     g += 1.0 / (comp.axial_resistance() + c.axial_resistance());
@@ -646,17 +644,15 @@ impl MultiCompartmentNeuron {
         na_conductance: Option<f64>,
         k_conductance: Option<f64>,
     ) {
-        if let Some(g_na) = na_conductance {
-            if let Some(na_slot) = self.na_channels.get_mut(idx) {
+        if let Some(g_na) = na_conductance
+            && let Some(na_slot) = self.na_channels.get_mut(idx) {
                 *na_slot = Some(HodgkinHuxleyChannel::sodium(g_na));
             }
-        }
 
-        if let Some(g_k) = k_conductance {
-            if let Some(k_slot) = self.k_channels.get_mut(idx) {
+        if let Some(g_k) = k_conductance
+            && let Some(k_slot) = self.k_channels.get_mut(idx) {
                 *k_slot = Some(HodgkinHuxleyChannel::potassium(g_k));
             }
-        }
     }
 
     /// Get voltage trace for all compartments
@@ -670,12 +666,12 @@ impl MultiCompartmentNeuron {
 
     /// Calculate input resistance at soma
     pub fn input_resistance(&self) -> f64 {
-        self.compartments.get(0).map_or(0.0, |c| c.input_resistance())
+        self.compartments.first().map_or(0.0, |c| c.input_resistance())
     }
 
     /// Calculate membrane time constant at soma
     pub fn time_constant(&self) -> f64 {
-        self.compartments.get(0).map_or(0.0, |c| c.time_constant())
+        self.compartments.first().map_or(0.0, |c| c.time_constant())
     }
 }
 

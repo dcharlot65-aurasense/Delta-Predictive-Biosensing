@@ -334,7 +334,7 @@ fn test_normative_comparison_pipeline() {
     let sampling_rate = 250.0;
 
     // Generate multiple ECG samples with different heart rates
-    let heart_rates = vec![60.0, 70.0, 80.0, 90.0, 100.0];
+    let heart_rates = [60.0, 70.0, 80.0, 90.0, 100.0];
     let mut all_hrv_metrics = Vec::new();
 
     for (i, &hr) in heart_rates.iter().enumerate() {

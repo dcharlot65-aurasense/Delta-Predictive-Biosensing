@@ -219,10 +219,10 @@ mod tests {
 
         // Test interpolation
         let calibrated = ic.calibrate(0.3);
-        assert!(calibrated >= 0.1 && calibrated <= 0.5);
+        assert!((0.1..=0.5).contains(&calibrated));
 
         let calibrated = ic.calibrate(0.7);
-        assert!(calibrated >= 0.5 && calibrated <= 0.9);
+        assert!((0.5..=0.9).contains(&calibrated));
     }
 
     #[test]
@@ -241,7 +241,7 @@ mod tests {
 
         // All calibrated values should be in [0, 1]
         for &val in &calibrated {
-            assert!(val >= 0.0 && val <= 1.0);
+            assert!((0.0..=1.0).contains(&val));
         }
     }
 

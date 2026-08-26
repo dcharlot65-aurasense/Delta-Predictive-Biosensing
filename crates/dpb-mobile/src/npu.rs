@@ -370,7 +370,7 @@ impl NpuEncoder {
                 "num_channels must be non-zero".to_string(),
             ));
         }
-        if !signal.is_empty() && signal.len() % self.config.num_channels != 0 {
+        if !signal.is_empty() && !signal.len().is_multiple_of(self.config.num_channels) {
             return Err(NpuError::InvalidConfig(format!(
                 "signal length {} is not a multiple of num_channels {}",
                 signal.len(),
@@ -633,7 +633,7 @@ impl std::error::Error for NpuError {}
 
 /// Detect all available NPU backends on this device.
 pub fn detect_npus() -> Vec<NpuBackend> {
-    let mut backends = vec![NpuBackend::Cpu]; // CPU always available
+    let backends = vec![NpuBackend::Cpu]; // CPU always available
 
     // Platform-specific detection
     #[cfg(target_os = "android")]
@@ -736,8 +736,8 @@ mod tests {
         let mut encoder = NpuEncoder::new(NpuBackend::Cpu, config, 0.1).unwrap();
 
         // Six samples across four channels is one frame and a half.
-        assert!(encoder.encode(&vec![0.0; 6]).is_err());
-        assert!(encoder.encode(&vec![0.0; 8]).is_ok());
+        assert!(encoder.encode(&[0.0; 6]).is_err());
+        assert!(encoder.encode(&[0.0; 8]).is_ok());
     }
 
 }

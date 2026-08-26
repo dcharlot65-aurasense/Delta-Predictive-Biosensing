@@ -252,7 +252,7 @@ impl SerialAssessment {
     pub fn add_session(&mut self, session: AssessmentSession) {
         self.sessions.push(session);
         // Sort by date/time
-        self.sessions.sort_by(|a, b| a.session_number.cmp(&b.session_number));
+        self.sessions.sort_by_key(|a| a.session_number);
     }
 
     /// Get session count.

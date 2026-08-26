@@ -363,7 +363,7 @@ mod tests {
             .filter(|a| a.artifact_type == ArtifactType::Amplitude)
             .collect();
 
-        assert!(amplitude_artifacts.len() >= 1);
+        assert!(!amplitude_artifacts.is_empty());
         assert!(amplitude_artifacts[0].amplitude > 100.0);
 
         // The segment must cover the samples that actually breached threshold.
@@ -395,7 +395,7 @@ mod tests {
             .filter(|a| a.artifact_type == ArtifactType::Flatline)
             .collect();
 
-        assert!(flatline_artifacts.len() > 0);
+        assert!(!flatline_artifacts.is_empty());
     }
 
     #[test]

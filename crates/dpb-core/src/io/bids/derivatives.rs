@@ -164,11 +164,10 @@ impl PipelineDescription {
 
     /// Set the code URL for the pipeline
     pub fn with_code_url(mut self, url: impl Into<String>) -> Self {
-        if let Some(ref mut generated) = self.generated_by {
-            if let Some(pipeline) = generated.first_mut() {
+        if let Some(ref mut generated) = self.generated_by
+            && let Some(pipeline) = generated.first_mut() {
                 pipeline.code_url = Some(url.into());
             }
-        }
         self
     }
 
@@ -183,11 +182,10 @@ impl PipelineDescription {
             tag: tag.into(),
         };
 
-        if let Some(ref mut generated) = self.generated_by {
-            if let Some(pipeline) = generated.first_mut() {
+        if let Some(ref mut generated) = self.generated_by
+            && let Some(pipeline) = generated.first_mut() {
                 pipeline.container = Some(container);
             }
-        }
         self
     }
 }

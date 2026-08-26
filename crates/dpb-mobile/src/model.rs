@@ -194,6 +194,7 @@ pub struct MobileModel {
 
 /// Model metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct ModelMetadata {
     /// Model description
     pub description: String,
@@ -217,19 +218,6 @@ pub struct ModelMetadata {
     pub tags: Vec<String>,
 }
 
-impl Default for ModelMetadata {
-    fn default() -> Self {
-        Self {
-            description: String::new(),
-            author: String::new(),
-            created_at: 0,
-            modified_at: 0,
-            accuracy: None,
-            training_dataset: None,
-            tags: Vec::new(),
-        }
-    }
-}
 
 impl MobileModel {
     /// Create a new mobile model

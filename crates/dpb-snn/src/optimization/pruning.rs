@@ -219,7 +219,7 @@ impl PruningSchedule {
                 start_step,
                 frequency,
                 ..
-            } => step >= *start_step && (step - start_step) % frequency == 0,
+            } => step >= *start_step && (step - start_step).is_multiple_of(*frequency),
             Self::Polynomial {
                 start_step,
                 end_step,
@@ -655,10 +655,10 @@ mod tests {
 
         let mask = PruningMask::from_weights(&weights);
 
-        assert_eq!(mask.mask[[0, 0]], true);
-        assert_eq!(mask.mask[[0, 1]], false);
-        assert_eq!(mask.mask[[1, 0]], true);
-        assert_eq!(mask.mask[[1, 1]], false);
+        assert!(mask.mask[[0, 0]]);
+        assert!(!mask.mask[[0, 1]]);
+        assert!(mask.mask[[1, 0]]);
+        assert!(!mask.mask[[1, 1]]);
 
         assert_abs_diff_eq!(mask.sparsity(), 0.5, epsilon = 1e-6);
     }
@@ -690,10 +690,10 @@ mod tests {
 
         let intersect = mask1.intersect(&mask2);
 
-        assert_eq!(intersect.mask[[0, 0]], true);
-        assert_eq!(intersect.mask[[0, 1]], false);
-        assert_eq!(intersect.mask[[1, 0]], false);
-        assert_eq!(intersect.mask[[1, 1]], false);
+        assert!(intersect.mask[[0, 0]]);
+        assert!(!intersect.mask[[0, 1]]);
+        assert!(!intersect.mask[[1, 0]]);
+        assert!(!intersect.mask[[1, 1]]);
     }
 
     #[test]
@@ -708,10 +708,10 @@ mod tests {
 
         let union = mask1.union(&mask2);
 
-        assert_eq!(union.mask[[0, 0]], true);
-        assert_eq!(union.mask[[0, 1]], true);
-        assert_eq!(union.mask[[1, 0]], false);
-        assert_eq!(union.mask[[1, 1]], false);
+        assert!(union.mask[[0, 0]]);
+        assert!(union.mask[[0, 1]]);
+        assert!(!union.mask[[1, 0]]);
+        assert!(!union.mask[[1, 1]]);
     }
 
     #[test]

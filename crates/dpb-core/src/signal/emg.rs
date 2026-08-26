@@ -650,6 +650,6 @@ mod tests {
 
         let cci = analyzer.cocontraction_index(agonist.view(), antagonist.view()).unwrap();
 
-        assert!(cci >= 0.0 && cci <= 1.0);
+        assert!((0.0..=1.0).contains(&cci));
     }
 }

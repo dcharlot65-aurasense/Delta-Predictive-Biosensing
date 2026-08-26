@@ -75,14 +75,13 @@ impl LayerConfig {
                     return Err(format!("Layer '{}' has zero stride", self.name));
                 }
             }
-            LayerType::Dropout { rate } => {
-                if *rate < 0.0 || *rate >= 1.0 {
+            LayerType::Dropout { rate }
+                if (*rate < 0.0 || *rate >= 1.0) => {
                     return Err(format!(
                         "Layer '{}' has invalid dropout rate: {}",
                         self.name, rate
                     ));
                 }
-            }
             _ => {}
         }
 
@@ -223,13 +222,13 @@ impl ModelConfig {
         // Validate shapes
         if self.input_shape.is_empty() {
             errors.push("Input shape cannot be empty".to_string());
-        } else if self.input_shape.iter().any(|&s| s == 0) {
+        } else if self.input_shape.contains(&0) {
             errors.push("Input shape contains zero dimensions".to_string());
         }
 
         if self.output_shape.is_empty() {
             errors.push("Output shape cannot be empty".to_string());
-        } else if self.output_shape.iter().any(|&s| s == 0) {
+        } else if self.output_shape.contains(&0) {
             errors.push("Output shape contains zero dimensions".to_string());
         }
 
@@ -250,11 +249,10 @@ impl ModelConfig {
         }
 
         // Validate sample rate if present
-        if let Some(rate) = self.sample_rate {
-            if rate <= 0.0 {
+        if let Some(rate) = self.sample_rate
+            && rate <= 0.0 {
                 errors.push(format!("Sample rate must be positive: {}", rate));
             }
-        }
 
         // Validate layer connections
         if self.layers.len() > 1 {

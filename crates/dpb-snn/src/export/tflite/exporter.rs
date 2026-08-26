@@ -157,14 +157,14 @@ impl TFLiteExporter {
 
         // Add input tensor
         let input_tensor = TFLiteTensor::new(
-            self.config.input_names.get(0).unwrap_or(&"input".to_string()).clone(),
+            self.config.input_names.first().unwrap_or(&"input".to_string()).clone(),
             TensorShape::from_usize(input_shape.to_vec()),
             TensorType::Float32,
         );
         subgraph_builder.add_tensor(input_tensor);
 
         // Convert layers to TFLite operators
-        let mut prev_output = self.config.input_names.get(0).unwrap_or(&"input".to_string()).clone();
+        let mut prev_output = self.config.input_names.first().unwrap_or(&"input".to_string()).clone();
 
         for (i, (layer_config, layer_weights)) in layer_configs.iter()
             .zip(weights.layers.iter())
@@ -243,7 +243,7 @@ impl TFLiteExporter {
 
             // Create output tensor
             let output_name = if i == layer_configs.len() - 1 {
-                self.config.output_names.get(0).unwrap_or(&"output".to_string()).clone()
+                self.config.output_names.first().unwrap_or(&"output".to_string()).clone()
             } else {
                 format!("{}_output", layer_name)
             };
@@ -349,7 +349,7 @@ impl TFLiteExporter {
 
         // Add input metadata
         let input_meta = TensorMetadata::new(
-            self.config.input_names.get(0).unwrap_or(&"input".to_string()).clone(),
+            self.config.input_names.first().unwrap_or(&"input".to_string()).clone(),
             ContentType::FeatureVector,
         )
         .with_description(format!("Input tensor of shape {:?}", input_shape));
@@ -358,7 +358,7 @@ impl TFLiteExporter {
 
         // Add output metadata
         let output_meta = TensorMetadata::new(
-            self.config.output_names.get(0).unwrap_or(&"output".to_string()).clone(),
+            self.config.output_names.first().unwrap_or(&"output".to_string()).clone(),
             ContentType::FeatureVector,
         )
         .with_description("Model output".to_string());

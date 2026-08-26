@@ -38,7 +38,7 @@ impl PopulationTemplate for StrideLengthTemplate {
     fn expected_value(&self, context: &Context) -> f64 {
         // Based on height if available
         match context.height_cm {
-            Some(height) => height as f64 * 0.007, // ~0.7% of height
+            Some(height) => height * 0.007, // ~0.7% of height
             None => 1.4, // Average adult
         }
     }
@@ -233,19 +233,12 @@ impl EventEncoder for ToeOffEncoder {
 // ============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct GaitPhaseConfig {
     pub heel_strikes: Vec<f64>,
     pub toe_offs: Vec<f64>,
 }
 
-impl Default for GaitPhaseConfig {
-    fn default() -> Self {
-        Self {
-            heel_strikes: Vec::new(),
-            toe_offs: Vec::new(),
-        }
-    }
-}
 
 pub struct GaitPhaseEncoder {
     template: StancePhaseTemplate,

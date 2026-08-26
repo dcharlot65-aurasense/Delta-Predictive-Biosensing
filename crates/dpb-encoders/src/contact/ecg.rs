@@ -385,7 +385,7 @@ impl EventEncoder for EcgStDeviationEncoder {
         for &r_peak in &r_peaks {
             let st_point = r_peak + config.j_point_offset + config.st_point_offset;
             if st_point < samples.len() {
-                let baseline = samples[r_peak.saturating_sub(50).max(0)];
+                let baseline = samples[r_peak.saturating_sub(50)];
                 let st_level = samples[st_point];
                 let deviation = st_level - baseline;
 

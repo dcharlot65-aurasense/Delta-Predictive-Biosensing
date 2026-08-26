@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Example 1: Festival TTS Backend
     println!("=== Festival TTS Backend ===");
-    let mut festival_params = VoiceAudioParams {
+    let festival_params = VoiceAudioParams {
         text: "The patient exhibits reduced vocal intensity and monotone speech.".to_string(),
         backend: AudioBackend::Festival,
         voice: Some("kal_diphone".to_string()),

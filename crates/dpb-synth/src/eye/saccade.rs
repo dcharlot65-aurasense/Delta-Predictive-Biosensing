@@ -155,7 +155,7 @@ impl SyntheticGenerator for HypometricSaccadeGenerator {
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
         let dt = 1.0 / params.sampling_rate;
-        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut gaze_position = vec![[0.0, 0.0]; n_samples];
         let mut current_position = [0.0, 0.0];
@@ -426,7 +426,7 @@ impl SyntheticGenerator for HypermetricSaccadeGenerator {
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
         let dt = 1.0 / params.sampling_rate;
-        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut gaze_position = vec![[0.0, 0.0]; n_samples];
         let mut current_position = [0.0, 0.0];
@@ -740,7 +740,7 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
         let dt = 1.0 / params.sampling_rate;
-        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut gaze_position = vec![[0.0, 0.0]; n_samples];
         let mut current_x = 0.0;

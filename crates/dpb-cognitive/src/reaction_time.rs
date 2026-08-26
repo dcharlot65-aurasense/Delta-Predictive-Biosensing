@@ -262,7 +262,7 @@ pub fn calculate_rt_metrics(
     let mean_rt = valid_rts.iter().sum::<f64>() / n as f64;
 
     valid_rts.sort_by(|a, b| a.total_cmp(b));
-    let median_rt = if n % 2 == 0 {
+    let median_rt = if n.is_multiple_of(2) {
         (valid_rts[n / 2 - 1] + valid_rts[n / 2]) / 2.0
     } else {
         valid_rts[n / 2]
@@ -296,7 +296,7 @@ pub fn calculate_rt_metrics(
 
 /// Calculate percentile of reaction time distribution
 pub fn calculate_percentile(rts: &[f64], percentile: f64) -> f64 {
-    assert!(!rts.is_empty() && percentile >= 0.0 && percentile <= 100.0);
+    assert!(!rts.is_empty() && (0.0..=100.0).contains(&percentile));
     let mut sorted = rts.to_vec();
     sorted.sort_by(|a, b| a.total_cmp(b));
 

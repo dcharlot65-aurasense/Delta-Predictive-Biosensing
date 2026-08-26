@@ -183,11 +183,10 @@ impl PanTompkinsDetector {
             window.push_back(value);
             window_sum += value;
 
-            if window.len() > window_samples {
-                if let Some(old) = window.pop_front() {
+            if window.len() > window_samples
+                && let Some(old) = window.pop_front() {
                     window_sum -= old;
                 }
-            }
 
             integrated.push(window_sum / window.len() as f64);
         }
@@ -778,7 +777,7 @@ mod tests {
 
         let (detected, confidence) = detector.detect_afib(&irregular_rr, irregularity);
         // With sufficient irregularity, AFib should be detected
-        assert!(confidence >= 0.0 && confidence <= 1.0);
+        assert!((0.0..=1.0).contains(&confidence));
     }
 
     #[test]

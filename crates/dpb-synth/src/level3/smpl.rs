@@ -81,8 +81,10 @@ pub enum SmplError {
 
 /// SMPL body model variant
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum SmplBodyModel {
     /// Original SMPL (10 shape params, 72 pose params)
+    #[default]
     Smpl,
     /// SMPL+H with hand articulation
     SmplH,
@@ -92,11 +94,6 @@ pub enum SmplBodyModel {
     Star,
 }
 
-impl Default for SmplBodyModel {
-    fn default() -> Self {
-        SmplBodyModel::Smpl
-    }
-}
 
 impl SmplBodyModel {
     /// Get the number of shape parameters
@@ -526,7 +523,7 @@ impl SmplRenderer {
     /// Check if Python and required packages are available
     pub fn check_requirements(&self) -> SmplResult<bool> {
         let output = Command::new(&self.params.python_path)
-            .args(&["-c", "import torch; import pytorch3d; import smplx; print('OK')"])
+            .args(["-c", "import torch; import pytorch3d; import smplx; print('OK')"])
             .output()
             .map_err(|e| SmplError::PythonNotFound(e.to_string()))?;
 
@@ -542,7 +539,7 @@ impl SmplRenderer {
     /// Get PyTorch3D version
     pub fn pytorch3d_version(&self) -> SmplResult<String> {
         let output = Command::new(&self.params.python_path)
-            .args(&["-c", "import pytorch3d; print(pytorch3d.__version__)"])
+            .args(["-c", "import pytorch3d; print(pytorch3d.__version__)"])
             .output()
             .map_err(|e| SmplError::PythonNotFound(e.to_string()))?;
 
@@ -588,7 +585,7 @@ impl SmplRenderer {
         let params_json = serde_json::to_string(&render_params)?;
 
         let output = Command::new(&self.params.python_path)
-            .args(&[
+            .args([
                 script_path.to_str().unwrap(),
                 "--params",
                 &params_json,

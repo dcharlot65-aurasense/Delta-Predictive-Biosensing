@@ -194,7 +194,7 @@ impl ArchitectureSearch {
             }
 
             let params = self.compute_total_params(&candidate);
-            if params <= target_params as usize && params > 0 {
+            if params <= target_params && params > 0 {
                 self.candidates.push(candidate);
             }
         }

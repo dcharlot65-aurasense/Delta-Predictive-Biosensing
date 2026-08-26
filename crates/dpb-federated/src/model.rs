@@ -370,7 +370,7 @@ mod tests {
     #[test]
     fn test_model_weights_scale() {
         let mut weights = ModelWeights::zeros(&[("w", vec![4])]);
-        weights.set("w".into(), Tensor::new(vec![1.0, 2.0, 3.0, 4.0], vec![4]));
+        weights.set("w", Tensor::new(vec![1.0, 2.0, 3.0, 4.0], vec![4]));
         weights.scale(2.0);
         assert_eq!(weights.get("w").unwrap().data, vec![2.0, 4.0, 6.0, 8.0]);
     }
@@ -378,14 +378,14 @@ mod tests {
     #[test]
     fn test_model_weights_l2_norm() {
         let mut weights = ModelWeights::zeros(&[("w", vec![3])]);
-        weights.set("w".into(), Tensor::new(vec![3.0, 4.0, 0.0], vec![3]));
+        weights.set("w", Tensor::new(vec![3.0, 4.0, 0.0], vec![3]));
         assert!((weights.l2_norm() - 5.0).abs() < 1e-6);
     }
 
     #[test]
     fn test_model_weights_clip_norm() {
         let mut weights = ModelWeights::zeros(&[("w", vec![2])]);
-        weights.set("w".into(), Tensor::new(vec![3.0, 4.0], vec![2]));
+        weights.set("w", Tensor::new(vec![3.0, 4.0], vec![2]));
         weights.clip_norm(2.5);
         assert!((weights.l2_norm() - 2.5).abs() < 1e-6);
     }
@@ -393,8 +393,8 @@ mod tests {
     #[test]
     fn test_model_weights_flatten_unflatten() {
         let mut weights = ModelWeights::zeros(&[("a", vec![2]), ("b", vec![3])]);
-        weights.set("a".into(), Tensor::new(vec![1.0, 2.0], vec![2]));
-        weights.set("b".into(), Tensor::new(vec![3.0, 4.0, 5.0], vec![3]));
+        weights.set("a", Tensor::new(vec![1.0, 2.0], vec![2]));
+        weights.set("b", Tensor::new(vec![3.0, 4.0, 5.0], vec![3]));
 
         let flat = weights.flatten();
         assert_eq!(flat, vec![1.0, 2.0, 3.0, 4.0, 5.0]);
@@ -409,7 +409,7 @@ mod tests {
     fn test_parameter_delta() {
         let before = ModelWeights::zeros(&[("w", vec![3])]);
         let mut after = ModelWeights::zeros(&[("w", vec![3])]);
-        after.set("w".into(), Tensor::new(vec![1.0, 2.0, 3.0], vec![3]));
+        after.set("w", Tensor::new(vec![1.0, 2.0, 3.0], vec![3]));
 
         let delta = ParameterDelta::from_models(&before, &after).unwrap();
         assert_eq!(delta.changes["w"].data, vec![1.0, 2.0, 3.0]);

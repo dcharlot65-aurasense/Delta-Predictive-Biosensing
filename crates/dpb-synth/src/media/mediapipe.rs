@@ -669,8 +669,8 @@ print(f'RESULT_FILE:{{output_path}}')
             // Detect step (left foot forward)
             let left_forward = left_ankle.y > right_ankle.y;
 
-            if let Some(prev_left_forward) = last_left_forward {
-                if left_forward != prev_left_forward {
+            if let Some(prev_left_forward) = last_left_forward
+                && left_forward != prev_left_forward {
                     // Step detected
                     let stride = ((left_ankle.x - right_ankle.x).powi(2) +
                                   (left_ankle.y - right_ankle.y).powi(2)).sqrt();
@@ -682,7 +682,6 @@ print(f'RESULT_FILE:{{output_path}}')
                     }
                     last_step_time = timestamp;
                 }
-            }
             last_left_forward = Some(left_forward);
         }
 
@@ -2448,11 +2447,10 @@ pub mod biosignal_analysis {
         }
 
         // Close final segment if still in speech
-        if in_speech {
-            if let Some(last) = classifications.last() {
+        if in_speech
+            && let Some(last) = classifications.last() {
                 speech_segments.push((speech_start, last.timestamp + last.duration));
             }
-        }
 
         let total_speech_duration: f64 = speech_segments.iter()
             .map(|(s, e)| e - s)

@@ -383,12 +383,11 @@ impl BidsValidator {
                 continue;
             }
 
-            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                if name.starts_with("sub-") {
+            if let Some(name) = path.file_name().and_then(|n| n.to_str())
+                && name.starts_with("sub-") {
                     has_subjects = true;
                     self.validate_subject_dir(&path, report);
                 }
-            }
         }
 
         if !has_subjects {
@@ -466,12 +465,11 @@ impl BidsValidator {
                 continue;
             }
 
-            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                if Modality::from_dir_name(name).is_some() {
+            if let Some(name) = path.file_name().and_then(|n| n.to_str())
+                && Modality::from_dir_name(name).is_some() {
                     has_modalities = true;
                     break;
                 }
-            }
         }
 
         if !has_modalities {

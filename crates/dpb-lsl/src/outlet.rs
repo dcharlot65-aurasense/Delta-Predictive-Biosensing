@@ -100,7 +100,7 @@ impl LslOutlet {
         }
 
         let channels = self.info.channel_count();
-        if data.len() % channels != 0 {
+        if !data.len().is_multiple_of(channels) {
             return Err(LslError::InvalidConfig(format!(
                 "Data length {} is not divisible by channel count {}",
                 data.len(),

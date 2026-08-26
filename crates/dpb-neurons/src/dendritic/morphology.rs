@@ -265,7 +265,7 @@ impl MorphologyData {
             if point.parent >= 0 {
                 children_map
                     .entry(point.parent)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(point.id);
             }
         }
@@ -279,7 +279,7 @@ impl MorphologyData {
                 // Find parent point
                 if let Some(parent) = self.points.iter().find(|p| p.id == point.parent as usize) {
                     let length = point.distance_to(parent);
-                    let diameter = (point.radius + parent.radius); // Average diameter
+                    let diameter = point.radius + parent.radius; // Average diameter
                     let surface_area = PI * diameter * length;
 
                     total_length += length;

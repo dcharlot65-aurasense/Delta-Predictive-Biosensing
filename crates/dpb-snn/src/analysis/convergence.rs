@@ -529,12 +529,11 @@ impl ConvergenceAnalyzer for DivergenceDetector {
             let last = *self.loss_history.back().unwrap();
 
             // Check if loss has increased beyond threshold or is NaN/infinite
-            if last.is_nan() || last.is_infinite() || (last / first > self.divergence_threshold) {
-                if !self.detected {
+            if (last.is_nan() || last.is_infinite() || (last / first > self.divergence_threshold))
+                && !self.detected {
                     self.detected = true;
                     self.detection_epoch = Some(epoch);
                 }
-            }
         }
     }
 
@@ -630,7 +629,7 @@ mod tests {
     fn test_oscillation_detector() {
         let mut detector = OscillationDetector::new(10, 0.05);
 
-        let losses = vec![1.0, 0.8, 1.0, 0.8, 1.0, 0.8, 1.0, 0.8];
+        let losses = [1.0, 0.8, 1.0, 0.8, 1.0, 0.8, 1.0, 0.8];
         for (i, &loss) in losses.iter().enumerate() {
             let metrics = TrainingMetrics::new(i, loss, 0.9);
             detector.update(i, &metrics);

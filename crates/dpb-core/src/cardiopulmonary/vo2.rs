@@ -238,9 +238,9 @@ impl Vo2Estimator {
     /// Estimate confidence based on HR response
     fn estimate_confidence(&self, hr: f64) -> f64 {
         // Higher confidence when HR is in target zone (120-170)
-        if hr >= 120.0 && hr <= 170.0 {
+        if (120.0..=170.0).contains(&hr) {
             0.90
-        } else if hr >= 110.0 && hr <= 180.0 {
+        } else if (110.0..=180.0).contains(&hr) {
             0.80
         } else {
             0.70

@@ -162,7 +162,7 @@ impl CognitiveProfile {
             -3.969683028665376e1,
             2.209460984245205e2,
             -2.759285104469687e2,
-            1.383577518672690e2,
+            1.383_577_518_672_69e2,
             -3.066479806614716e1,
             2.506628277459239e0,
         ];
@@ -278,7 +278,7 @@ impl MotorProfile {
 
         Self {
             gait_velocity_score: gait_velocity,
-            gait_variability: gait_variability,
+            gait_variability,
             balance_score: balance,
             fine_motor_score: fine_motor,
             grip_strength_score: grip_strength,

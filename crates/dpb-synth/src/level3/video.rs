@@ -286,7 +286,7 @@ impl Level3VideoGenerator {
 
         println!("Calling Blender to generate gait video...");
         let output = Command::new(&self.blender_path)
-            .args(&[
+            .args([
                 "--background",
                 "--python",
                 script_path.to_str().unwrap(),
@@ -335,7 +335,7 @@ impl Level3VideoGenerator {
 
         println!("Calling Blender to generate hand video...");
         let output = Command::new(&self.blender_path)
-            .args(&[
+            .args([
                 "--background",
                 "--python",
                 script_path.to_str().unwrap(),
@@ -383,7 +383,7 @@ impl Level3VideoGenerator {
 
         println!("Calling Blender to generate tapping video...");
         let output = Command::new(&self.blender_path)
-            .args(&[
+            .args([
                 "--background",
                 "--python",
                 script_path.to_str().unwrap(),

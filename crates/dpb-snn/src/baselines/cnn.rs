@@ -21,8 +21,8 @@ impl CNN1DSmall {
         let conv2 = xavier_init(vec![64, 32, 5], seed + 1);
 
         // Calculate FC input size after convolutions and pooling
-        let l1 = (input_length - 7 + 1) / 2; // After conv1 + maxpool
-        let l2 = (l1 - 5 + 1) / 2; // After conv2 + maxpool
+        let l1 = (input_length - 7).div_ceil(2); // After conv1 + maxpool
+        let l2 = (l1 - 5).div_ceil(2); // After conv2 + maxpool
         let fc_input = 64 * l2;
 
         let fc1 = xavier_init(vec![fc_input, 128], seed + 2);
@@ -91,9 +91,9 @@ impl CNN1DMedium {
         ];
 
         // Calculate FC input size
-        let l1 = (input_length - 7 + 1) / 2;
-        let l2 = (l1 - 5 + 1) / 2;
-        let l3 = (l2 - 3 + 1) / 2;
+        let l1 = (input_length - 7).div_ceil(2);
+        let l2 = (l1 - 5).div_ceil(2);
+        let l3 = (l2 - 3).div_ceil(2);
         let fc_input = 256 * l3;
 
         let fc_layers = vec![

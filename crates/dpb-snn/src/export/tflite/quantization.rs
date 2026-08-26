@@ -97,13 +97,12 @@ impl QuantizationConfig {
                     return Err("Float16 strategy requires Float16 weight dtype".to_string());
                 }
             }
-            QuantizationStrategy::FullInteger => {
-                if !self.weight_dtype.supports_quantization()
-                    || !self.activation_dtype.supports_quantization()
-                {
+            QuantizationStrategy::FullInteger
+                if (!self.weight_dtype.supports_quantization()
+                    || !self.activation_dtype.supports_quantization())
+                => {
                     return Err("FullInteger strategy requires integer dtypes".to_string());
                 }
-            }
             _ => {}
         }
 

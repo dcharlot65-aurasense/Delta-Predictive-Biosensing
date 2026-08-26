@@ -213,7 +213,7 @@ impl SpiNNakerExporter {
 
             // Allocate to cores (simplified)
             let neurons_per_core = self.constraints.neuron.max_neurons_per_core;
-            let num_cores = (pop.size + neurons_per_core - 1) / neurons_per_core;
+            let num_cores = pop.size.div_ceil(neurons_per_core);
 
             for core in 0..num_cores {
                 let neurons_in_core = if core == num_cores - 1 {
@@ -317,7 +317,7 @@ impl NeuromorphicExporter for SpiNNakerExporter {
         let routing_table = self.generate_routing_table(&spinnaker_net);
         let core_allocation = self.generate_core_allocation(&spinnaker_net);
 
-        let mut files = vec![
+        let files = vec![
             ExportFile {
                 name: "spinnaker_network.py".to_string(),
                 content: pynn_code.into_bytes(),
@@ -347,7 +347,7 @@ impl NeuromorphicExporter for SpiNNakerExporter {
         };
 
         let num_cores: usize = spinnaker_net.core_allocations.len();
-        let num_chips = (num_cores + 15) / 16; // 16 cores per chip
+        let num_chips = num_cores.div_ceil(16); // 16 cores per chip
 
         let utilization = HardwareUtilization {
             cores_used: num_cores,

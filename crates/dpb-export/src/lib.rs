@@ -230,7 +230,7 @@ mod tests {
     #[test]
     fn test_export_format_clone() {
         let format = ExportFormat::Json;
-        let cloned = format.clone();
+        let cloned = format;
         assert_eq!(format, cloned);
     }
 

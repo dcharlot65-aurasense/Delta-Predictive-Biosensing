@@ -268,7 +268,7 @@ impl ANNToSNNConverter {
         let mut report = String::from("ANN-to-SNN Conversion Report\n");
         report.push_str("================================\n\n");
 
-        report.push_str(&format!("Configuration:\n"));
+        report.push_str("Configuration:\n");
         report.push_str(&format!("  Weight Normalization: {:?}\n", self.config.weight_norm));
         report.push_str(&format!("  Threshold Strategy: {:?}\n", self.config.threshold_strategy));
         report.push_str(&format!("  Time Steps: {}\n", self.config.num_timesteps));
@@ -404,7 +404,7 @@ mod tests {
         assert_eq!(spikes.shape, vec![4]);
 
         // All spike rates should be in [0, 1]
-        assert!(spikes.data.iter().all(|&s| s >= 0.0 && s <= 1.0));
+        assert!(spikes.data.iter().all(|&s| (0.0..=1.0).contains(&s)));
     }
 
     #[test]

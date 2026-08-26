@@ -609,7 +609,7 @@ p.disconnect()
                     .filter_map(|v| {
                         let arr = v.as_array()?;
                         Some([
-                            arr.get(0)?.as_f64()?,
+                            arr.first()?.as_f64()?,
                             arr.get(1)?.as_f64()?,
                             arr.get(2)?.as_f64()?,
                         ])
@@ -628,7 +628,7 @@ p.disconnect()
                         let vel_arr = v["velocity"].as_array();
                         let velocity = match vel_arr {
                             Some(vel) => [
-                                vel.get(0).and_then(|x| x.as_f64()).unwrap_or(0.0),
+                                vel.first().and_then(|x| x.as_f64()).unwrap_or(0.0),
                                 vel.get(1).and_then(|x| x.as_f64()).unwrap_or(0.0),
                                 vel.get(2).and_then(|x| x.as_f64()).unwrap_or(0.0),
                             ],
@@ -637,7 +637,7 @@ p.disconnect()
                         Some(EndEffectorState {
                             time: v["time"].as_f64().unwrap_or(0.0),
                             position: [
-                                pos.get(0)?.as_f64()?,
+                                pos.first()?.as_f64()?,
                                 pos.get(1)?.as_f64()?,
                                 pos.get(2)?.as_f64()?,
                             ],
@@ -660,7 +660,7 @@ p.disconnect()
                             time: v["time"].as_f64().unwrap_or(0.0),
                             force: v["force"].as_f64().unwrap_or(0.0),
                             contact_point: [
-                                pt.get(0)?.as_f64()?,
+                                pt.first()?.as_f64()?,
                                 pt.get(1)?.as_f64()?,
                                 pt.get(2)?.as_f64()?,
                             ],

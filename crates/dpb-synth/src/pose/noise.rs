@@ -219,13 +219,12 @@ impl SyntheticGenerator for IdSwitchGenerator {
             .iter()
             .map(|frame| {
                 // Randomly swap IDs
-                if rng.random::<f64>() < params.switch_probability {
-                    if params.num_persons >= 2 {
+                if rng.random::<f64>() < params.switch_probability
+                    && params.num_persons >= 2 {
                         let idx1 = rng.random_range(0..params.num_persons);
                         let idx2 = rng.random_range(0..params.num_persons);
                         current_ids.swap(idx1, idx2);
                     }
-                }
 
                 // Assign keypoints to IDs (simplified - same keypoints with different IDs)
                 current_ids.iter()

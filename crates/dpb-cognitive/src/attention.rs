@@ -215,7 +215,7 @@ impl StroopTask {
     /// Generate balanced Stroop trial sequence
     pub fn generate_trials(&self) -> Vec<StroopTrial> {
         let mut rng = rand::rng();
-        let colors = vec!["red", "blue", "green", "yellow"];
+        let colors = ["red", "blue", "green", "yellow"];
         let mut trials = Vec::new();
 
         // Generate trials for each condition
@@ -274,15 +274,14 @@ impl StroopTask {
         for (trial, response) in trials.iter().zip(responses.iter()) {
             let is_correct = response.response.to_lowercase() == trial.color.to_lowercase();
 
-            if let Some(rt) = response.response_time {
-                if is_correct {
+            if let Some(rt) = response.response_time
+                && is_correct {
                     match trial.condition {
                         StroopCondition::Congruent => congruent_rts.push(rt),
                         StroopCondition::Incongruent => incongruent_rts.push(rt),
                         StroopCondition::Neutral => neutral_rts.push(rt),
                     }
                 }
-            }
 
             if !is_correct {
                 let idx = match trial.condition {
@@ -465,7 +464,7 @@ mod tests {
     fn test_cpt_generation() {
         let cpt = ContinuousPerformanceTest::default();
         let trials = cpt.generate_trials();
-        assert!(trials.len() > 0);
+        assert!(!trials.is_empty());
     }
 
     #[test]

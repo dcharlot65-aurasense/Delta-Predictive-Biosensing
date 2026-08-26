@@ -344,7 +344,7 @@ mod tests {
     fn test_als_progression() {
         let prog = DiseaseProgression::als(ProgressionRate::Typical, 36);
 
-        assert!(prog.trajectory.len() > 0);
+        assert!(!prog.trajectory.is_empty());
         assert_eq!(prog.trajectory[0].functional_score, 1.0);
         assert!(prog.trajectory.last().unwrap().functional_score < 0.5);
     }
@@ -353,7 +353,7 @@ mod tests {
     fn test_ms_progression() {
         let prog = DiseaseProgression::ms_rrms(10, 0.5);
 
-        assert!(prog.trajectory.len() > 0);
+        assert!(!prog.trajectory.is_empty());
         // Should have some relapses recorded
     }
 
@@ -361,7 +361,7 @@ mod tests {
     fn test_stroke_recovery() {
         let prog = DiseaseProgression::stroke_recovery(12, 180);
 
-        assert!(prog.trajectory.len() > 0);
+        assert!(!prog.trajectory.is_empty());
         // Score should improve over time
         let initial = prog.trajectory[0].functional_score;
         let final_score = prog.trajectory.last().unwrap().functional_score;

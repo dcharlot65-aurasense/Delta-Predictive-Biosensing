@@ -199,7 +199,7 @@ impl Tensor {
         let ok = other.shape.len() == 1
             && other.shape[0] == width
             && width > 0
-            && self.data.len() % width == 0
+            && self.data.len().is_multiple_of(width)
             && other.data.len() == width;
         ok.then_some(width)
     }
@@ -207,8 +207,8 @@ impl Tensor {
     /// Element-wise multiplication with the same trailing-dimension
     /// broadcasting rule as [`Tensor::add`] (per-feature scaling).
     pub fn mul(&self, other: &Tensor) -> Tensor {
-        if self.shape != other.shape {
-            if let Some(width) = self.broadcast_width(other) {
+        if self.shape != other.shape
+            && let Some(width) = self.broadcast_width(other) {
                 let data = self
                     .data
                     .iter()
@@ -217,7 +217,6 @@ impl Tensor {
                     .collect();
                 return Tensor { data, shape: self.shape.clone() };
             }
-        }
         assert_eq!(self.shape, other.shape, "shapes must match for multiplication");
         let data = self.data.iter().zip(&other.data).map(|(a, b)| a * b).collect();
         Tensor {
@@ -398,7 +397,7 @@ pub fn count_params(shape: &[usize]) -> usize {
 /// Helper function to initialize weights with Xavier/Glorot initialization
 pub fn xavier_init(shape: Vec<usize>, seed: u64) -> Tensor {
     let fan_in = if shape.len() >= 2 { shape[shape.len() - 2] } else { 1 };
-    let fan_out = if shape.len() >= 1 { shape[shape.len() - 1] } else { 1 };
+    let fan_out = if !shape.is_empty() { shape[shape.len() - 1] } else { 1 };
     let limit = (6.0 / (fan_in + fan_out) as f32).sqrt();
 
     let mut tensor = Tensor::randn(shape, seed);

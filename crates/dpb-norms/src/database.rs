@@ -44,11 +44,10 @@ impl NormativeEntry {
         }
 
         // Check sex if specified
-        if let Some(sex) = self.sex {
-            if demographics.sex != sex {
+        if let Some(sex) = self.sex
+            && demographics.sex != sex {
                 return false;
             }
-        }
 
         true
     }
@@ -161,7 +160,7 @@ impl NormativeDatabase {
     pub fn add_entry(&mut self, entry: NormativeEntry) {
         self.tables
             .entry(entry.metric)
-            .or_insert_with(NormativeTable::new)
+            .or_default()
             .add_entry(entry);
     }
 

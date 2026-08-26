@@ -506,7 +506,7 @@ impl WfdbReader {
 
         // This is a simplified implementation
         // Full WFDB annotation format is binary and more complex
-        let mut annotations = Vec::new();
+        let annotations = Vec::new();
 
         // For now, return empty vector
         // A full implementation would parse the binary .atr format

@@ -481,14 +481,13 @@ impl EventEncoder for CaloricEncoder {
             }
 
             // Detect response end (falls below threshold after peak)
-            if response_started && i > peak_idx + (sample_rate as usize * 5) {
-                if abs_spv < config.peak_spv_threshold {
+            if response_started && i > peak_idx + (sample_rate as usize * 5)
+                && abs_spv < config.peak_spv_threshold {
                     let duration = (i - response_start_idx) as f64 * dt;
                     let end_time = i as f64 * dt;
                     events.push(SpikeEvent::new(end_time, 2, -1, duration as f32));
                     break;
                 }
-            }
         }
 
         // Emit peak event if response was detected

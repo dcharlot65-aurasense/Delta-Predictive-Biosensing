@@ -116,7 +116,7 @@ impl NeuronState {
 
         // Decay adaptive threshold
         if let Some(ref mut adapt) = self.threshold_adapt {
-            *adapt *= (1.0 - dt / 100.0); // Slow decay
+            *adapt *= 1.0 - dt / 100.0; // Slow decay
         }
 
         spikes

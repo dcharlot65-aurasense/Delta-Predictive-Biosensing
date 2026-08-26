@@ -172,11 +172,7 @@ impl BundleEntry {
     /// Creates a new bundle entry with a resource
     pub fn new(resource: FhirResource) -> Self {
         // Generate full URL from resource type and ID
-        let full_url = if let Some(id) = resource.id() {
-            Some(format!("{}/{}", resource.resource_type(), id))
-        } else {
-            None
-        };
+        let full_url = resource.id().map(|id| format!("{}/{}", resource.resource_type(), id));
 
         Self {
             full_url,
@@ -409,7 +405,7 @@ impl PaginatedBundleBuilder {
             self.base_url, self.page_size, self.page_number);
 
         let next_url = if let Some(total) = self.bundle.total {
-            let max_page = (total as usize + self.page_size - 1) / self.page_size;
+            let max_page = (total as usize).div_ceil(self.page_size);
             if self.page_number + 1 < max_page {
                 Some(format!("{}?_count={}&_page={}",
                     self.base_url, self.page_size, self.page_number + 1))

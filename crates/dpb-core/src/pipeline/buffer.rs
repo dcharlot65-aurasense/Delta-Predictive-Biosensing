@@ -228,11 +228,7 @@ impl<T: Clone + Default> SlidingWindow<T> {
 
     /// Calculate the overlap between windows
     pub fn overlap(&self) -> usize {
-        if self.window_size > self.hop_size {
-            self.window_size - self.hop_size
-        } else {
-            0
-        }
+        self.window_size.saturating_sub(self.hop_size)
     }
 }
 

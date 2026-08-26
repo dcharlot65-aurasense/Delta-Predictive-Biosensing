@@ -59,8 +59,8 @@ impl Optimizer for SGDOptimizer {
             // Add weight decay to gradient
             let mut effective_grad = (*grad).clone();
             if self.weight_decay > 0.0 {
-                let param_ref: &Array2<f32> = *param;
-                effective_grad = effective_grad + &(param_ref * self.weight_decay);
+                let param_ref: &Array2<f32> = param;
+                effective_grad += &(param_ref * self.weight_decay);
             }
 
             // Update velocity: v = momentum * v - lr * grad
@@ -147,8 +147,8 @@ impl Optimizer for AdamOptimizer {
             // Add weight decay to gradient
             let mut effective_grad = (*grad).clone();
             if self.weight_decay > 0.0 {
-                let param_ref: &Array2<f32> = *param;
-                effective_grad = effective_grad + &(param_ref * self.weight_decay);
+                let param_ref: &Array2<f32> = param;
+                effective_grad += &(param_ref * self.weight_decay);
             }
 
             // Update biased first moment estimate: m = beta1 * m + (1 - beta1) * grad

@@ -254,7 +254,7 @@ impl SearchParams {
 
     /// Adds a search parameter
     pub fn add(mut self, key: String, value: String) -> Self {
-        self.params.entry(key).or_insert_with(Vec::new).push(value);
+        self.params.entry(key).or_default().push(value);
         self
     }
 

@@ -392,7 +392,7 @@ impl EdfReader {
             let signal_bytes = &record_buffer
                 [signal_offset..signal_offset + signal.samples_per_record * 2];
 
-            for chunk in signal_bytes.chunks_exact(2) {
+            for chunk in signal_bytes.as_chunks::<2>().0 {
                 let digital = i16::from_le_bytes([chunk[0], chunk[1]]);
                 let physical = signal.digital_to_physical(digital);
                 samples.push(physical);
@@ -451,7 +451,7 @@ impl EdfReader {
             let mut signal_samples = Vec::with_capacity(signal.samples_per_record);
             let signal_bytes = &record_buffer[offset..offset + signal.samples_per_record * 2];
 
-            for chunk in signal_bytes.chunks_exact(2) {
+            for chunk in signal_bytes.as_chunks::<2>().0 {
                 let digital = i16::from_le_bytes([chunk[0], chunk[1]]);
                 let physical = signal.digital_to_physical(digital);
                 signal_samples.push(physical);
@@ -674,7 +674,7 @@ mod tests {
 
         // Test physical to digital
         let digital = signal.physical_to_digital(0.0);
-        assert!((digital - 0).abs() <= 1);
+        assert!(digital.abs() <= 1);
 
         let digital = signal.physical_to_digital(500.0);
         assert_eq!(digital, 2047);

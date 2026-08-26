@@ -359,7 +359,7 @@ impl LiquidStateMachine {
         config: LifConfig,
     ) -> Self {
         let neurons = (0..reservoir_size)
-            .map(|_| LifNeuron::new(config.clone()))
+            .map(|_| LifNeuron::new(config))
             .collect();
 
         Self {
@@ -514,7 +514,7 @@ mod tests {
         let pattern = SparsityPattern::random(100, 100, 0.9, 42);
         assert_eq!(pattern.n_pre, 100);
         assert_eq!(pattern.n_post, 100);
-        assert!(pattern.connections.len() > 0);
+        assert!(!pattern.connections.is_empty());
 
         // Check sparsity roughly matches
         let expected_connections = (100 * 100) as f64 * 0.1;
@@ -564,7 +564,7 @@ mod tests {
 
         // State should be bounded due to tanh
         for &s in state.iter() {
-            assert!(s >= -1.0 && s <= 1.0);
+            assert!((-1.0..=1.0).contains(&s));
         }
     }
 
@@ -644,7 +644,7 @@ mod tests {
         let mut lsm = LiquidStateMachine::new(5, 30, 2, config);
         lsm.initialize(0.9, 0.5, 42);
 
-        assert!(lsm.connectivity.connections.len() > 0);
+        assert!(!lsm.connectivity.connections.is_empty());
 
         // Check input weights are initialized
         let sum: f64 = lsm.input_weights.iter().map(|&x| x.abs()).sum();

@@ -611,7 +611,7 @@ mod tests {
         let accel = CpuAccelerator::new();
 
         let mut input_buf = accel.allocate(20).unwrap(); // 5 samples
-        let mut output_buf = accel.allocate(40).unwrap();
+        let output_buf = accel.allocate(40).unwrap();
 
         let input = vec![0.0, 0.5, 0.9, 1.1, 0.8]; // Single channel, crossing at sample 3
         accel.copy_to_device(&mut input_buf, &input).unwrap();

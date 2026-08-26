@@ -80,11 +80,10 @@ impl ComorbidityModel {
         // Collect individual effects
         let mut individual_effects = Vec::new();
         for code in conditions {
-            if let Some(cond) = self.conditions.get(*code) {
-                if let Some(effect) = cond.effects.get(measure) {
+            if let Some(cond) = self.conditions.get(*code)
+                && let Some(effect) = cond.effects.get(measure) {
                     individual_effects.push(*effect);
                 }
-            }
         }
 
         // Start with sum of individual effects (additive model)
@@ -94,11 +93,10 @@ impl ComorbidityModel {
         let mut interaction_effect = 0.0;
         for i in 0..conditions.len() {
             for j in i + 1..conditions.len() {
-                if let Some(interaction) = self.get_interaction(conditions[i], conditions[j]) {
-                    if let Some(effect_mod) = interaction.effect_modifiers.get(measure) {
+                if let Some(interaction) = self.get_interaction(conditions[i], conditions[j])
+                    && let Some(effect_mod) = interaction.effect_modifiers.get(measure) {
                         interaction_effect += effect_mod;
                     }
-                }
             }
         }
 
@@ -107,11 +105,10 @@ impl ComorbidityModel {
         let mut complex_effect = 0.0;
         for complex in &self.complex_interactions {
             let complex_set: HashSet<&str> = complex.conditions.iter().map(|s| s.as_str()).collect();
-            if complex_set.is_subset(&condition_set) {
-                if let Some(effect_mod) = complex.effect_modifiers.get(measure) {
+            if complex_set.is_subset(&condition_set)
+                && let Some(effect_mod) = complex.effect_modifiers.get(measure) {
                     complex_effect += effect_mod;
                 }
-            }
         }
 
         let total_effect = additive_effect + interaction_effect + complex_effect;

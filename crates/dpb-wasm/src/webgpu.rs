@@ -449,7 +449,7 @@ mod tests {
         encoder.set_threshold(1, 0.5);
 
         // Create test signal with crossings
-        let mut signal = vec![0.0f32; 20]; // 10 samples x 2 channels
+        let mut signal = [0.0f32; 20]; // 10 samples x 2 channels
         signal[2] = 0.6; // Ch0, sample 1 - crossing
         signal[7] = 0.7; // Ch1, sample 3 - crossing
 
@@ -465,7 +465,7 @@ mod tests {
         let config = GpuEncoderConfig::new(1, 100);
         let encoder = GpuEncoder::new(config);
 
-        let signal = vec![0.0, 1.0, 0.0, 1.0, 0.0];
+        let signal = [0.0, 1.0, 0.0, 1.0, 0.0];
         let samples = Float32Array::from(&signal[..]);
 
         let filtered = encoder.filter_signal(samples, "lowpass");

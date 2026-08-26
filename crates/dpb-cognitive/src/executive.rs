@@ -135,11 +135,10 @@ impl GoNoGoTask {
                 }
             } else {
                 metrics.total_nogo_trials += 1;
-                if let Some(r) = response {
-                    if r.responded {
+                if let Some(r) = response
+                    && r.responded {
                         metrics.commission_errors += 1;
                     }
-                }
             }
         }
 

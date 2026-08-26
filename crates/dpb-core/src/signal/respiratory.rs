@@ -452,7 +452,7 @@ impl RespiratoryAnalyzer {
         if n_cycles >= 2.0 {
             let cycle_length = amplitudes.len() as f64 / n_cycles;
             // Cheyne-Stokes typically has 45-90 second cycles
-            if cycle_length >= 5.0 && cycle_length <= 20.0 {
+            if (5.0..=20.0).contains(&cycle_length) {
                 return (true, Some(cycle_length));
             }
         }
@@ -471,7 +471,7 @@ impl RespiratoryAnalyzer {
         let mut peak_freq: f64 = 0.0;
 
         for (i, &freq) in freqs.iter().enumerate() {
-            if freq >= 0.1 && freq <= 0.5 && psd[i] > max_power {
+            if (0.1..=0.5).contains(&freq) && psd[i] > max_power {
                 max_power = psd[i];
                 peak_freq = freq;
             }

@@ -444,16 +444,14 @@ impl MeasureDefinition {
 
     /// Validate a value.
     pub fn validate(&self, value: f64) -> bool {
-        if let Some(min) = self.min_value {
-            if value < min {
+        if let Some(min) = self.min_value
+            && value < min {
                 return false;
             }
-        }
-        if let Some(max) = self.max_value {
-            if value > max {
+        if let Some(max) = self.max_value
+            && value > max {
                 return false;
             }
-        }
         true
     }
 }

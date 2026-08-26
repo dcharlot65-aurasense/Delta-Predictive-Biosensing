@@ -416,7 +416,7 @@ impl EegGenerator {
     }
 
     fn add_sawtooth_waves(&self, signal: &mut [Vec<f64>], duration_sec: f64) {
-        let mut rng = rand::rng();
+        let rng = rand::rng();
         let n_samples = (duration_sec * self.sample_rate) as usize;
 
         // Sawtooth waves: 2-6 Hz sharp transients

@@ -45,7 +45,7 @@ pub struct Demographics {
 impl Demographics {
     /// Create new demographics with validation
     pub fn new(age_years: f64, sex: Sex, bmi: f64, ethnicity: Option<String>) -> Self {
-        assert!(age_years >= 0.0 && age_years <= 120.0, "Age must be in [0, 120]");
+        assert!((0.0..=120.0).contains(&age_years), "Age must be in [0, 120]");
         assert!(bmi > 0.0 && bmi < 100.0, "BMI must be in (0, 100)");
 
         Self {
@@ -168,14 +168,14 @@ impl CohortGenerator {
 
     /// Set the sex ratio (proportion male)
     pub fn with_sex_ratio(mut self, ratio: f64) -> Self {
-        assert!(ratio >= 0.0 && ratio <= 1.0);
+        assert!((0.0..=1.0).contains(&ratio));
         self.sex_ratio = ratio;
         self
     }
 
     /// Add a disease with a given prevalence rate
     pub fn with_disease(mut self, disease: &str, prevalence: f64) -> Self {
-        assert!(prevalence >= 0.0 && prevalence <= 1.0);
+        assert!((0.0..=1.0).contains(&prevalence));
         self.disease_prevalence.insert(disease.to_string(), prevalence);
         self
     }
@@ -241,16 +241,14 @@ impl CohortGenerator {
 
     fn sample_ethnicity(&self, rng: &mut impl Rng) -> Option<String> {
         // Simplified ethnicity distribution
-        let ethnicities = vec![
-            "Caucasian",
+        let ethnicities = ["Caucasian",
             "African American",
             "Hispanic",
             "Asian",
-            "Other",
-        ];
-        let weights = vec![0.6, 0.13, 0.18, 0.06, 0.03];
+            "Other"];
+        let weights = [0.6, 0.13, 0.18, 0.06, 0.03];
 
-        let r = ((rng.next_u64() as f64) / (u64::MAX as f64));
+        let r = (rng.next_u64() as f64) / (u64::MAX as f64);
         let mut cumulative = 0.0;
 
         for (eth, weight) in ethnicities.iter().zip(weights.iter()) {

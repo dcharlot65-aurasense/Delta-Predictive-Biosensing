@@ -82,7 +82,7 @@ impl LatencyMetrics {
         let max_ms = sorted[sorted.len() - 1];
         let mean_ms = sorted.iter().sum::<f32>() / sorted.len() as f32;
 
-        let median_ms = if sorted.len() % 2 == 0 {
+        let median_ms = if sorted.len().is_multiple_of(2) {
             (sorted[sorted.len() / 2 - 1] + sorted[sorted.len() / 2]) / 2.0
         } else {
             sorted[sorted.len() / 2]

@@ -390,9 +390,7 @@ impl RasterPlot {
             svg.push('\n');
 
             // Y-axis label
-            svg.push_str(&format!(
-                r#"    <text x="10" y="15">Neuron ID</text>"#
-            ));
+            svg.push_str(r#"    <text x="10" y="15">Neuron ID</text>"#);
             svg.push('\n');
 
             svg.push_str("  </g>\n");

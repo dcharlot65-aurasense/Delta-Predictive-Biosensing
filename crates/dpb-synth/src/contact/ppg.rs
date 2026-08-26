@@ -34,7 +34,7 @@ impl SyntheticGenerator for PpgWaveformGenerator {
 
         let mut signal = Vec::with_capacity(n_samples);
         let mut peaks = Vec::new();
-        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         for i in 0..n_samples {
             let t = i as f64 * dt;

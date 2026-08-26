@@ -96,7 +96,7 @@ fn test_encoder_to_snn_to_decoder() {
         for o in 0..num_output {
             let rate = decoded[[b, o]];
             assert!(
-                rate >= 0.0 && rate <= 1.0,
+                (0.0..=1.0).contains(&rate),
                 "Decoded rate should be normalized: got {}",
                 rate
             );
@@ -198,7 +198,7 @@ fn test_calibrated_snn_predictions() {
         );
 
         for &p in probs.iter() {
-            assert!(p >= 0.0 && p <= 1.0, "Probability out of range: {}", p);
+            assert!((0.0..=1.0).contains(&p), "Probability out of range: {}", p);
         }
     }
 
@@ -228,8 +228,8 @@ fn test_calibrated_snn_predictions() {
     println!("  Expected Calibration Error: {:.4}", ece);
     println!("  Brier Score: {:.4}", brier);
 
-    assert!(ece >= 0.0 && ece <= 1.0, "ECE should be in [0, 1]");
-    assert!(brier >= 0.0 && brier <= 1.0, "Brier score should be in [0, 1]");
+    assert!((0.0..=1.0).contains(&ece), "ECE should be in [0, 1]");
+    assert!((0.0..=1.0).contains(&brier), "Brier score should be in [0, 1]");
 
     println!("  ✓ Calibration pipeline completed successfully");
 }
@@ -624,7 +624,7 @@ fn test_multi_decoder_comparison() {
     println!("  Testing {} decoder types", decoders.len());
 
     for (name, decoder) in decoders {
-        let result = decoder.decode(&spikes).expect(&format!("{} decoder failed", name));
+        let result = decoder.decode(&spikes).unwrap_or_else(|_| panic!("{} decoder failed", name));
 
         println!("  {} decoder output shape: {:?}", name, result.shape());
 

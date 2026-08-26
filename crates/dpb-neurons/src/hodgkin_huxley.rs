@@ -196,7 +196,9 @@ impl NeuronModel for HodgkinHuxleyNeuron {
         self.state.v += dv * dt;
 
         // Spike detection: crossing threshold upward
-        let spiked = if !self.crossed_threshold && v >= self.config.v_thresh {
+        
+
+        if !self.crossed_threshold && v >= self.config.v_thresh {
             self.crossed_threshold = true;
             true
         } else if v < self.config.v_thresh - 10.0 {
@@ -204,9 +206,7 @@ impl NeuronModel for HodgkinHuxleyNeuron {
             false
         } else {
             false
-        };
-
-        spiked
+        }
     }
 
     fn reset(&mut self) {
@@ -342,7 +342,9 @@ impl NeuronModel for FitzHughNagumoNeuron {
         self.state.w += dw * dt;
 
         // Spike detection
-        let spiked = if !self.crossed_threshold && self.state.v >= self.config.v_thresh {
+        
+
+        if !self.crossed_threshold && self.state.v >= self.config.v_thresh {
             self.crossed_threshold = true;
             true
         } else if self.state.v < self.config.v_thresh - 0.2 {
@@ -350,9 +352,7 @@ impl NeuronModel for FitzHughNagumoNeuron {
             false
         } else {
             false
-        };
-
-        spiked
+        }
     }
 
     fn reset(&mut self) {
@@ -540,7 +540,9 @@ impl NeuronModel for MorrisLecarNeuron {
         self.state.n = self.state.n.clamp(0.0, 1.0);
 
         // Spike detection
-        let spiked = if !self.crossed_threshold && self.state.v >= self.config.v_thresh {
+        
+
+        if !self.crossed_threshold && self.state.v >= self.config.v_thresh {
             self.crossed_threshold = true;
             true
         } else if self.state.v < self.config.v_thresh - 10.0 {
@@ -548,9 +550,7 @@ impl NeuronModel for MorrisLecarNeuron {
             false
         } else {
             false
-        };
-
-        spiked
+        }
     }
 
     fn reset(&mut self) {

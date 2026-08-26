@@ -355,7 +355,7 @@ impl TimeSeries {
 
     /// Returns the number of samples.
     pub fn num_samples(&self) -> usize {
-        self.data.get(0).map(|v| v.len()).unwrap_or(0)
+        self.data.first().map(|v| v.len()).unwrap_or(0)
     }
 
     /// Returns the duration in seconds.

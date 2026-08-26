@@ -271,11 +271,11 @@ impl HrvAnalyzer {
         for (i, &freq) in freqs.iter().enumerate() {
             let power = spectrum[i].norm_sqr();
 
-            if freq >= 0.003 && freq < 0.04 {
+            if (0.003..0.04).contains(&freq) {
                 vlf_power_ms2 += power;
-            } else if freq >= 0.04 && freq < 0.15 {
+            } else if (0.04..0.15).contains(&freq) {
                 lf_power_ms2 += power;
-            } else if freq >= 0.15 && freq < 0.4 {
+            } else if (0.15..0.4).contains(&freq) {
                 hf_power_ms2 += power;
             }
         }
@@ -564,7 +564,7 @@ mod tests {
 
         let clean = result.unwrap();
         assert!(clean.len() < rr_intervals.len());
-        assert!(clean.iter().all(|&rr| rr >= 300.0 && rr <= 2000.0));
+        assert!(clean.iter().all(|&rr| (300.0..=2000.0).contains(&rr)));
     }
 
     #[test]

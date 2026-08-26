@@ -69,7 +69,7 @@ mod cuda_tests {
     #[test]
     fn test_launch_config_linear() {
         fn calculate_grid_size(num_elements: usize, threads_per_block: u32) -> u32 {
-            ((num_elements as u32) + threads_per_block - 1) / threads_per_block
+            (num_elements as u32).div_ceil(threads_per_block)
         }
 
         // Test various sizes
@@ -90,8 +90,8 @@ mod cuda_tests {
             block_height: u32,
         ) -> (u32, u32) {
             (
-                (width + block_width - 1) / block_width,
-                (height + block_height - 1) / block_height,
+                width.div_ceil(block_width),
+                height.div_ceil(block_height),
             )
         }
 
@@ -570,7 +570,7 @@ fn test_cuda_encoding_pipeline_simulation() {
         }
 
         fn calculate_launch_config(&self, n: usize) -> (u32, u32) {
-            let blocks = ((n as u32) + (self.block_size as u32) - 1) / (self.block_size as u32);
+            let blocks = (n as u32).div_ceil(self.block_size as u32);
             (blocks, self.block_size as u32)
         }
     }

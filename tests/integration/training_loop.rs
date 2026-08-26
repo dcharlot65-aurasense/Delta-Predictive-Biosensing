@@ -302,7 +302,7 @@ fn test_batch_processing() {
         let spike_tensor = SpikeTensor::zeros(batch_size, num_timesteps, num_channels, false);
 
         let output = snn.forward(&spike_tensor)
-            .expect(&format!("Forward pass failed for batch size {}", batch_size));
+            .unwrap_or_else(|_| panic!("Forward pass failed for batch size {}", batch_size));
 
         assert_eq!(
             output.shape().0,

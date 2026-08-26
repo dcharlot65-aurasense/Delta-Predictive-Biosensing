@@ -26,7 +26,7 @@ impl MethodComparisonAnalyzer {
     pub fn update_method(&mut self, method_name: String, metrics: TrainingMetrics) {
         self.method_histories
             .entry(method_name)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(metrics);
     }
 
@@ -144,12 +144,11 @@ impl ConvergenceAnalyzer for MethodComparisonAnalyzer {
             let mut fastest_epoch = usize::MAX;
 
             for (method, epoch_opt) in &convergence_speeds {
-                if let Some(epoch) = epoch_opt {
-                    if *epoch < fastest_epoch {
+                if let Some(epoch) = epoch_opt
+                    && *epoch < fastest_epoch {
                         fastest_epoch = *epoch;
                         fastest_method = Some(method.clone());
                     }
-                }
             }
 
             if let Some(fastest) = fastest_method {
@@ -206,13 +205,12 @@ impl HyperparameterSensitivityAnalyzer {
         let mut hp_values = Vec::new();
         let mut final_losses = Vec::new();
 
-        for (_config_name, (hps, history)) in &self.hp_configurations {
-            if let Some(&hp_value) = hps.get(hp_name) {
-                if let Some(last_metrics) = history.last() {
+        for (hps, history) in self.hp_configurations.values() {
+            if let Some(&hp_value) = hps.get(hp_name)
+                && let Some(last_metrics) = history.last() {
                     hp_values.push(hp_value);
                     final_losses.push(last_metrics.train_loss);
                 }
-            }
         }
 
         if hp_values.len() >= 2 {
@@ -334,7 +332,7 @@ impl ConvergenceAnalyzer for HyperparameterSensitivityAnalyzer {
 
         // Performance range analysis
         let mut all_final_losses = Vec::new();
-        for (_config_name, (_hps, history)) in &self.hp_configurations {
+        for (_hps, history) in self.hp_configurations.values() {
             if let Some(last_metrics) = history.last() {
                 all_final_losses.push(last_metrics.train_loss);
             }

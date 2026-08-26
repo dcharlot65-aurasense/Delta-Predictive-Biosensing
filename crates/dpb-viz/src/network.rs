@@ -405,7 +405,7 @@ impl NetworkGraph {
     fn position_grid(&mut self) {
         let total_nodes = self.nodes.len();
         let cols = (total_nodes as f32).sqrt().ceil() as usize;
-        let rows = (total_nodes + cols - 1) / cols;
+        let rows = total_nodes.div_ceil(cols);
 
         let margin = 50.0;
         let cell_width = (self.config.width as f32 - 2.0 * margin) / cols as f32;
@@ -480,8 +480,8 @@ impl NetworkGraph {
             svg.push('\n');
 
             for layer in &self.layers {
-                if !layer.node_ids.is_empty() {
-                    if let Some(first_node) = self.nodes.get(&layer.node_ids[0]) {
+                if !layer.node_ids.is_empty()
+                    && let Some(first_node) = self.nodes.get(&layer.node_ids[0]) {
                         let y = first_node.position.y;
                         svg.push_str(&format!(
                             r#"    <line x1="0" y1="{}" x2="{}" y2="{}"/>"#,
@@ -489,7 +489,6 @@ impl NetworkGraph {
                         ));
                         svg.push('\n');
                     }
-                }
             }
 
             svg.push_str("  </g>\n");
@@ -530,8 +529,8 @@ impl NetworkGraph {
             svg.push('\n');
 
             // Node labels
-            if self.config.show_labels {
-                if let Some(label) = &node.label {
+            if self.config.show_labels
+                && let Some(label) = &node.label {
                     svg.push_str(&format!(
                         "    <text x=\"{}\" y=\"{}\" text-anchor=\"middle\" font-size=\"8\" fill=\"#333\">{}</text>\n",
                         node.position.x,
@@ -539,7 +538,6 @@ impl NetworkGraph {
                         label
                     ));
                 }
-            }
         }
         svg.push_str("  </g>\n");
 
@@ -549,8 +547,8 @@ impl NetworkGraph {
             svg.push('\n');
 
             for layer in &self.layers {
-                if !layer.node_ids.is_empty() {
-                    if let Some(first_node) = self.nodes.get(&layer.node_ids[0]) {
+                if !layer.node_ids.is_empty()
+                    && let Some(first_node) = self.nodes.get(&layer.node_ids[0]) {
                         svg.push_str(&format!(
                             r#"    <text x="10" y="{}">{} ({})</text>"#,
                             first_node.position.y - 15.0,
@@ -559,7 +557,6 @@ impl NetworkGraph {
                         ));
                         svg.push('\n');
                     }
-                }
             }
 
             svg.push_str("  </g>\n");

@@ -443,7 +443,7 @@ mod tests {
 
         let sns = analyzer.estimate_sns_activity(signal.view()).unwrap();
 
-        assert!(sns >= 0.0 && sns <= 1.0);
+        assert!((0.0..=1.0).contains(&sns));
     }
 
     #[test]

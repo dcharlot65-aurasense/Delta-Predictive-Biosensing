@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 /// Main framework configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct DpbConfig {
     /// GPU configuration
     pub gpu: GpuConfig,
@@ -18,17 +19,6 @@ pub struct DpbConfig {
     pub logging: LoggingConfig,
 }
 
-impl Default for DpbConfig {
-    fn default() -> Self {
-        Self {
-            gpu: GpuConfig::default(),
-            signal: SignalConfig::default(),
-            network: NetworkConfig::default(),
-            training: TrainingConfig::default(),
-            logging: LoggingConfig::default(),
-        }
-    }
-}
 
 /// GPU-related configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]

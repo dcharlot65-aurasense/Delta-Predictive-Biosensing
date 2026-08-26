@@ -153,8 +153,10 @@ impl FedConfig {
 
 /// Aggregation strategy for combining client updates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum AggregationStrategy {
     /// Standard Federated Averaging.
+    #[default]
     FedAvg,
     /// Weighted average by number of samples.
     WeightedAvg,
@@ -166,16 +168,13 @@ pub enum AggregationStrategy {
     CoordinateMedian,
 }
 
-impl Default for AggregationStrategy {
-    fn default() -> Self {
-        Self::FedAvg
-    }
-}
 
 /// Client selection strategy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum ClientSelection {
     /// Select all available clients.
+    #[default]
     All,
     /// Random sampling.
     Random,
@@ -185,11 +184,6 @@ pub enum ClientSelection {
     Priority,
 }
 
-impl Default for ClientSelection {
-    fn default() -> Self {
-        Self::All
-    }
-}
 
 #[cfg(test)]
 mod tests {

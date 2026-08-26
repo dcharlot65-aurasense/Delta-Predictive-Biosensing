@@ -311,7 +311,7 @@ impl DiscreteWaveletTransform {
     /// Single level of DWT decomposition.
     fn dwt_step(&self, signal: &[f64]) -> (Vec<f64>, Vec<f64>) {
         let n = signal.len();
-        let out_len = (n + 1) / 2;
+        let out_len = n.div_ceil(2);
 
         let mut approximation = Vec::with_capacity(out_len);
         let mut detail = Vec::with_capacity(out_len);

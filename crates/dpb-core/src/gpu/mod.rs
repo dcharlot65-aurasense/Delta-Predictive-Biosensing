@@ -208,7 +208,7 @@ impl Default for BindGroupLayoutBuilder {
 
 /// Utility for workgroup size calculations.
 pub fn calculate_workgroups(total_elements: u32, workgroup_size: u32) -> u32 {
-    (total_elements + workgroup_size - 1) / workgroup_size
+    total_elements.div_ceil(workgroup_size)
 }
 
 /// Calculates 2D workgroup dimensions.

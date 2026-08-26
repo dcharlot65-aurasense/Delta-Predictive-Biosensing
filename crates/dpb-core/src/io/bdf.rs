@@ -475,7 +475,7 @@ impl BdfReader {
             let signal_bytes = &record_buffer
                 [signal_offset..signal_offset + signal.samples_per_record * 3];
 
-            for chunk in signal_bytes.chunks_exact(3) {
+            for chunk in signal_bytes.as_chunks::<3>().0 {
                 let digital = Self::read_int24(chunk);
                 let physical = signal.digital_to_physical(digital);
                 samples.push(physical);
@@ -523,7 +523,7 @@ impl BdfReader {
             let signal_bytes = &record_buffer
                 [signal_offset..signal_offset + signal.samples_per_record * 3];
 
-            for chunk in signal_bytes.chunks_exact(3) {
+            for chunk in signal_bytes.as_chunks::<3>().0 {
                 let status_value = Self::read_int24(chunk);
                 let trigger = BdfTrigger::from_status_value(sample_counter, status_value);
 
@@ -574,7 +574,7 @@ impl BdfReader {
             let mut signal_samples = Vec::with_capacity(signal.samples_per_record);
             let signal_bytes = &record_buffer[offset..offset + signal.samples_per_record * 3];
 
-            for chunk in signal_bytes.chunks_exact(3) {
+            for chunk in signal_bytes.as_chunks::<3>().0 {
                 let digital = Self::read_int24(chunk);
                 let physical = signal.digital_to_physical(digital);
                 signal_samples.push(physical);

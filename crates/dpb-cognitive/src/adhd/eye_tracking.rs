@@ -85,7 +85,7 @@ impl AdhdEyeTracking {
             fixation_duration_variability_ms: duration_variability,
             mean_dispersion_deg: mean_dispersion,
             blink_rate_per_min: blink_rate,
-            microsaccade_rate: microsaccade_rate,
+            microsaccade_rate,
             n_fixations: fixations.len(),
         }
     }

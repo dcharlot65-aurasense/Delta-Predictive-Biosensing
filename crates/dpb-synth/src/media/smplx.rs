@@ -288,7 +288,7 @@ impl SMPLXPosePresets {
         let angle = phase * 2.0 * std::f32::consts::PI;
 
         // Hip flexion/extension
-        pose.body_pose[1 * 3] = 0.5 * angle.sin(); // Left hip
+        pose.body_pose[3] = 0.5 * angle.sin(); // Left hip
         pose.body_pose[2 * 3] = -0.5 * angle.sin(); // Right hip
 
         // Knee flexion
@@ -554,7 +554,7 @@ print('RESULT_JSON:{{"status": "ok"}}')
                         let pos = j["position"].as_array()?;
                         Some(JointPositions3D {
                             position: [
-                                pos.get(0)?.as_f64()? as f32,
+                                pos.first()?.as_f64()? as f32,
                                 pos.get(1)?.as_f64()? as f32,
                                 pos.get(2)?.as_f64()? as f32,
                             ],
@@ -648,7 +648,7 @@ mod tests {
         assert!(t_pose.body_pose[16 * 3 + 2].abs() > 1.0); // Arms out
 
         let walk = SMPLXPosePresets::walking(0.25);
-        assert!(walk.body_pose[1 * 3] != 0.0); // Hip moving
+        assert!(walk.body_pose[3] != 0.0); // Hip moving
     }
 
     #[test]

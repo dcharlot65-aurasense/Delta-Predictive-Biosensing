@@ -512,7 +512,7 @@ impl EventTimeline {
         svg.push('\n');
 
         let mut offset = 20.0;
-        for (event_type, _) in &self.event_lanes {
+        for event_type in self.event_lanes.keys() {
             let color = event_type.color();
             let label = match event_type {
                 EventType::Spike => "Spike",

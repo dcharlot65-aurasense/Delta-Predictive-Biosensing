@@ -84,7 +84,7 @@ pub fn upsample(signal: ArrayView1<f64>, factor: usize) -> Result<Array1<f64>> {
     }
 
     // Handle last sample
-    if signal.len() > 0 {
+    if !signal.is_empty() {
         let last_start = (signal.len() - 1) * factor;
         for j in 0..factor {
             if last_start + j < new_len {

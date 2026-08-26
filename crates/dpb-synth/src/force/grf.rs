@@ -301,10 +301,10 @@ impl GrfGenerator {
         let peak_force_bw = 2.0 + 3.0 * (impact_velocity / 3.0).min(2.0);
 
         let mut vertical = Vec::with_capacity(n_samples);
-        let mut ap = vec![0.0; n_samples];
-        let mut ml = vec![0.0; n_samples];
-        let mut cop_x = vec![0.0; n_samples];
-        let mut cop_y = vec![0.0; n_samples];
+        let ap = vec![0.0; n_samples];
+        let ml = vec![0.0; n_samples];
+        let cop_x = vec![0.0; n_samples];
+        let cop_y = vec![0.0; n_samples];
         let mut phase_labels = Vec::with_capacity(n_samples);
         let mut events = Vec::new();
 

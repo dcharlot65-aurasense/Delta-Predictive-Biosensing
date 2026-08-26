@@ -441,7 +441,7 @@ mod tests {
         let output = gating.apply_hard(&input).unwrap();
 
         // Binary gating
-        assert!(output[0] > 0.0 || output[0] == 0.0);
+        assert!(output[0] >= 0.0);
     }
 
     #[test]

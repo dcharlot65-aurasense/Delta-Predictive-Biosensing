@@ -303,7 +303,7 @@ impl SpikingTransformerBuilder {
     }
 
     pub fn build(self) -> SNNResult<SpikingTransformer> {
-        if self.d_model % self.num_heads != 0 {
+        if !self.d_model.is_multiple_of(self.num_heads) {
             return Err(SNNError::InvalidConfig(
                 "d_model must be divisible by num_heads".to_string(),
             ));

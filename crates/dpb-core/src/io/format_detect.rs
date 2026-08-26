@@ -122,11 +122,10 @@ impl FormatType {
 /// ```
 pub fn detect_format(path: &Path) -> Result<FormatType> {
     // First, try magic byte detection
-    if let Ok(format) = detect_by_magic_bytes(path) {
-        if format != FormatType::Unknown {
+    if let Ok(format) = detect_by_magic_bytes(path)
+        && format != FormatType::Unknown {
             return Ok(format);
         }
-    }
 
     // Fall back to extension-based detection
     detect_by_extension(path)
@@ -164,11 +163,10 @@ fn detect_by_magic_bytes(path: &Path) -> Result<FormatType> {
     }
 
     // Check EDF (version string should be "0       " - 8 spaces with leading 0)
-    if header[0] == b'0' && header[1..8].iter().all(|&b| b == b' ' || b == 0) {
-        if is_valid_edf_like_header(&header) {
+    if header[0] == b'0' && header[1..8].iter().all(|&b| b == b' ' || b == 0)
+        && is_valid_edf_like_header(&header) {
             return Ok(FormatType::EDF);
         }
-    }
 
     // Check WFDB header file (text-based)
     if is_text_based(&header[0..bytes_read.min(128)]) {
@@ -220,11 +218,10 @@ fn is_valid_edf_like_header(header: &[u8]) -> bool {
     }
 
     // Check if number of signals is reasonable (< 1000)
-    if let Ok(n_signals_str) = std::str::from_utf8(&header[252..256]) {
-        if let Ok(n_signals) = n_signals_str.trim().parse::<usize>() {
+    if let Ok(n_signals_str) = std::str::from_utf8(&header[252..256])
+        && let Ok(n_signals) = n_signals_str.trim().parse::<usize>() {
             return n_signals > 0 && n_signals < 1000;
         }
-    }
 
     false
 }

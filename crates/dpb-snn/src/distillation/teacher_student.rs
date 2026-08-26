@@ -425,7 +425,7 @@ mod tests {
 
         // Check that all values are in [0, 1]
         for &val in softmax.iter() {
-            assert!(val >= 0.0 && val <= 1.0);
+            assert!((0.0..=1.0).contains(&val));
         }
     }
 

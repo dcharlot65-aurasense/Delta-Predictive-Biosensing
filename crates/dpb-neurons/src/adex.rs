@@ -377,7 +377,7 @@ mod tests {
             }
         }
 
-        assert!(spikes.len() > 0, "Bursting neuron should spike");
+        assert!(!spikes.is_empty(), "Bursting neuron should spike");
     }
 
     #[test]

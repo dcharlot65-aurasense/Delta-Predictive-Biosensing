@@ -307,7 +307,7 @@ impl SyntheticGenerator for PathologicalEmgGenerator {
             PathologyType::Myotonia => {
                 // Prolonged burst after contraction
                 // Simulate one myotonic burst in the middle
-                let burst_start = (n_samples / 2) as usize;
+                let burst_start = n_samples / 2;
                 let burst_duration = (2.0 * params.sampling_rate) as usize; // 2 seconds
 
                 events.push(Event {

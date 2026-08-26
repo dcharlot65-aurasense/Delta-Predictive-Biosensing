@@ -227,11 +227,10 @@ impl GeriatricReference {
         }
 
         // Check sex (None means applies to both)
-        if let Some(ref_sex) = self.sex {
-            if ref_sex != sex {
+        if let Some(ref_sex) = self.sex
+            && ref_sex != sex {
                 return false;
             }
-        }
 
         true
     }
@@ -296,7 +295,7 @@ impl GeriatricNormativeDb {
     pub fn add_reference(&mut self, reference: GeriatricReference) {
         self.references
             .entry(reference.metric_id.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(reference);
     }
 

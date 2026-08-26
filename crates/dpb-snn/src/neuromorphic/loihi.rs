@@ -171,7 +171,7 @@ impl LoihiExporter {
             edges.push(Edge {
                 source: 0, // Simplified
                 target: 1,
-                weight: conn.weights.get(0).copied().unwrap_or(0.0),
+                weight: conn.weights.first().copied().unwrap_or(0.0),
             });
         }
 
@@ -214,8 +214,8 @@ impl LoihiExporter {
             connections.push(LoihiConnection {
                 source_group: 0, // Simplified
                 target_group: 1,
-                weight: conn.weights.get(0).copied().unwrap_or(0.0) as i32,
-                delay: conn.delays.get(0).copied().unwrap_or(1.0) as usize,
+                weight: conn.weights.first().copied().unwrap_or(0.0) as i32,
+                delay: conn.delays.first().copied().unwrap_or(1.0) as usize,
                 connection_type: "ONE_TO_ONE".to_string(),
             });
         }
@@ -280,7 +280,7 @@ impl NeuromorphicExporter for LoihiExporter {
 
         let utilization = HardwareUtilization {
             cores_used: loihi_net.cores.len(),
-            chips_used: (loihi_net.cores.len() + 127) / 128, // 128 cores per chip
+            chips_used: loihi_net.cores.len().div_ceil(128), // 128 cores per chip
             neuron_utilization: (num_neurons as f32
                 / self.constraints.neuron.max_neurons_total as f32)
                 * 100.0,

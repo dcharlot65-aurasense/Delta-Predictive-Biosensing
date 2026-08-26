@@ -141,7 +141,7 @@ impl WeightMagnitudeTracker {
     pub fn update_layer_norm(&mut self, layer_name: String, norm: f64) {
         self.layer_norms
             .entry(layer_name)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(norm);
     }
 }
@@ -351,7 +351,7 @@ impl WeightUpdateTracker {
     pub fn update_layer_magnitude(&mut self, layer_name: String, magnitude: f64) {
         self.layer_update_magnitudes
             .entry(layer_name)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(magnitude);
     }
 }

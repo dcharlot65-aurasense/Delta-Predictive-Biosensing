@@ -186,6 +186,7 @@ pub enum AudioBackend {
 
 /// Common ground truth data for all generated media
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct MediaGroundTruth {
     /// Timestamps in seconds
     pub timestamps: Vec<f64>,
@@ -336,19 +337,6 @@ impl Default for JointAngles {
     }
 }
 
-impl Default for MediaGroundTruth {
-    fn default() -> Self {
-        Self {
-            timestamps: Vec::new(),
-            joint_angles: None,
-            joint_positions: None,
-            tremor: None,
-            gait: None,
-            voice: None,
-            severity: None,
-        }
-    }
-}
 
 /// Check if a tool is available in the system PATH
 pub fn check_tool_available(tool: &str) -> bool {

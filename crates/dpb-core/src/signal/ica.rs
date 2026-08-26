@@ -342,7 +342,7 @@ impl FastICA {
                 // Normalize
                 let norm = w_new.iter().map(|x| x * x).sum::<f64>().sqrt();
                 if norm > 1e-10 {
-                    w_new = w_new / norm;
+                    w_new /= norm;
                 }
 
                 // Check convergence
@@ -426,7 +426,7 @@ impl FastICA {
 
             // Normalize
             let norm = v.iter().map(|x| x * x).sum::<f64>().sqrt();
-            v = v / norm;
+            v /= norm;
 
             // Power iteration
             for _ in 0..100 {

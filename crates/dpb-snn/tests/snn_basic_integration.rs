@@ -147,7 +147,7 @@ fn test_multiple_snn_architectures() {
     for (name, layers) in architectures {
         let mut snn = FeedforwardSNN::new(layers.clone(), config.clone(), true)
             .expect("Failed to create SNN");
-        let output = snn.forward(&input).expect(&format!("{} forward failed", name));
+        let output = snn.forward(&input).unwrap_or_else(|_| panic!("{} forward failed", name));
 
         let (out_batch, out_time, out_neurons) = output.shape();
         assert_eq!(out_batch, batch_size);
@@ -175,7 +175,7 @@ fn test_spike_rate_computation() {
 
     // Verify all rates are in valid range [0, 1]
     for &rate in spike_rate.iter() {
-        assert!(rate >= 0.0 && rate <= 1.0, "Spike rate {} out of range", rate);
+        assert!((0.0..=1.0).contains(&rate), "Spike rate {} out of range", rate);
     }
 
     println!("  ✓ Spike rate computation successful");

@@ -35,7 +35,7 @@ impl SyntheticGenerator for NormalTappingGenerator {
 
         let mut separation = Vec::with_capacity(n_frames);
         let mut events = Vec::new();
-        let mut cumulative_time = 0.0;
+        let cumulative_time = 0.0;
 
         for i in 0..n_frames {
             let t = i as f64 * dt;
@@ -123,7 +123,7 @@ impl SyntheticGenerator for BradykineticTappingGenerator {
 
         let n_frames = (params.duration * params.frame_rate) as usize;
         let dt = 1.0 / params.frame_rate;
-        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut separation = Vec::with_capacity(n_frames);
         let mut phase = 0.0;
@@ -411,8 +411,8 @@ impl SyntheticGenerator for HesitationArrestGenerator {
                 separation.push(distance);
 
                 // Check for arrest at tap completion
-                if distance < 0.1 && i > 0 && separation[i - 1] >= 0.1 {
-                    if rng.random::<f64>() < params.arrest_probability {
+                if distance < 0.1 && i > 0 && separation[i - 1] >= 0.1
+                    && rng.random::<f64>() < params.arrest_probability {
                         let duration_dist = Normal::new(params.arrest_duration_mean, params.arrest_duration_std).unwrap();
                         arrest_remaining = duration_dist.sample(&mut rng).max(0.1);
 
@@ -423,7 +423,6 @@ impl SyntheticGenerator for HesitationArrestGenerator {
                             attributes: HashMap::new(),
                         });
                     }
-                }
             }
         }
 
@@ -490,7 +489,7 @@ impl SyntheticGenerator for TappingFatigueGenerator {
 
         let n_frames = (params.duration * params.frame_rate) as usize;
         let dt = 1.0 / params.frame_rate;
-        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut separation = Vec::with_capacity(n_frames);
         let mut phase = 0.0;

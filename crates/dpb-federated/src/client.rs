@@ -90,14 +90,13 @@ impl FederatedClient {
 
         // Verify dimensions match
         for (name, tensor) in &global_model.parameters {
-            if let Some(local_tensor) = self.model.parameters.get(name) {
-                if local_tensor.data.len() != tensor.data.len() {
+            if let Some(local_tensor) = self.model.parameters.get(name)
+                && local_tensor.data.len() != tensor.data.len() {
                     return Err(FederatedError::DimensionMismatch {
                         expected: local_tensor.data.len(),
                         actual: tensor.data.len(),
                     });
                 }
-            }
         }
 
         self.model = global_model.clone();

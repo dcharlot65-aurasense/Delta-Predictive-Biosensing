@@ -482,7 +482,7 @@ mod tests {
         let lif = GpuNeuronKernel::Lif;
         assert_eq!(lif.entry_point(), "main");
         assert_eq!(lif.workgroup_size(), 256);
-        assert!(lif.shader_source().len() > 0);
+        assert!(!lif.shader_source().is_empty());
     }
 
     #[test]

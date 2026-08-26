@@ -348,7 +348,7 @@ mod tests {
 
     #[test]
     fn test_top_k_compression() {
-        let mut compressor = GradientCompressor::top_k(0.5);
+        let compressor = GradientCompressor::top_k(0.5);
         let mut tensor = Tensor::new(vec![1.0, 5.0, 2.0, 3.0], vec![4]);
 
         compressor.compress_top_k(&mut tensor).unwrap();
@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     fn test_sign_compression() {
-        let mut compressor = GradientCompressor::sign_sgd();
+        let compressor = GradientCompressor::sign_sgd();
         let mut tensor = Tensor::new(vec![-2.5, 0.0, 3.0, -0.1], vec![4]);
 
         compressor.compress_sign(&mut tensor).unwrap();
@@ -386,7 +386,7 @@ mod tests {
 
     #[test]
     fn test_quantization() {
-        let mut compressor = GradientCompressor::quantize(4); // 16 levels
+        let compressor = GradientCompressor::quantize(4); // 16 levels
         let mut tensor = Tensor::new(vec![0.0, 0.5, 1.0], vec![3]);
 
         compressor.compress_quantize(&mut tensor).unwrap();

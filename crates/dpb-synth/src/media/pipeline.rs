@@ -567,11 +567,10 @@ impl MediaPipeline {
 
         // Adjust for tasks
         for task in &scenario.tasks {
-            if let Task::Walk { speed, .. } = task {
-                if let Some(s) = speed {
+            if let Task::Walk { speed, .. } = task
+                && let Some(s) = speed {
                     params.speed = *s as f64;
                 }
-            }
         }
 
         params

@@ -92,13 +92,12 @@ impl ANNToSNNConverter {
 
         // Adjust thresholds based on activation statistics
         for (layer_idx, layer) in snn.layers.iter_mut().enumerate() {
-            if let Some(&mean_activation) = layer_activations[layer_idx].first() {
-                if mean_activation > 0.0 {
+            if let Some(&mean_activation) = layer_activations[layer_idx].first()
+                && mean_activation > 0.0 {
                     // Scale threshold to achieve target spike rate
                     let scale = mean_activation / self.target_spike_rate;
                     layer.neuron_params.v_threshold *= scale;
                 }
-            }
         }
 
         Ok(())

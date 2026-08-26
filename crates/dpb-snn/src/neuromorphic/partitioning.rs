@@ -140,7 +140,7 @@ impl NetworkPartitioner {
     /// Calculate number of cores needed
     fn calculate_num_cores(&self, num_neurons: usize) -> usize {
         let max_per_core = self.constraints.neuron.max_neurons_per_core;
-        (num_neurons + max_per_core - 1) / max_per_core
+        num_neurons.div_ceil(max_per_core)
     }
 
     /// Coarsen graph for multilevel partitioning
@@ -223,11 +223,10 @@ impl NetworkPartitioner {
         let mut inter_core_edges = 0;
 
         for &neighbor in &graph.get_neighbors(neuron) {
-            if let Some(&neighbor_core) = assignments.get(&neighbor) {
-                if neighbor_core != neuron_core {
+            if let Some(&neighbor_core) = assignments.get(&neighbor)
+                && neighbor_core != neuron_core {
                     inter_core_edges += 1;
                 }
-            }
         }
 
         inter_core_edges
@@ -310,12 +309,12 @@ impl NetworkGraph {
         for edge in &edges {
             adjacency
                 .entry(edge.source)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(edge.target);
 
             adjacency
                 .entry(edge.target)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(edge.source);
 
             *synapse_counts.entry(edge.source).or_insert(0) += 1;

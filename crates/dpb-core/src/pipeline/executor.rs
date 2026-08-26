@@ -236,12 +236,11 @@ impl PipelineExecutor {
             let latency_ms = latency.as_secs_f64() * 1000.0;
 
             // Check if we should drop this window in RealTime mode due to deadline miss
-            if self.config.execution_mode == ExecutionMode::RealTime {
-                if latency_ms > self.config.max_latency_ms {
+            if self.config.execution_mode == ExecutionMode::RealTime
+                && latency_ms > self.config.max_latency_ms {
                     self.dropped_samples += window.len() as u64;
                     return None;
                 }
-            }
 
             self.latencies.push(latency_ms);
             self.last_window_time = Some(Instant::now());

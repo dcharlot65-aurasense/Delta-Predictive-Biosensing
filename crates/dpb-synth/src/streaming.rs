@@ -840,19 +840,12 @@ pub struct MultiModalState {
 
 /// Combined parameters
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct MultiModalParams {
     pub ecg: StreamingEcgParams,
     pub tremor: StreamingTremorParams,
 }
 
-impl Default for MultiModalParams {
-    fn default() -> Self {
-        Self {
-            ecg: StreamingEcgParams::default(),
-            tremor: StreamingTremorParams::default(),
-        }
-    }
-}
 
 /// Multi-modal sample output
 #[derive(Debug, Clone)]
@@ -3188,16 +3181,14 @@ impl StreamingGenerator for StreamingDdk {
     }
 
     fn is_complete(&self, state: &Self::State, params: &Self::Parameters) -> bool {
-        if let Some(duration) = params.duration {
-            if self.current_time(state) >= duration {
+        if let Some(duration) = params.duration
+            && self.current_time(state) >= duration {
                 return true;
             }
-        }
-        if let Some(reps) = params.repetitions {
-            if state.repetition_count >= reps {
+        if let Some(reps) = params.repetitions
+            && state.repetition_count >= reps {
                 return true;
             }
-        }
         false
     }
 }
@@ -3218,8 +3209,10 @@ fn get_syllable_formants(syllable: &str) -> ([f64; 4], [f64; 4]) {
 
 /// Clinical gait type
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Default)]
 pub enum ClinicalGaitType {
     /// Normal healthy gait
+    #[default]
     Normal,
     /// Parkinsonian gait (shuffling, reduced arm swing)
     Parkinsonian,
@@ -3229,11 +3222,6 @@ pub enum ClinicalGaitType {
     FreezingEpisodes,
 }
 
-impl Default for ClinicalGaitType {
-    fn default() -> Self {
-        ClinicalGaitType::Normal
-    }
-}
 
 /// Clinical pose frame with additional gait metrics
 #[derive(Debug, Clone)]
@@ -3639,10 +3627,12 @@ fn calculate_updrs_gait_score(shuffling: f64, arm_swing_red: f64, trunk_flex: f6
 
 /// Clinical hand task type
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Default)]
 pub enum ClinicalHandTask {
     /// Rest tremor assessment
     RestTremor,
     /// Finger tapping (UPDRS 3.4)
+    #[default]
     FingerTapping,
     /// Hand opening/closing (UPDRS 3.5)
     HandMovements,
@@ -3652,11 +3642,6 @@ pub enum ClinicalHandTask {
     SpiralDrawing,
 }
 
-impl Default for ClinicalHandTask {
-    fn default() -> Self {
-        ClinicalHandTask::FingerTapping
-    }
-}
 
 /// Clinical hand frame with task-specific metrics
 #[derive(Debug, Clone)]
@@ -3855,11 +3840,10 @@ impl FrameStreamingGenerator for StreamingClinicalHand {
         let t = state.frame_idx as f64 * state.dt;
 
         // Check for hesitation
-        if state.is_hesitating {
-            if t >= state.hesitation_end_time {
+        if state.is_hesitating
+            && t >= state.hesitation_end_time {
                 state.is_hesitating = false;
             }
-        }
 
         // Generate tremor
         let tremor_x = state.tremor_amp * (2.0 * PI * state.tremor_freq * t).sin();
@@ -4833,7 +4817,7 @@ mod tests {
             .count();
 
         // Should be roughly 10 zero crossings (2 per cycle * 5 cycles)
-        assert!(zero_crossings >= 8 && zero_crossings <= 12,
+        assert!((8..=12).contains(&zero_crossings),
             "Expected ~10 zero crossings, got {}", zero_crossings);
     }
 
@@ -4985,7 +4969,7 @@ mod tests {
         }
 
         // At 60 BPM, should see ~5 peaks in 5 seconds
-        assert!(peak_count >= 4 && peak_count <= 6,
+        assert!((4..=6).contains(&peak_count),
             "Expected ~5 peaks at 60 BPM, got {}", peak_count);
     }
 
@@ -5339,7 +5323,7 @@ mod tests {
         }
 
         // At 15 bpm over 8 seconds, expect ~2 breath cycles = ~2 troughs
-        assert!(trough_count >= 1 && trough_count <= 4,
+        assert!((1..=4).contains(&trough_count),
             "Expected ~2 breath troughs, got {}", trough_count);
     }
 
@@ -5669,7 +5653,7 @@ mod tests {
         }
 
         // At 60 BPM over 3 seconds, expect 2-4 peaks (depends on starting phase)
-        assert!(peak_count >= 2 && peak_count <= 6,
+        assert!((2..=6).contains(&peak_count),
             "Expected 2-4 cardiac cycles, got {} peaks", peak_count);
 
         // Also verify the green channel has modulation correlated with BVP
@@ -6165,7 +6149,7 @@ mod tests {
             .filter_map(|f| f.spiral_position)
             .collect();
 
-        assert!(spiral_positions.len() > 0, "Should have spiral positions");
+        assert!(!spiral_positions.is_empty(), "Should have spiral positions");
 
         // Spiral should expand (radius increases)
         let first_radius = (spiral_positions[0][0].powi(2) + spiral_positions[0][1].powi(2)).sqrt();

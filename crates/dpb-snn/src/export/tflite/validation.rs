@@ -146,14 +146,13 @@ impl TFLiteValidator {
                     ));
                 }
             }
-            OperatorType::Builtin(BuiltinOperator::FullyConnected) => {
-                if input_tensors.is_empty() {
+            OperatorType::Builtin(BuiltinOperator::FullyConnected)
+                if input_tensors.is_empty() => {
                     result.add_error(format!(
                         "Operator {} (FullyConnected) requires inputs",
                         index
                     ));
                 }
-            }
             _ => {
                 // Generic validation for other operators
             }
@@ -187,16 +186,14 @@ impl TFLiteValidator {
         }
 
         // Check if operator supports quantization
-        if has_quantized {
-            if let OperatorType::Builtin(builtin_op) = &op.op_type {
-                if !builtin_op.supports_quantization() {
+        if has_quantized
+            && let OperatorType::Builtin(builtin_op) = &op.op_type
+                && !builtin_op.supports_quantization() {
                     result.add_warning(CompatibilityWarning::QuantizationNotSupported {
                         operator: format!("{:?}", builtin_op),
                         index,
                     });
                 }
-            }
-        }
     }
 
     /// Validate a tensor
@@ -231,11 +228,10 @@ impl TFLiteValidator {
         }
 
         // Validate quantization if present
-        if let Some(ref quant) = tensor.quantization {
-            if let Err(e) = quant.validate() {
+        if let Some(ref quant) = tensor.quantization
+            && let Err(e) = quant.validate() {
                 result.add_error(format!("Tensor {} quantization: {}", index, e));
             }
-        }
     }
 
     /// Check for optimization opportunities

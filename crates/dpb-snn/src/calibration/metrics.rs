@@ -275,7 +275,7 @@ mod tests {
 
         let mce = maximum_calibration_error(&probabilities, &labels, 5);
         println!("MCE: {}", mce);
-        assert!(mce >= 0.0 && mce <= 1.0);
+        assert!((0.0..=1.0).contains(&mce));
     }
 
     #[test]
@@ -362,7 +362,7 @@ mod tests {
 
         let ace = adaptive_calibration_error(&probabilities, &labels, 3);
         println!("Adaptive CE: {}", ace);
-        assert!(ace >= 0.0 && ace <= 1.0);
+        assert!((0.0..=1.0).contains(&ace));
     }
 
     #[test]
@@ -381,7 +381,7 @@ mod tests {
 
         assert_eq!(class_errors.len(), 3);
         for &error in &class_errors {
-            assert!(error >= 0.0 && error <= 1.0);
+            assert!((0.0..=1.0).contains(&error));
         }
     }
 
@@ -435,7 +435,7 @@ mod tests {
 
         let ece = expected_calibration_error(&probabilities, &labels, 20);
         println!("ECE with many bins: {}", ece);
-        assert!(ece >= 0.0 && ece <= 1.0);
+        assert!((0.0..=1.0).contains(&ece));
     }
 
     #[test]

@@ -233,7 +233,7 @@ pub fn aggregate_to_neurons(spikes: &[SpikeImportance]) -> Vec<NeuronImportance>
     for spike in spikes {
         neuron_map
             .entry((spike.layer, spike.neuron_id))
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(spike);
     }
 

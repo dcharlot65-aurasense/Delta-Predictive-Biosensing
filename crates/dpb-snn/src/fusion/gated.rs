@@ -145,8 +145,8 @@ impl FusionNetwork for GatedFusionSNN {
         let mut gated_features = Vec::new();
 
         for modality in &self.config.modalities {
-            if let Some(input) = inputs.get(modality) {
-                if let (Some(extractor), Some(gate)) = (
+            if let Some(input) = inputs.get(modality)
+                && let (Some(extractor), Some(gate)) = (
                     self.feature_extractors.get_mut(modality),
                     gates.get(modality),
                 ) {
@@ -165,7 +165,6 @@ impl FusionNetwork for GatedFusionSNN {
                         _ => return Err(SNNError::InvalidConfig("Sparse not supported".to_string())),
                     }
                 }
-            }
         }
 
         if gated_features.is_empty() {
@@ -182,7 +181,7 @@ impl FusionNetwork for GatedFusionSNN {
         for gated in &gated_features[1..] {
             match &gated.data {
                 crate::SpikeRepresentation::Dense(arr) => {
-                    fused = fused + arr;
+                    fused += arr;
                 }
                 _ => return Err(SNNError::InvalidConfig("Sparse not supported".to_string())),
             }

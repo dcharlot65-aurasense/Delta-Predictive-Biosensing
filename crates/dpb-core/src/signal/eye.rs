@@ -382,7 +382,7 @@ impl EyeAnalyzer {
                 let duration = (i - blink_start) as f64 * 1000.0 / self.sample_rate;
 
                 // Filter out very short events (likely noise) and very long events
-                if duration >= 50.0 && duration <= 500.0 {
+                if (50.0..=500.0).contains(&duration) {
                     blinks.push(Blink {
                         start: blink_start,
                         end: i,

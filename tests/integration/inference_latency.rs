@@ -27,7 +27,7 @@ fn test_encoder_throughput() {
 
     // Generate test signal
     let signal: Vec<f32> = (0..signal_length)
-        .map(|i| ((i as f32 / 100.0).sin()))
+        .map(|i| (i as f32 / 100.0).sin())
         .collect();
 
     let signal_buffer = SignalBuffer::single_channel(signal, sampling_rate);
@@ -155,7 +155,7 @@ fn test_end_to_end_pipeline_latency() {
 
     // Generate signal
     let signal: Vec<f32> = (0..signal_length)
-        .map(|i| ((i as f32 / 50.0).sin()))
+        .map(|i| (i as f32 / 50.0).sin())
         .collect();
     let signal_buffer = SignalBuffer::single_channel(signal, sampling_rate);
 
@@ -360,7 +360,7 @@ fn test_memory_footprint() {
     };
 
     // Network layers
-    let layer_sizes = vec![num_channels, 64, 32, 16, 4];
+    let layer_sizes = [num_channels, 64, 32, 16, 4];
 
     // Estimate weight matrix sizes
     let mut weight_bytes = 0;

@@ -147,7 +147,7 @@ mod neuromorphic_export_tests {
             code.push_str("from lava.magma.core.run_conditions import RunSteps\n\n");
 
             // Network configuration
-            code.push_str(&format!("# Network Configuration\n"));
+            code.push_str(&"# Network Configuration\n".to_string());
             code.push_str(&format!("INPUT_SIZE = {}\n", self.config.input_size));
             code.push_str(&format!("HIDDEN_SIZES = {:?}\n", self.config.hidden_sizes));
             code.push_str(&format!("OUTPUT_SIZE = {}\n", self.config.output_size));
@@ -156,7 +156,7 @@ mod neuromorphic_export_tests {
 
             // LIF parameters
             code.push_str("# LIF Neuron Parameters\n");
-            code.push_str(&format!("lif_params = {{\n"));
+            code.push_str(&"lif_params = {\n".to_string());
             code.push_str(&format!("    'du': {},  # Decay constant\n",
                 (1.0 / self.params.tau_mem * 4095.0) as u32));
             code.push_str(&format!("    'dv': {},  # Voltage decay\n",
@@ -231,7 +231,7 @@ mod neuromorphic_export_tests {
 
             // Parameters
             code.push_str("# LIF Parameters\n");
-            code.push_str(&format!("cell_params = {{\n"));
+            code.push_str(&"cell_params = {\n".to_string());
             code.push_str(&format!("    'tau_m': {},\n", self.params.tau_mem));
             code.push_str(&format!("    'tau_syn_E': {},\n", self.params.tau_syn));
             code.push_str(&format!("    'tau_syn_I': {},\n", self.params.tau_syn));

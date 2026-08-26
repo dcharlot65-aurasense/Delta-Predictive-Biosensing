@@ -102,7 +102,7 @@ impl GradientFlowAnalyzer {
     pub fn update_layer_gradient(&mut self, layer_name: String, gradient_norm: f64) {
         self.layer_gradients
             .entry(layer_name)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(gradient_norm);
     }
 }
@@ -280,12 +280,11 @@ impl ConvergenceAnalyzer for ExplodingGradientDetector {
         let grad_norm = metrics.gradient_norm;
         self.gradient_history.push(grad_norm);
 
-        if grad_norm > self.threshold || grad_norm.is_nan() || grad_norm.is_infinite() {
-            if !self.detected {
+        if (grad_norm > self.threshold || grad_norm.is_nan() || grad_norm.is_infinite())
+            && !self.detected {
                 self.detected = true;
                 self.detection_epoch = Some(epoch);
             }
-        }
     }
 
     fn is_converged(&self) -> bool {

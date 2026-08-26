@@ -932,7 +932,7 @@ fn encode_band_power(
         let power = estimate_band_power(window, sample_rate as f32, config.low_freq, config.high_freq);
 
         let power_value = if config.use_log_power {
-            (power + 1e-10).ln() as f32
+            (power + 1e-10).ln()
         } else {
             power
         };

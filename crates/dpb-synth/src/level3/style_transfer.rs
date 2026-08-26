@@ -80,8 +80,10 @@ pub enum StyleTransferError {
 
 /// Pre-defined style types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum StyleType {
     /// Realistic human appearance from motion capture
+    #[default]
     RealisticHuman,
     /// Van Gogh's Starry Night style
     VanGogh,
@@ -109,11 +111,6 @@ pub enum StyleType {
     Custom,
 }
 
-impl Default for StyleType {
-    fn default() -> Self {
-        StyleType::RealisticHuman
-    }
-}
 
 impl StyleType {
     /// Get the built-in style image filename
@@ -178,8 +175,10 @@ impl StyleType {
 
 /// Neural network architecture for style transfer
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum StyleNetwork {
     /// VGG19 (Gatys et al. original)
+    #[default]
     Vgg19,
     /// VGG16 (lighter weight)
     Vgg16,
@@ -189,11 +188,6 @@ pub enum StyleNetwork {
     AdaIn,
 }
 
-impl Default for StyleNetwork {
-    fn default() -> Self {
-        StyleNetwork::Vgg19
-    }
-}
 
 /// Parameters for style transfer
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -351,7 +345,7 @@ impl StyleTransferRenderer {
     /// Check if Python and required packages are available
     pub fn check_requirements(&self) -> StyleResult<bool> {
         let output = Command::new(&self.params.python_path)
-            .args(&["-c", "import torch; import torchvision; print('OK')"])
+            .args(["-c", "import torch; import torchvision; print('OK')"])
             .output()
             .map_err(|e| StyleTransferError::PythonNotFound(e.to_string()))?;
 
@@ -367,7 +361,7 @@ impl StyleTransferRenderer {
     /// Get PyTorch version
     pub fn pytorch_version(&self) -> StyleResult<String> {
         let output = Command::new(&self.params.python_path)
-            .args(&["-c", "import torch; print(torch.__version__)"])
+            .args(["-c", "import torch; print(torch.__version__)"])
             .output()
             .map_err(|e| StyleTransferError::PythonNotFound(e.to_string()))?;
 
@@ -436,7 +430,7 @@ impl StyleTransferRenderer {
         let params_json = serde_json::to_string(&transfer_params)?;
 
         let output = Command::new(&self.params.python_path)
-            .args(&[
+            .args([
                 script_path.to_str().unwrap(),
                 "--params",
                 &params_json,
@@ -516,7 +510,7 @@ impl StyleTransferRenderer {
         let params_json = serde_json::to_string(&transfer_params)?;
 
         let output = Command::new(&self.params.python_path)
-            .args(&[
+            .args([
                 script_path.to_str().unwrap(),
                 "--params",
                 &params_json,
@@ -576,7 +570,7 @@ impl StyleTransferRenderer {
         let params_json = serde_json::to_string(&transfer_params)?;
 
         let output = Command::new(&self.params.python_path)
-            .args(&[
+            .args([
                 script_path.to_str().unwrap(),
                 "--params",
                 &params_json,

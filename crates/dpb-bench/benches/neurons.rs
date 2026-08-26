@@ -113,7 +113,7 @@ fn benchmark_batch_timesteps(c: &mut Criterion) {
     let config = dpb_neurons::lif::LifConfig::default();
 
     for num_timesteps in [10, 50, 100].iter() {
-        let mut layer = BatchLifLayer::new(num_neurons, config.clone());
+        let mut layer = BatchLifLayer::new(num_neurons, config);
         let inputs = Array1::from_elem(num_neurons, 10.0);
 
         group.bench_with_input(
@@ -171,7 +171,7 @@ fn benchmark_spike_response(c: &mut Criterion) {
             current,
             |b, &current| {
                 b.iter(|| {
-                    let mut neuron = LifNeuron::new(config.clone());
+                    let mut neuron = LifNeuron::new(config);
                     let mut spikes = 0;
                     for _ in 0..1000 {
                         if neuron.update(black_box(current), black_box(1.0)) {
@@ -204,7 +204,7 @@ fn benchmark_refractory_period(c: &mut Criterion) {
             refrac_ms,
             |b, _| {
                 b.iter(|| {
-                    let mut neuron = LifNeuron::new(config.clone());
+                    let mut neuron = LifNeuron::new(config);
                     for _ in 0..100 {
                         let spiked = neuron.update(black_box(20.0), black_box(1.0));
                         black_box(spiked);

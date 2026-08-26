@@ -156,7 +156,7 @@ mod tests {
     #[test]
     fn test_channel_format_clone() {
         let format = ChannelFormat::Float32;
-        let cloned = format.clone();
+        let cloned = format;
         assert_eq!(format, cloned);
     }
 

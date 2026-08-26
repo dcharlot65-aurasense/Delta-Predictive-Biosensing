@@ -848,7 +848,7 @@ impl LDiversityChecker {
             if let Some(&value) = record.clinical_data.get(&self.sensitive_attribute) {
                 equivalence_classes
                     .entry(key)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(value);
             }
         }

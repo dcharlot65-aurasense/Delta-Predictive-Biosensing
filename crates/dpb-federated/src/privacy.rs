@@ -400,7 +400,7 @@ mod tests {
         // Run many trials - should flip some
         let mut flips = 0;
         for _ in 0..1000 {
-            if ldp.randomized_response(true) != true {
+            if !ldp.randomized_response(true) {
                 flips += 1;
             }
         }

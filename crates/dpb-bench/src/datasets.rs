@@ -180,13 +180,12 @@ impl SyntheticECG {
 
         for i in 0..width_samples {
             let signed_idx = center_idx as isize + offset_samples + i as isize - width_samples as isize / 2;
-            if let Ok(idx) = usize::try_from(signed_idx) {
-                if idx < signal.len() {
+            if let Ok(idx) = usize::try_from(signed_idx)
+                && idx < signal.len() {
                     let t = i as f64 - width_samples as f64 / 2.0;
                     let gaussian = amplitude * ((-0.5 * (t / (width * sample_rate)).powi(2)).exp() as f32);
                     signal[idx] += gaussian;
                 }
-            }
         }
     }
 }
@@ -306,8 +305,8 @@ impl BenchmarkDataset for SyntheticGait {
         let mut labels = vec![0; heel_strikes.len()];
         labels.extend(vec![1; toe_offs.len()]);
 
-        let mut values: Vec<f64> = heel_strikes.iter().map(|&t| (t * self.sample_rate) as f64).collect();
-        values.extend(toe_offs.iter().map(|&t| (t * self.sample_rate) as f64));
+        let mut values: Vec<f64> = heel_strikes.iter().map(|&t| t * self.sample_rate).collect();
+        values.extend(toe_offs.iter().map(|&t| t * self.sample_rate));
 
         let ground_truth = GroundTruth {
             labels,

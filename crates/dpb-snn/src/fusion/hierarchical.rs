@@ -204,7 +204,7 @@ mod tests {
         let network = HierarchicalFusionSNN::new(config).unwrap();
         assert_eq!(network.name(), "HierarchicalFusionSNN");
         assert_eq!(network.low_level().len(), 2);
-        assert!(network.high_level().len() > 0);
+        assert!(!network.high_level().is_empty());
     }
 
     #[test]

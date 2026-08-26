@@ -166,8 +166,8 @@ fn test_ecg_processing_pipeline() {
         let rr_intervals: Vec<f64> = r_peaks
             .windows(2)
             .map(|w| {
-                let dt = (w[1].index - w[0].index) as f64 / sample_rate * 1000.0;
-                dt
+                
+                (w[1].index - w[0].index) as f64 / sample_rate * 1000.0
             })
             .collect();
 
@@ -326,7 +326,7 @@ fn test_respiratory_analysis_pipeline() {
 
     // Verify apnea detection
     assert!(
-        sleep_analysis.apneas.len() >= 1,
+        !sleep_analysis.apneas.is_empty(),
         "Should detect at least one apnea event"
     );
 
@@ -452,7 +452,7 @@ fn test_multi_modal_signal_fusion() {
     println!("  EDA: {} SCR events detected", eda_decomposition.scr_events.len());
 
     // Verify all modalities produced results
-    assert!(r_peaks.len() > 0, "ECG analysis produced results");
+    assert!(!r_peaks.is_empty(), "ECG analysis produced results");
     assert!(resp_metrics.respiratory_rate > 0.0, "Respiratory analysis produced results");
     // Note: SCR detection may not find events in simple synthetic data
     println!("  ✓ All modalities processed successfully");

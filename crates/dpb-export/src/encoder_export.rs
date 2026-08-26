@@ -235,13 +235,12 @@ impl EncoderExport {
     pub fn validate(&self) -> Result<()> {
         self.params.validate()?;
 
-        if let Some(state) = &self.state {
-            if state.channel_states.len() != self.params.num_channels {
+        if let Some(state) = &self.state
+            && state.channel_states.len() != self.params.num_channels {
                 return Err(ExportError::validation(
                     "state channel count doesn't match params",
                 ));
             }
-        }
 
         if !self.verify_checksum() {
             return Err(ExportError::validation("checksum mismatch"));

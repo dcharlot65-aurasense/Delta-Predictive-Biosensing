@@ -264,11 +264,10 @@ impl NarrativeGenerator {
             narrative.push_str(&format!("<p><b>{}</b></p>", text));
         }
 
-        if let Some(value) = &obs.value_quantity {
-            if let (Some(val), Some(unit)) = (value.value, &value.unit) {
+        if let Some(value) = &obs.value_quantity
+            && let (Some(val), Some(unit)) = (value.value, &value.unit) {
                 narrative.push_str(&format!("<p>Value: {} {}</p>", val, unit));
             }
-        }
 
         if let Some(time) = &obs.effective_date_time {
             narrative.push_str(&format!("<p>Time: {}</p>", time));

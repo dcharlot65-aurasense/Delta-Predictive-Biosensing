@@ -184,7 +184,7 @@ impl SelfDistillation {
         // Average previous outputs (ensemble)
         let mut avg_output = Array2::zeros((batch_size, num_classes));
         for prev_output in previous_outputs {
-            avg_output = avg_output + prev_output;
+            avg_output += prev_output;
         }
         avg_output /= previous_outputs.len() as f32;
 

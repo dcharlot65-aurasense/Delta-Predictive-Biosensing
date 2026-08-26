@@ -236,7 +236,7 @@ fn design_butterworth(
 
 /// Applies a median filter to a signal.
 pub fn median_filter(signal: ArrayView1<f64>, window_size: usize) -> Result<Array1<f64>> {
-    if window_size == 0 || window_size % 2 == 0 {
+    if window_size == 0 || window_size.is_multiple_of(2) {
         return Err(DpbError::InvalidParameter(
             "Window size must be odd and positive".to_string(),
         ));

@@ -354,7 +354,7 @@ impl NetworkConfig {
                     name: "output".to_string(),
                     size: output_size,
                     neuron_model: NeuronModel::LIF,
-                    params: params,
+                    params,
                 },
             ],
             connections: vec![
@@ -784,8 +784,8 @@ impl NeuromorphicExporter {
                 ConnectionType::FromMatrix => "sim.FromListConnector(conn_list)".to_string(),
             };
 
-            if let ConnectionType::FromMatrix = conn.conn_type {
-                if let Some(ref weights) = conn.weights {
+            if let ConnectionType::FromMatrix = conn.conn_type
+                && let Some(ref weights) = conn.weights {
                     writeln!(code, "# Connection list for {} -> {}", conn.source, conn.target)?;
                     writeln!(code, "conn_list = [")?;
                     for (i, row) in weights.iter().enumerate() {
@@ -797,7 +797,6 @@ impl NeuromorphicExporter {
                     }
                     writeln!(code, "]")?;
                 }
-            }
 
             writeln!(code, "proj_{}_{} = sim.Projection(", conn.source, conn.target)?;
             writeln!(code, "    {},", conn.source)?;

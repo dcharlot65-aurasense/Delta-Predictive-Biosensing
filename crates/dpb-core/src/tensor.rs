@@ -100,7 +100,7 @@ impl SpikeTensor {
     }
 
     /// Returns a view of the data.
-    pub fn view(&self) -> ArrayView3<f32> {
+    pub fn view(&self) -> ArrayView3<'_, f32> {
         self.data.view()
     }
 
@@ -110,7 +110,7 @@ impl SpikeTensor {
     }
 
     /// Gets a single batch item.
-    pub fn get_batch(&self, index: usize) -> Result<ArrayView2<f32>> {
+    pub fn get_batch(&self, index: usize) -> Result<ArrayView2<'_, f32>> {
         if index >= self.batch_size() {
             return Err(DpbError::OutOfBounds(
                 format!("Batch index {} out of bounds", index),

@@ -249,7 +249,7 @@ pub fn average_spikes(tensors: &[&SpikeTensor]) -> SNNResult<SpikeTensor> {
 
     // Add remaining tensors
     for tensor in &tensors[1..] {
-        sum = sum + &tensor.to_dense();
+        sum += &tensor.to_dense();
     }
 
     let avg = sum / (tensors.len() as f32);

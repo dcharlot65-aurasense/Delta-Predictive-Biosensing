@@ -346,6 +346,7 @@ impl EventEncoder for DerivativeEncoder {
 
 /// Configuration for discrete event encoder
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct DiscreteEventConfig {
     /// Event timestamps (in seconds)
     pub event_times: Vec<f64>,
@@ -353,14 +354,6 @@ pub struct DiscreteEventConfig {
     pub magnitudes: Vec<f32>,
 }
 
-impl Default for DiscreteEventConfig {
-    fn default() -> Self {
-        Self {
-            event_times: Vec::new(),
-            magnitudes: Vec::new(),
-        }
-    }
-}
 
 /// Discrete event encoder - converts pre-detected events to spikes
 pub struct DiscreteEventEncoder {

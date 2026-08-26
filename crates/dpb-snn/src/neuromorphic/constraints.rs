@@ -273,7 +273,7 @@ impl HardwareConstraints {
 
     /// Estimate number of cores needed
     pub fn estimate_cores(&self, num_neurons: usize) -> usize {
-        (num_neurons + self.neuron.max_neurons_per_core - 1) / self.neuron.max_neurons_per_core
+        num_neurons.div_ceil(self.neuron.max_neurons_per_core)
     }
 }
 
@@ -367,7 +367,7 @@ impl DelayRange {
         if delay > self.max_delay {
             return Err(format!("Delay {} exceeds maximum {}", delay, self.max_delay));
         }
-        if self.delay_resolution > 1 && delay % self.delay_resolution != 0 {
+        if self.delay_resolution > 1 && !delay.is_multiple_of(self.delay_resolution) {
             return Err(format!(
                 "Delay {} is not a multiple of resolution {}",
                 delay, self.delay_resolution

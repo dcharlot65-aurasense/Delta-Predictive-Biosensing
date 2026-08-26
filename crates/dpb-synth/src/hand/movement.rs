@@ -111,7 +111,7 @@ impl SyntheticGenerator for HandOpenCloseGenerator {
 
         let n_frames = (params.duration * params.frame_rate) as usize;
         let dt = 1.0 / params.frame_rate;
-        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut apertures = Vec::with_capacity(n_frames);
 

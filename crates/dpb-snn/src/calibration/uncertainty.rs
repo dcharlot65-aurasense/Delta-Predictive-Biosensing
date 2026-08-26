@@ -58,7 +58,7 @@ impl MCDropout {
     pub fn new(n_samples: usize, dropout_rate: f64) -> Self {
         assert!(n_samples > 0, "Number of samples must be positive");
         assert!(
-            dropout_rate >= 0.0 && dropout_rate < 1.0,
+            (0.0..1.0).contains(&dropout_rate),
             "Dropout rate must be in [0, 1)"
         );
 

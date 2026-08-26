@@ -218,7 +218,7 @@ impl RandomDropout {
     /// # Arguments
     /// * `dropout_rate` - Probability [0, 1] of dropping each sample
     pub fn new(dropout_rate: f64) -> Self {
-        assert!(dropout_rate >= 0.0 && dropout_rate <= 1.0);
+        assert!((0.0..=1.0).contains(&dropout_rate));
         Self { dropout_rate }
     }
 }

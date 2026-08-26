@@ -798,7 +798,7 @@ impl ComputeBackendExt for WebGPUBackend {
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
             let num_elements = a.size / std::mem::size_of::<f32>();
-            let workgroups = ((num_elements + 255) / 256) as u32;
+            let workgroups = num_elements.div_ceil(256) as u32;
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -919,8 +919,8 @@ impl ComputeBackendExt for WebGPUBackend {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups_x = ((n + 15) / 16) as u32;
-            let workgroups_y = ((m + 15) / 16) as u32;
+            let workgroups_x = n.div_ceil(16) as u32;
+            let workgroups_y = m.div_ceil(16) as u32;
             compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
         }
 
@@ -1048,7 +1048,7 @@ impl ComputeBackendExt for WebGPUBackend {
                 compute_pass.set_pipeline(&pipeline);
                 compute_pass.set_bind_group(0, &bind_group, &[]);
 
-                let workgroups = ((size / 2 + 255) / 256) as u32;
+                let workgroups = (size / 2).div_ceil(256) as u32;
                 compute_pass.dispatch_workgroups(workgroups, 1, 1);
             }
 
@@ -1118,7 +1118,7 @@ impl ComputeBackendExt for WebGPUBackend {
             compute_pass.set_pipeline(&pipeline);
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
-            let workgroups = ((size + 255) / 256) as u32;
+            let workgroups = size.div_ceil(256) as u32;
             compute_pass.dispatch_workgroups(workgroups, 1, 1);
         }
 
@@ -1389,7 +1389,7 @@ pub async fn create_backend(backend_type: BackendType) -> Result<Box<dyn Compute
 
 /// Lists all available backends on the current system.
 pub fn available_backends() -> Vec<BackendType> {
-    let mut backends = vec![BackendType::WebGPU];
+    let backends = vec![BackendType::WebGPU];
 
     #[cfg(feature = "cuda")]
     {

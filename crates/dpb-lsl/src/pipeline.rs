@@ -513,7 +513,7 @@ mod tests {
     #[test]
     fn test_encoder_type_clone() {
         let encoder = EncoderType::Delta;
-        let cloned = encoder.clone();
+        let cloned = encoder;
         assert_eq!(encoder, cloned);
     }
 

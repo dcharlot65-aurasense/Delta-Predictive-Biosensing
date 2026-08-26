@@ -195,10 +195,10 @@ mod fpga_export_tests {
             code.push_str("    #pragma HLS INTERFACE axis port=output\n");
             code.push_str("    #pragma HLS INTERFACE s_axilite port=threshold\n");
             code.push_str("    #pragma HLS INTERFACE s_axilite port=return\n");
-            code.push_str("\n");
+            code.push('\n');
             code.push_str(&format!("    static {} prev = 0;\n", data_type));
             code.push_str(&format!("    {} curr = input.read();\n", data_type));
-            code.push_str("\n");
+            code.push('\n');
             code.push_str("    int8_t spike = 0;\n");
             code.push_str("    if (prev < threshold && curr >= threshold) {\n");
             code.push_str("        spike = 1;\n");
@@ -215,9 +215,9 @@ mod fpga_export_tests {
         fn export(&self) -> String {
             let mut output = String::new();
             output.push_str(&self.generate_header());
-            output.push_str("\n");
+            output.push('\n');
             output.push_str(&self.generate_level_crossing_kernel());
-            output.push_str("\n");
+            output.push('\n');
             output.push_str(&self.generate_axi_stream_wrapper());
             output
         }
@@ -423,10 +423,10 @@ mod fpga_export_tests {
             match target {
                 FpgaTarget::XilinxVitis => vec![
                     format!("#pragma HLS ARRAY_PARTITION variable={} complete", var_name),
-                    format!("#pragma HLS PIPELINE II=1"),
+                    "#pragma HLS PIPELINE II=1".to_string(),
                 ],
                 FpgaTarget::IntelHls => vec![
-                    format!("#pragma unroll"),
+                    "#pragma unroll".to_string(),
                     format!("hls_register {} {}[{}]", "int", var_name, array_size),
                 ],
                 FpgaTarget::GenericHls => vec![

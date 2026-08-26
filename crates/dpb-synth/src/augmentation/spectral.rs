@@ -76,7 +76,7 @@ impl FrequencyMask {
 
         for _ in 0..num_masks {
             // Random frequency band to mask
-            let center_freq = random_f64_range(rng, 0.0, (fs / 2.0));
+            let center_freq = random_f64_range(rng, 0.0, fs / 2.0);
             let width = random_f64_range(rng, 0.0, self.max_width_hz);
 
             let freq_start = (center_freq - width / 2.0).max(0.0);

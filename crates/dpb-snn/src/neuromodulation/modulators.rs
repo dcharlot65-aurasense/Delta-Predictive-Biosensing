@@ -241,7 +241,7 @@ impl DiffusionModel {
                 new_concentration[[i, j]] += diffusion_factor * laplacian;
 
                 // Apply spatial decay
-                new_concentration[[i, j]] *= (1.0 - self.spatial_decay * dt);
+                new_concentration[[i, j]] *= 1.0 - self.spatial_decay * dt;
             }
         }
 

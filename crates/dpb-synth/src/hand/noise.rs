@@ -118,7 +118,7 @@ impl SyntheticGenerator for SelfOcclusionGenerator {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
-        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut visibility = Vec::with_capacity(n_frames);
 

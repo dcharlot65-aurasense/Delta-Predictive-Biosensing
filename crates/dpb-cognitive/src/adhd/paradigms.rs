@@ -197,7 +197,7 @@ impl QbTest {
         for stimulus in stimuli {
             let antic = responses.iter().any(|r| {
                 let rt = r.response_time_ms - stimulus.onset_time_ms;
-                rt >= 0.0 && rt < 100.0
+                (0.0..100.0).contains(&rt)
             });
             if antic {
                 anticipatory_responses += 1;

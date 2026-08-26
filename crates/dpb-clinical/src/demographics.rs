@@ -76,23 +76,21 @@ impl Demographics {
 
     /// Validate demographics for clinical use.
     pub fn validate(&self) -> Result<()> {
-        if let Some(age) = self.age {
-            if age > 120 {
+        if let Some(age) = self.age
+            && age > 120 {
                 return Err(ClinicalError::InvalidDemographics(format!(
                     "Age {} is unrealistic",
                     age
                 )));
             }
-        }
 
-        if let Some(edu) = self.education_years {
-            if edu > 30 {
+        if let Some(edu) = self.education_years
+            && edu > 30 {
                 return Err(ClinicalError::InvalidDemographics(format!(
                     "Education {} years is unrealistic",
                     edu
                 )));
             }
-        }
 
         Ok(())
     }

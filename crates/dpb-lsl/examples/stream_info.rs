@@ -109,16 +109,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Method 5: Channel metadata");
     println!("--------------------------");
 
-    let channels = vec![
-        ChannelInfo::eeg("Fp1"),
+    let channels = [ChannelInfo::eeg("Fp1"),
         ChannelInfo::eeg("Fp2"),
         ChannelInfo::eeg("F3"),
         ChannelInfo::eeg("F4"),
         ChannelInfo::eeg("C3"),
         ChannelInfo::eeg("C4"),
         ChannelInfo::eeg("O1"),
-        ChannelInfo::eeg("O2"),
-    ];
+        ChannelInfo::eeg("O2")];
 
     println!("Standard 10-20 EEG channels:");
     for (i, ch) in channels.iter().enumerate() {

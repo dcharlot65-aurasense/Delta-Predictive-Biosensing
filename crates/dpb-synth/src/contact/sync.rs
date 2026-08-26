@@ -431,8 +431,8 @@ impl AutonomicStateGenerator {
         let current_params = state_to_params(current_state);
 
         // Apply smooth transition if we're in transition period
-        if let Some(next) = next_state {
-            if t >= current_time && t < current_time + params.transition_duration {
+        if let Some(next) = next_state
+            && t >= current_time && t < current_time + params.transition_duration {
                 let next_params = state_to_params(next);
                 let progress = (t - current_time) / params.transition_duration;
 
@@ -443,7 +443,6 @@ impl AutonomicStateGenerator {
                     current_params.2 + (next_params.2 - current_params.2) * progress,
                 );
             }
-        }
 
         current_params
     }
@@ -544,7 +543,7 @@ impl SyntheticGenerator for StressResponseGenerator {
                         } else {
                             let t_since_onset = delta_t - latency;
                             if t_since_onset < rise_tau {
-                                cortisol_level += (1.0 - (-t_since_onset / rise_tau).exp());
+                                cortisol_level += 1.0 - (-t_since_onset / rise_tau).exp();
                             } else {
                                 cortisol_level += (-(t_since_onset - rise_tau) / decay_tau).exp();
                             }

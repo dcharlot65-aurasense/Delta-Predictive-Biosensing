@@ -31,7 +31,7 @@ impl SyntheticGenerator for GaitCycleGenerator {
         let n_frames = (params.duration * params.frame_rate) as usize;
         let dt = 1.0 / params.frame_rate;
         let cycle_duration = 60.0 / params.cadence; // seconds per step
-        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         // MediaPipe 33 keypoints (simplified - using key lower body points)
         let num_keypoints = 33;
@@ -443,7 +443,7 @@ impl SyntheticGenerator for ArmSwingGenerator {
         let n_frames = (params.duration * params.frame_rate) as usize;
         let dt = 1.0 / params.frame_rate;
         let cycle_duration = 60.0 / params.cadence;
-        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let num_keypoints = 33;
         let mut keypoints = Vec::with_capacity(n_frames);

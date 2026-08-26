@@ -194,7 +194,7 @@ pub trait SynapticModel: Send + Sync {
     fn update_weights(&mut self, delta: ArrayView2<f32>);
 
     /// Returns the current weight matrix.
-    fn weights(&self) -> ArrayView2<f32>;
+    fn weights(&self) -> ArrayView2<'_, f32>;
 }
 
 /// Trait for surrogate gradient functions.

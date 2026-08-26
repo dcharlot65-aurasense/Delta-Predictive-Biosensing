@@ -910,7 +910,7 @@ mod tests {
         // AUC = (0 + 0) / (2 * 2) = 0
         // We need to invert: if all positives ranked higher, count total negatives
         // Expected AUC = 1.0 for perfect ranking
-        assert!(score >= 0.0 && score <= 1.0);  // Valid AUC range
+        assert!((0.0..=1.0).contains(&score));  // Valid AUC range
 
         auc.update(&preds, &targets);
         assert!(auc.result() >= 0.0 && auc.result() <= 1.0);

@@ -97,12 +97,11 @@ impl FusionNetwork for CrossModalAttentionSNN {
         // Encode each modality to common hidden space
         let mut encoded = Vec::new();
         for modality in &self.config.modalities {
-            if let Some(input) = inputs.get(modality) {
-                if let Some(encoder) = self.encoders.get_mut(modality) {
+            if let Some(input) = inputs.get(modality)
+                && let Some(encoder) = self.encoders.get_mut(modality) {
                     let enc = encoder.forward(input)?;
                     encoded.push(enc);
                 }
-            }
         }
 
         if encoded.is_empty() {

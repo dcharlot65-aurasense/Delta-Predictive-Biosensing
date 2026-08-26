@@ -131,13 +131,11 @@ impl BidsSubject {
             let entry = entry.map_err(DpbError::Io)?;
             let path = entry.path();
 
-            if path.is_dir() {
-                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if name.starts_with("ses-") {
+            if path.is_dir()
+                && let Some(name) = path.file_name().and_then(|n| n.to_str())
+                    && name.starts_with("ses-") {
                         return Ok(true);
                     }
-                }
-            }
         }
 
         Ok(false)
@@ -157,9 +155,9 @@ impl BidsSubject {
             let entry = entry.map_err(DpbError::Io)?;
             let path = entry.path();
 
-            if path.is_dir() {
-                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if name.starts_with("ses-") {
+            if path.is_dir()
+                && let Some(name) = path.file_name().and_then(|n| n.to_str())
+                    && name.starts_with("ses-") {
                         let session_id = name.strip_prefix("ses-").unwrap();
                         sessions.push(BidsSession::new(
                             &self.dataset_root,
@@ -167,8 +165,6 @@ impl BidsSubject {
                             session_id,
                         ));
                     }
-                }
-            }
         }
 
         sessions.sort_by(|a, b| a.id().cmp(b.id()));

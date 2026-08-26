@@ -311,14 +311,12 @@ impl BidsDataset {
             let entry = entry.map_err(DpbError::Io)?;
             let path = entry.path();
 
-            if path.is_dir() {
-                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if name.starts_with("sub-") {
+            if path.is_dir()
+                && let Some(name) = path.file_name().and_then(|n| n.to_str())
+                    && name.starts_with("sub-") {
                         let subject_id = name.strip_prefix("sub-").unwrap();
                         subjects.push(BidsSubject::new(&self.root, subject_id));
                     }
-                }
-            }
         }
 
         subjects.sort_by(|a, b| a.id().cmp(b.id()));

@@ -412,7 +412,7 @@ mod tests {
         let calibrated = ps.calibrate(score);
 
         // Check that output is a valid probability
-        assert!(calibrated >= 0.0 && calibrated <= 1.0);
+        assert!((0.0..=1.0).contains(&calibrated));
 
         // With a=2, b=-1: sigmoid(2*0.8 - 1) = sigmoid(0.6)
         let expected = sigmoid(0.6);

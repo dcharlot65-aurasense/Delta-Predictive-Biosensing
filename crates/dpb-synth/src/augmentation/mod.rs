@@ -55,7 +55,7 @@ impl AugmentationPipeline {
     /// # Returns
     /// Self for method chaining
     pub fn add(mut self, aug: impl SignalAugmentation + 'static, probability: f64) -> Self {
-        assert!(probability >= 0.0 && probability <= 1.0, "Probability must be in [0, 1]");
+        assert!((0.0..=1.0).contains(&probability), "Probability must be in [0, 1]");
         self.augmentations.push((Box::new(aug), probability));
         self
     }

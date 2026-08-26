@@ -98,7 +98,7 @@ fn test_gait_pipeline_end_to_end() {
     // Map right ankle spikes to first half of channels
     for event in &right_spikes {
         let timestep = ((event.timestamp * 100.0).min((num_timesteps - 1) as f64)) as usize;
-        let channel = (event.channel as usize % (num_channels / 2));
+        let channel = event.channel as usize % (num_channels / 2);
         spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
     }
 

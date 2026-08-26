@@ -230,7 +230,7 @@ impl PyTimeSeries {
     /// Get the data array
     #[getter]
     fn data(&self, py: Python) -> Py<PyAny> {
-        self.data.clone_ref(py).into_any().into()
+        self.data.clone_ref(py).into_any()
     }
 
     /// Set the data array

@@ -53,8 +53,10 @@ pub enum SkeletonError {
 
 /// Camera view for 3D to 2D projection
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum CameraView {
     /// Front view (XY plane, Z depth)
+    #[default]
     Front,
     /// Side view (ZY plane, X depth)
     Side,
@@ -64,11 +66,6 @@ pub enum CameraView {
     Oblique,
 }
 
-impl Default for CameraView {
-    fn default() -> Self {
-        CameraView::Front
-    }
-}
 
 /// Rendering style for skeleton visualization
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -708,7 +705,7 @@ impl SkeletonRenderer {
         right_hand: Option<&[[f64; 3]]>,
     ) -> SkeletonResult<RgbImage> {
         // Start with pose
-        let mut img = self.render_pose(pose)?;
+        let img = self.render_pose(pose)?;
 
         // Overlay hands if provided
         // Note: This is a simplified approach; a full implementation would

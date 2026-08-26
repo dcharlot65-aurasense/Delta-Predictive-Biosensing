@@ -306,7 +306,7 @@ fn test_ecg_encoder_threshold_sensitivity() {
         );
 
         assert!(
-            spike_train.len() > 0,
+            !spike_train.is_empty(),
             "Should produce spikes even at high threshold"
         );
     }

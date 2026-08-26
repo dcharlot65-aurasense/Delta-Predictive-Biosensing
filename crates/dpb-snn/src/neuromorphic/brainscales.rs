@@ -575,7 +575,7 @@ mod tests {
         let exporter = BrainScaleSExporter::new(config);
 
         let quantized = exporter.quantize_voltage(1.0);
-        assert!(quantized >= -2.0 && quantized <= 2.0);
+        assert!((-2.0..=2.0).contains(&quantized));
     }
 
     #[test]

@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 /// the actual one disagreed.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Pod, Zeroable)]
+#[derive(Default)]
 pub struct XyloLifState {
     /// Membrane potential (16-bit hardware state).
     pub v: i16,
@@ -36,16 +37,6 @@ pub struct XyloLifState {
     pub _padding: u8,
 }
 
-impl Default for XyloLifState {
-    fn default() -> Self {
-        Self {
-            v: 0, // Represents resting potential in hardware units
-            i_syn: 0,
-            refrac_counter: 0,
-            _padding: 0,
-        }
-    }
-}
 
 /// Bit-shift decay, as Xylo approximates an exponential.
 ///
@@ -255,6 +246,7 @@ impl NeuronModel for XyloLifNeuron {
 /// Pulsar LIF state with integer arithmetic.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Pod, Zeroable)]
+#[derive(Default)]
 pub struct PulsarLifState {
     /// Membrane potential (16-bit)
     pub v: i32,
@@ -265,16 +257,6 @@ pub struct PulsarLifState {
     pub _padding: u16,
 }
 
-impl Default for PulsarLifState {
-    fn default() -> Self {
-        Self {
-            v: 0,
-            adapt: 0,
-            refrac_timer: 0,
-            _padding: 0,
-        }
-    }
-}
 
 /// Pulsar LIF configuration.
 #[repr(C)]
@@ -435,6 +417,7 @@ impl NeuronModel for PulsarLifNeuron {
 /// Quantized LIF state (8-bit fixed point).
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Pod, Zeroable)]
+#[derive(Default)]
 pub struct QuantizedLifState {
     /// Membrane potential (Q8.8 fixed point)
     pub v: i16,
@@ -443,15 +426,6 @@ pub struct QuantizedLifState {
     pub _padding: u8,
 }
 
-impl Default for QuantizedLifState {
-    fn default() -> Self {
-        Self {
-            v: 0,
-            refrac: 0,
-            _padding: 0,
-        }
-    }
-}
 
 /// Quantized LIF configuration (8-bit parameters).
 #[repr(C)]
@@ -704,7 +678,7 @@ mod tests {
 
         // Test clamping to 8-bit range
         let clamped = neuron.quantize(1000);
-        assert!(clamped >= -128 && clamped <= 127);
+        assert!((-128..=127).contains(&clamped));
     }
 
     #[test]

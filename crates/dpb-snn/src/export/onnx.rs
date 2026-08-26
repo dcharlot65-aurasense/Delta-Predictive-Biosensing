@@ -82,7 +82,7 @@ impl OnnxExporter {
         
         // Add input tensor
         let input_tensor = OnnxTensor {
-            name: self.config.input_names.get(0)
+            name: self.config.input_names.first()
                 .unwrap_or(&"input".to_string())
                 .clone(),
             shape: input_shape.iter().map(|&x| x as i64).collect(),
@@ -92,7 +92,7 @@ impl OnnxExporter {
         graph.inputs.push(input_tensor);
         
         // Convert each layer to ONNX nodes
-        let mut prev_output = self.config.input_names.get(0)
+        let mut prev_output = self.config.input_names.first()
             .unwrap_or(&"input".to_string())
             .clone();
             
@@ -146,7 +146,7 @@ impl OnnxExporter {
         
         // Add output tensor
         let output_tensor = OnnxTensor {
-            name: self.config.output_names.get(0)
+            name: self.config.output_names.first()
                 .unwrap_or(&"output".to_string())
                 .clone(),
             shape: vec![-1],  // Dynamic shape
@@ -258,7 +258,7 @@ impl OnnxExporter {
         input_shape: &[usize],
     ) -> Result<ExportResult, String> {
         let mut graph = OnnxGraph::new();
-        let mut warnings = Vec::new();
+        let warnings = Vec::new();
         
         // Add input
         let input_tensor = OnnxTensor {

@@ -311,7 +311,7 @@ impl SeizureDetector {
                 let freqs = fft_frequencies(self.window_size, self.sample_rate);
 
                 for (i, &freq) in freqs.iter().enumerate() {
-                    if freq >= 1.0 && freq <= 25.0 && psd[i] > max_power {
+                    if (1.0..=25.0).contains(&freq) && psd[i] > max_power {
                         max_power = psd[i];
                         dominant_freq = freq;
                     }
@@ -413,7 +413,7 @@ impl SeizureDetector {
             let power = psd[i];
             total_power += power;
 
-            if freq >= 3.0 && freq <= 25.0 {
+            if (3.0..=25.0).contains(&freq) {
                 rhythmic_power += power;
             }
         }

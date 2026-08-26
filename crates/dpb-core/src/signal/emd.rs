@@ -435,7 +435,7 @@ impl ImfSet {
     pub fn reconstruct(&self) -> Array1<f64> {
         let mut signal = self.residue.clone();
         for imf in &self.imfs {
-            signal = signal + &imf.data;
+            signal += &imf.data;
         }
         signal
     }
@@ -456,7 +456,7 @@ impl ImfSet {
                     self.imfs.len() - 1
                 )));
             }
-            signal = signal + &self.imfs[idx].data;
+            signal += &self.imfs[idx].data;
         }
 
         Ok(signal)
@@ -868,7 +868,7 @@ impl Eemd {
 
             for imf_set in all_imfs {
                 if imf_idx < imf_set.num_imfs() {
-                    sum = sum + &imf_set.imfs[imf_idx].data;
+                    sum += &imf_set.imfs[imf_idx].data;
                     count += 1;
                 }
             }
@@ -882,7 +882,7 @@ impl Eemd {
         // Average residues
         let mut residue_sum = Array1::zeros(signal_len);
         for imf_set in all_imfs {
-            residue_sum = residue_sum + &imf_set.residue;
+            residue_sum += &imf_set.residue;
         }
         let averaged_residue = residue_sum / all_imfs.len() as f64;
 
@@ -967,11 +967,10 @@ impl Ceemdan {
                     .collect();
 
                 let mut emd = Emd::new(self.config.emd_config.clone());
-                if let Ok(imf_set) = emd.decompose(&Array1::from_vec(noisy_residue)) {
-                    if !imf_set.imfs.is_empty() {
+                if let Ok(imf_set) = emd.decompose(&Array1::from_vec(noisy_residue))
+                    && !imf_set.imfs.is_empty() {
                         ensemble_imfs.push(imf_set.imfs[0].data.to_vec());
                     }
-                }
             }
 
             if ensemble_imfs.is_empty() {

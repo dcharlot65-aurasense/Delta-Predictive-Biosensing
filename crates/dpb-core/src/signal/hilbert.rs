@@ -32,12 +32,12 @@ pub fn hilbert_transform(signal: &[f64]) -> Vec<Complex64> {
     // Keep DC and Nyquist (if n is even) unchanged
     buffer[0] *= 1.0; // DC component unchanged
 
-    let half = (n + 1) / 2;
+    let half = n.div_ceil(2);
     for i in 1..half {
         buffer[i] *= 2.0;
     }
 
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         buffer[n / 2] *= 1.0; // Nyquist frequency unchanged
     }
 

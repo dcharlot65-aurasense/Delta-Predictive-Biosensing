@@ -460,11 +460,9 @@ impl Visualization for HyperparameterPlot {
                 .iter()
                 .enumerate()
                 .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-            {
-                if let Some((x, y)) = points.get(best_idx) {
+                && let Some((x, y)) = points.get(best_idx) {
                     svg.circle(*x, *y, 7.0, "#16a34a");
                 }
-            }
         }
 
         svg.build()

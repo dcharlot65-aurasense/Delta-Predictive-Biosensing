@@ -302,7 +302,7 @@ impl NystagmusGenerator {
         let mut time = Vec::with_capacity(n_samples);
         let mut horizontal_position = Vec::with_capacity(n_samples);
         let mut vertical_position = Vec::with_capacity(n_samples);
-        let mut beats = Vec::new();
+        let beats = Vec::new();
 
         let noise_dist = Normal::new(0.0, self.config.noise_level).unwrap();
 

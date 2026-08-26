@@ -251,27 +251,23 @@ impl Demographics {
     /// Check if demographics match a given filter
     pub fn matches(&self, filter: &DemographicsFilter) -> bool {
         // Age range
-        if let Some((min, max)) = filter.age_range {
-            if self.age < min || self.age > max {
+        if let Some((min, max)) = filter.age_range
+            && (self.age < min || self.age > max) {
                 return false;
             }
-        }
 
         // Sex
-        if let Some(sex) = filter.sex {
-            if self.sex != sex {
+        if let Some(sex) = filter.sex
+            && self.sex != sex {
                 return false;
             }
-        }
 
         // Education years
-        if let Some((min, max)) = filter.education_range {
-            if let Some(years) = self.education_years {
-                if years < min || years > max {
+        if let Some((min, max)) = filter.education_range
+            && let Some(years) = self.education_years
+                && (years < min || years > max) {
                     return false;
                 }
-            }
-        }
 
         true
     }

@@ -34,7 +34,7 @@ impl HeatmapData {
     /// Get dimensions (rows, cols)
     pub fn dimensions(&self) -> (usize, usize) {
         let rows = self.data.len();
-        let cols = self.data.get(0).map(|row| row.len()).unwrap_or(0);
+        let cols = self.data.first().map(|row| row.len()).unwrap_or(0);
         (rows, cols)
     }
 

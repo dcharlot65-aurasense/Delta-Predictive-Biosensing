@@ -175,7 +175,7 @@ fn test_wfdb_multi_channel_roundtrip() {
     for ch in 0..num_channels {
         let read_data = reader
             .read_all_samples(ch)
-            .expect(&format!("Failed to read channel {}", ch));
+            .unwrap_or_else(|_| panic!("Failed to read channel {}", ch));
 
         assert_eq!(read_data.len(), num_samples);
 
@@ -213,7 +213,7 @@ fn test_edf_roundtrip() {
     // EDF is record-oriented: the header declares how many records there are
     // and how long each is, and each signal declares its samples per record.
     // Signals go to the writer, not onto the header.
-    let signal_labels = vec!["EEG Fp1", "EEG Fp2", "ECG"];
+    let signal_labels = ["EEG Fp1", "EEG Fp2", "ECG"];
     let samples_per_record = sample_rate as usize;
 
     let header = EdfHeader::new(
@@ -277,7 +277,7 @@ fn test_edf_roundtrip() {
     for (i, label) in signal_labels.iter().enumerate() {
         let read_signal = reader
             .read_signal(i)
-            .expect(&format!("Failed to read signal {}", i));
+            .unwrap_or_else(|_| panic!("Failed to read signal {}", i));
 
         assert_eq!(
             read_signal.len(),
