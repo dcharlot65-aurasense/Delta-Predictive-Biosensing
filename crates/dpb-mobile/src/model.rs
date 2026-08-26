@@ -276,8 +276,9 @@ impl MobileModel {
         }
 
         // Deserialize model data (skip 16-byte header)
-        let model: Self = bincode::deserialize(&bytes[16..])
-            .map_err(|e| ModelError::DeserializationError(e.to_string()))?;
+        let (model, _): (Self, usize) =
+            bincode::serde::decode_from_slice(&bytes[16..], bincode::config::standard())
+                .map_err(|e| ModelError::DeserializationError(e.to_string()))?;
 
         // Validate model structure
         model.validate()?;
@@ -302,7 +303,7 @@ impl MobileModel {
         bytes.extend_from_slice(&[0u8; 8]);
 
         // Serialize model data
-        let model_bytes = bincode::serialize(self)
+        let model_bytes = bincode::serde::encode_to_vec(self, bincode::config::standard())
             .map_err(|e| ModelError::SerializationError(e.to_string()))?;
 
         bytes.extend_from_slice(&model_bytes);

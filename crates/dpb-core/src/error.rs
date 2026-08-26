@@ -92,8 +92,14 @@ impl From<serde_json::Error> for DpbError {
     }
 }
 
-impl From<bincode::Error> for DpbError {
-    fn from(err: bincode::Error) -> Self {
+impl From<bincode::error::EncodeError> for DpbError {
+    fn from(err: bincode::error::EncodeError) -> Self {
+        DpbError::Serialization(err.to_string())
+    }
+}
+
+impl From<bincode::error::DecodeError> for DpbError {
+    fn from(err: bincode::error::DecodeError) -> Self {
         DpbError::Serialization(err.to_string())
     }
 }

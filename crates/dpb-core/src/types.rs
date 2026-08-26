@@ -747,8 +747,10 @@ mod proptest_tests {
             magnitude in 0.0f32..100.0,
         ) {
             let event = SpikeEvent::new(timestamp, channel, polarity, magnitude);
-            let serialized = bincode::serialize(&event).unwrap();
-            let deserialized: SpikeEvent = bincode::deserialize(&serialized).unwrap();
+            let cfg = bincode::config::standard();
+            let serialized = bincode::serde::encode_to_vec(event, cfg).unwrap();
+            let (deserialized, _): (SpikeEvent, usize) =
+                bincode::serde::decode_from_slice(&serialized, cfg).unwrap();
             prop_assert_eq!(event, deserialized);
         }
 
