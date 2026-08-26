@@ -3,7 +3,7 @@
 use super::{NeuronState, SpikingLayer};
 use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor};
 use ndarray::{s, Array1, Array2, Array3, Axis};
-use rand::thread_rng;
+use rand::rng;
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
 
@@ -44,7 +44,7 @@ impl SpikingLinear {
         // Initialize weights with Xavier/Glorot initialization
         let std_dev = (2.0 / (input_size + output_size) as f32).sqrt();
         let normal = Normal::new(0.0, std_dev).unwrap();
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         let weights = Array2::from_shape_fn((output_size, input_size), |_| {
             normal.sample(&mut rng)

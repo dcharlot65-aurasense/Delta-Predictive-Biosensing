@@ -1,7 +1,7 @@
 //! Pose noise and artifact generators
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 
@@ -95,7 +95,7 @@ impl SyntheticGenerator for OcclusionGenerator {
             .map(|frame| {
                 frame.iter()
                     .map(|kp| {
-                        if rng.r#gen::<f64>() < params.occlusion_probability {
+                        if rng.random::<f64>() < params.occlusion_probability {
                             [params.occlusion_value; 3]
                         } else {
                             *kp
@@ -157,7 +157,7 @@ impl SyntheticGenerator for TrackingDropoutGenerator {
         let frames_with_dropout: Vec<Option<Vec<[f64; 3]>>> = params.keypoints
             .iter()
             .map(|frame| {
-                if rng.r#gen::<f64>() < params.dropout_probability {
+                if rng.random::<f64>() < params.dropout_probability {
                     None
                 } else {
                     Some(frame.clone())
@@ -219,10 +219,10 @@ impl SyntheticGenerator for IdSwitchGenerator {
             .iter()
             .map(|frame| {
                 // Randomly swap IDs
-                if rng.r#gen::<f64>() < params.switch_probability {
+                if rng.random::<f64>() < params.switch_probability {
                     if params.num_persons >= 2 {
-                        let idx1 = rng.gen_range(0..params.num_persons);
-                        let idx2 = rng.gen_range(0..params.num_persons);
+                        let idx1 = rng.random_range(0..params.num_persons);
+                        let idx2 = rng.random_range(0..params.num_persons);
                         current_ids.swap(idx1, idx2);
                     }
                 }
@@ -432,10 +432,10 @@ impl SyntheticGenerator for LightingVariationGenerator {
             .enumerate()
             .map(|(frame_idx, frame)| {
                 // Random illumination variation
-                let illumination_factor = 1.0 - rng.gen_range(0.0..1.0) * params.illumination_variation;
+                let illumination_factor = 1.0 - rng.random_range(0.0..1.0) * params.illumination_variation;
 
                 // Shadow events
-                let in_shadow = rng.gen_range(0.0..1.0) < params.shadow_probability;
+                let in_shadow = rng.random_range(0.0..1.0) < params.shadow_probability;
                 let shadow_factor = if in_shadow { 0.5 } else { 1.0 };
 
                 let base_confidences = if frame_idx < params.confidence_scores.len() {

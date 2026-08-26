@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth};
 use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -72,13 +72,13 @@ impl SyntheticGenerator for BackgroundNoiseGenerator {
             }
             NoiseType::Babble => {
                 // Simulate multi-talker babble (3-5 modulated noise sources)
-                let num_talkers = rng.r#gen_range(3..=5);
+                let num_talkers = rng.random_range(3..=5);
                 let mut babble = vec![0.0; n_samples];
                 let white_dist = Normal::new(0.0, 1.0).unwrap();
 
                 for _ in 0..num_talkers {
-                    let f_mod = rng.r#gen_range(2.0..6.0); // modulation frequency (Hz)
-                    let phase = rng.r#gen_range(0.0..2.0 * PI);
+                    let f_mod = rng.random_range(2.0..6.0); // modulation frequency (Hz)
+                    let phase = rng.random_range(0.0..2.0 * PI);
 
                     for i in 0..n_samples {
                         let t = i as f64 / params.sampling_rate;
@@ -205,8 +205,8 @@ impl SyntheticGenerator for RoomAcousticsGenerator {
             // Early reflections (discrete reflections)
             if i < num_early && i > 0 {
                 // Random sparse reflections
-                if rng.r#gen_bool(0.05) {
-                    let reflection_amplitude = (-t / tau).exp() * rng.r#gen_range(0.1..0.3);
+                if rng.random_bool(0.05) {
+                    let reflection_amplitude = (-t / tau).exp() * rng.random_range(0.1..0.3);
                     amplitude += reflection_amplitude;
                 }
             }
@@ -577,7 +577,7 @@ impl SyntheticGenerator for TelehealthDegradationGenerator {
             let ideal_time = i as f64 * params.packet_size_ms / 1000.0;
 
             // Check if packet is lost
-            if rng.r#gen_bool(params.packet_loss_rate) {
+            if rng.random_bool(params.packet_loss_rate) {
                 packet_events.push(PacketEvent {
                     packet_id: i,
                     ideal_time,

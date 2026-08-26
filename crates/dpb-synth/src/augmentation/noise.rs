@@ -4,7 +4,7 @@
 //! including Gaussian, pink noise, baseline wander, powerline noise, and motion artifacts.
 
 use super::{SignalAugmentation, random_f64, random_f64_range, random_usize_range, random_i32_range};
-use rand::RngCore;
+use rand::Rng;
 use rand_distr::{Distribution, Normal};
 use std::f64::consts::PI;
 
@@ -22,7 +22,7 @@ impl GaussianNoise {
 }
 
 impl SignalAugmentation for GaussianNoise {
-    fn augment(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64> {
+    fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         // Calculate signal power
         let signal_power = signal.iter().map(|x| x * x).sum::<f64>() / signal.len() as f64;
 
@@ -59,7 +59,7 @@ impl PinkNoise {
     }
 
     /// Generate pink noise using the Voss-McCartney algorithm
-    fn generate_pink_noise(&self, length: usize, rng: &mut dyn RngCore) -> Vec<f64> {
+    fn generate_pink_noise(&self, length: usize, rng: &mut dyn Rng) -> Vec<f64> {
         const NUM_GENERATORS: usize = 16;
         let mut generators = vec![0.0; NUM_GENERATORS];
         let mut counter = 0u32;
@@ -84,7 +84,7 @@ impl PinkNoise {
 }
 
 impl SignalAugmentation for PinkNoise {
-    fn augment(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64> {
+    fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         // Generate pink noise
         let mut pink_noise = self.generate_pink_noise(signal.len(), rng);
 
@@ -131,7 +131,7 @@ impl BaselineWander {
 }
 
 impl SignalAugmentation for BaselineWander {
-    fn augment(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64> {
+    fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         // Assume a typical sampling rate of 250 Hz if not specified
         let fs = 250.0;
         let phase = ((rng.next_u64() as f64) / (u64::MAX as f64)) * 2.0 * PI;
@@ -174,7 +174,7 @@ impl PowerlineNoise {
 }
 
 impl SignalAugmentation for PowerlineNoise {
-    fn augment(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64> {
+    fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         // Assume a typical sampling rate of 250 Hz if not specified
         let fs = 250.0;
         let phase = ((rng.next_u64() as f64) / (u64::MAX as f64)) * 2.0 * PI;
@@ -215,7 +215,7 @@ impl MotionArtifact {
         Self { probability, duration_range }
     }
 
-    fn generate_artifact(&self, length: usize, rng: &mut dyn RngCore) -> Vec<f64> {
+    fn generate_artifact(&self, length: usize, rng: &mut dyn Rng) -> Vec<f64> {
         let mut artifact = vec![0.0; length];
 
         // Create a transient with exponential decay
@@ -232,7 +232,7 @@ impl MotionArtifact {
 }
 
 impl SignalAugmentation for MotionArtifact {
-    fn augment(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64> {
+    fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         let mut result = signal.to_vec();
         let fs = 250.0;  // Assume 250 Hz sampling rate
         let duration_sec = signal.len() as f64 / fs;

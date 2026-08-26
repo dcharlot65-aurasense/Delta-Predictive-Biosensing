@@ -221,12 +221,12 @@ impl SpikingGraphConvLayer {
         neuron_params: NeuronParams,
         dt: f32,
     ) -> Self {
-        use rand::thread_rng;
+        use rand::rng;
         use rand_distr::{Distribution, Normal};
 
         let std = (2.0 / (in_features + out_features) as f32).sqrt();
         let normal = Normal::new(0.0, std).unwrap();
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         let weights = Array2::from_shape_fn((out_features, in_features), |_| {
             normal.sample(&mut rng)

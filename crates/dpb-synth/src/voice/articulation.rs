@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -62,7 +62,7 @@ impl SyntheticGenerator for VowelSpaceGenerator {
 
         for _ in 0..params.num_vowels {
             // Select random canonical vowel
-            let &(f1_base, f2_base) = canonical_vowels.get(rng.r#gen_range(0..canonical_vowels.len())).unwrap();
+            let &(f1_base, f2_base) = canonical_vowels.get(rng.random_range(0..canonical_vowels.len())).unwrap();
 
             // Add variability
             let f1 = (f1_base + noise_dist.sample(&mut rng)).max(200.0);
@@ -432,7 +432,7 @@ impl SyntheticGenerator for ConsonantPrecisionGenerator {
             let frication_intensity = (target_frication_intensity + frication_noise.sample(&mut rng)).max(0.0);
 
             // Closure duration also affected by precision
-            let closure_duration = 50.0 + (1.0 - params.precision) * 30.0 * rng.r#gen_range(-1.0..1.0);
+            let closure_duration = 50.0 + (1.0 - params.precision) * 30.0 * rng.random_range(-1.0..1.0);
 
             consonant_features.push(ConsonantFeatures {
                 burst_duration,

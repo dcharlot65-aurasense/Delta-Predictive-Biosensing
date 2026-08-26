@@ -155,7 +155,7 @@ impl CaloricGenerator {
     pub fn new(config: CaloricConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
-            None => StdRng::from_entropy(),
+            None => rand::make_rng::<StdRng>(),
         };
         Self { config, rng }
     }
@@ -171,8 +171,8 @@ impl CaloricGenerator {
         let mut eye_position = Vec::with_capacity(n_samples);
 
         // Caloric response characteristics
-        let latency = 20.0 + self.rng.r#gen::<f64>() * 10.0; // 20-30s latency
-        let time_to_peak = 60.0 + self.rng.r#gen::<f64>() * 20.0; // 60-80s to peak
+        let latency = 20.0 + self.rng.random::<f64>() * 10.0; // 20-30s latency
+        let time_to_peak = 60.0 + self.rng.random::<f64>() * 20.0; // 60-80s to peak
         let response_duration = 120.0;
 
         // Temperature effect: deviation from body temp (37°C)

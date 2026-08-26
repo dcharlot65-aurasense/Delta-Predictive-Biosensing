@@ -163,7 +163,7 @@ impl SleepMicrostructureGenerator {
     pub fn new(config: SleepMicroConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
-            None => StdRng::from_entropy(),
+            None => rand::make_rng::<StdRng>(),
         };
         Self { config, rng }
     }
@@ -271,7 +271,7 @@ impl SleepMicrostructureGenerator {
         let mut spindles = Vec::new();
         for i in 0..n_spindles {
             let onset = 1.0 + i as f64 * spindle_spacing;
-            let spindle_type = if self.rng.r#gen::<bool>() {
+            let spindle_type = if self.rng.random::<bool>() {
                 SpindleType::Fast
             } else {
                 SpindleType::Slow
@@ -359,7 +359,7 @@ impl SleepMicrostructureGenerator {
                 let n_to_remove = (output.ground_truth.spindles.len() as f64 * reduction) as usize;
                 for _ in 0..n_to_remove {
                     if !output.ground_truth.spindles.is_empty() {
-                        let idx = self.rng.r#gen_range(0..output.ground_truth.spindles.len());
+                        let idx = self.rng.random_range(0..output.ground_truth.spindles.len());
                         output.ground_truth.spindles.remove(idx);
                     }
                 }
@@ -434,8 +434,8 @@ impl SleepMicrostructureGenerator {
         let mut spindles = Vec::new();
 
         for _ in 0..n_spindles {
-            let onset = self.rng.r#gen::<f64>() * (duration - 2.0) + 0.5;
-            let spindle_type = if self.rng.r#gen::<bool>() {
+            let onset = self.rng.random::<f64>() * (duration - 2.0) + 0.5;
+            let spindle_type = if self.rng.random::<bool>() {
                 SpindleType::Fast
             } else {
                 SpindleType::Slow
@@ -455,11 +455,11 @@ impl SleepMicrostructureGenerator {
         spindle_type: SpindleType,
     ) -> SpindleInfo {
         let (freq, duration) = match spindle_type {
-            SpindleType::Slow => (12.0 + self.rng.r#gen::<f64>(), 0.5 + self.rng.r#gen::<f64>() * 0.5),
-            SpindleType::Fast => (14.0 + self.rng.r#gen::<f64>() * 2.0, 0.5 + self.rng.r#gen::<f64>() * 1.0),
+            SpindleType::Slow => (12.0 + self.rng.random::<f64>(), 0.5 + self.rng.random::<f64>() * 0.5),
+            SpindleType::Fast => (14.0 + self.rng.random::<f64>() * 2.0, 0.5 + self.rng.random::<f64>() * 1.0),
         };
 
-        let amplitude = 30.0 + self.rng.r#gen::<f64>() * 30.0;
+        let amplitude = 30.0 + self.rng.random::<f64>() * 30.0;
         let n_samples = (duration * self.config.sample_rate) as usize;
         let onset_sample = (onset * self.config.sample_rate) as usize;
 
@@ -497,7 +497,7 @@ impl SleepMicrostructureGenerator {
         let mut kcomplexes = Vec::new();
 
         for _ in 0..n_kcomplexes {
-            let onset = self.rng.r#gen::<f64>() * (duration - 2.0) + 0.5;
+            let onset = self.rng.random::<f64>() * (duration - 2.0) + 0.5;
             let info = self.add_single_k_complex(signal, onset, false);
             kcomplexes.push(info);
         }
@@ -512,9 +512,9 @@ impl SleepMicrostructureGenerator {
         onset: f64,
         evoked: bool,
     ) -> KComplexInfo {
-        let duration = 0.5 + self.rng.r#gen::<f64>() * 0.3; // 0.5-0.8s
-        let neg_amp = -(100.0 + self.rng.r#gen::<f64>() * 100.0); // -100 to -200 µV
-        let pos_amp = 50.0 + self.rng.r#gen::<f64>() * 50.0; // 50-100 µV
+        let duration = 0.5 + self.rng.random::<f64>() * 0.3; // 0.5-0.8s
+        let neg_amp = -(100.0 + self.rng.random::<f64>() * 100.0); // -100 to -200 µV
+        let pos_amp = 50.0 + self.rng.random::<f64>() * 50.0; // 50-100 µV
 
         let onset_sample = (onset * self.config.sample_rate) as usize;
         let n_samples = (duration * self.config.sample_rate) as usize;
@@ -544,7 +544,7 @@ impl SleepMicrostructureGenerator {
         }
 
         // Maybe add associated spindle
-        let associated_spindle = self.rng.r#gen::<f64>() < 0.3;
+        let associated_spindle = self.rng.random::<f64>() < 0.3;
         if associated_spindle {
             self.add_single_spindle(signal, onset + duration, SpindleType::Fast);
         }
@@ -567,7 +567,7 @@ impl SleepMicrostructureGenerator {
         let n_oscillations = (duration * so_freq) as usize;
 
         let mut slow_oscillations = Vec::new();
-        let amplitude = 100.0 + self.rng.r#gen::<f64>() * 50.0;
+        let amplitude = 100.0 + self.rng.random::<f64>() * 50.0;
 
         for i in 0..n_oscillations {
             let onset = i as f64 * so_period;
@@ -613,7 +613,7 @@ impl SleepMicrostructureGenerator {
 
         // Add spindles at up-state of slow oscillations (phase-locked)
         for so in slow_oscillations.iter() {
-            if self.rng.r#gen::<f64>() < 0.4 {
+            if self.rng.random::<f64>() < 0.4 {
                 // 40% chance of spindle at each SO
                 let spindle_onset = so.up_state_onset - 0.1; // Just before up-state
                 let info = self.add_single_spindle(signal, spindle_onset, SpindleType::Fast);

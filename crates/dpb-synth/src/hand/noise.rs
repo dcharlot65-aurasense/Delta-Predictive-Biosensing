@@ -1,7 +1,7 @@
 //! Hand tracking noise and artifact generators
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal, Bernoulli};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -206,7 +206,7 @@ impl SyntheticGenerator for HandTrackingLossGenerator {
             } else {
                 // Check for new loss
                 if loss_dist.sample(&mut rng) {
-                    let loss_duration = rng.r#gen_range(params.min_loss_duration..=params.max_loss_duration);
+                    let loss_duration = rng.random_range(params.min_loss_duration..=params.max_loss_duration);
                     loss_remaining = loss_duration;
                     tracking_active.push(false);
                 } else {
@@ -421,7 +421,7 @@ impl SyntheticGenerator for BackgroundClutterGenerator {
 
             for _ in 0..params.n_distractor_objects {
                 // Random chance of distractor appearing based on clutter density
-                if rng.gen_range(0.0..1.0) < params.clutter_density {
+                if rng.random_range(0.0..1.0) < params.clutter_density {
                     let depth: f64 = position_dist.sample(&mut rng);
                     let object = [
                         position_dist.sample(&mut rng),

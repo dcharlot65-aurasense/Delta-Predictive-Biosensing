@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal, Exp};
 use std::collections::HashMap;
 use std::f64::consts::E;
@@ -31,7 +31,7 @@ impl SyntheticGenerator for EdaTonicGenerator {
         let dt = 1.0 / params.sampling_rate;
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
-        let phase = rng.r#gen_range(0.0..2.0 * std::f64::consts::PI);
+        let phase = rng.random_range(0.0..2.0 * std::f64::consts::PI);
         let noise = Normal::new(0.0, 0.01).unwrap();
 
         let signal = Array1::from_vec(
@@ -232,7 +232,7 @@ impl SyntheticGenerator for StimulusLockedScrGenerator {
 
         for stim_time in &params.stimulus_times {
             // Check if this stimulus elicits a response
-            if rng.r#gen::<f64>() > params.response_probability {
+            if rng.random::<f64>() > params.response_probability {
                 continue;
             }
 
@@ -455,7 +455,7 @@ impl SyntheticGenerator for EdaArtifactGenerator {
         while t < params.duration {
             let amp_dist = Normal::new(params.movement_amplitude, params.movement_amplitude * 0.3).unwrap();
             let amplitude = amp_dist.sample(&mut rng).abs();
-            let duration = params.movement_duration * rng.r#gen_range(0.5..1.5);
+            let duration = params.movement_duration * rng.random_range(0.5..1.5);
 
             events.push(Event {
                 time: t,

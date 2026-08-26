@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -155,10 +155,10 @@ impl SyntheticGenerator for SpasticDysarthriaGenerator {
             let base_f0 = params.baseline_f0 + base_noise.sample(&mut rng);
 
             // Check for pitch break
-            if rng.r#gen_bool(pitch_break_probability) {
+            if rng.random_bool(pitch_break_probability) {
                 // Sudden jump up or down
-                let break_magnitude = rng.r#gen_range(5.0..15.0); // semitones
-                let break_direction = if rng.r#gen_bool(0.5) { 1.0 } else { -1.0 };
+                let break_magnitude = rng.random_range(5.0..15.0); // semitones
+                let break_direction = if rng.random_bool(0.5) { 1.0 } else { -1.0 };
                 let f0 = base_f0 * 2.0_f64.powf(break_magnitude * break_direction / 12.0);
                 f0_contour.push(f0);
 

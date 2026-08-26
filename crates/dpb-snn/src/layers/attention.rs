@@ -3,7 +3,7 @@
 use super::{NeuronState, SpikingLayer};
 use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor};
 use ndarray::{Array1, Array2, Array3, Axis, s};
-use rand::thread_rng;
+use rand::rng;
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
 
@@ -61,7 +61,7 @@ impl SpikingAttention {
 
         let std = (2.0 / d_model as f32).sqrt();
         let normal = Normal::new(0.0, std).unwrap();
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         let mut init_weights = |shape: (usize, usize)| {
             Array2::from_shape_fn(shape, |_| normal.sample(&mut rng))
@@ -261,7 +261,7 @@ impl MultiHeadSpikingAttention {
 
         let std = (1.0 / d_model as f32).sqrt();
         let normal = Normal::new(0.0, std).unwrap();
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         let w_output = Array2::from_shape_fn((d_model, d_model), |_| normal.sample(&mut rng));
 

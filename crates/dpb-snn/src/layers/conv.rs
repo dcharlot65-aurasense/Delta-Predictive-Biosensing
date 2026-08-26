@@ -3,7 +3,7 @@
 use super::{NeuronState, SpikingLayer};
 use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor};
 use ndarray::{s, Array1, Array2, Array3, Array4, Array5, Axis};
-use rand::thread_rng;
+use rand::rng;
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
 
@@ -52,7 +52,7 @@ impl SpikingConv2d {
         let fan_in = in_channels * kernel_size.0 * kernel_size.1;
         let std_dev = (2.0 / fan_in as f32).sqrt();
         let normal = Normal::new(0.0, std_dev).unwrap();
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         let kernel = Array4::from_shape_fn(
             (out_channels, in_channels, kernel_size.0, kernel_size.1),
@@ -256,7 +256,7 @@ impl SpikingConv1d {
         let fan_in = in_channels * kernel_size;
         let std_dev = (2.0 / fan_in as f32).sqrt();
         let normal = Normal::new(0.0, std_dev).unwrap();
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         let kernel = Array3::from_shape_fn(
             (out_channels, in_channels, kernel_size),

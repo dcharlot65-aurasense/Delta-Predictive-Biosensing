@@ -67,8 +67,8 @@ pub struct ANNBaseline {
 impl ANNBaseline {
     /// Create a new ANN baseline
     pub fn new(input_dim: usize, hidden_dims: Vec<usize>, output_dim: usize) -> Self {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
+        use rand::{Rng, RngExt};
+        let mut rng = rand::rng();
 
         // Initialize random weights
         let mut weights = Vec::new();
@@ -76,7 +76,7 @@ impl ANNBaseline {
 
         for &hidden_dim in &hidden_dims {
             let layer_weights: Vec<f32> = (0..prev_dim * hidden_dim)
-                .map(|_| rng.r#gen::<f32>() * 0.1 - 0.05)
+                .map(|_| rng.random::<f32>() * 0.1 - 0.05)
                 .collect();
             weights.push(layer_weights);
             prev_dim = hidden_dim;
@@ -84,7 +84,7 @@ impl ANNBaseline {
 
         // Output layer
         let output_weights: Vec<f32> = (0..prev_dim * output_dim)
-            .map(|_| rng.r#gen::<f32>() * 0.1 - 0.05)
+            .map(|_| rng.random::<f32>() * 0.1 - 0.05)
             .collect();
         weights.push(output_weights);
 

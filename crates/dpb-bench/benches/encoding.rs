@@ -3,7 +3,8 @@
 //! This benchmark suite measures the performance of various encoders
 //! on synthetic biosignal data.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
+use std::hint::black_box;
 use dpb_bench::datasets::{SyntheticECG, SyntheticGait, SyntheticTremor, BenchmarkDataset};
 use dpb_encoders::prelude::*;
 use dpb_core::{EventEncoder, SignalBuffer};

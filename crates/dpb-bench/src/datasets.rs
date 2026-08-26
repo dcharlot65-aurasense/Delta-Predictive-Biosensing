@@ -4,7 +4,7 @@
 //! and neural networks. All datasets include ground truth annotations.
 
 use dpb_core::{SignalBuffer, GroundTruth};
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -69,7 +69,7 @@ impl BenchmarkDataset for SyntheticECG {
         let mut rng = if let Some(seed) = self.seed {
             rand::rngs::StdRng::seed_from_u64(seed)
         } else {
-            rand::rngs::StdRng::from_entropy()
+            rand::make_rng::<rand::rngs::StdRng>()
         };
 
         let duration = self.num_samples as f64 / self.sample_rate;
@@ -152,11 +152,11 @@ impl SyntheticECG {
         let t_offset = 0.2;
 
         // Amplitudes
-        let p_amp = 0.15 + rng.r#gen::<f32>() * 0.05;
+        let p_amp = 0.15 + rng.random::<f32>() * 0.05;
         let q_amp = -0.1;
         let r_amp = 1.0;
         let s_amp = -0.2;
-        let t_amp = 0.3 + rng.r#gen::<f32>() * 0.1;
+        let t_amp = 0.3 + rng.random::<f32>() * 0.1;
 
         // Add each wave
         self.add_gaussian_wave(signal, peak_idx, p_offset, p_amp, 0.04, sample_rate);
@@ -227,7 +227,7 @@ impl BenchmarkDataset for SyntheticGait {
         let mut rng = if let Some(seed) = self.seed {
             rand::rngs::StdRng::seed_from_u64(seed)
         } else {
-            rand::rngs::StdRng::from_entropy()
+            rand::make_rng::<rand::rngs::StdRng>()
         };
 
         let duration = self.num_samples as f64 / self.sample_rate;
@@ -374,7 +374,7 @@ impl BenchmarkDataset for SyntheticTremor {
         let mut rng = if let Some(seed) = self.seed {
             rand::rngs::StdRng::seed_from_u64(seed)
         } else {
-            rand::rngs::StdRng::from_entropy()
+            rand::make_rng::<rand::rngs::StdRng>()
         };
 
         // 3-axis accelerometer/gyroscope data
@@ -475,7 +475,7 @@ impl BenchmarkDataset for SyntheticVoice {
         let mut rng = if let Some(seed) = self.seed {
             rand::rngs::StdRng::seed_from_u64(seed)
         } else {
-            rand::rngs::StdRng::from_entropy()
+            rand::make_rng::<rand::rngs::StdRng>()
         };
 
         let mut signal = vec![0.0f32; self.num_samples];

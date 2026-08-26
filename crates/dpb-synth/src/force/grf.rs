@@ -55,7 +55,7 @@ impl GrfGenerator {
     pub fn new(config: GrfConfig) -> Self {
         let rng = match config.seed {
             Some(s) => StdRng::seed_from_u64(s),
-            None => StdRng::from_entropy(),
+            None => rand::make_rng::<StdRng>(),
         };
         Self { config, rng }
     }
@@ -567,7 +567,7 @@ impl GrfGenerator {
             let noise_amplitude = max_val * self.config.noise_level;
 
             for sample in signal.iter_mut() {
-                *sample += self.rng.r#gen::<f64>() * 2.0 * noise_amplitude - noise_amplitude;
+                *sample += self.rng.random::<f64>() * 2.0 * noise_amplitude - noise_amplitude;
             }
         }
     }

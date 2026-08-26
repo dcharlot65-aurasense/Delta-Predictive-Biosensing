@@ -118,7 +118,7 @@ impl SensoryManipulationGenerator {
     pub fn new(config: SensoryConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
-            None => StdRng::from_entropy(),
+            None => rand::make_rng::<StdRng>(),
         };
         Self { config, rng }
     }
@@ -144,8 +144,8 @@ impl SensoryManipulationGenerator {
         // Frequency components
         let base_freqs = [0.1, 0.2, 0.35, 0.5, 0.8, 1.2];
         let freqs: Vec<f64> = base_freqs.iter().map(|f| f * freq_shift).collect();
-        let phases_ap: Vec<f64> = freqs.iter().map(|_| self.rng.r#gen::<f64>() * 2.0 * PI).collect();
-        let phases_ml: Vec<f64> = freqs.iter().map(|_| self.rng.r#gen::<f64>() * 2.0 * PI).collect();
+        let phases_ap: Vec<f64> = freqs.iter().map(|_| self.rng.random::<f64>() * 2.0 * PI).collect();
+        let phases_ml: Vec<f64> = freqs.iter().map(|_| self.rng.random::<f64>() * 2.0 * PI).collect();
         let amps = [0.35, 0.25, 0.18, 0.12, 0.07, 0.03];
 
         // Add condition-specific effects

@@ -177,7 +177,7 @@ impl CopGenerator {
     pub fn new(config: CopConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
-            None => StdRng::from_entropy(),
+            None => rand::make_rng::<StdRng>(),
         };
         Self { config, rng }
     }
@@ -200,8 +200,8 @@ impl CopGenerator {
 
         // Frequency components (typical postural sway: 0.1-2 Hz)
         let freqs = [0.15, 0.3, 0.5, 0.8, 1.2];
-        let phases_ap: Vec<f64> = freqs.iter().map(|_| self.rng.r#gen::<f64>() * 2.0 * PI).collect();
-        let phases_ml: Vec<f64> = freqs.iter().map(|_| self.rng.r#gen::<f64>() * 2.0 * PI).collect();
+        let phases_ap: Vec<f64> = freqs.iter().map(|_| self.rng.random::<f64>() * 2.0 * PI).collect();
+        let phases_ml: Vec<f64> = freqs.iter().map(|_| self.rng.random::<f64>() * 2.0 * PI).collect();
         let amps_ap: Vec<f64> = vec![0.4, 0.25, 0.15, 0.12, 0.08];
         let amps_ml: Vec<f64> = vec![0.35, 0.28, 0.18, 0.12, 0.07];
 
@@ -456,8 +456,8 @@ impl CopGenerator {
         let modified_sway_ml = base_sway_ml * sway_mod_ml;
 
         let freqs = [0.15, 0.3, 0.5, 0.8, 1.2];
-        let phases_ap: Vec<f64> = freqs.iter().map(|_| self.rng.r#gen::<f64>() * 2.0 * PI).collect();
-        let phases_ml: Vec<f64> = freqs.iter().map(|_| self.rng.r#gen::<f64>() * 2.0 * PI).collect();
+        let phases_ap: Vec<f64> = freqs.iter().map(|_| self.rng.random::<f64>() * 2.0 * PI).collect();
+        let phases_ml: Vec<f64> = freqs.iter().map(|_| self.rng.random::<f64>() * 2.0 * PI).collect();
 
         let noise_dist = Normal::new(0.0, self.config.noise_level * modified_sway_ap).unwrap();
         let irregular_dist = Normal::new(0.0, irregularity).unwrap();

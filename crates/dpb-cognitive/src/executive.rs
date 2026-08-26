@@ -4,7 +4,7 @@
 //! executive functions including response inhibition, cognitive flexibility,
 //! and interference control.
 
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 /// Go/No-Go task for assessing response inhibition
 #[derive(Debug, Clone)]
@@ -88,12 +88,12 @@ impl GoNoGoTask {
 
     /// Generate a sequence of Go/No-Go trials
     pub fn generate_trials(&self, n_trials: usize) -> Vec<GoNoGoTrial> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut trials = Vec::with_capacity(n_trials);
         let mut current_time = 0.0;
 
         for i in 0..n_trials {
-            let is_go = rng.r#gen::<f64>() < self.go_probability;
+            let is_go = rng.random::<f64>() < self.go_probability;
             trials.push(GoNoGoTrial {
                 trial_number: i,
                 is_go,
@@ -266,7 +266,7 @@ impl FlankerTask {
 
     /// Generate a randomized sequence of Flanker trials
     pub fn generate_trials(&self) -> Vec<FlankerTrial> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let conditions = [
             FlankerCondition::Congruent,
             FlankerCondition::Incongruent,
@@ -281,7 +281,7 @@ impl FlankerTask {
                 trials.push(FlankerTrial {
                     trial_number,
                     condition: *condition,
-                    target_right: rng.r#gen(),
+                    target_right: rng.random(),
                     onset_time: 0.0, // Will be set after shuffling
                 });
                 trial_number += 1;

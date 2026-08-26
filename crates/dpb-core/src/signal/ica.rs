@@ -2,7 +2,7 @@
 
 use crate::error::{DpbError, Result};
 use ndarray::{Array1, Array2, Axis};
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 /// Nonlinear function types for FastICA algorithm.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -287,10 +287,10 @@ impl FastICA {
         let mut unmixing = Array2::zeros((self.n_components, n_components));
 
         // Initialize with random weights
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for i in 0..self.n_components {
             for j in 0..n_components {
-                unmixing[[i, j]] = rng.gen_range(-1.0..1.0);
+                unmixing[[i, j]] = rng.random_range(-1.0..1.0);
             }
         }
 
@@ -418,11 +418,11 @@ impl FastICA {
         let mut eigenvectors = Array2::zeros((n, n));
         let mut eigenvalues = Vec::with_capacity(n);
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for k in 0..n {
             // Random initial vector
-            let mut v: Array1<f64> = (0..n).map(|_| rng.gen_range(-1.0..1.0)).collect();
+            let mut v: Array1<f64> = (0..n).map(|_| rng.random_range(-1.0..1.0)).collect();
 
             // Normalize
             let norm = v.iter().map(|x| x * x).sum::<f64>().sqrt();
@@ -602,11 +602,11 @@ mod tests {
         let n_features = 3;
 
         // Create random data
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut data = Array2::zeros((n_features, n_samples));
         for i in 0..n_features {
             for j in 0..n_samples {
-                data[[i, j]] = rng.gen_range(-1.0..1.0);
+                data[[i, j]] = rng.random_range(-1.0..1.0);
             }
         }
 

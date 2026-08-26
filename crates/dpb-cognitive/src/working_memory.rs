@@ -56,7 +56,7 @@ impl NBackTask {
         n_trials: usize,
         stimulus_type: StimulusSet,
     ) -> Vec<NBackTrial> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let stimuli = stimulus_type.get_stimuli();
         let mut sequence = Vec::with_capacity(n_trials);
 
@@ -72,7 +72,7 @@ impl NBackTask {
 
         // Generate remaining trials with target percentage control
         for i in self.n_level..n_trials {
-            let is_target: bool = rng.gen_bool(self.target_percentage);
+            let is_target: bool = rng.random_bool(self.target_percentage);
 
             let stimulus = if is_target {
                 // Make it match n positions back

@@ -280,7 +280,7 @@ impl FederatedServer {
                 (active_clients.len() as f64 * self.config.client_fraction).ceil() as usize;
             let num_to_select = num_to_select.max(self.config.min_clients);
 
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             active_clients.shuffle(&mut rng);
             active_clients.truncate(num_to_select);
         }

@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth};
 use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -310,7 +310,7 @@ impl SyntheticGenerator for CerebellarTremorGenerator {
                     };
 
                     // Low-frequency, high-amplitude tremor
-                    amplitude * (2.0 * PI * params.frequency * t + rng.r#gen_range(0.0..0.2)).sin()
+                    amplitude * (2.0 * PI * params.frequency * t + rng.random_range(0.0..0.2)).sin()
                 })
                 .collect()
         );

@@ -277,13 +277,13 @@ impl ClassificationScenario {
     }
 
     fn generate_sample(&self, class: usize) -> Vec<f32> {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
+        use rand::{Rng, RngExt};
+        let mut rng = rand::rng();
 
         // Generate a simple synthetic sample
         let mut sample = vec![0.0; 100];
         for i in 0..100 {
-            sample[i] = rng.r#gen::<f32>() * 0.1 + class as f32 * 0.3;
+            sample[i] = rng.random::<f32>() * 0.1 + class as f32 * 0.3;
         }
         sample
     }
@@ -374,10 +374,10 @@ impl RegressionScenario {
     }
 
     fn generate_sample(&self) -> (Vec<f32>, f64) {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
+        use rand::{Rng, RngExt};
+        let mut rng = rand::rng();
 
-        let input: Vec<f32> = (0..50).map(|_| rng.r#gen::<f32>()).collect();
+        let input: Vec<f32> = (0..50).map(|_| rng.random::<f32>()).collect();
         let target = input.iter().sum::<f32>() as f64 / input.len() as f64; // Mean
 
         (input, target)

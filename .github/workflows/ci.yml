@@ -47,17 +47,26 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      # `--all-targets` covers integration tests, examples and benches; doc
-      # tests need their own invocation because --all-targets excludes them.
-      #
       # This job used to run `--lib` only, which is how integration suites,
       # doc examples and benches came to accumulate years of API drift without
       # anyone noticing: they were never compiled in CI.
       #
+      # Benches are compiled but not run. `cargo test --all-targets` would run
+      # them, and the three iai-callgrind benches shell out to a Valgrind-based
+      # runner that is not present here (and does not exist for Apple Silicon
+      # at all), so the whole invocation dies partway with a confusing error.
+      # Compiling them is what catches the drift; executing them is a
+      # benchmarking task, not a correctness one.
+      #
+      # Doc tests need their own invocation either way -- no target selector
+      # includes them.
+      #
       # dpb-python is no longer excluded -- it was, because pyo3 0.23 could not
       # build against the Python 3.14 on current runners, and pyo3 is now 0.29.
       - name: cargo test
-        run: cargo test --workspace --all-targets
+        run: cargo test --workspace --lib --bins --tests --examples
+      - name: cargo build --benches
+        run: cargo build --workspace --benches
       - name: cargo test --doc
         run: cargo test --workspace --doc
 

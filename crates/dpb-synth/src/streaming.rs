@@ -582,7 +582,7 @@ impl StreamingConfig {
 pub struct StreamingEcg;
 
 /// State for streaming ECG generation
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct StreamingEcgState {
     /// Current x state (ODE)
     pub x: f64,
@@ -726,7 +726,7 @@ impl StreamingGenerator for StreamingEcg {
 pub struct StreamingTremor;
 
 /// State for streaming tremor
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct StreamingTremorState {
     pub sample_idx: usize,
     pub dt: f64,
@@ -781,7 +781,7 @@ impl StreamingGenerator for StreamingTremor {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::Rng;
+        use rand::{Rng, RngExt};
         use std::f64::consts::PI;
 
         let t = state.sample_idx as f64 * state.dt;
@@ -790,7 +790,7 @@ impl StreamingGenerator for StreamingTremor {
         let amp_mod = 1.0 + state.amplitude_var * (0.3 * 2.0 * PI * t).sin();
 
         // Slight frequency variation
-        let freq_noise: f64 = state.rng.gen_range(-0.1..0.1);
+        let freq_noise: f64 = state.rng.random_range(-0.1..0.1);
         let freq = state.base_freq + freq_noise;
 
         // Generate tremor signal
@@ -907,7 +907,7 @@ impl Default for MultiModalStreaming {
 pub struct StreamingPpg;
 
 /// State for streaming PPG generation
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct StreamingPpgState {
     /// Current sample index
     pub sample_idx: usize,
@@ -972,7 +972,7 @@ impl StreamingGenerator for StreamingPpg {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::Rng;
+        use rand::{Rng, RngExt};
 
         let t = state.sample_idx as f64 * state.dt;
 
@@ -991,7 +991,7 @@ impl StreamingGenerator for StreamingPpg {
         if phase < prev_phase {
             // New beat started - apply heart rate variability
             let hrv_range = state.beat_duration * 0.1; // ±10% variation
-            state.hrv_offset = state.rng.gen_range(-hrv_range..hrv_range);
+            state.hrv_offset = state.rng.random_range(-hrv_range..hrv_range);
         }
 
         // Systolic peak (Gaussian centered at phase ~0.2)
@@ -1050,7 +1050,7 @@ impl StreamingGenerator for StreamingPpg {
 pub struct StreamingEmg;
 
 /// State for streaming EMG generation
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct StreamingEmgState {
     /// Current sample index
     pub sample_idx: usize,
@@ -1099,7 +1099,7 @@ impl StreamingGenerator for StreamingEmg {
 
     fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
         use rand::SeedableRng;
-        use rand::Rng;
+        use rand::{Rng, RngExt};
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let amplitude = params.baseline_amplitude +
@@ -1108,7 +1108,7 @@ impl StreamingGenerator for StreamingEmg {
         // MUAP rate depends on contraction level
         let muap_rate = params.contraction_level.max(0.1) * 50.0; // spikes per second
         let muap_interval = params.sampling_rate / muap_rate;
-        let next_muap = rng.gen_range(0.0..muap_interval);
+        let next_muap = rng.random_range(0.0..muap_interval);
 
         StreamingEmgState {
             sample_idx: 0,
@@ -1122,7 +1122,7 @@ impl StreamingGenerator for StreamingEmg {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::Rng;
+        use rand::{Rng, RngExt};
         use rand_distr::{Distribution, Normal};
 
         let noise_dist = Normal::new(0.0, state.current_amplitude).unwrap();
@@ -1144,7 +1144,7 @@ impl StreamingGenerator for StreamingEmg {
             state.muap_phase = 1;
 
             // Schedule next MUAP with some randomness
-            let jitter = state.rng.gen_range(-state.muap_interval * 0.3..state.muap_interval * 0.3);
+            let jitter = state.rng.random_range(-state.muap_interval * 0.3..state.muap_interval * 0.3);
             state.next_muap_sample += state.muap_interval + jitter;
         }
 
@@ -1201,7 +1201,7 @@ struct ActiveScr {
 }
 
 /// State for streaming EDA generation
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct StreamingEdaState {
     /// Current sample index
     pub sample_idx: usize,
@@ -1272,11 +1272,11 @@ impl StreamingGenerator for StreamingEda {
 
     fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
         use rand::SeedableRng;
-        use rand::Rng;
+        use rand::{Rng, RngExt};
         use rand_distr::{Distribution, Exp};
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let tonic_phase = rng.gen_range(0.0..2.0 * std::f64::consts::PI);
+        let tonic_phase = rng.random_range(0.0..2.0 * std::f64::consts::PI);
 
         // Schedule first SCR using exponential distribution
         let scr_rate_per_second = params.scr_rate / 60.0;
@@ -1297,7 +1297,7 @@ impl StreamingGenerator for StreamingEda {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::Rng;
+        use rand::{Rng, RngExt};
         use rand_distr::{Distribution, Normal, Exp};
         use std::f64::consts::PI;
 
@@ -1433,7 +1433,7 @@ impl StreamingConfig {
 pub struct StreamingRespiratory;
 
 /// State for streaming respiratory generation
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct StreamingRespiratoryState {
     /// Current sample index
     pub sample_idx: usize,
@@ -1498,7 +1498,7 @@ impl StreamingGenerator for StreamingRespiratory {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::Rng;
+        use rand::{Rng, RngExt};
         use std::f64::consts::PI;
 
         let t = state.sample_idx as f64 * state.dt;
@@ -1516,7 +1516,7 @@ impl StreamingGenerator for StreamingRespiratory {
         };
 
         // Add small noise
-        let noise = state.rng.gen_range(-0.02..0.02);
+        let noise = state.rng.random_range(-0.02..0.02);
 
         state.sample_idx += 1;
 
@@ -1559,7 +1559,7 @@ impl StreamingGenerator for StreamingRespiratory {
 pub struct StreamingThermal;
 
 /// State for streaming thermal generation
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct StreamingThermalState {
     /// Current sample index
     pub sample_idx: usize,
@@ -1614,10 +1614,10 @@ impl StreamingGenerator for StreamingThermal {
 
     fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
         use rand::SeedableRng;
-        use rand::Rng;
+        use rand::{Rng, RngExt};
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let vasomotor_phase = rng.gen_range(0.0..2.0 * std::f64::consts::PI);
+        let vasomotor_phase = rng.random_range(0.0..2.0 * std::f64::consts::PI);
 
         StreamingThermalState {
             sample_idx: 0,
@@ -1684,7 +1684,7 @@ impl StreamingGenerator for StreamingThermal {
 pub struct StreamingGaze;
 
 /// State for streaming gaze generation
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct StreamingGazeState {
     /// Current frame index
     pub frame_idx: usize,
@@ -1754,17 +1754,17 @@ impl StreamingGenerator for StreamingGaze {
 
     fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
         use rand::SeedableRng;
-        use rand::Rng;
+        use rand::{Rng, RngExt};
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         // Start with random fixation target
         let target = [
-            rng.gen_range(-0.8..0.8),
-            rng.gen_range(-0.8..0.8),
+            rng.random_range(-0.8..0.8),
+            rng.random_range(-0.8..0.8),
         ];
 
-        let fixation_duration = rng.gen_range(
+        let fixation_duration = rng.random_range(
             (params.fixation_duration_mean - params.fixation_duration_std)
                 ..(params.fixation_duration_mean + params.fixation_duration_std)
         ).max(0.1);
@@ -1783,7 +1783,7 @@ impl StreamingGenerator for StreamingGaze {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::Rng;
+        use rand::{Rng, RngExt};
         use rand_distr::{Distribution, Normal};
 
         let noise_dist = Normal::new(0.0, 0.01).unwrap();
@@ -1794,8 +1794,8 @@ impl StreamingGenerator for StreamingGaze {
             state.in_saccade = true;
             state.saccade_progress = 0.0;
             state.target_position = [
-                state.rng.gen_range(-0.8..0.8),
-                state.rng.gen_range(-0.8..0.8),
+                state.rng.random_range(-0.8..0.8),
+                state.rng.random_range(-0.8..0.8),
             ];
         }
 
@@ -1808,7 +1808,7 @@ impl StreamingGenerator for StreamingGaze {
                 state.in_saccade = false;
                 state.gaze_position = state.target_position;
                 state.fixation_time = 0.0;
-                state.fixation_duration = state.rng.gen_range(0.2..0.5);
+                state.fixation_duration = state.rng.random_range(0.2..0.5);
             } else {
                 // Smooth interpolation during saccade (sigmoid-like)
                 let t = state.saccade_progress;
@@ -1829,7 +1829,7 @@ impl StreamingGenerator for StreamingGaze {
         let y = state.gaze_position[1] + noise_dist.sample(&mut state.rng);
 
         // Pupil diameter varies slightly (3-5mm typical)
-        let pupil = 4.0 + state.rng.gen_range(-0.2..0.2);
+        let pupil = 4.0 + state.rng.random_range(-0.2..0.2);
 
         state.frame_idx += 1;
 
@@ -1875,7 +1875,7 @@ impl StreamingGenerator for StreamingGaze {
 pub struct StreamingPose;
 
 /// State for streaming pose generation
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct StreamingPoseState {
     /// Current frame index
     pub frame_idx: usize,
@@ -1957,7 +1957,7 @@ impl FrameStreamingGenerator for StreamingPose {
     }
 
     fn next_frame(&self, state: &mut Self::State) -> Self::Frame {
-        use rand::Rng;
+        use rand::{Rng, RngExt};
         use std::f64::consts::PI;
 
         let t = state.frame_idx as f64 * state.dt;
@@ -2014,9 +2014,9 @@ impl FrameStreamingGenerator for StreamingPose {
 
         // Add noise
         for kp in keypoints.iter_mut() {
-            kp[0] += state.rng.gen_range(-0.01..0.01);
-            kp[1] += state.rng.gen_range(-0.01..0.01);
-            kp[2] += state.rng.gen_range(-0.01..0.01);
+            kp[0] += state.rng.random_range(-0.01..0.01);
+            kp[1] += state.rng.random_range(-0.01..0.01);
+            kp[2] += state.rng.random_range(-0.01..0.01);
         }
 
         state.frame_idx += 1;
@@ -2069,7 +2069,7 @@ impl StreamingPose {
 pub struct StreamingHand;
 
 /// State for streaming hand generation
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct StreamingHandState {
     /// Current frame index
     pub frame_idx: usize,
@@ -2157,7 +2157,7 @@ impl FrameStreamingGenerator for StreamingHand {
     }
 
     fn next_frame(&self, state: &mut Self::State) -> Self::Frame {
-        use rand::Rng;
+        use rand::{Rng, RngExt};
         use std::f64::consts::PI;
 
         let t = state.frame_idx as f64 * state.dt;
@@ -2237,8 +2237,8 @@ impl FrameStreamingGenerator for StreamingHand {
         let tremor_y = state.tremor_amplitude * (2.0 * PI * 5.0 * t + PI / 4.0).sin();
 
         for landmark in landmarks.iter_mut() {
-            landmark[0] += tremor_x + state.rng.gen_range(-0.001..0.001);
-            landmark[1] += tremor_y + state.rng.gen_range(-0.001..0.001);
+            landmark[0] += tremor_x + state.rng.random_range(-0.001..0.001);
+            landmark[1] += tremor_y + state.rng.random_range(-0.001..0.001);
         }
 
         let fingers_extended = [
@@ -2384,7 +2384,7 @@ impl StreamingGenerator for StreamingRppg {
     type Sample = RppgFrame;
 
     fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
-        use rand::{Rng, SeedableRng};
+        use rand::{Rng, RngExt, SeedableRng};
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let beat_duration = 60.0 / params.heart_rate;
@@ -2425,15 +2425,15 @@ impl StreamingGenerator for StreamingRppg {
         StreamingRppgState {
             frame_idx: 0,
             dt: 1.0 / params.frame_rate,
-            cardiac_phase: rng.gen_range(0.0..1.0),
+            cardiac_phase: rng.random_range(0.0..1.0),
             beat_duration,
             current_bvp: 0.0,
             head_offset_x: 0.0,
             head_offset_y: 0.0,
-            head_velocity_x: rng.gen_range(-0.5..0.5),
-            head_velocity_y: rng.gen_range(-0.5..0.5),
+            head_velocity_x: rng.random_range(-0.5..0.5),
+            head_velocity_y: rng.random_range(-0.5..0.5),
             illumination_factor: 1.0,
-            illumination_trend: rng.gen_range(-0.001..0.001),
+            illumination_trend: rng.random_range(-0.001..0.001),
             skin_mask,
             rng,
             roi_width: params.roi_width,
@@ -2445,7 +2445,7 @@ impl StreamingGenerator for StreamingRppg {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::Rng;
+        use rand::{Rng, RngExt};
         use rand_distr::{Distribution, Normal};
         use std::f64::consts::PI;
 
@@ -2495,7 +2495,7 @@ impl StreamingGenerator for StreamingRppg {
         state.head_offset_y = state.head_offset_y.clamp(-3.0, 3.0);
 
         // Update illumination (slow drift)
-        state.illumination_trend += state.rng.gen_range(-0.0001..0.0001);
+        state.illumination_trend += state.rng.random_range(-0.0001..0.0001);
         state.illumination_trend = state.illumination_trend.clamp(-0.005, 0.005);
         state.illumination_factor += state.illumination_trend;
         state.illumination_factor = state.illumination_factor.clamp(0.8, 1.2);
@@ -2773,7 +2773,7 @@ impl StreamingGenerator for StreamingVowel {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::Rng;
+        use rand::{Rng, RngExt};
         use std::f64::consts::PI;
 
         let t = state.sample_idx as f64 * state.dt;
@@ -2784,7 +2784,7 @@ impl StreamingGenerator for StreamingVowel {
 
             // Apply jitter to F0
             let jitter_offset = if state.jitter > 0.0 {
-                state.rng.gen_range(-state.jitter..state.jitter)
+                state.rng.random_range(-state.jitter..state.jitter)
             } else {
                 0.0
             };
@@ -2800,7 +2800,7 @@ impl StreamingGenerator for StreamingVowel {
 
             // Apply shimmer to amplitude
             let shimmer_offset = if state.shimmer > 0.0 {
-                state.rng.gen_range(-state.shimmer..state.shimmer)
+                state.rng.random_range(-state.shimmer..state.shimmer)
             } else {
                 0.0
             };
@@ -2817,7 +2817,7 @@ impl StreamingGenerator for StreamingVowel {
         let glottal = lf_glottal_pulse(state.glottal_phase);
 
         // Add aspiration noise
-        let noise = state.rng.gen_range(-1.0..1.0) * state.noise_amplitude;
+        let noise = state.rng.random_range(-1.0..1.0) * state.noise_amplitude;
 
         // Source signal
         let source = glottal * state.current_amplitude + noise;
@@ -3072,7 +3072,7 @@ impl StreamingGenerator for StreamingDdk {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::Rng;
+        use rand::{Rng, RngExt};
         use std::f64::consts::PI;
 
         let t = state.sample_idx as f64 * state.dt;
@@ -3091,7 +3091,7 @@ impl StreamingGenerator for StreamingDdk {
             state.formant_bandwidths = bws;
 
             // Apply amplitude variability and decay
-            let amp_var = state.rng.gen_range(-state.amp_var..state.amp_var);
+            let amp_var = state.rng.random_range(-state.amp_var..state.amp_var);
             let decay = 1.0 - (state.repetition_count as f64 * state.amp_decay).min(0.5);
             state.current_amplitude = (1.0 + amp_var) * decay;
 
@@ -3155,7 +3155,7 @@ impl StreamingGenerator for StreamingDdk {
                 }
 
                 // Schedule next syllable with rate variability
-                let rate_var = state.rng.gen_range(-state.rate_var..state.rate_var);
+                let rate_var = state.rng.random_range(-state.rate_var..state.rate_var);
                 let interval = 1.0 / (state.target_rate * (1.0 + rate_var));
                 state.next_syllable_time = t + interval;
             }
@@ -3425,7 +3425,7 @@ impl FrameStreamingGenerator for StreamingClinicalPose {
     }
 
     fn next_frame(&self, state: &mut Self::State) -> Self::Frame {
-        use rand::Rng;
+        use rand::{Rng, RngExt};
         use std::f64::consts::PI;
 
         let t = state.frame_idx as f64 * state.dt;
@@ -3437,9 +3437,9 @@ impl FrameStreamingGenerator for StreamingClinicalPose {
             }
         } else if state.freeze_prob > 0.0 && state.cycle_phase < 0.01 {
             // Check for new freezing episode at step boundaries
-            if state.rng.gen_range(0.0..1.0) < state.freeze_prob {
+            if state.rng.random_range(0.0..1.0) < state.freeze_prob {
                 state.is_frozen = true;
-                let freeze_dur = state.rng.gen_range(state.freeze_dur.0..state.freeze_dur.1);
+                let freeze_dur = state.rng.random_range(state.freeze_dur.0..state.freeze_dur.1);
                 state.freeze_end_time = t + freeze_dur;
             }
         }
@@ -3573,9 +3573,9 @@ impl FrameStreamingGenerator for StreamingClinicalPose {
 
         // Add noise
         for kp in keypoints.iter_mut() {
-            kp[0] += state.rng.gen_range(-state.noise..state.noise);
-            kp[1] += state.rng.gen_range(-state.noise..state.noise);
-            kp[2] += state.rng.gen_range(-state.noise..state.noise);
+            kp[0] += state.rng.random_range(-state.noise..state.noise);
+            kp[1] += state.rng.random_range(-state.noise..state.noise);
+            kp[2] += state.rng.random_range(-state.noise..state.noise);
         }
 
         // Calculate UPDRS gait score (simplified)
@@ -3849,7 +3849,7 @@ impl FrameStreamingGenerator for StreamingClinicalHand {
     }
 
     fn next_frame(&self, state: &mut Self::State) -> Self::Frame {
-        use rand::Rng;
+        use rand::{Rng, RngExt};
         use std::f64::consts::PI;
 
         let t = state.frame_idx as f64 * state.dt;
@@ -3894,9 +3894,9 @@ impl FrameStreamingGenerator for StreamingClinicalHand {
                         state.current_frequency = state.current_frequency.max(0.5);
 
                         // Check for hesitation
-                        if state.rng.gen_range(0.0..1.0) < state.hesit_prob {
+                        if state.rng.random_range(0.0..1.0) < state.hesit_prob {
                             state.is_hesitating = true;
-                            state.hesitation_end_time = t + state.rng.gen_range(0.2..0.5);
+                            state.hesitation_end_time = t + state.rng.random_range(0.2..0.5);
                             state.hesitations_total += 1;
                         }
                     }
@@ -4027,7 +4027,7 @@ fn generate_hand_landmarks(
     noise: f64,
     rng: &mut rand::rngs::StdRng,
 ) -> Vec<[f64; 3]> {
-    use rand::Rng;
+    use rand::{Rng, RngExt};
     use std::f64::consts::PI;
 
     let mut landmarks = vec![[0.0; 3]; 21];
@@ -4067,18 +4067,18 @@ fn generate_hand_landmarks(
             pos[1] -= length * curl_angle.sin();
             pos[2] += length * curl_angle.cos();
             landmarks[idx] = [
-                pos[0] + rng.gen_range(-noise..noise),
-                pos[1] + rng.gen_range(-noise..noise),
-                pos[2] + rng.gen_range(-noise..noise),
+                pos[0] + rng.random_range(-noise..noise),
+                pos[1] + rng.random_range(-noise..noise),
+                pos[2] + rng.random_range(-noise..noise),
             ];
             idx += 1;
         }
 
         // Add 4th landmark for fingertip
         landmarks[idx] = [
-            pos[0] + rng.gen_range(-noise..noise),
-            pos[1] + rng.gen_range(-noise..noise),
-            pos[2] + 0.01 + rng.gen_range(-noise..noise),
+            pos[0] + rng.random_range(-noise..noise),
+            pos[1] + rng.random_range(-noise..noise),
+            pos[2] + 0.01 + rng.random_range(-noise..noise),
         ];
         idx += 1;
     }
@@ -4437,16 +4437,16 @@ impl StreamingGenerator for StreamingEeg {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::Rng;
+        use rand::{Rng, RngExt};
         use std::f64::consts::PI;
 
         let t = state.sample_idx as f64 * state.dt;
         let mut channels = Vec::with_capacity(state.num_channels);
 
         // Check for new artifact
-        if !state.in_artifact && state.rng.r#gen::<f64>() < state.artifact_rate * state.dt {
+        if !state.in_artifact && state.rng.random::<f64>() < state.artifact_rate * state.dt {
             state.in_artifact = true;
-            state.artifact_type = state.rng.gen_range(0..3);
+            state.artifact_type = state.rng.random_range(0..3);
             state.artifact_samples_remaining = match state.artifact_type {
                 0 => (0.2 / state.dt) as usize, // Blink: ~200ms
                 1 => (0.1 / state.dt) as usize, // Muscle: ~100ms
@@ -4457,27 +4457,27 @@ impl StreamingGenerator for StreamingEeg {
         for ch in 0..state.num_channels {
             // Generate each band's oscillation
             // Delta (0.5-4 Hz) - use 2 Hz center
-            let delta_freq = 2.0 + state.rng.r#gen::<f64>() * 0.2;
+            let delta_freq = 2.0 + state.rng.random::<f64>() * 0.2;
             state.delta_phases[ch] += 2.0 * PI * delta_freq * state.dt;
             let delta = state.delta_amp * state.delta_phases[ch].sin();
 
             // Theta (4-8 Hz) - use 6 Hz center
-            let theta_freq = 6.0 + state.rng.r#gen::<f64>() * 0.5;
+            let theta_freq = 6.0 + state.rng.random::<f64>() * 0.5;
             state.theta_phases[ch] += 2.0 * PI * theta_freq * state.dt;
             let theta = state.theta_amp * state.theta_phases[ch].sin();
 
             // Alpha (8-13 Hz) - use individual alpha frequency
-            let alpha_freq = state.alpha_freq + state.rng.r#gen::<f64>() * 0.3;
+            let alpha_freq = state.alpha_freq + state.rng.random::<f64>() * 0.3;
             state.alpha_phases[ch] += 2.0 * PI * alpha_freq * state.dt;
             let alpha = state.alpha_amp * state.alpha_phases[ch].sin();
 
             // Beta (13-30 Hz) - use 20 Hz center
-            let beta_freq = 20.0 + state.rng.r#gen::<f64>() * 2.0;
+            let beta_freq = 20.0 + state.rng.random::<f64>() * 2.0;
             state.beta_phases[ch] += 2.0 * PI * beta_freq * state.dt;
             let beta = state.beta_amp * state.beta_phases[ch].sin();
 
             // Gamma (30-100 Hz) - use 40 Hz center
-            let gamma_freq = 40.0 + state.rng.r#gen::<f64>() * 5.0;
+            let gamma_freq = 40.0 + state.rng.random::<f64>() * 5.0;
             state.gamma_phases[ch] += 2.0 * PI * gamma_freq * state.dt;
             let gamma = state.gamma_amp * state.gamma_phases[ch].sin();
 
@@ -4485,7 +4485,7 @@ impl StreamingGenerator for StreamingEeg {
             let mut signal = delta + theta + alpha + beta + gamma;
 
             // Add pink noise
-            let noise = state.rng.r#gen::<f64>() * 2.0 - 1.0;
+            let noise = state.rng.random::<f64>() * 2.0 - 1.0;
             signal += noise * state.noise_level * 5.0;
 
             // Add artifact if active
@@ -4495,7 +4495,7 @@ impl StreamingGenerator for StreamingEeg {
 
                 match state.artifact_type {
                     0 => signal += 100.0 * envelope, // Blink: large slow wave
-                    1 => signal += state.rng.r#gen::<f64>() * 30.0 * envelope, // Muscle: high freq noise
+                    1 => signal += state.rng.random::<f64>() * 30.0 * envelope, // Muscle: high freq noise
                     _ => signal += 50.0 * (artifact_progress * PI).sin(), // Movement: slow artifact
                 }
             }

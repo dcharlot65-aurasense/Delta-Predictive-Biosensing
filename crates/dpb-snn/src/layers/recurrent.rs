@@ -3,7 +3,7 @@
 use super::{NeuronState, SpikingLayer};
 use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor};
 use ndarray::{Array1, Array2, Array3, Axis, s};
-use rand::thread_rng;
+use rand::rng;
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
 
@@ -52,7 +52,7 @@ impl SpikingRNN {
 
         let normal_input = Normal::new(0.0, std_input).unwrap();
         let normal_recurrent = Normal::new(0.0, std_recurrent).unwrap();
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         let w_input = Array2::from_shape_fn((hidden_size, input_size), |_| {
             normal_input.sample(&mut rng)
@@ -244,7 +244,7 @@ impl SpikingLSTM {
     ) -> Self {
         let std = (1.0 / hidden_size as f32).sqrt();
         let normal = Normal::new(0.0, std).unwrap();
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         let mut init_weights = |shape: (usize, usize)| {
             Array2::from_shape_fn(shape, |_| normal.sample(&mut rng))

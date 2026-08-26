@@ -1,7 +1,7 @@
 //! Finger tapping generators
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth, Event};
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -412,7 +412,7 @@ impl SyntheticGenerator for HesitationArrestGenerator {
 
                 // Check for arrest at tap completion
                 if distance < 0.1 && i > 0 && separation[i - 1] >= 0.1 {
-                    if rng.r#gen::<f64>() < params.arrest_probability {
+                    if rng.random::<f64>() < params.arrest_probability {
                         let duration_dist = Normal::new(params.arrest_duration_mean, params.arrest_duration_std).unwrap();
                         arrest_remaining = duration_dist.sample(&mut rng).max(0.1);
 

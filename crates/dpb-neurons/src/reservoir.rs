@@ -7,7 +7,7 @@
 use crate::lif::{LifNeuron, LifConfig};
 use crate::traits::{MembraneDynamics, NeuronModel};
 use ndarray::{s, Array1, Array2, ArrayView1, Axis};
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal, Uniform};
 use serde::{Deserialize, Serialize};
 
@@ -26,14 +26,14 @@ impl SparsityPattern {
     /// Create a new sparse connectivity pattern with random connections
     pub fn random(n_pre: usize, n_post: usize, sparsity: f64, seed: u64) -> Self {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let uniform = Uniform::new(-1.0, 1.0);
+        let uniform = Uniform::new(-1.0, 1.0).expect("uniform bounds are ordered and finite");
 
         let n_connections = ((n_pre * n_post) as f64 * (1.0 - sparsity)) as usize;
         let mut connections = Vec::with_capacity(n_connections);
 
         for _ in 0..n_connections {
-            let pre = rng.r#gen_range(0..n_pre);
-            let post = rng.r#gen_range(0..n_post);
+            let pre = rng.random_range(0..n_pre);
+            let post = rng.random_range(0..n_post);
             let weight = uniform.sample(&mut rng);
             connections.push((pre, post, weight));
         }
@@ -124,8 +124,8 @@ impl EchoStateNetwork {
     /// Initialize reservoir weights randomly
     pub fn initialize(&mut self, seed: u64) {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let input_dist = Uniform::new(-1.0, 1.0);
-        let reservoir_dist = Uniform::new(-1.0, 1.0);
+        let input_dist = Uniform::new(-1.0, 1.0).expect("uniform bounds are ordered and finite");
+        let reservoir_dist = Uniform::new(-1.0, 1.0).expect("uniform bounds are ordered and finite");
 
         // Initialize input weights
         for i in 0..self.reservoir_size {
@@ -137,7 +137,7 @@ impl EchoStateNetwork {
         // Initialize sparse reservoir weights
         for i in 0..self.reservoir_size {
             for j in 0..self.reservoir_size {
-                if rng.r#gen::<f64>() > self.sparsity {
+                if rng.random::<f64>() > self.sparsity {
                     self.reservoir_weights[[i, j]] = reservoir_dist.sample(&mut rng);
                 }
             }

@@ -3,7 +3,8 @@
 //! This benchmark suite measures the performance of full SNN inference
 //! pipelines, including feedforward, recurrent, and convolutional architectures.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
+use std::hint::black_box;
 use dpb_snn::*;
 // `forward` is a trait method.
 use dpb_snn::architectures::SNNArchitecture;

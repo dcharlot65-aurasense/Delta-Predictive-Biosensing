@@ -190,7 +190,7 @@ impl ErpGenerator {
     pub fn new(config: ErpConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
-            None => StdRng::from_entropy(),
+            None => rand::make_rng::<StdRng>(),
         };
         Self { config, rng }
     }
@@ -469,7 +469,7 @@ impl ErpGenerator {
         let noise_dist = Normal::new(0.0, 1.0).unwrap();
 
         // Alpha band (8-13 Hz)
-        let alpha_freq = 10.0 + self.rng.r#gen::<f64>() * 2.0;
+        let alpha_freq = 10.0 + self.rng.random::<f64>() * 2.0;
         let alpha_amp = self.config.background_amplitude * 0.4;
 
         // Pink noise component

@@ -4,7 +4,7 @@
 //! resampling, and dropout.
 
 use super::{SignalAugmentation, random_f64, random_f64_range, random_usize_range, random_i32_range};
-use rand::RngCore;
+use rand::Rng;
 use rand_distr::{Distribution, Normal};
 
 /// Time warping augmentation using smooth random curves
@@ -26,7 +26,7 @@ impl TimeWarp {
         Self { sigma, knots }
     }
 
-    fn generate_warp_curve(&self, length: usize, rng: &mut dyn RngCore) -> Vec<f64> {
+    fn generate_warp_curve(&self, length: usize, rng: &mut dyn Rng) -> Vec<f64> {
         let normal = Normal::new(0.0, self.sigma).unwrap();
 
         // Generate random offsets at knot positions
@@ -60,7 +60,7 @@ impl TimeWarp {
 }
 
 impl SignalAugmentation for TimeWarp {
-    fn augment(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64> {
+    fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         let warp = self.generate_warp_curve(signal.len(), rng);
 
         let mut result = Vec::with_capacity(signal.len());
@@ -102,7 +102,7 @@ impl TimeShift {
 }
 
 impl SignalAugmentation for TimeShift {
-    fn augment(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64> {
+    fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         if self.max_shift_samples == 0 {
             return signal.to_vec();
         }
@@ -141,7 +141,7 @@ impl WindowCrop {
 }
 
 impl SignalAugmentation for WindowCrop {
-    fn augment(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64> {
+    fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         if self.crop_ratio >= 1.0 {
             return signal.to_vec();
         }
@@ -180,7 +180,7 @@ impl Resample {
 }
 
 impl SignalAugmentation for Resample {
-    fn augment(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64> {
+    fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         let rate = random_f64_range(rng, self.rate_range.0, self.rate_range.1);
 
         let new_length = (signal.len() as f64 * rate).round() as usize;
@@ -224,7 +224,7 @@ impl RandomDropout {
 }
 
 impl SignalAugmentation for RandomDropout {
-    fn augment(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64> {
+    fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         signal.iter()
             .map(|&x| {
                 if ((rng.next_u64() as f64) / (u64::MAX as f64)) < self.dropout_rate {

@@ -4,7 +4,7 @@
 //! frequency masking, and time masking.
 
 use super::{SignalAugmentation, random_f64, random_f64_range, random_usize_range, random_i32_range};
-use rand::RngCore;
+use rand::Rng;
 
 /// Magnitude scaling augmentation (amplitude modulation)
 pub struct MagnitudeScale {
@@ -24,7 +24,7 @@ impl MagnitudeScale {
 }
 
 impl SignalAugmentation for MagnitudeScale {
-    fn augment(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64> {
+    fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         let scale = random_f64_range(rng, self.range.0, self.range.1);
         signal.iter().map(|&x| x * scale).collect()
     }
@@ -53,7 +53,7 @@ impl FrequencyMask {
         Self { max_masks, max_width_hz }
     }
 
-    fn apply_fft_mask(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64> {
+    fn apply_fft_mask(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         use rustfft::{FftPlanner, num_complex::Complex};
 
         let n = signal.len();
@@ -106,7 +106,7 @@ impl FrequencyMask {
 }
 
 impl SignalAugmentation for FrequencyMask {
-    fn augment(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64> {
+    fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         if self.max_masks == 0 {
             return signal.to_vec();
         }
@@ -139,7 +139,7 @@ impl TimeMask {
 }
 
 impl SignalAugmentation for TimeMask {
-    fn augment(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64> {
+    fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         if self.max_masks == 0 || self.max_width_samples == 0 {
             return signal.to_vec();
         }

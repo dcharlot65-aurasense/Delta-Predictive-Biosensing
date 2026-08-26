@@ -166,7 +166,7 @@ impl StochasticLifNeuron {
             state: StochasticLifState::default(),
             config,
             noise_type,
-            rng: rand::thread_rng(),
+            rng: rand::rng(),
         }
     }
 

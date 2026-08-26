@@ -1,7 +1,7 @@
 //! Uncertainty estimation methods
 
 use rand::seq::SliceRandom;
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 /// Confidence interval representation
 #[derive(Debug, Clone)]
@@ -314,14 +314,14 @@ pub fn bootstrap_ci(data: &[f64], n_bootstrap: usize, confidence: f64) -> Confid
         return ConfidenceInterval::new(0.0, 0.0, confidence);
     }
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut bootstrap_means = Vec::with_capacity(n_bootstrap);
 
     for _ in 0..n_bootstrap {
         // Resample with replacement
         let mut sample = Vec::with_capacity(data.len());
         for _ in 0..data.len() {
-            let idx = rng.gen_range(0..data.len());
+            let idx = rng.random_range(0..data.len());
             sample.push(data[idx]);
         }
 

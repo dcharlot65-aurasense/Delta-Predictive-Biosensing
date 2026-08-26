@@ -236,10 +236,10 @@ impl LocalDataset {
 
     /// Create with random data.
     pub fn random(num_samples: usize, feature_dim: usize) -> Self {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
+        use rand::{Rng, RngExt};
+        let mut rng = rand::rng();
         let data: Vec<f32> = (0..num_samples * feature_dim)
-            .map(|_| rng.gen_range(-1.0..1.0))
+            .map(|_| rng.random_range(-1.0..1.0))
             .collect();
 
         Self {
@@ -251,9 +251,9 @@ impl LocalDataset {
 
     /// Mock gradient based on index (for demo).
     fn mock_gradient(&self, index: usize) -> f32 {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-        0.01 * rng.gen_range(-1.0..1.0)
+        use rand::{Rng, RngExt};
+        let mut rng = rand::rng();
+        0.01 * rng.random_range(-1.0..1.0)
     }
 }
 

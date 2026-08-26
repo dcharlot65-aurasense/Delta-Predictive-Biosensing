@@ -19,15 +19,15 @@ pub use noise::{BaselineWander, GaussianNoise, MotionArtifact, PinkNoise, Powerl
 pub use spectral::{FrequencyMask, MagnitudeScale, TimeMask};
 pub use temporal::{RandomDropout, Resample, TimeShift, TimeWarp, WindowCrop};
 
-use rand::RngCore;
+use rand::Rng;
 
 /// Trait for signal augmentation operations
 ///
-/// This trait is dyn-compatible (object-safe) by using `&mut dyn RngCore`
+/// This trait is dyn-compatible (object-safe) by using `&mut dyn Rng`
 /// instead of generic `impl Rng`.
 pub trait SignalAugmentation: Send + Sync {
     /// Apply augmentation to a signal
-    fn augment(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64>;
+    fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64>;
 
     /// Get the name of this augmentation
     fn name(&self) -> &str;
@@ -70,7 +70,7 @@ impl AugmentationPipeline {
     ///
     /// # Returns
     /// Augmented signal
-    pub fn apply(&self, signal: &[f64], rng: &mut dyn RngCore) -> Vec<f64> {
+    pub fn apply(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         let mut result = signal.to_vec();
 
         for (aug, prob) in &self.augmentations {
@@ -110,7 +110,7 @@ mod tests {
     struct DummyAugmentation;
 
     impl SignalAugmentation for DummyAugmentation {
-        fn augment(&self, signal: &[f64], _rng: &mut dyn RngCore) -> Vec<f64> {
+        fn augment(&self, signal: &[f64], _rng: &mut dyn Rng) -> Vec<f64> {
             signal.iter().map(|x| x * 2.0).collect()
         }
 

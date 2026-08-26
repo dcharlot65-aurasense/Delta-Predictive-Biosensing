@@ -1,7 +1,7 @@
 //! Saccade generators
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth, Event};
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 
@@ -34,7 +34,7 @@ impl SyntheticGenerator for MainSequenceSaccadeGenerator {
         // Generate random saccade times
         let mut saccade_times = Vec::new();
         for _ in 0..params.saccade_count {
-            saccade_times.push(rng.r#gen_range(0.0..params.duration));
+            saccade_times.push(rng.random_range(0.0..params.duration));
         }
         saccade_times.sort_by(|a, b| a.total_cmp(b));
 
@@ -42,7 +42,7 @@ impl SyntheticGenerator for MainSequenceSaccadeGenerator {
 
         for (saccade_idx, &saccade_time) in saccade_times.iter().enumerate() {
             // Generate saccade amplitude
-            let amplitude = rng.r#gen_range(params.amplitude_range.0..params.amplitude_range.1);
+            let amplitude = rng.random_range(params.amplitude_range.0..params.amplitude_range.1);
 
             // Main sequence: velocity = 20 * amplitude (deg/s per deg)
             let peak_velocity = 20.0 * amplitude;
@@ -52,7 +52,7 @@ impl SyntheticGenerator for MainSequenceSaccadeGenerator {
             let duration_s = duration_ms / 1000.0;
 
             // Target position (random direction)
-            let angle = rng.r#gen_range(0.0..2.0 * std::f64::consts::PI);
+            let angle = rng.random_range(0.0..2.0 * std::f64::consts::PI);
             let target_position = [
                 current_position[0] + amplitude * angle.cos(),
                 current_position[1] + amplitude * angle.sin(),
@@ -354,7 +354,7 @@ impl SyntheticGenerator for AntisaccadeGenerator {
         let mut gaze_position = vec![[0.0, 0.0]; n_samples];
 
         for stim_time in &params.stimulus_times {
-            let is_error = rng.r#gen::<f64>() < params.error_rate;
+            let is_error = rng.random::<f64>() < params.error_rate;
 
             let (latency, direction) = if is_error {
                 (params.latency_error / 1000.0, 1.0) // toward stimulus

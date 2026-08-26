@@ -1,7 +1,7 @@
 //! Smooth pursuit eye movement generators
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 
@@ -56,8 +56,8 @@ impl SyntheticGenerator for NormalPursuitGenerator {
         if params.catch_up_saccades {
             let num_saccades = (params.duration * 0.5) as usize; // ~0.5 per second
             for _ in 0..num_saccades {
-                let saccade_idx = rng.r#gen_range(0..n_samples - 10);
-                let position_error = rng.r#gen_range(0.5..1.5);
+                let saccade_idx = rng.random_range(0..n_samples - 10);
+                let position_error = rng.random_range(0.5..1.5);
 
                 // Quick correction over a few samples
                 for j in 0..5 {
@@ -152,7 +152,7 @@ impl SyntheticGenerator for ImpairedPursuitGenerator {
         if params.saccadic_pursuit {
             let num_saccades = (params.duration * params.saccade_frequency) as usize;
             for _ in 0..num_saccades {
-                let saccade_idx = rng.r#gen_range(0..n_samples - 15);
+                let saccade_idx = rng.random_range(0..n_samples - 15);
                 let t = saccade_idx as f64 * dt;
 
                 // Calculate position error

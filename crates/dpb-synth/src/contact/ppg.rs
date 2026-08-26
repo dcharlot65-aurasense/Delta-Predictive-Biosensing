@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -134,7 +134,7 @@ impl SyntheticGenerator for PpgArtifactGenerator {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let artifact_interval = 60.0 / params.artifact_frequency;
-        let mut next_artifact = rng.r#gen_range(0.0..artifact_interval);
+        let mut next_artifact = rng.random_range(0.0..artifact_interval);
 
         let mut signal = vec![0.0; n_samples];
         let mut events = Vec::new();
@@ -146,7 +146,7 @@ impl SyntheticGenerator for PpgArtifactGenerator {
                 // Generate motion artifact (irregular oscillation)
                 let phase = (t - next_artifact) / params.artifact_duration;
                 let envelope = (PI * phase).sin(); // rise and fall
-                let freq = rng.r#gen_range(1.0..5.0);
+                let freq = rng.random_range(1.0..5.0);
                 signal[i] = params.artifact_amplitude * envelope * (2.0 * PI * freq * t).sin();
 
                 if t == next_artifact || (t - next_artifact) < dt {
@@ -229,7 +229,7 @@ impl SyntheticGenerator for HeartRateRecoveryGenerator {
             let hr = params.resting_hr +
                 (params.peak_hr - params.resting_hr) * (-t / params.recovery_tau).exp();
 
-            let rr = 60.0 / hr + rng.r#gen_range(-0.02..0.02);
+            let rr = 60.0 / hr + rng.random_range(-0.02..0.02);
             rr_intervals.push(rr.max(0.3));
             t += rr;
         }

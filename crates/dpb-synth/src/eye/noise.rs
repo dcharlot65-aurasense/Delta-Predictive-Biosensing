@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 
@@ -136,7 +136,7 @@ impl SyntheticGenerator for BlinkArtifactGenerator {
         // Generate blink times
         let num_blinks = (params.duration * params.blink_rate / 60.0) as usize;
         for _ in 0..num_blinks {
-            let blink_time = rng.r#gen_range(0.0..params.duration);
+            let blink_time = rng.random_range(0.0..params.duration);
             let blink_duration = duration_dist.sample(&mut rng).max(0.05).min(0.5);
 
             let start_idx = (blink_time * params.sampling_rate) as usize;
@@ -172,7 +172,7 @@ impl SyntheticGenerator for BlinkArtifactGenerator {
 
                         for (j, i) in (start_idx..end_idx).enumerate() {
                             let alpha = j as f64 / n_steps as f64;
-                            let drift = rng.r#gen_range(-1.0..1.0);
+                            let drift = rng.random_range(-1.0..1.0);
                             gaze_with_blinks[i] = [
                                 start_pos[0] + (end_pos[0] - start_pos[0]) * alpha + drift,
                                 start_pos[1] + (end_pos[1] - start_pos[1]) * alpha + drift,
@@ -256,7 +256,7 @@ impl SyntheticGenerator for PupilDetectionFailureGenerator {
             let num_bursts = (n_samples as f64 * params.dropout_rate / (params.burst_duration_mean * params.sampling_rate)) as usize;
 
             for _ in 0..num_bursts {
-                let burst_start = rng.r#gen_range(0..n_samples);
+                let burst_start = rng.random_range(0..n_samples);
                 let burst_samples = (params.burst_duration_mean * params.sampling_rate) as usize;
 
                 for i in burst_start..std::cmp::min(burst_start + burst_samples, n_samples) {
@@ -266,7 +266,7 @@ impl SyntheticGenerator for PupilDetectionFailureGenerator {
         } else {
             // Random independent failures
             for i in 0..n_samples {
-                if rng.r#gen::<f64>() < params.dropout_rate {
+                if rng.random::<f64>() < params.dropout_rate {
                     pupil_with_failures[i] = f64::NAN;
                 }
             }
@@ -351,7 +351,7 @@ impl SyntheticGenerator for CalibrationDriftGenerator {
         let dt = 1.0 / params.sampling_rate;
 
         // Random drift direction for linear pattern
-        let drift_angle = rng.r#gen_range(0.0..2.0 * std::f64::consts::PI);
+        let drift_angle = rng.random_range(0.0..2.0 * std::f64::consts::PI);
 
         let drifted_gaze: Vec<[f64; 2]> = params.base_trajectory
             .iter()
@@ -453,7 +453,7 @@ impl SyntheticGenerator for HeadMovementArtifactGenerator {
         let dt = 1.0 / params.sampling_rate;
 
         // Generate head movement
-        let phase_offset = rng.r#gen_range(0.0..2.0 * std::f64::consts::PI);
+        let phase_offset = rng.random_range(0.0..2.0 * std::f64::consts::PI);
 
         let gaze_with_head: Vec<[f64; 2]> = params.base_trajectory
             .iter()
@@ -543,10 +543,10 @@ impl SyntheticGenerator for GlassesContactsArtifactGenerator {
                 let mut out_x = x;
                 let mut out_y = y;
 
-                if rng.r#gen::<f64>() < params.reflection_probability {
+                if rng.random::<f64>() < params.reflection_probability {
                     // Sudden offset due to reflection
-                    out_x += rng.r#gen_range(-2.0..2.0) * params.artifact_severity;
-                    out_y += rng.r#gen_range(-2.0..2.0) * params.artifact_severity;
+                    out_x += rng.random_range(-2.0..2.0) * params.artifact_severity;
+                    out_y += rng.random_range(-2.0..2.0) * params.artifact_severity;
                 }
 
                 // Edge distortion

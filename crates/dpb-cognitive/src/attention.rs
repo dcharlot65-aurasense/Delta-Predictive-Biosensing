@@ -53,12 +53,12 @@ impl ContinuousPerformanceTest {
     /// Generate trial sequence for CPT
     pub fn generate_trials(&self) -> Vec<CptTrial> {
         let n_trials = (self.duration / self.isi) as usize;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let letters: Vec<char> = ('A'..='Z').collect();
         let mut trials = Vec::with_capacity(n_trials);
 
         for i in 0..n_trials {
-            let stimulus = if rng.gen_bool(0.3) {
+            let stimulus = if rng.random_bool(0.3) {
                 self.target
             } else {
                 let mut letter = *letters.choose(&mut rng).unwrap();
@@ -214,7 +214,7 @@ impl StroopTask {
 
     /// Generate balanced Stroop trial sequence
     pub fn generate_trials(&self) -> Vec<StroopTrial> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let colors = vec!["red", "blue", "green", "yellow"];
         let mut trials = Vec::new();
 
@@ -225,15 +225,15 @@ impl StroopTask {
             StroopCondition::Neutral,
         ] {
             for i in 0..self.trials_per_condition {
-                let color_idx = rng.gen_range(0..colors.len());
+                let color_idx = rng.random_range(0..colors.len());
                 let color = colors[color_idx];
 
                 let word = match condition {
                     StroopCondition::Congruent => color,
                     StroopCondition::Incongruent => {
-                        let mut word_idx = rng.gen_range(0..colors.len());
+                        let mut word_idx = rng.random_range(0..colors.len());
                         while word_idx == color_idx {
-                            word_idx = rng.gen_range(0..colors.len());
+                            word_idx = rng.random_range(0..colors.len());
                         }
                         colors[word_idx]
                     }

@@ -142,7 +142,7 @@ impl VorGenerator {
     pub fn new(config: VorConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
-            None => StdRng::from_entropy(),
+            None => rand::make_rng::<StdRng>(),
         };
         Self { config, rng }
     }
@@ -250,7 +250,7 @@ impl VorGenerator {
             let trial_start = trial as f64 * trial_duration;
 
             // Vary peak velocity slightly between trials
-            let trial_peak = peak_velocity * (0.9 + self.rng.r#gen::<f64>() * 0.2);
+            let trial_peak = peak_velocity * (0.9 + self.rng.random::<f64>() * 0.2);
 
             let samples_per_trial = (trial_duration * self.config.sample_rate) as usize;
 
@@ -464,7 +464,7 @@ impl VorGenerator {
 
         for trial in 0..n_trials {
             let trial_start = trial as f64 * trial_duration;
-            let trial_peak = peak_velocity * (0.9 + self.rng.r#gen::<f64>() * 0.2);
+            let trial_peak = peak_velocity * (0.9 + self.rng.random::<f64>() * 0.2);
             let samples_per_trial = (trial_duration * self.config.sample_rate) as usize;
 
             let mut trial_catch_up_saccades = Vec::new();

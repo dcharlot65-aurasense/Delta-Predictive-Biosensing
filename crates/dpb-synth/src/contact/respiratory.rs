@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -50,7 +50,7 @@ impl SyntheticGenerator for RespiratoryWaveformGenerator {
                 params.amplitude * (PI * (1.0 - exp_phase)).sin()
             };
 
-            signal.push(sample + rng.r#gen_range(-0.02..0.02));
+            signal.push(sample + rng.random_range(-0.02..0.02));
 
             // Detect breath onsets
             if phase < 0.01 {

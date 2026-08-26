@@ -211,7 +211,7 @@ impl CognitiveGenerator {
     pub fn new(config: CognitiveConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
-            None => StdRng::from_entropy(),
+            None => rand::make_rng::<StdRng>(),
         };
         Self { config, rng }
     }
@@ -237,11 +237,11 @@ impl CognitiveGenerator {
 
             // Ex-Gaussian RT
             let gaussian_part: f64 = self.rng.sample(gaussian);
-            let exponential_part = -tau * self.rng.r#gen::<f64>().ln();
+            let exponential_part = -tau * self.rng.random::<f64>().ln();
             let rt = (gaussian_part + exponential_part).max(100.0);
 
             // Accuracy (simple RT typically has high accuracy)
-            let is_correct = self.rng.r#gen::<f64>() < self.config.accuracy;
+            let is_correct = self.rng.random::<f64>() < self.config.accuracy;
 
             if is_correct {
                 reaction_time.push(rt);
@@ -249,7 +249,7 @@ impl CognitiveGenerator {
                 response.push(ResponseType::Hit);
             } else {
                 // Miss or anticipation
-                if self.rng.r#gen::<bool>() {
+                if self.rng.random::<bool>() {
                     reaction_time.push(rt * 0.5); // Anticipation
                     correct.push(false);
                     response.push(ResponseType::FalseAlarm);
@@ -301,7 +301,7 @@ impl CognitiveGenerator {
         for i in 0..n_trials {
             trial.push(i);
 
-            let is_congruent = self.rng.r#gen::<f64>() < congruent_proportion;
+            let is_congruent = self.rng.random::<f64>() < congruent_proportion;
             let (stim_type, base_rt, base_acc) = if is_congruent {
                 (StimulusType::Congruent, congruent_rt, congruent_acc)
             } else {
@@ -317,7 +317,7 @@ impl CognitiveGenerator {
             reaction_time.push(rt);
 
             // Accuracy
-            let is_correct = self.rng.r#gen::<f64>() < base_acc;
+            let is_correct = self.rng.random::<f64>() < base_acc;
             correct.push(is_correct);
 
             response.push(if is_correct {
@@ -367,12 +367,12 @@ impl CognitiveGenerator {
         for i in 0..n_trials {
             trial.push(i);
 
-            let is_go = self.rng.r#gen::<f64>() < go_proportion;
+            let is_go = self.rng.random::<f64>() < go_proportion;
             stimulus.push(if is_go { StimulusType::Target } else { StimulusType::NonTarget });
 
             if is_go {
                 // Go trial
-                let responded = self.rng.r#gen::<f64>() < self.config.accuracy;
+                let responded = self.rng.random::<f64>() < self.config.accuracy;
                 if responded {
                     let rt = self.rng.sample(rt_dist).max(100.0);
                     reaction_time.push(rt);
@@ -385,7 +385,7 @@ impl CognitiveGenerator {
                 }
             } else {
                 // No-Go trial
-                let false_alarm = self.rng.r#gen::<f64>() > self.config.accuracy * 0.9; // Higher FA on no-go
+                let false_alarm = self.rng.random::<f64>() > self.config.accuracy * 0.9; // Higher FA on no-go
                 if false_alarm {
                     let rt = self.rng.sample(rt_dist).max(100.0) * 0.9; // Faster for impulsive responses
                     reaction_time.push(rt);
@@ -444,11 +444,11 @@ impl CognitiveGenerator {
         for i in 0..n_trials {
             trial.push(i);
 
-            let is_target = self.rng.r#gen::<f64>() < target_proportion;
+            let is_target = self.rng.random::<f64>() < target_proportion;
             stimulus.push(if is_target { StimulusType::Target } else { StimulusType::NonTarget });
 
             if is_target {
-                let hit = self.rng.r#gen::<f64>() < nback_accuracy;
+                let hit = self.rng.random::<f64>() < nback_accuracy;
                 if hit {
                     reaction_time.push(self.rng.sample(rt_dist).max(100.0));
                     correct.push(true);
@@ -459,7 +459,7 @@ impl CognitiveGenerator {
                     response.push(ResponseType::Miss);
                 }
             } else {
-                let fa = self.rng.r#gen::<f64>() > nback_accuracy;
+                let fa = self.rng.random::<f64>() > nback_accuracy;
                 if fa {
                     reaction_time.push(self.rng.sample(rt_dist).max(100.0));
                     correct.push(false);

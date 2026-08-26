@@ -172,7 +172,7 @@ impl PerturbationGenerator {
     pub fn new(config: PerturbationConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
-            None => StdRng::from_entropy(),
+            None => rand::make_rng::<StdRng>(),
         };
         Self { config, rng }
     }
@@ -215,7 +215,7 @@ impl PerturbationGenerator {
         let noise_dist = Normal::new(0.0, self.config.noise_level * 0.01).unwrap();
 
         // Response parameters
-        let response_latency = 0.100 + self.rng.r#gen::<f64>() * 0.050; // 100-150ms
+        let response_latency = 0.100 + self.rng.random::<f64>() * 0.050; // 100-150ms
         let time_constant = 0.3; // Recovery time constant
 
         let mut peak_disp = 0.0_f64;

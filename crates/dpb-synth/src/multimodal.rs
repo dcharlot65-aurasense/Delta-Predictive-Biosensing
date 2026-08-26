@@ -381,7 +381,7 @@ impl SyntheticGenerator for HandVoiceTremorCouplingGenerator {
     fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
-        use rand::{Rng, SeedableRng};
+        use rand::{Rng, RngExt, SeedableRng};
         use rand_distr::{Distribution, Normal};
         use std::f64::consts::PI;
 
@@ -523,7 +523,7 @@ impl SyntheticGenerator for GaitSpeechRateCouplingGenerator {
     fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
-        use rand::{Rng, SeedableRng};
+        use rand::{Rng, RngExt, SeedableRng};
 
         // Apply severity to both modalities
         let actual_cadence = params.baseline_cadence * (1.0 - 0.3 * params.severity);
@@ -565,7 +565,7 @@ impl SyntheticGenerator for GaitSpeechRateCouplingGenerator {
             };
 
             let interval = base_interval * gait_modulation;
-            let noise = rng.r#gen_range(-0.05..0.05);
+            let noise = rng.random_range(-0.05..0.05);
             t += interval * (1.0 + noise);
         }
 
@@ -651,7 +651,7 @@ impl SyntheticGenerator for SaccadeReactionTimeCouplingGenerator {
     fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
-        use rand::{Rng, SeedableRng};
+        use rand::{Rng, RngExt, SeedableRng};
         use rand_distr::{Distribution, Normal};
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -798,7 +798,7 @@ impl SyntheticGenerator for PupilVoiceAffectGenerator {
     fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
-        use rand::{Rng, SeedableRng};
+        use rand::{Rng, RngExt, SeedableRng};
         use rand_distr::{Distribution, Normal};
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -1042,7 +1042,7 @@ impl SyntheticGenerator for GaitPosturalTremorGenerator {
     fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
-        use rand::{Rng, SeedableRng};
+        use rand::{Rng, RngExt, SeedableRng};
         use std::f64::consts::PI;
 
         // Generate gait pattern
@@ -1080,7 +1080,7 @@ impl SyntheticGenerator for GaitPosturalTremorGenerator {
                 };
 
                 // Generate tremor signal
-                let phase_noise = rng.r#gen_range(-0.1..0.1);
+                let phase_noise = rng.random_range(-0.1..0.1);
                 params.tremor_amplitude * phase_modulation
                     * (2.0 * PI * params.tremor_frequency * t + phase_noise).sin()
             })

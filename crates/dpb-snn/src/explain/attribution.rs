@@ -1,6 +1,6 @@
 //! Feature attribution methods for explainability
 
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 /// Feature attribution result
 #[derive(Debug, Clone)]
@@ -132,7 +132,7 @@ impl GradientAttribution {
     where
         F: Fn(&[f64]) -> Vec<f64>,
     {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let n_features = input.len();
         let mut grad_sum = vec![0.0; n_features];
 
@@ -141,7 +141,7 @@ impl GradientAttribution {
             let noisy_input: Vec<f64> = input
                 .iter()
                 .map(|&x| {
-                    let noise = rng.gen_range(-noise_level..noise_level);
+                    let noise = rng.random_range(-noise_level..noise_level);
                     x + noise
                 })
                 .collect();
@@ -281,14 +281,14 @@ impl SpikeSHAP {
     {
         let n_features = spike_features.len();
         let mut shapley_values = vec![0.0; n_features];
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         // Sample random permutations and compute marginal contributions
         for _ in 0..self.n_samples {
             // Generate random permutation
             let mut perm: Vec<usize> = (0..n_features).collect();
             for i in 0..n_features {
-                let j = rng.gen_range(i..n_features);
+                let j = rng.random_range(i..n_features);
                 perm.swap(i, j);
             }
 
@@ -326,12 +326,12 @@ impl SpikeSHAP {
     {
         let n_features = spike_features.len();
         let mut shapley_values = vec![0.0; n_features];
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for _ in 0..self.n_samples {
             let mut perm: Vec<usize> = (0..n_features).collect();
             for i in 0..n_features {
-                let j = rng.gen_range(i..n_features);
+                let j = rng.random_range(i..n_features);
                 perm.swap(i, j);
             }
 

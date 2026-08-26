@@ -4,7 +4,7 @@
 //! measuring attention, impulsivity, and activity during a sustained attention task.
 
 use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 
 /// QbTest-style continuous performance test
 #[derive(Debug, Clone)]
@@ -54,13 +54,13 @@ impl QbTest {
 
         let mut rng: StdRng = match seed {
             Some(s) => StdRng::seed_from_u64(s),
-            None => StdRng::from_entropy(),
+            None => rand::make_rng::<StdRng>(),
         };
 
         let trial_duration_ms = self.stimulus_duration_ms + self.inter_stimulus_interval_ms;
 
         for i in 0..n_stimuli {
-            let is_target: bool = rng.r#gen::<f64>() < self.target_probability;
+            let is_target: bool = rng.random::<f64>() < self.target_probability;
             stimuli.push(QbTestStimulus {
                 index: i,
                 onset_time_ms: i as f64 * trial_duration_ms,

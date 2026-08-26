@@ -160,7 +160,7 @@ impl CardiopulmonaryGenerator {
     pub fn new(config: CardiopulmonaryConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
-            None => StdRng::from_entropy(),
+            None => rand::make_rng::<StdRng>(),
         };
         Self { config, rng }
     }
@@ -346,7 +346,7 @@ impl CardiopulmonaryGenerator {
                 // Add premature beats
                 let n_pvcs = (output.rr_intervals.len() as f64 * frequency / 100.0) as usize;
                 for _ in 0..n_pvcs {
-                    let idx = self.rng.r#gen_range(1..output.rr_intervals.len() - 1);
+                    let idx = self.rng.random_range(1..output.rr_intervals.len() - 1);
                     output.rr_intervals[idx] *= 0.7; // Short coupling interval
                     output.rr_intervals[idx + 1] *= 1.3; // Compensatory pause
                 }

@@ -2,7 +2,7 @@
 //!
 //! Includes simple reaction time (SRT) and choice reaction time (CRT) paradigms.
 
-use rand::Rng;
+use rand::{Rng, RngExt};
 use rand_distr::{Distribution, Uniform};
 
 /// A simple reaction time task where participant responds to a single stimulus
@@ -34,8 +34,8 @@ impl SimpleReactionTime {
 
     /// Generate a sequence of trials with randomized inter-stimulus intervals
     pub fn generate_trial_sequence(&self, n_trials: usize) -> Vec<Trial> {
-        let mut rng = rand::thread_rng();
-        let interval_dist = Uniform::new(self.stimulus_intervals.0, self.stimulus_intervals.1);
+        let mut rng = rand::rng();
+        let interval_dist = Uniform::new(self.stimulus_intervals.0, self.stimulus_intervals.1).expect("uniform bounds are ordered and finite");
 
         (0..n_trials)
             .map(|i| Trial {
@@ -106,11 +106,11 @@ impl ChoiceReactionTime {
 
     /// Generate a sequence of trials with balanced stimulus types
     pub fn generate_trial_sequence(&self, n_trials: usize) -> Vec<Trial> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut trials = Vec::with_capacity(n_trials);
 
         for i in 0..n_trials {
-            let rand_val: f64 = rng.r#gen();
+            let rand_val: f64 = rng.random();
             let mut cumulative = 0.0;
             let mut stimulus_idx = 0;
 
@@ -125,7 +125,7 @@ impl ChoiceReactionTime {
             trials.push(Trial {
                 trial_number: i,
                 stimulus_onset: 0.0,
-                inter_stimulus_interval: rng.gen_range(1000.0..3000.0),
+                inter_stimulus_interval: rng.random_range(1000.0..3000.0),
                 stimulus_type: StimulusType::Choice(stimulus_idx),
                 correct_response: ResponseType::Choice(stimulus_idx),
             });

@@ -4,7 +4,7 @@ use crate::{
     model::{CompressionInfo, ParameterDelta, Tensor},
     FederatedError, Result,
 };
-use rand::Rng;
+use rand::{Rng, RngExt};
 use serde::{Deserialize, Serialize};
 
 /// Compression strategy for model updates.
@@ -155,10 +155,10 @@ impl GradientCompressor {
 
     /// Random sparsification: randomly select K values to keep.
     fn compress_random_k(&self, tensor: &mut Tensor) -> Result<()> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for v in tensor.data.iter_mut() {
-            if rng.r#gen::<f32>() > self.ratio {
+            if rng.random::<f32>() > self.ratio {
                 *v = 0.0;
             } else {
                 // Scale up to maintain expected value

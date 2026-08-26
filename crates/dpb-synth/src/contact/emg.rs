@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal, Uniform};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -45,7 +45,7 @@ impl SyntheticGenerator for SurfaceEmgGenerator {
             let muap_rate = params.contraction_level * 50.0; // spikes per second
             let muap_interval = params.sampling_rate / muap_rate;
 
-            let mut next_muap = rng.r#gen_range(0.0..muap_interval);
+            let mut next_muap = rng.random_range(0.0..muap_interval);
             while (next_muap as usize) < n_samples {
                 let idx = next_muap as usize;
                 // Add biphasic spike
@@ -56,7 +56,7 @@ impl SyntheticGenerator for SurfaceEmgGenerator {
                     signal[idx + 3] -= amplitude * 2.0;
                     signal[idx + 4] -= amplitude * 3.0;
                 }
-                next_muap += muap_interval + rng.r#gen_range(-muap_interval * 0.3..muap_interval * 0.3);
+                next_muap += muap_interval + rng.random_range(-muap_interval * 0.3..muap_interval * 0.3);
             }
         }
 
@@ -159,7 +159,7 @@ impl SyntheticGenerator for VoluntaryContractionGenerator {
             // Generate EMG signal
             let amplitude = params.baseline_amplitude +
                 contraction_level * params.baseline_amplitude * 10.0;
-            let sample = amplitude * rng.r#gen_range(-1.0..1.0);
+            let sample = amplitude * rng.random_range(-1.0..1.0);
 
             signal.push(sample);
         }
@@ -254,7 +254,7 @@ impl SyntheticGenerator for PathologicalEmgGenerator {
             PathologyType::Fasciculation => {
                 // Large amplitude, irregular spontaneous discharges
                 let event_interval = params.sampling_rate / params.event_rate;
-                let mut next_event = rng.r#gen_range(0.0..event_interval);
+                let mut next_event = rng.random_range(0.0..event_interval);
 
                 while (next_event as usize) < n_samples {
                     let idx = next_event as usize;
@@ -275,13 +275,13 @@ impl SyntheticGenerator for PathologicalEmgGenerator {
                         }
                     }
 
-                    next_event += event_interval + rng.r#gen_range(-event_interval * 0.5..event_interval * 0.5);
+                    next_event += event_interval + rng.random_range(-event_interval * 0.5..event_interval * 0.5);
                 }
             }
             PathologyType::Fibrillation => {
                 // Small amplitude, high frequency potentials
                 let event_interval = params.sampling_rate / params.event_rate;
-                let mut next_event = rng.r#gen_range(0.0..event_interval);
+                let mut next_event = rng.random_range(0.0..event_interval);
 
                 while (next_event as usize) < n_samples {
                     let idx = next_event as usize;
@@ -320,7 +320,7 @@ impl SyntheticGenerator for PathologicalEmgGenerator {
                 for i in burst_start..std::cmp::min(burst_start + burst_duration, n_samples) {
                     let burst_phase = (i - burst_start) as f64 / burst_duration as f64;
                     let amplitude = params.baseline_amplitude * 10.0 * (1.0 - burst_phase); // decay
-                    signal[i] += amplitude * rng.r#gen_range(-1.0..1.0);
+                    signal[i] += amplitude * rng.random_range(-1.0..1.0);
                 }
             }
         }

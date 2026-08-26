@@ -4,7 +4,7 @@
 //! and improve efficiency while maintaining performance.
 
 use ndarray::{Array2, ArrayView2};
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use serde::{Deserialize, Serialize};
 
 /// Pruning strategy determines which weights to prune
@@ -70,7 +70,7 @@ impl PruningStrategy {
         let mut pruned = 0;
 
         for w in weights.iter_mut() {
-            if *w != 0.0 && rng.r#gen::<f64>() < ratio {
+            if *w != 0.0 && rng.random::<f64>() < ratio {
                 *w = 0.0;
                 pruned += 1;
             }

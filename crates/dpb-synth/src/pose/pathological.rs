@@ -3,7 +3,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth, GaitPhase};
 use crate::pose::gait::{GaitCycleGenerator, GaitCycleParams};
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -219,7 +219,7 @@ impl SyntheticGenerator for FreezingOfGaitGenerator {
         let mut fog_episodes = Vec::new();
 
         for frame in 0..n_frames {
-            if !in_fog && rng.gen_range(0.0..1.0) < params.fog_probability * dt {
+            if !in_fog && rng.random_range(0.0..1.0) < params.fog_probability * dt {
                 // Start FOG episode
                 in_fog = true;
                 let duration = fog_duration_dist.sample(&mut rng).max(0.5);

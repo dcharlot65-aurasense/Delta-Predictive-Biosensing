@@ -8,7 +8,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -300,13 +300,13 @@ impl SyntheticGenerator for HrvSpectralGenerator {
 
         while t < params.duration {
             // LF band (0.04-0.15 Hz)
-            let lf_freq = params.lf_center + rng.r#gen_range(-params.lf_width..params.lf_width);
-            let lf_phase = rng.r#gen_range(0.0..2.0 * PI);
+            let lf_freq = params.lf_center + rng.random_range(-params.lf_width..params.lf_width);
+            let lf_phase = rng.random_range(0.0..2.0 * PI);
             let lf = (params.lf_power / 1000.0).sqrt() * (2.0 * PI * lf_freq * t + lf_phase).sin();
 
             // HF band (0.15-0.4 Hz)
-            let hf_freq = params.hf_center + rng.r#gen_range(-params.hf_width..params.hf_width);
-            let hf_phase = rng.r#gen_range(0.0..2.0 * PI);
+            let hf_freq = params.hf_center + rng.random_range(-params.hf_width..params.hf_width);
+            let hf_phase = rng.random_range(0.0..2.0 * PI);
             let hf = (params.hf_power / 1000.0).sqrt() * (2.0 * PI * hf_freq * t + hf_phase).sin();
 
             let rr = (mean_rr + lf + hf).max(0.3);
@@ -384,10 +384,10 @@ impl SyntheticGenerator for ArrhythmiaGenerator {
         let mut rr_intervals = Vec::new();
         let mut events = Vec::new();
         let mut t = 0.0;
-        let mut next_event_time = rng.r#gen_range(0.0..event_interval);
+        let mut next_event_time = rng.random_range(0.0..event_interval);
 
         while t < params.duration {
-            let mut rr = mean_rr + rng.r#gen_range(-0.05..0.05); // normal HRV
+            let mut rr = mean_rr + rng.random_range(-0.05..0.05); // normal HRV
 
             // Check if arrhythmic event should occur
             if t >= next_event_time {
@@ -414,7 +414,7 @@ impl SyntheticGenerator for ArrhythmiaGenerator {
                     }
                     ArrhythmiaType::AF => {
                         // Irregularly irregular rhythm
-                        rr *= rng.r#gen_range(0.6..1.4);
+                        rr *= rng.random_range(0.6..1.4);
                         events.push(Event {
                             time: t,
                             event_type: "AF_beat".to_string(),
@@ -423,7 +423,7 @@ impl SyntheticGenerator for ArrhythmiaGenerator {
                         });
                     }
                 }
-                next_event_time += event_interval + rng.r#gen_range(-event_interval * 0.3..event_interval * 0.3);
+                next_event_time += event_interval + rng.random_range(-event_interval * 0.3..event_interval * 0.3);
             }
 
             rr_intervals.push(rr.max(0.3));
@@ -498,7 +498,7 @@ impl SyntheticGenerator for RsaGenerator {
             let rr = 60.0 / instantaneous_hr;
 
             // Add small random variation
-            let noise = rng.r#gen_range(-0.02..0.02);
+            let noise = rng.random_range(-0.02..0.02);
             let rr = (rr + noise).max(0.3);
 
             rr_intervals.push(rr);

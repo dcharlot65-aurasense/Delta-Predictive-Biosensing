@@ -4,7 +4,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -185,7 +185,7 @@ impl SyntheticGenerator for CardiorespiratoryCouplngGenerator {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let resp_freq = params.respiratory_rate / 60.0; // Hz
-        let resp_phase = rng.r#gen_range(0.0..2.0 * PI);
+        let resp_phase = rng.random_range(0.0..2.0 * PI);
 
         // Generate respiratory signal
         let respiratory: Vec<f64> = (0..n_samples)

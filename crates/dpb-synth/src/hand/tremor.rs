@@ -1,7 +1,7 @@
 //! Hand-specific tremor generators
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -31,9 +31,9 @@ impl SyntheticGenerator for HandPosturalTremorGenerator {
         let dt = 1.0 / params.frame_rate;
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
-        let phase_x = rng.r#gen_range(0.0..2.0 * PI);
-        let phase_y = rng.r#gen_range(0.0..2.0 * PI);
-        let phase_z = rng.r#gen_range(0.0..2.0 * PI);
+        let phase_x = rng.random_range(0.0..2.0 * PI);
+        let phase_y = rng.random_range(0.0..2.0 * PI);
+        let phase_z = rng.random_range(0.0..2.0 * PI);
 
         let positions: Vec<[f64; 3]> = (0..n_frames)
             .map(|i| {
@@ -196,9 +196,9 @@ impl SyntheticGenerator for HandRestTremorGenerator {
         let phase_noise = Normal::new(0.0, (1.0 - params.regularity) * 0.2).unwrap();
         let amp_noise = Normal::new(1.0, (1.0 - params.regularity) * 0.15).unwrap();
 
-        let base_phase_x = rng.r#gen_range(0.0..2.0 * PI);
-        let base_phase_y = rng.r#gen_range(0.0..2.0 * PI);
-        let base_phase_z = rng.r#gen_range(0.0..2.0 * PI);
+        let base_phase_x = rng.random_range(0.0..2.0 * PI);
+        let base_phase_y = rng.random_range(0.0..2.0 * PI);
+        let base_phase_z = rng.random_range(0.0..2.0 * PI);
 
         let positions: Vec<[f64; 3]> = (0..n_frames)
             .map(|i| {
@@ -467,9 +467,9 @@ impl SyntheticGenerator for MultiFingerTremorGenerator {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         // Generate common phase and per-finger phases
-        let common_phase = rng.r#gen_range(0.0..2.0 * PI);
+        let common_phase = rng.random_range(0.0..2.0 * PI);
         let finger_phases: Vec<f64> = (0..5)
-            .map(|_| rng.r#gen_range(0.0..2.0 * PI))
+            .map(|_| rng.random_range(0.0..2.0 * PI))
             .collect();
 
         let mut positions = Vec::with_capacity(n_frames);

@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::{Rng, RngExt};
 use rand_distr::{Distribution, Normal};
 use std::f64::consts::PI;
 
@@ -180,12 +180,12 @@ impl EegGenerator {
     ) -> Vec<Vec<f64>> {
         let mut signal = self.generate_resting_state(duration_sec, &BandPowerConfig::default());
         let n_samples = (duration_sec * self.sample_rate) as usize;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         // Add blink artifacts (rate per second)
         let n_blinks = (duration_sec * artifact_rate * 0.3) as usize;
         for _ in 0..n_blinks {
-            let blink_time = rng.gen_range(0..n_samples);
+            let blink_time = rng.random_range(0..n_samples);
             for channel in &mut signal {
                 self.add_blink_artifact(channel, blink_time);
             }
@@ -194,8 +194,8 @@ impl EegGenerator {
         // Add muscle artifacts
         let n_muscle = (duration_sec * artifact_rate * 0.2) as usize;
         for _ in 0..n_muscle {
-            let start = rng.gen_range(0..n_samples.saturating_sub(100));
-            let duration = rng.gen_range(50..200);
+            let start = rng.random_range(0..n_samples.saturating_sub(100));
+            let duration = rng.random_range(50..200);
             for channel in &mut signal {
                 self.add_muscle_artifact(channel, start, duration);
             }
@@ -288,7 +288,7 @@ impl EegGenerator {
 
     /// Add muscle artifact (EMG)
     pub fn add_muscle_artifact(&self, signal: &mut [f64], start: usize, duration: usize) {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let normal = Normal::new(0.0, 1.0).unwrap();
 
         for i in 0..duration {
@@ -345,13 +345,13 @@ impl EegGenerator {
     // Helper methods for stage-specific features
 
     fn add_sleep_spindles(&self, signal: &mut [Vec<f64>], duration_sec: f64) {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let n_spindles = (duration_sec / 10.0) as usize; // ~6 per minute
         let n_samples = (duration_sec * self.sample_rate) as usize;
 
         for _ in 0..n_spindles {
-            let start = rng.gen_range(0..n_samples.saturating_sub(1000));
-            let spindle_duration = 0.5 + rng.gen_range(0.0..1.0); // 0.5-1.5 sec
+            let start = rng.random_range(0..n_samples.saturating_sub(1000));
+            let spindle_duration = 0.5 + rng.random_range(0.0..1.0); // 0.5-1.5 sec
             let spindle = generate_oscillation(
                 spindle_duration,
                 self.sample_rate,
@@ -374,12 +374,12 @@ impl EegGenerator {
     }
 
     fn add_k_complexes(&self, signal: &mut [Vec<f64>], duration_sec: f64) {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let n_complexes = (duration_sec / 60.0) as usize; // ~1 per minute
         let n_samples = (duration_sec * self.sample_rate) as usize;
 
         for _ in 0..n_complexes {
-            let start = rng.gen_range(0..n_samples.saturating_sub(500));
+            let start = rng.random_range(0..n_samples.saturating_sub(500));
             let k_duration = (0.5 * self.sample_rate) as usize; // 500ms
 
             // K-complex: sharp negative wave followed by positive component
@@ -416,7 +416,7 @@ impl EegGenerator {
     }
 
     fn add_sawtooth_waves(&self, signal: &mut [Vec<f64>], duration_sec: f64) {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let n_samples = (duration_sec * self.sample_rate) as usize;
 
         // Sawtooth waves: 2-6 Hz sharp transients
@@ -471,7 +471,7 @@ fn generate_oscillation(
 ) -> Vec<f64> {
     let n_samples = (duration_sec * sample_rate) as usize;
     let mut signal = vec![0.0; n_samples];
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     // Add frequency jitter and amplitude modulation for realism
     let freq_jitter = Normal::new(0.0, frequency * 0.02).unwrap(); // 2% jitter
@@ -502,7 +502,7 @@ fn generate_oscillation(
 
 // Helper to generate pink noise (1/f)
 fn generate_pink_noise(n_samples: usize) -> Vec<f64> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let normal = Normal::new(0.0, 1.0).unwrap();
     let mut signal = vec![0.0; n_samples];
 
@@ -535,7 +535,7 @@ fn generate_band_noise(
     low_freq: f64,
     high_freq: f64,
 ) -> Vec<f64> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let normal = Normal::new(0.0, 1.0).unwrap();
 
     // Generate white noise

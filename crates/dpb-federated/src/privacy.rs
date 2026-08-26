@@ -1,6 +1,6 @@
 //! Privacy-preserving mechanisms for federated learning.
 
-use rand::Rng;
+use rand::{Rng, RngExt};
 use serde::{Deserialize, Serialize};
 use crate::{FederatedError, Result, model::ModelWeights};
 
@@ -148,7 +148,7 @@ impl DifferentialPrivacy {
 
         // Add noise
         let noise_std = self.config.noise_std() as f32;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for tensor in weights.parameters.values_mut() {
             for value in &mut tensor.data {
@@ -192,7 +192,7 @@ impl DifferentialPrivacy {
 
         // Add noise
         let noise_std = self.config.noise_std() as f32;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for value in data.iter_mut() {
             *value += match self.config.mechanism {
@@ -229,7 +229,7 @@ fn sample_gaussian<R: Rng>(rng: &mut R, std: f32) -> f32 {
 
 /// Sample from Laplace distribution.
 fn sample_laplace<R: Rng>(rng: &mut R, scale: f32) -> f32 {
-    let u: f64 = rng.gen_range(-0.5..0.5);
+    let u: f64 = rng.random_range(-0.5..0.5);
     let sign = if u >= 0.0 { 1.0 } else { -1.0 };
     (sign * (scale as f64) * (1.0 - 2.0 * u.abs()).ln()) as f32
 }
@@ -314,10 +314,10 @@ impl LocalDP {
 
     /// Randomized response for binary data.
     pub fn randomized_response(&self, value: bool) -> bool {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let p = 1.0 / (1.0 + self.epsilon.exp());
 
-        if rng.r#gen::<f64>() < p {
+        if rng.random::<f64>() < p {
             !value // Flip with probability p
         } else {
             value
@@ -327,7 +327,7 @@ impl LocalDP {
     /// Add noise to a numeric value.
     pub fn add_noise(&self, value: f32, sensitivity: f32) -> f32 {
         let scale = sensitivity / self.epsilon as f32;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         value + sample_laplace(&mut rng, scale)
     }
 }

@@ -1,7 +1,7 @@
 //! Fixation generators
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 
@@ -103,13 +103,13 @@ impl SyntheticGenerator for MicrosaccadeGenerator {
         let num_microsaccades = (params.duration * params.microsaccade_rate) as usize;
         let mut microsaccade_times = Vec::new();
         for _ in 0..num_microsaccades {
-            microsaccade_times.push(rng.r#gen_range(0.0..params.duration));
+            microsaccade_times.push(rng.random_range(0.0..params.duration));
         }
         microsaccade_times.sort_by(|a, b| a.total_cmp(b));
 
         for ms_time in microsaccade_times {
-            let amplitude = rng.r#gen_range(params.amplitude_range.0..params.amplitude_range.1);
-            let angle = rng.r#gen_range(0.0..2.0 * std::f64::consts::PI);
+            let amplitude = rng.random_range(params.amplitude_range.0..params.amplitude_range.1);
+            let angle = rng.random_range(0.0..2.0 * std::f64::consts::PI);
 
             let target_pos = [
                 current_pos[0] + amplitude * angle.cos(),
@@ -201,10 +201,10 @@ impl SyntheticGenerator for SquareWaveJerksGenerator {
         let num_jerks = (params.duration * params.jerk_rate) as usize;
 
         for _ in 0..num_jerks {
-            let jerk_time = rng.r#gen_range(0.0..params.duration - params.intersaccadic_interval);
+            let jerk_time = rng.random_range(0.0..params.duration - params.intersaccadic_interval);
 
             // Random direction
-            let direction = if rng.r#gen::<bool>() { 1.0 } else { -1.0 };
+            let direction = if rng.random::<bool>() { 1.0 } else { -1.0 };
 
             // First saccade (away from fixation)
             let start_idx1 = (jerk_time * params.sampling_rate) as usize;
@@ -478,7 +478,7 @@ impl SyntheticGenerator for OcularFlutterGenerator {
             let end_idx = ((burst_onset + params.flutter_duration) * params.sampling_rate) as usize;
 
             // Random direction for this burst
-            let direction = if rng.r#gen::<bool>() { 1.0 } else { -1.0 };
+            let direction = if rng.random::<bool>() { 1.0 } else { -1.0 };
 
             for i in start_idx..std::cmp::min(end_idx, n_samples) {
                 let t_local = (i - start_idx) as f64 * dt;

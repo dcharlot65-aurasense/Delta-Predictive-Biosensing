@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 
@@ -114,7 +114,7 @@ impl SyntheticGenerator for PauseGenerator {
             let expected_pauses = (segment_duration * params.pause_probability) as usize;
 
             for _ in 0..expected_pauses {
-                let pause_time = start + rng.r#gen_range(0.0..segment_duration);
+                let pause_time = start + rng.random_range(0.0..segment_duration);
                 let pause_duration = duration_dist.sample(&mut rng).max(0.1);
 
                 pauses.push((pause_time, pause_time + pause_duration));
@@ -288,8 +288,8 @@ impl SyntheticGenerator for FilledPauseGenerator {
         let mut events = Vec::new();
 
         for _ in 0..num_pauses {
-            let time = rng.r#gen_range(0.0..params.duration);
-            let pause_type = if rng.r#gen_bool(0.5) { "um" } else { "uh" };
+            let time = rng.random_range(0.0..params.duration);
+            let pause_type = if rng.random_bool(0.5) { "um" } else { "uh" };
             let pause_duration = duration_dist.sample(&mut rng).max(0.1);
 
             filled_pauses.push((time, pause_type.to_string()));
@@ -553,7 +553,7 @@ impl SyntheticGenerator for RhythmGenerator {
             let is_stressed = match params.pattern {
                 StressPattern::Isochronous => false, // no stress pattern
                 StressPattern::Metrical => syllable_count % 2 == 0,
-                StressPattern::Irregular => rng.r#gen_bool(0.3),
+                StressPattern::Irregular => rng.random_bool(0.3),
             };
 
             rhythm_events.push((t, is_stressed));

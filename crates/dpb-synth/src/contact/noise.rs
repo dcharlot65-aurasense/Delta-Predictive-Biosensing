@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth};
 use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -260,9 +260,9 @@ impl SyntheticGenerator for MotionArtifactGenerator {
         // Generate random sinusoidal components
         let mut components = Vec::new();
         for _ in 0..params.num_components {
-            let freq = rng.r#gen_range(params.frequency_range.0..params.frequency_range.1);
-            let phase = rng.r#gen_range(0.0..2.0 * PI);
-            let amp = rng.r#gen_range(0.3..1.0);
+            let freq = rng.random_range(params.frequency_range.0..params.frequency_range.1);
+            let phase = rng.random_range(0.0..2.0 * PI);
+            let amp = rng.random_range(0.3..1.0);
             components.push((freq, phase, amp));
         }
 
@@ -333,7 +333,7 @@ impl SyntheticGenerator for BaselineWanderGenerator {
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let phase = rng.r#gen_range(0.0..2.0 * PI);
+        let phase = rng.random_range(0.0..2.0 * PI);
 
         let signal = Array1::from_vec(
             (0..n_samples)
@@ -404,7 +404,7 @@ impl SyntheticGenerator for QuantizationNoiseGenerator {
         // Uniform distribution [-q/2, q/2]
         let signal = Array1::from_vec(
             (0..n_samples)
-                .map(|_| rng.r#gen_range(-q_step / 2.0..q_step / 2.0))
+                .map(|_| rng.random_range(-q_step / 2.0..q_step / 2.0))
                 .collect()
         );
 
@@ -473,7 +473,7 @@ impl SyntheticGenerator for ElectrodeNoiseGenerator {
         let mut events = Vec::new();
 
         // Generate slow impedance drift
-        let phase = rng.r#gen_range(0.0..2.0 * PI);
+        let phase = rng.random_range(0.0..2.0 * PI);
 
         for i in 0..n_samples {
             let t = i as f64 * dt;
