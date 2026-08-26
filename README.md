@@ -101,7 +101,7 @@ Counted from the source tree, not quoted from documentation:
 | Decoders (`impl Decoder`) | **71** |
 | Synthetic generators (`impl SyntheticGenerator`) | **163** |
 | ANN baselines (`impl ANNBaseline`) | **44** |
-| `#[test]` functions in `crates/` | **2,865** |
+| `#[test]` functions in `crates/` | **2,870** |
 
 Signal domains with dedicated encoder modules: EEG, cardiopulmonary, voice, eye,
 pose, hand, force, balance, vestibular, cognitive, pain, and contact sensors.
@@ -182,22 +182,28 @@ Being specific about maturity, because the distinction matters:
   this code.
 - **No benchmark results are committed.** Harnesses exist; measured numbers do
   not.
-- **The library test suites pass; two integration suites do not compile.**
-  Every crate's `--lib` tests are green (2,527 passing, 0 failing, excluding
-  `dpb-python`, which needs Python development headers). Getting there meant
-  fixing real defects, not adjusting expectations: a DWT with no working
-  inverse, an ICA that panicked on its own use case, an AUC that varied with the
-  order of tied scores, INT8 quantization that saturated its whole positive
-  range, an STDP rule with its causal and anti-causal branches transposed, and a
-  "multi-compartment" neuron whose compartments were never connected to one
-  another.
+- **The test suites pass.** 2,887 tests across every crate -- unit, integration
+  and documentation examples -- with nothing failing and nothing ignored on
+  account of known-broken code. `dpb-python` is excluded; it needs Python
+  development headers to build.
 
-  `dpb-federated` and `dpb-clinical` each carry a `tests/integration_tests.rs`
-  that has **never compiled**. They reference an API that does not exist --
-  `FedConfigBuilder`, `TreatmentResponse::cohens_d`,
-  `PopulationNorms::percentile_rank` and others -- so they are a specification
-  of intended functionality rather than coverage of current behaviour. They
-  contribute nothing to the numbers above.
+  Getting there meant fixing real defects, not adjusting expectations. Four
+  categories of test had never been compiled at all, and running them for the
+  first time is what surfaced most of the following: IIR filtering that returned
+  silence for every input (and with it R-peak detection that found no peaks), an
+  EDF writer that overwrote the start of its own sample data, a DWT with no
+  working inverse, an ICA that panicked on its own use case, an AUC that varied
+  with the order of tied scores, INT8 quantization that saturated its whole
+  positive range, STDP with its causal and anti-causal branches transposed, a
+  "multi-compartment" neuron whose compartments were never connected, a
+  convolutional architecture that could not run on any input, and a synthetic
+  ECG generator producing 0.004 mV where 1 mV was asked for while labelling
+  47 R-peaks a millisecond apart.
+
+  That last one is worth dwelling on if you are evaluating this: the synthetic
+  generators' event labels are the ground truth everything else is validated
+  against, so they are load-bearing.
+
 - **The bundled normative values in `dpb-norms` are illustrative placeholders**,
   not sourced cohorts, and must not be used to interpret a real measurement.
 
