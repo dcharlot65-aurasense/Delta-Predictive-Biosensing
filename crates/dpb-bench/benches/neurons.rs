@@ -7,6 +7,8 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion, Benchmark
 use dpb_neurons::prelude::*;
 use dpb_neurons::traits::NeuronModel;
 use dpb_neurons::batch::BatchLifLayer;
+// `backward` is a trait method.
+use dpb_neurons::surrogate::SurrogateGradient;
 use ndarray::Array1;
 
 fn benchmark_lif_neuron(c: &mut Criterion) {
@@ -190,10 +192,10 @@ fn benchmark_refractory_period(c: &mut Criterion) {
     for refrac_ms in [1.0, 2.0, 5.0].iter() {
         let config = dpb_neurons::lif::LifConfig {
             tau_mem: 20.0,
-            tau_syn: 5.0,
-            v_threshold: 1.0,
-            v_reset: 0.0,
-            t_refrac: *refrac_ms,
+            v_thresh: -50.0,
+            v_reset: -65.0,
+            tau_refrac: *refrac_ms,
+            ..dpb_neurons::lif::LifConfig::default()
         };
 
         group.bench_with_input(
@@ -223,7 +225,7 @@ fn benchmark_surrogate_gradients(c: &mut Criterion) {
         let surrogate = FastSigmoid::default();
         b.iter(|| {
             for &v in &voltages {
-                let grad = surrogate.gradient(black_box(v));
+                let grad = surrogate.backward(black_box(v));
                 black_box(grad);
             }
         });
@@ -233,7 +235,7 @@ fn benchmark_surrogate_gradients(c: &mut Criterion) {
         let surrogate = dpb_neurons::SuperSpike::default();
         b.iter(|| {
             for &v in &voltages {
-                let grad = surrogate.gradient(black_box(v));
+                let grad = surrogate.backward(black_box(v));
                 black_box(grad);
             }
         });

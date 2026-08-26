@@ -51,11 +51,12 @@ mod setup {
     }
 
     pub fn iir_lowpass() -> IirFilter {
-        IirFilter::new(FilterType::LowPass { cutoff: 30.0 }, 250.0, 4).unwrap()
+        // The constructor names the family; `FilterType` is a plain enum.
+        IirFilter::butterworth_lowpass(4, 30.0, 250.0).unwrap()
     }
 
     pub fn iir_bandpass() -> IirFilter {
-        IirFilter::bandpass(0.5, 40.0, 250.0, 4).unwrap()
+        IirFilter::butterworth_bandpass(4, 0.5, 40.0, 250.0).unwrap()
     }
 
     pub fn fft_processor() -> FftProcessor {
@@ -66,19 +67,19 @@ mod setup {
 // FFT benchmarks
 #[library_benchmark]
 #[bench::fft_256((setup::fft_processor(), setup::signal_256()))]
-fn bench_fft_256((mut processor, signal): (FftProcessor, Array1<f64>)) -> Vec<num_complex::Complex64> {
+fn bench_fft_256((mut processor, signal): (FftProcessor, Array1<f64>)) -> dpb_core::Result<ndarray::Array1<num_complex::Complex<f64>>> {
     black_box(processor.fft(black_box(signal.view())))
 }
 
 #[library_benchmark]
 #[bench::fft_1024((setup::fft_processor(), setup::signal_1024()))]
-fn bench_fft_1024((mut processor, signal): (FftProcessor, Array1<f64>)) -> Vec<num_complex::Complex64> {
+fn bench_fft_1024((mut processor, signal): (FftProcessor, Array1<f64>)) -> dpb_core::Result<ndarray::Array1<num_complex::Complex<f64>>> {
     black_box(processor.fft(black_box(signal.view())))
 }
 
 #[library_benchmark]
 #[bench::fft_4096((setup::fft_processor(), setup::signal_4096()))]
-fn bench_fft_4096((mut processor, signal): (FftProcessor, Array1<f64>)) -> Vec<num_complex::Complex64> {
+fn bench_fft_4096((mut processor, signal): (FftProcessor, Array1<f64>)) -> dpb_core::Result<ndarray::Array1<num_complex::Complex<f64>>> {
     black_box(processor.fft(black_box(signal.view())))
 }
 
@@ -100,16 +101,16 @@ fn bench_fir_ma50_1024((mut filter, signal): (FirFilter, Array1<f64>)) -> Array1
 // IIR filter benchmarks
 #[library_benchmark]
 #[bench::iir_lowpass_1024((setup::iir_lowpass(), setup::signal_1024()))]
-fn bench_iir_lowpass_1024((mut filter, signal): (IirFilter, Array1<f64>)) -> dpb_core::Result<Array1<f64>> {
+fn bench_iir_lowpass_1024((mut filter, signal): (IirFilter, Array1<f64>)) -> Array1<f64> {
     filter.reset();
-    black_box(filter.apply(black_box(signal.view())))
+    black_box(filter.filter(black_box(signal.view())))
 }
 
 #[library_benchmark]
 #[bench::iir_bandpass_1024((setup::iir_bandpass(), setup::signal_1024()))]
-fn bench_iir_bandpass_1024((mut filter, signal): (IirFilter, Array1<f64>)) -> dpb_core::Result<Array1<f64>> {
+fn bench_iir_bandpass_1024((mut filter, signal): (IirFilter, Array1<f64>)) -> Array1<f64> {
     filter.reset();
-    black_box(filter.apply(black_box(signal.view())))
+    black_box(filter.filter(black_box(signal.view())))
 }
 
 // Normalization benchmarks
@@ -177,20 +178,20 @@ fn bench_clip(signal: Array1<f64>) -> Array1<f64> {
 // Resampling benchmarks
 #[library_benchmark]
 #[bench::downsample_1024(setup::signal_1024())]
-fn bench_downsample_1024(signal: Array1<f64>) -> Array1<f64> {
+fn bench_downsample_1024(signal: Array1<f64>) -> dpb_core::Result<Array1<f64>> {
     black_box(downsample(black_box(signal.view()), 4))
 }
 
 #[library_benchmark]
 #[bench::upsample_256(setup::signal_256())]
-fn bench_upsample_256(signal: Array1<f64>) -> Array1<f64> {
+fn bench_upsample_256(signal: Array1<f64>) -> dpb_core::Result<Array1<f64>> {
     black_box(upsample(black_box(signal.view()), 4))
 }
 
 #[library_benchmark]
 #[bench::resample_linear_1024(setup::signal_1024())]
-fn bench_resample_linear(signal: Array1<f64>) -> Array1<f64> {
-    black_box(resample_linear(black_box(signal.view()), 512))
+fn bench_resample_linear(signal: Array1<f64>) -> dpb_core::Result<Array1<f64>> {
+    black_box(resample_linear(black_box(signal.view()), 1024.0, 512.0))
 }
 
 library_benchmark_group!(

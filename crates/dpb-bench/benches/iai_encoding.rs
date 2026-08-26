@@ -46,16 +46,19 @@ mod setup {
             threshold: 0.3,
             relative: false,
             refractory_period: 0.01,
+            ..LevelCrossingConfig::default()
         };
         (encoder, config)
     }
 
     pub fn derivative_encoder() -> (DerivativeEncoder, DerivativeConfig) {
         let encoder = DerivativeEncoder::new("iai_bench");
+        // `DerivativeConfig` carries a threshold and a derivative order; it has
+        // never had a window or a refractory period.
         let config = DerivativeConfig {
             threshold: 0.5,
-            window_size: 3,
-            refractory_period: 0.01,
+            order: 1,
+            ..DerivativeConfig::default()
         };
         (encoder, config)
     }

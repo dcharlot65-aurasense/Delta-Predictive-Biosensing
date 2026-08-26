@@ -8,6 +8,7 @@ repository.workspace = true
 description = "Comprehensive benchmark suite for Delta-Predictive Biosensing Framework"
 
 [dependencies]
+num-complex.workspace = true
 dpb-core.workspace = true
 dpb-encoders.workspace = true
 dpb-neurons.workspace = true

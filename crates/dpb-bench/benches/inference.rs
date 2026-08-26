@@ -5,6 +5,9 @@
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
 use dpb_snn::*;
+// `forward` is a trait method.
+use dpb_snn::architectures::SNNArchitecture;
+use dpb_snn::SpikeTensor;
 use dpb_neurons::lif::LifConfig;
 use ndarray::{Array1, Array2, Array3};
 
@@ -16,7 +19,7 @@ fn benchmark_feedforward_snn(c: &mut Criterion) {
         num_steps: 50,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
     for layer_sizes in [
@@ -24,9 +27,10 @@ fn benchmark_feedforward_snn(c: &mut Criterion) {
         vec![50, 100, 50],
         vec![100, 200, 100],
     ].iter() {
-        let snn = FeedforwardSNN::new(layer_sizes.clone(), config.clone());
+        let mut snn = FeedforwardSNN::new(layer_sizes.clone(), config.clone(), true).expect("SNN");
 
-        let input = Array2::from_elem((config.num_steps, layer_sizes[0]), 0.5);
+        // `forward` takes a SpikeTensor of (batch, steps, neurons).
+        let input = SpikeTensor::zeros(1, config.num_steps, layer_sizes[0], false);
 
         group.bench_with_input(
             BenchmarkId::from_parameter(format!("{:?}", layer_sizes)),
@@ -54,11 +58,12 @@ fn benchmark_snn_timesteps(c: &mut Criterion) {
             num_steps: *num_steps,
             neuron_model: NeuronModel::LIF,
             neuron_params: NeuronParams::default(),
-            use_gpu: false,
+            ..SNNConfig::default()
         };
 
-        let snn = FeedforwardSNN::new(layer_sizes.clone(), config.clone());
-        let input = Array2::from_elem((config.num_steps, layer_sizes[0]), 0.5);
+        let mut snn = FeedforwardSNN::new(layer_sizes.clone(), config.clone(), true).expect("SNN");
+        // `forward` takes a SpikeTensor of (batch, steps, neurons).
+        let input = SpikeTensor::zeros(1, config.num_steps, layer_sizes[0], false);
 
         group.bench_with_input(
             BenchmarkId::from_parameter(num_steps),
@@ -83,12 +88,12 @@ fn benchmark_recurrent_snn(c: &mut Criterion) {
         num_steps: 50,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
     for num_neurons in [50, 100, 200].iter() {
-        let snn = RecurrentSNN::new(*num_neurons, *num_neurons, config.clone());
-        let input = Array2::from_elem((config.num_steps, *num_neurons), 0.5);
+        let mut snn = RecurrentSNN::new(*num_neurons, vec![*num_neurons], *num_neurons, config.clone()).expect("SNN");
+        let input = SpikeTensor::zeros(1, config.num_steps, *num_neurons, false);
 
         group.bench_with_input(
             BenchmarkId::from_parameter(num_neurons),
@@ -113,14 +118,15 @@ fn benchmark_convolutional_snn(c: &mut Criterion) {
         num_steps: 50,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
     for (channels, spatial_size) in [(1, 28), (3, 32)].iter() {
-        let snn = ConvolutionalSNN::new(*channels, 10, config.clone());
+        let mut snn = ConvolutionalSNN::new(*channels, 10, config.clone());
 
         // Input: (timesteps, channels, height, width)
-        let input = Array3::from_elem((config.num_steps, *channels, *spatial_size * spatial_size), 0.5);
+        let input =
+            SpikeTensor::zeros(1, config.num_steps, *channels * spatial_size * spatial_size, false);
 
         group.bench_with_input(
             BenchmarkId::from_parameter(format!("{}ch_{}x{}", channels, spatial_size, spatial_size)),
@@ -141,16 +147,15 @@ fn benchmark_spike_rate_decoder(c: &mut Criterion) {
     let mut group = c.benchmark_group("spike_rate_decoder");
 
     for num_neurons in [10, 50, 100].iter() {
-        let spike_tensor = SpikeTensor::new(*num_neurons, 50);
-
-        // Add some random spikes
+        // (batch, steps, neurons), with a spike every fifth step.
+        let mut spike_tensor = SpikeTensor::zeros(1, 50, *num_neurons, false);
         for neuron in 0..*num_neurons {
-            for t in (0..50).step_by(5) {
-                spike_tensor.add_spike(neuron, t);
+            for step in (0..50).step_by(5) {
+                spike_tensor.set_spike(0, step, neuron, 1.0).ok();
             }
         }
 
-        let decoder = SpikeRateDecoder::new(10.0);
+        let decoder = SpikeRateDecoder::new(*num_neurons, None, false);
 
         group.bench_with_input(
             BenchmarkId::from_parameter(num_neurons),
@@ -173,16 +178,16 @@ fn benchmark_population_decoder(c: &mut Criterion) {
     let num_neurons = 100;
     let num_classes = 10;
 
-    let spike_tensor = SpikeTensor::new(num_neurons, 50);
-
-    // Add spikes
+    let mut spike_tensor = SpikeTensor::zeros(1, 50, num_neurons, false);
     for neuron in 0..num_neurons {
-        for t in (0..50).step_by(3) {
-            spike_tensor.add_spike(neuron, t);
+        for step in (0..50).step_by(3) {
+            spike_tensor.set_spike(0, step, neuron, 1.0).ok();
         }
     }
 
-    let decoder = PopulationDecoder::new(num_neurons, num_classes);
+    // (num_classes, neurons_per_class): the decoder expects their product as
+    // its input width.
+    let decoder = PopulationDecoder::new(num_classes, num_neurons / num_classes);
 
     group.bench_function("decode", |b| {
         b.iter(|| {
@@ -198,14 +203,12 @@ fn benchmark_latency_decoder(c: &mut Criterion) {
     let mut group = c.benchmark_group("latency_decoder");
 
     let num_neurons = 100;
-    let spike_tensor = SpikeTensor::new(num_neurons, 50);
-
-    // Add spikes at different times
+    let mut spike_tensor = SpikeTensor::zeros(1, 50, num_neurons, false);
     for neuron in 0..num_neurons {
-        spike_tensor.add_spike(neuron, neuron % 50);
+        spike_tensor.set_spike(0, neuron % 50, neuron, 1.0).ok();
     }
 
-    let decoder = LatencyDecoder::new();
+    let decoder = LatencyDecoder::new(num_neurons, 50);
 
     group.bench_function("decode", |b| {
         b.iter(|| {
@@ -233,11 +236,11 @@ fn benchmark_snn_neuron_types(c: &mut Criterion) {
             num_steps,
             neuron_model: *neuron_type,
             neuron_params: NeuronParams::default(),
-            use_gpu: false,
+            ..SNNConfig::default()
         };
 
-        let snn = FeedforwardSNN::new(layer_sizes.clone(), config.clone());
-        let input = Array2::from_elem((num_steps, layer_sizes[0]), 0.5);
+        let mut snn = FeedforwardSNN::new(layer_sizes.clone(), config.clone(), true).expect("SNN");
+        let input = SpikeTensor::zeros(1, num_steps, layer_sizes[0], false);
 
         group.bench_with_input(
             BenchmarkId::from_parameter(format!("{:?}", neuron_type)),
@@ -263,30 +266,30 @@ fn benchmark_end_to_end_pipeline(c: &mut Criterion) {
         num_steps: 50,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        use_gpu: false,
+        ..SNNConfig::default()
     };
 
     let layer_sizes = vec![50, 100, 10];
-    let snn = FeedforwardSNN::new(layer_sizes.clone(), config.clone());
-    let decoder = SpikeRateDecoder::new(10.0);
+    let mut snn = FeedforwardSNN::new(layer_sizes.clone(), config.clone(), true).expect("SNN");
+    let decoder = SpikeRateDecoder::new(*layer_sizes.last().unwrap(), None, false);
 
     // Raw input signal
     let signal = vec![0.5; 50];
 
     group.bench_function("full_pipeline", |b| {
         b.iter(|| {
-            // Simple rate encoding
-            let mut encoded = Array2::zeros((config.num_steps, layer_sizes[0]));
-            for t in 0..config.num_steps {
+            // Simple rate encoding into a (batch, steps, neurons) tensor.
+            let mut encoded = SpikeTensor::zeros(1, config.num_steps, layer_sizes[0], false);
+            for step in 0..config.num_steps {
                 for i in 0..layer_sizes[0].min(signal.len()) {
                     if signal[i] > 0.3 {
-                        encoded[[t, i]] = 1.0;
+                        encoded.set_spike(0, step, i, 1.0).ok();
                     }
                 }
             }
 
             // SNN inference
-            let spike_output = snn.forward(black_box(&encoded));
+            let spike_output = snn.forward(black_box(&encoded)).expect("forward");
 
             // Decode
             let output = decoder.decode(black_box(&spike_output));

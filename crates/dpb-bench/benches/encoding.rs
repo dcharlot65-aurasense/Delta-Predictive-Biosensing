@@ -21,6 +21,7 @@ fn benchmark_level_crossing(c: &mut Criterion) {
             threshold: 0.3,
             relative: false,
             refractory_period: 0.01,
+            ..LevelCrossingConfig::default()
         };
 
         group.bench_with_input(
@@ -48,13 +49,14 @@ fn benchmark_template_deviation(c: &mut Criterion) {
         let encoder = TemplateDeviationEncoder::new("benchmark");
 
         // Create a simple template
-        let template_data = vec![0.0, 0.5, 1.0, 0.5, 0.0];
-        let template = SignalBuffer::single_channel(template_data, 250.0);
+        // `template` is the waveform itself, not a wrapped buffer.
+        let template = vec![0.0, 0.5, 1.0, 0.5, 0.0];
 
         let config = TemplateDeviationConfig {
             template,
             threshold: 0.2,
             window_size: 5,
+            ..TemplateDeviationConfig::default()
         };
 
         group.bench_with_input(
@@ -157,8 +159,7 @@ fn benchmark_derivative(c: &mut Criterion) {
         let encoder = DerivativeEncoder::new("benchmark");
         let config = DerivativeConfig {
             threshold: 0.5,
-            window_size: 3,
-            refractory_period: 0.01,
+            ..DerivativeConfig::default()
         };
 
         group.bench_with_input(
@@ -190,6 +191,7 @@ fn benchmark_throughput(c: &mut Criterion) {
                 threshold: 0.3,
                 relative: false,
                 refractory_period: 0.01,
+                ..LevelCrossingConfig::default()
             };
             encoder.encode(s, &config)
         })),
@@ -197,8 +199,7 @@ fn benchmark_throughput(c: &mut Criterion) {
             let encoder = DerivativeEncoder::new("bench");
             let config = DerivativeConfig {
                 threshold: 0.5,
-                window_size: 3,
-                refractory_period: 0.01,
+                ..DerivativeConfig::default()
             };
             encoder.encode(s, &config)
         })),

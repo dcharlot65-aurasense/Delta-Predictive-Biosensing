@@ -218,7 +218,7 @@ fn benchmark_reproducibility(c: &mut Criterion) {
             let (signal2, _) = dataset2.generate().unwrap();
 
             // Verify they're the same
-            assert_eq!(signal1.data(), signal2.data());
+            assert_eq!(signal1.data, signal2.data);
 
             black_box((signal1, signal2));
         });

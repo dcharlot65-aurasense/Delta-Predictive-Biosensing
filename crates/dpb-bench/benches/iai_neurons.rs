@@ -34,21 +34,21 @@ mod setup {
         AdExNeuron::new(AdExConfig::default())
     }
 
-    pub fn batch_lif_10() -> (BatchLifLayer, Array1<f64>) {
+    pub fn batch_lif_10() -> (BatchLifLayer, Array1<f32>) {
         let layer = BatchLifLayer::new(10, LifConfig::default());
-        let inputs = Array1::from_elem(10, 10.0);
+        let inputs = Array1::from_elem(10, 10.0f32);
         (layer, inputs)
     }
 
-    pub fn batch_lif_100() -> (BatchLifLayer, Array1<f64>) {
+    pub fn batch_lif_100() -> (BatchLifLayer, Array1<f32>) {
         let layer = BatchLifLayer::new(100, LifConfig::default());
-        let inputs = Array1::from_elem(100, 10.0);
+        let inputs = Array1::from_elem(100, 10.0f32);
         (layer, inputs)
     }
 
-    pub fn batch_lif_1000() -> (BatchLifLayer, Array1<f64>) {
+    pub fn batch_lif_1000() -> (BatchLifLayer, Array1<f32>) {
         let layer = BatchLifLayer::new(1000, LifConfig::default());
-        let inputs = Array1::from_elem(1000, 10.0);
+        let inputs = Array1::from_elem(1000, 10.0f32);
         (layer, inputs)
     }
 
@@ -108,19 +108,19 @@ fn bench_quantized_single_update(mut neuron: dpb_neurons::QuantizedLifNeuron) ->
 // Batch neuron update benchmarks
 #[library_benchmark]
 #[bench::batch_10(setup::batch_lif_10())]
-fn bench_batch_lif_10((mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f64>)) -> ndarray::Array1<bool> {
+fn bench_batch_lif_10((mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f32>)) -> ndarray::Array1<bool> {
     black_box(layer.update(black_box(&inputs), black_box(1.0)))
 }
 
 #[library_benchmark]
 #[bench::batch_100(setup::batch_lif_100())]
-fn bench_batch_lif_100((mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f64>)) -> ndarray::Array1<bool> {
+fn bench_batch_lif_100((mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f32>)) -> ndarray::Array1<bool> {
     black_box(layer.update(black_box(&inputs), black_box(1.0)))
 }
 
 #[library_benchmark]
 #[bench::batch_1000(setup::batch_lif_1000())]
-fn bench_batch_lif_1000((mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f64>)) -> ndarray::Array1<bool> {
+fn bench_batch_lif_1000((mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f32>)) -> ndarray::Array1<bool> {
     black_box(layer.update(black_box(&inputs), black_box(1.0)))
 }
 
@@ -140,7 +140,7 @@ fn bench_lif_100_timesteps(mut neuron: dpb_neurons::prelude::LifNeuron) -> i32 {
 
 #[library_benchmark]
 #[bench::batch_100_steps(setup::batch_lif_100())]
-fn bench_batch_100_timesteps((mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f64>)) -> i32 {
+fn bench_batch_100_timesteps((mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f32>)) -> i32 {
     let mut spike_count = 0;
     for _ in 0..100 {
         let spikes = layer.update(black_box(&inputs), black_box(1.0));
@@ -151,25 +151,25 @@ fn bench_batch_100_timesteps((mut layer, inputs): (dpb_neurons::batch::BatchLifL
 
 // Surrogate gradient benchmarks
 #[library_benchmark]
-fn bench_fast_sigmoid_gradient() -> f64 {
+fn bench_fast_sigmoid_gradient() -> f32 {
     use dpb_neurons::prelude::FastSigmoid;
-    use dpb_neurons::SurrogateGradient;
+    use dpb_neurons::surrogate::SurrogateGradient;
     let surrogate = FastSigmoid::default();
-    let mut total = 0.0;
-    for v in [-1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0] {
-        total += surrogate.gradient(black_box(v));
+    let mut total = 0.0f32;
+    for v in [-1.0f32, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0] {
+        total += surrogate.backward(black_box(v));
     }
     black_box(total)
 }
 
 #[library_benchmark]
-fn bench_superspike_gradient() -> f64 {
-    use dpb_neurons::prelude::SuperSpike;
-    use dpb_neurons::SurrogateGradient;
+fn bench_superspike_gradient() -> f32 {
+    use dpb_neurons::SuperSpike;
+    use dpb_neurons::surrogate::SurrogateGradient;
     let surrogate = SuperSpike::default();
-    let mut total = 0.0;
-    for v in [-1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0] {
-        total += surrogate.gradient(black_box(v));
+    let mut total = 0.0f32;
+    for v in [-1.0f32, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0] {
+        total += surrogate.backward(black_box(v));
     }
     black_box(total)
 }
