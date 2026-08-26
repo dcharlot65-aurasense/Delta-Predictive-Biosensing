@@ -47,10 +47,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      # dpb-python is excluded: pyo3 0.23 does not support the Python 3.14 that
-      # ships on current runners. Re-include once pyo3 is upgraded.
+      # `--all-targets` covers integration tests, examples and benches; doc
+      # tests need their own invocation because --all-targets excludes them.
+      #
+      # This job used to run `--lib` only, which is how integration suites,
+      # doc examples and benches came to accumulate years of API drift without
+      # anyone noticing: they were never compiled in CI.
+      #
+      # dpb-python is no longer excluded -- it was, because pyo3 0.23 could not
+      # build against the Python 3.14 on current runners, and pyo3 is now 0.29.
       - name: cargo test
-        run: cargo test --workspace --lib --exclude dpb-python
+        run: cargo test --workspace --all-targets
+      - name: cargo test --doc
+        run: cargo test --workspace --doc
 
   wasm:
     name: wasm32 build
@@ -70,4 +79,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.92.0
       - uses: Swatinem/rust-cache@v2
-      - run: cargo check --workspace --lib --exclude dpb-python
+      # `--all-targets` for the same reason as the test job: a minimum-version
+      # check that only sees `--lib` cannot catch a bench or example that needs
+      # a newer compiler.
+      - run: cargo check --workspace --all-targets
