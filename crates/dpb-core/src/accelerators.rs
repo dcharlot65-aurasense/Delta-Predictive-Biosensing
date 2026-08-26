@@ -427,62 +427,6 @@ impl Accelerator for CpuAccelerator {
     }
 }
 
-/// Intel Gaudi accelerator stub.
-#[cfg(feature = "intel-gaudi")]
-pub struct IntelGaudiAccelerator {
-    capabilities: AcceleratorCapabilities,
-}
-
-#[cfg(feature = "intel-gaudi")]
-impl IntelGaudiAccelerator {
-    /// Create new Intel Gaudi accelerator.
-    pub fn new() -> Result<Self, AcceleratorError> {
-        // Would initialize Gaudi runtime here
-        Ok(Self {
-            capabilities: AcceleratorCapabilities {
-                accelerator_type: AcceleratorType::IntelGaudi,
-                name: "Intel Gaudi 2".to_string(),
-                memory_bytes: 96 * 1024 * 1024 * 1024, // 96 GB HBM
-                compute_units: 24, // 24 Tensor Processing Cores
-                max_workgroup_size: 65536,
-                supports_fp16: true,
-                supports_bf16: true,
-                supports_int8: true,
-                peak_tflops: 420.0, // BF16
-                memory_bandwidth_gbps: 2450.0,
-            },
-        })
-    }
-}
-
-/// Graphcore IPU accelerator stub.
-#[cfg(feature = "graphcore-ipu")]
-pub struct GraphcoreIpuAccelerator {
-    capabilities: AcceleratorCapabilities,
-}
-
-#[cfg(feature = "graphcore-ipu")]
-impl GraphcoreIpuAccelerator {
-    /// Create new Graphcore IPU accelerator.
-    pub fn new() -> Result<Self, AcceleratorError> {
-        // Would initialize PopRT runtime here
-        Ok(Self {
-            capabilities: AcceleratorCapabilities {
-                accelerator_type: AcceleratorType::GraphcoreIpu,
-                name: "Graphcore Bow-2000".to_string(),
-                memory_bytes: 900 * 1024 * 1024, // 900 MB SRAM per IPU
-                compute_units: 1472, // 1472 tiles
-                max_workgroup_size: 6 * 1472, // 6 threads per tile
-                supports_fp16: true,
-                supports_bf16: false,
-                supports_int8: true,
-                peak_tflops: 280.0, // FP16
-                memory_bandwidth_gbps: 47000.0, // SRAM
-            },
-        })
-    }
-}
-
 /// Detect available accelerators.
 pub fn detect_accelerators() -> Vec<Box<dyn Accelerator>> {
     let mut accelerators: Vec<Box<dyn Accelerator>> = Vec::new();
@@ -492,14 +436,26 @@ pub fn detect_accelerators() -> Vec<Box<dyn Accelerator>> {
 
     // Check for Intel Gaudi
     #[cfg(feature = "intel-gaudi")]
-    if let Ok(gaudi) = IntelGaudiAccelerator::new() {
+    if let Ok(gaudi) = gaudi::GaudiAccelerator::new() {
         accelerators.push(Box::new(gaudi));
     }
 
     // Check for Graphcore IPU
     #[cfg(feature = "graphcore-ipu")]
-    if let Ok(ipu) = GraphcoreIpuAccelerator::new() {
+    if let Ok(ipu) = ipu::IpuAccelerator::new() {
         accelerators.push(Box::new(ipu));
+    }
+
+    // Check for NVIDIA CUDA
+    #[cfg(feature = "cuda")]
+    if let Ok(gpu) = cuda::CudaAccelerator::new(cuda::CudaConfig::default()) {
+        accelerators.push(Box::new(gpu));
+    }
+
+    // Check for a RISC-V vector unit
+    #[cfg(feature = "riscv-hal")]
+    if let Ok(hal) = riscv::RiscVHal::new(riscv::RiscVConfig::default()) {
+        accelerators.push(Box::new(hal));
     }
 
     accelerators

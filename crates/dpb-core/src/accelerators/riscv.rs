@@ -329,7 +329,7 @@ impl RiscVHal {
     /// Create a new RISC-V HAL with the given configuration.
     pub fn new(config: RiscVConfig) -> Result<Self, AcceleratorError> {
         let capabilities = AcceleratorCapabilities {
-            accelerator_type: AcceleratorType::Cpu,
+            accelerator_type: AcceleratorType::RiscV,
             name: format!("{:?} @ {} MHz", config.arch, config.clock_hz / 1_000_000),
             memory_bytes: config.sram_bytes as u64,
             compute_units: 1,
@@ -453,7 +453,7 @@ impl RiscVHal {
         }
 
         // In production, this would configure the DMA controller
-        log::debug!(
+        tracing::debug!(
             "Setup DMA channel {} for {} byte transfer",
             channel.channel,
             channel.size
@@ -480,7 +480,7 @@ impl RiscVHal {
 
 impl Accelerator for RiscVHal {
     fn accelerator_type(&self) -> AcceleratorType {
-        AcceleratorType::Cpu
+        AcceleratorType::RiscV
     }
 
     fn capabilities(&self) -> &AcceleratorCapabilities {
@@ -550,11 +550,11 @@ impl Accelerator for RiscVHal {
     fn execute(&self, operation: &AcceleratorOperation) -> Result<(), AcceleratorError> {
         match operation.op_type {
             OperationType::LevelCrossing => {
-                log::debug!("Execute level crossing on RISC-V");
+                tracing::debug!("Execute level crossing on RISC-V");
                 Ok(())
             }
             OperationType::DeltaModulation => {
-                log::debug!("Execute delta modulation on RISC-V");
+                tracing::debug!("Execute delta modulation on RISC-V");
                 Ok(())
             }
             _ => Err(AcceleratorError::Unsupported(

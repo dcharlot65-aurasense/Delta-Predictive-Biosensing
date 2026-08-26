@@ -213,7 +213,7 @@ impl GaudiAccelerator {
         // In production:
         // - synLaunch(stream, kernel, inputs, outputs, grid_dims)
 
-        log::debug!(
+        tracing::debug!(
             "Executing kernel '{}' with {} inputs, {} outputs, grid {:?}",
             name, inputs.len(), outputs.len(), grid_dims
         );
@@ -294,7 +294,7 @@ impl Accelerator for GaudiAccelerator {
             .ok_or_else(|| AcceleratorError::InvalidOperation("Buffer not found".to_string()))?;
 
         // In production: synMemCopyAsync(stream, device_ptr, host_ptr, size, H2D)
-        log::debug!("Copy {} floats to device buffer {}", data.len(), buffer.id);
+        tracing::debug!("Copy {} floats to device buffer {}", data.len(), buffer.id);
 
         Ok(())
     }
@@ -305,7 +305,7 @@ impl Accelerator for GaudiAccelerator {
             .ok_or_else(|| AcceleratorError::InvalidOperation("Buffer not found".to_string()))?;
 
         // In production: synMemCopyAsync(stream, host_ptr, device_ptr, size, D2H)
-        log::debug!("Copy {} floats from device buffer {}", data.len(), buffer.id);
+        tracing::debug!("Copy {} floats from device buffer {}", data.len(), buffer.id);
 
         Ok(())
     }
@@ -314,16 +314,16 @@ impl Accelerator for GaudiAccelerator {
         match operation.op_type {
             OperationType::LevelCrossing => {
                 // Would execute TPC kernel
-                log::debug!("Execute level crossing on Gaudi");
+                tracing::debug!("Execute level crossing on Gaudi");
                 Ok(())
             }
             OperationType::DeltaModulation => {
-                log::debug!("Execute delta modulation on Gaudi");
+                tracing::debug!("Execute delta modulation on Gaudi");
                 Ok(())
             }
             OperationType::MatMul => {
                 // Would use Gaudi's MME (Matrix Multiplication Engine)
-                log::debug!("Execute matmul on Gaudi MME");
+                tracing::debug!("Execute matmul on Gaudi MME");
                 Ok(())
             }
             _ => Err(AcceleratorError::Unsupported(
@@ -345,7 +345,7 @@ impl Drop for GaudiAccelerator {
         // - synStreamDestroy(stream)
         // - synModuleUnload(module)
         // - synDeviceRelease(device)
-        log::debug!("Releasing Gaudi device {}", self.device.index);
+        tracing::debug!("Releasing Gaudi device {}", self.device.index);
     }
 }
 
@@ -498,7 +498,7 @@ impl GaudiGraph {
     /// Compile the graph.
     pub fn compile(&self) -> Result<CompiledGaudiGraph, AcceleratorError> {
         // In production: synGraphCompile()
-        log::debug!("Compiling Gaudi graph '{}' with {} nodes", self.name, self.nodes.len());
+        tracing::debug!("Compiling Gaudi graph '{}' with {} nodes", self.name, self.nodes.len());
 
         Ok(CompiledGaudiGraph {
             handle: self.handle + 1,
@@ -518,7 +518,7 @@ impl CompiledGaudiGraph {
     /// Execute the compiled graph.
     pub fn execute(&self, _stream: &GaudiStream) -> Result<(), AcceleratorError> {
         // In production: synLaunch()
-        log::debug!("Executing compiled graph '{}'", self.name);
+        tracing::debug!("Executing compiled graph '{}'", self.name);
         Ok(())
     }
 }

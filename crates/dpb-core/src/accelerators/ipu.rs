@@ -265,7 +265,7 @@ impl IpuAccelerator {
     pub fn compile(&self, graph: &mut IpuGraph) -> Result<(), AcceleratorError> {
         // In production: Engine::compile()
 
-        log::debug!("Compiling IPU graph '{}' with {} tensors", graph.name, graph.tensors.len());
+        tracing::debug!("Compiling IPU graph '{}' with {} tensors", graph.name, graph.tensors.len());
 
         graph.engine = Some(IpuEngine {
             handle: 1,
@@ -284,7 +284,7 @@ impl IpuAccelerator {
             ))?;
 
         // In production: engine.run()
-        log::debug!("Running IPU engine {}", engine.handle);
+        tracing::debug!("Running IPU engine {}", engine.handle);
 
         Ok(())
     }
@@ -418,11 +418,11 @@ impl Accelerator for IpuAccelerator {
     fn execute(&self, operation: &AcceleratorOperation) -> Result<(), AcceleratorError> {
         match operation.op_type {
             OperationType::LevelCrossing => {
-                log::debug!("Execute level crossing on IPU");
+                tracing::debug!("Execute level crossing on IPU");
                 Ok(())
             }
             OperationType::DeltaModulation => {
-                log::debug!("Execute delta modulation on IPU");
+                tracing::debug!("Execute delta modulation on IPU");
                 Ok(())
             }
             _ => Err(AcceleratorError::Unsupported(
@@ -511,7 +511,7 @@ pub mod poprt {
             inputs: &HashMap<String, Vec<f32>>,
         ) -> Result<HashMap<String, Vec<f32>>, AcceleratorError> {
             // In production: session.run()
-            log::debug!("Running PopRT session with {} inputs", inputs.len());
+            tracing::debug!("Running PopRT session with {} inputs", inputs.len());
             Ok(HashMap::new())
         }
     }

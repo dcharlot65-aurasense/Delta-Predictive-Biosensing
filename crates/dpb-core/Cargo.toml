@@ -12,16 +12,23 @@ default = []
 intel-gaudi = []
 # Graphcore IPU accelerator support
 graphcore-ipu = []
+# RISC-V vector accelerator support (src/accelerators/riscv.rs). This gate
+# existed in the source but was never declared here, so the module was
+# never compiled by anything.
+riscv-hal = []
 # All hardware accelerators
-hardware-accelerators = ["intel-gaudi", "graphcore-ipu"]
+hardware-accelerators = ["intel-gaudi", "graphcore-ipu", "riscv-hal"]
 # CUDA backend (NVIDIA GPUs) - enables cudarc dependency
 cuda = ["dep:cudarc"]
 # Metal backend (Apple Silicon) - enables metal dependency
 metal = ["dep:metal"]
 # Vulkan compute backend - enables vulkano dependency
 vulkan = ["dep:vulkano"]
+# AMD ROCm/HIP backend. Like riscv-hal, this was cfg'd in the source but
+# never declared, so BackendType::ROCm could not be built.
+rocm = []
 # All GPU backends
-all-backends = ["cuda", "metal", "vulkan"]
+all-backends = ["cuda", "metal", "vulkan", "rocm"]
 
 [dependencies]
 wgpu.workspace = true
