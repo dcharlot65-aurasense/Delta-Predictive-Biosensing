@@ -1,5 +1,7 @@
 //! Python bindings for evaluation metrics
 
+use dpb_core::validation::roc::RocAnalyzer;
+
 use numpy::{PyArray2, PyReadonlyArray1};
 use pyo3::prelude::*;
 use std::collections::HashMap;
@@ -441,12 +443,23 @@ impl PyROCCurve {
         targets: PyReadonlyArray1<i32>,
         py: Python,
     ) -> PyResult<(Py<numpy::PyArray1<f64>>, Py<numpy::PyArray1<f64>>, Py<numpy::PyArray1<f64>>)> {
-        // Placeholder implementation - would compute actual ROC curve
-        let fpr = numpy::PyArray1::from_vec(py, vec![0.0, 0.5, 1.0]);
-        let tpr = numpy::PyArray1::from_vec(py, vec![0.0, 0.8, 1.0]);
-        let thresholds = numpy::PyArray1::from_vec(py, vec![1.0, 0.5, 0.0]);
+        // Computed by `dpb_core::validation::roc`, which emits one point per
+        // DISTINCT threshold so the curve does not depend on the order tied
+        // scores happen to arrive in.
+        let scores: Vec<f64> = predictions.as_slice()?.iter().map(|&v| v as f64).collect();
+        let labels: Vec<bool> = targets.as_slice()?.iter().map(|&v| v != 0).collect();
 
-        Ok((fpr.into(), tpr.into(), thresholds.into()))
+        let curve = RocAnalyzer::default().analyze(&scores, &labels);
+
+        let fpr: Vec<f64> = curve.points.iter().map(|p| p.false_positive_rate).collect();
+        let tpr: Vec<f64> = curve.points.iter().map(|p| p.true_positive_rate).collect();
+        let thresholds: Vec<f64> = curve.points.iter().map(|p| p.threshold).collect();
+
+        Ok((
+            numpy::PyArray1::from_vec(py, fpr).into(),
+            numpy::PyArray1::from_vec(py, tpr).into(),
+            numpy::PyArray1::from_vec(py, thresholds).into(),
+        ))
     }
 }
 
@@ -473,8 +486,13 @@ impl PyAUC {
     }
 
     fn compute(&self, predictions: PyReadonlyArray1<f32>, targets: PyReadonlyArray1<i32>) -> PyResult<f64> {
-        // Placeholder - would compute actual AUC
-        Ok(0.5)
+        // Previously returned a hardcoded 0.5 for any input, which reads as a
+        // perfectly uninformative classifier and is indistinguishable from a
+        // real result.
+        let scores: Vec<f64> = predictions.as_slice()?.iter().map(|&v| v as f64).collect();
+        let labels: Vec<bool> = targets.as_slice()?.iter().map(|&v| v != 0).collect();
+
+        Ok(RocAnalyzer::default().analyze(&scores, &labels).auc)
     }
 }
 
@@ -504,8 +522,31 @@ impl PySpikeDistance {
     }
 
     fn compute(&self, spikes1: PyReadonlyArray1<f64>, spikes2: PyReadonlyArray1<f64>) -> PyResult<f64> {
-        // Placeholder - would compute van Rossum or Victor-Purpura distance
-        Ok(0.0)
+        // van Rossum distance, computed here because the Rust crates do not
+        // implement a spike metric to delegate to.
+        //
+        // Each train is convolved with a decaying exponential of time constant
+        // `tau` and the L2 distance taken between the results; equivalently,
+        // summing the pairwise kernel terms in closed form, which avoids
+        // discretising the trains onto a grid.
+        //
+        // This previously returned 0.0 -- "the trains are identical" -- for
+        // every input.
+        let a = spikes1.as_slice()?;
+        let b = spikes2.as_slice()?;
+        let tau = self.tau.max(f64::EPSILON);
+
+        let kernel_sum = |xs: &[f64], ys: &[f64]| -> f64 {
+            xs.iter()
+                .flat_map(|x| ys.iter().map(move |y| (-(x - y).abs() / tau).exp()))
+                .sum::<f64>()
+        };
+
+        // |f - g|^2 = <f,f> - 2<f,g> + <g,g>
+        let distance_squared =
+            kernel_sum(a, a) - 2.0 * kernel_sum(a, b) + kernel_sum(b, b);
+
+        Ok((distance_squared.max(0.0) / (2.0 * tau)).sqrt())
     }
 }
 

@@ -466,6 +466,11 @@ impl PyEegGenerator {
 ///     >>> signals, ground_truths = batch_gen.generate_batch(duration=10.0)
 #[pyclass(name = "BatchGenerator")]
 pub struct PyBatchGenerator {
+    /// The generator each sample is drawn from.
+    ///
+    /// This used to be accepted and dropped, so the batch generator had nothing
+    /// to delegate to and returned buffers of zeros.
+    generator: Py<PyAny>,
     batch_size: usize,
 }
 
@@ -473,7 +478,10 @@ pub struct PyBatchGenerator {
 impl PyBatchGenerator {
     #[new]
     fn new(generator: Py<PyAny>, batch_size: usize) -> Self {
-        Self { batch_size }
+        Self {
+            generator,
+            batch_size,
+        }
     }
 
     /// Generate a batch of synthetic samples
@@ -482,16 +490,23 @@ impl PyBatchGenerator {
         duration: f64,
         sample_rate: f64,
         py: Python,
-    ) -> PyResult<(Vec<PyTimeSeries>, Vec<PyGroundTruth>)> {
+        // The signals and ground truths come back as the generator's own
+        // objects rather than being re-wrapped, so nothing needs cloning.
+    ) -> PyResult<(Vec<Py<PyAny>>, Vec<Py<PyAny>>)> {
         let mut signals = Vec::new();
         let mut ground_truths = Vec::new();
 
-        // Placeholder - would generate batch
-        for _ in 0..self.batch_size {
-            let num_samples = (duration * sample_rate) as usize;
-            let data = PyArray2::<f32>::zeros(py, (num_samples, 1), false);
-            let signal = PyTimeSeries::new(data.into(), sample_rate, 0.0);
-            let ground_truth = PyGroundTruth::new(None, None, None);
+        // Delegate to the wrapped generator, one call per sample with a
+        // distinct seed so the batch is varied rather than repeated.
+        for i in 0..self.batch_size {
+            let result = self.generator.call_method1(
+                py,
+                "generate",
+                (duration, sample_rate, i as u64),
+            )?;
+            let bound = result.bind(py);
+            let signal = bound.get_item(0)?.unbind();
+            let ground_truth = bound.get_item(1)?.unbind();
 
             signals.push(signal);
             ground_truths.push(ground_truth);

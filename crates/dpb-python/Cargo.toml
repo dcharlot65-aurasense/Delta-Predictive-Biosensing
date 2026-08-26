@@ -27,6 +27,8 @@ pyo3.workspace = true
 numpy.workspace = true
 ndarray.workspace = true
 thiserror.workspace = true
+# For real GPU adapter enumeration rather than fabricated device info.
+wgpu.workspace = true
 
 [dev-dependencies]
 pyo3 = { workspace = true, features = ["auto-initialize"] }

@@ -134,10 +134,10 @@ Note the template figure: 62 are implemented, but only 36 are reachable through
 ## Interop
 
 - **C ABI** via `dpb-ffi`, with **Julia, MATLAB, R and LabVIEW** wrappers in [`bindings/`](bindings)
-- **Python** via `dpb-python` -- **partially wired.** The encoders and the LIF
-  neuron call the Rust crates; `snn`, `synth`, `training`, `metrics` and `gpu`
-  are still standalone placeholders. See that crate's README before relying on
-  it.
+- **Python** via `dpb-python` -- the encoders, LIF neuron, spiking linear layer,
+  synthetic generators, ROC/AUC and losses call the Rust crates. Training loops
+  and GPU buffer operations are not implemented and raise rather than return
+  plausible values; see that crate's README.
 - **Browser** via `dpb-wasm`
 - **Streaming** via `dpb-lsl` (Lab Streaming Layer)
 - **Neuromorphic**: **NIR** (Neuromorphic Intermediate Representation) export —
@@ -207,11 +207,11 @@ Being specific about maturity, because the distinction matters:
   generators' event labels are the ground truth everything else is validated
   against, so they are load-bearing.
 
-- **The Python bindings are only partly wired.** `dpb-python` builds, tests and
-  produces an importable wheel. Its encoders and LIF neuron now call the Rust
-  crates and behave exactly as they do; `snn`, `synth`, `training`, `metrics`
-  and `gpu` remain standalone placeholders that import none of them, so
-  corrections to the Rust code do not reach those modules. Not ready for PyPI.
+- **The Python bindings call the library, with two gaps.** `dpb-python` builds,
+  tests and produces an importable wheel, and its encoders, neuron, layer,
+  generators, metrics and losses now delegate to the Rust crates. Training
+  loops and GPU buffer operations remain unimplemented -- they raise rather
+  than return plausible values, which they previously did.
 - **The bundled normative values in `dpb-norms` are illustrative placeholders**,
   not sourced cohorts, and must not be used to interpret a real measurement.
 

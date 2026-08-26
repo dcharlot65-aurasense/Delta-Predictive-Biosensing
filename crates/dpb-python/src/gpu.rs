@@ -1,5 +1,31 @@
 //! Python bindings for GPU device management
 
+/// Enumerate the adapters actually present on this machine.
+///
+/// Replaces hardcoded device descriptions. `list_devices` used to report an
+/// NVIDIA discrete GPU with 8 GB regardless of the hardware -- on a machine
+/// with no such card it was simply untrue.
+fn real_adapters() -> Vec<PyDeviceInfo> {
+    let instance = wgpu::Instance::default();
+    instance
+        .enumerate_adapters(wgpu::Backends::all())
+        .into_iter()
+        .map(|adapter| {
+            let info = adapter.get_info();
+            let limits = adapter.limits();
+            PyDeviceInfo {
+                name: info.name,
+                device_type: format!("{:?}", info.device_type),
+                vendor: format!("{:?}", info.backend),
+                // wgpu reports binding limits rather than a compute-unit count,
+                // so this is the closest honest proxy.
+                max_compute_units: limits.max_compute_workgroups_per_dimension,
+                max_memory: limits.max_buffer_size,
+            }
+        })
+        .collect()
+}
+
 use pyo3::prelude::*;
 use std::collections::HashMap;
 
@@ -61,8 +87,15 @@ impl PyGpuContext {
     }
 
     /// Initialize GPU context
+    ///
+    /// Fails if no adapter is present, rather than reporting success and
+    /// leaving the caller to discover it later.
     fn initialize(&mut self) -> PyResult<()> {
-        // Placeholder - would initialize wgpu context
+        if real_adapters().is_empty() {
+            return Err(pyo3::exceptions::PyRuntimeError::new_err(
+                "no GPU adapter available on this system",
+            ));
+        }
         self.initialized = true;
         Ok(())
     }
@@ -75,36 +108,15 @@ impl PyGpuContext {
             ));
         }
 
-        // Placeholder - would query actual device info
-        Ok(PyDeviceInfo {
-            name: "GPU Device".to_string(),
-            device_type: "DiscreteGpu".to_string(),
-            vendor: "Unknown".to_string(),
-            max_compute_units: 16,
-            max_memory: 8_000_000_000,
+        real_adapters().into_iter().next().ok_or_else(|| {
+            pyo3::exceptions::PyRuntimeError::new_err("no GPU adapter available on this system")
         })
     }
 
     /// List all available devices
     #[staticmethod]
     fn list_devices() -> PyResult<Vec<PyDeviceInfo>> {
-        // Placeholder - would enumerate actual devices
-        Ok(vec![
-            PyDeviceInfo {
-                name: "GPU Device 0".to_string(),
-                device_type: "DiscreteGpu".to_string(),
-                vendor: "NVIDIA".to_string(),
-                max_compute_units: 16,
-                max_memory: 8_000_000_000,
-            },
-            PyDeviceInfo {
-                name: "CPU Device".to_string(),
-                device_type: "Cpu".to_string(),
-                vendor: "Intel".to_string(),
-                max_compute_units: 8,
-                max_memory: 16_000_000_000,
-            },
-        ])
+        Ok(real_adapters())
     }
 
     /// Get memory usage statistics
@@ -131,8 +143,12 @@ impl PyGpuContext {
             ));
         }
 
-        // Placeholder - would sync GPU operations
-        Ok(())
+        // Not implemented: this needs a live wgpu device and queue, which the
+        // binding does not own yet. Refusing beats reporting success and
+        // leaving the caller believing GPU synchronisation happened.
+        Err(pyo3::exceptions::PyNotImplementedError::new_err(
+            "GPU synchronisation is not implemented; the GPU binding has no device lifecycle yet",
+        ))
     }
 
     /// Release GPU resources
@@ -206,9 +222,12 @@ impl PyGpuBuffer {
 
     /// Allocate buffer on GPU
     fn allocate(&mut self, _ctx: &PyGpuContext) -> PyResult<()> {
-        // Placeholder - would allocate GPU buffer
-        self.allocated = true;
-        Ok(())
+        // Not implemented: this needs a live wgpu device and queue, which the
+        // binding does not own yet. Refusing beats reporting success and
+        // leaving the caller believing GPU buffer allocation happened.
+        Err(pyo3::exceptions::PyNotImplementedError::new_err(
+            "GPU buffer allocation is not implemented; the GPU binding has no device lifecycle yet",
+        ))
     }
 
     /// Write data to buffer
@@ -219,8 +238,12 @@ impl PyGpuBuffer {
             ));
         }
 
-        // Placeholder - would write to GPU buffer
-        Ok(())
+        // Not implemented: this needs a live wgpu device and queue, which the
+        // binding does not own yet. Refusing beats reporting success and
+        // leaving the caller believing writing to a GPU buffer happened.
+        Err(pyo3::exceptions::PyNotImplementedError::new_err(
+            "writing to a GPU buffer is not implemented; the GPU binding has no device lifecycle yet",
+        ))
     }
 
     /// Read data from buffer
@@ -231,8 +254,12 @@ impl PyGpuBuffer {
             ));
         }
 
-        // Placeholder - would read from GPU buffer
-        Ok(py.None())
+        // Not implemented: this needs a live wgpu device and queue, which the
+        // binding does not own yet. Refusing beats reporting success and
+        // leaving the caller believing reading from a GPU buffer happened.
+        Err(pyo3::exceptions::PyNotImplementedError::new_err(
+            "reading from a GPU buffer is not implemented; the GPU binding has no device lifecycle yet",
+        ))
     }
 
     /// Release buffer
@@ -295,8 +322,13 @@ impl PyGpuShader {
     }
 
     /// Compile shader
+    ///
+    /// Validates the WGSL through `dpb_core`'s shader compiler, so a malformed
+    /// shader is rejected here rather than marked compiled and failing later.
     fn compile(&mut self, _ctx: &PyGpuContext) -> PyResult<()> {
-        // Placeholder - would compile shader
+        dpb_core::gpu::ShaderCompiler::validate_shader(&self.source).map_err(|e| {
+            pyo3::exceptions::PyValueError::new_err(format!("shader validation failed: {e}"))
+        })?;
         self.compiled = true;
         Ok(())
     }
@@ -309,8 +341,12 @@ impl PyGpuShader {
             ));
         }
 
-        // Placeholder - would dispatch shader
-        Ok(())
+        // Not implemented: this needs a live wgpu device and queue, which the
+        // binding does not own yet. Refusing beats reporting success and
+        // leaving the caller believing shader dispatch happened.
+        Err(pyo3::exceptions::PyNotImplementedError::new_err(
+            "shader dispatch is not implemented; the GPU binding has no device lifecycle yet",
+        ))
     }
 
     #[getter]
@@ -340,6 +376,8 @@ impl PyGpuShader {
 pub struct PyGpuProfiler {
     measurements: HashMap<String, Vec<f64>>,
     enabled: bool,
+    /// When each open region started.
+    started: HashMap<String, std::time::Instant>,
 }
 
 #[pymethods]
@@ -350,6 +388,7 @@ impl PyGpuProfiler {
         Self {
             measurements: HashMap::new(),
             enabled,
+            started: HashMap::new(),
         }
     }
 
@@ -359,7 +398,15 @@ impl PyGpuProfiler {
             return Ok(());
         }
 
-        // Placeholder - would start GPU timer
+        // Wall-clock, not a GPU timestamp query.
+        //
+        // Proper GPU timing needs timestamp queries against a live device and
+        // queue, which this binding does not own. Host-side elapsed time is a
+        // real measurement of the region and is documented as such -- unlike
+        // the fixed 1.0 ms this used to record, which was not a measurement of
+        // anything.
+        self.started
+            .insert(name.to_string(), std::time::Instant::now());
         Ok(())
     }
 
@@ -369,11 +416,19 @@ impl PyGpuProfiler {
             return Ok(());
         }
 
-        // Placeholder - would stop GPU timer and record
+        let elapsed_ms = match self.started.remove(name) {
+            Some(start) => start.elapsed().as_secs_f64() * 1000.0,
+            None => {
+                return Err(pyo3::exceptions::PyRuntimeError::new_err(format!(
+                    "profiler region '{name}' was stopped without being started"
+                )))
+            }
+        };
+
         self.measurements
             .entry(name.to_string())
-            .or_insert_with(Vec::new)
-            .push(1.0); // Placeholder time in ms
+            .or_default()
+            .push(elapsed_ms);
 
         Ok(())
     }
@@ -439,8 +494,9 @@ impl PyGpuProfiler {
 ///     ...     ctx = dpb.gpu.GpuContext()
 #[pyfunction]
 fn is_available() -> bool {
-    // Placeholder - would check for actual GPU
-    true
+    // Actually check. This returned `true` unconditionally, so code guarded by
+    // it would proceed on a machine with no GPU at all.
+    !real_adapters().is_empty()
 }
 
 /// Get default GPU context

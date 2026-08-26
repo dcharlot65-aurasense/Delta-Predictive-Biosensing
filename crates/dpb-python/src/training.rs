@@ -1,5 +1,29 @@
 //! Python bindings for training infrastructure
 
+use dpb_snn::training::LossFunction as _;
+use dpb_snn::{SpikeCountLoss, SpikeTensor, SpikeTimingLoss, SpikingCrossEntropy};
+use numpy::ndarray::Array2;
+use numpy::{PyReadonlyArray2, PyArrayMethods as _};
+
+/// Lift a (samples x classes) prediction matrix into the single-timestep
+/// `SpikeTensor` the loss functions take.
+fn predictions_to_tensor(predictions: &PyReadonlyArray2<f32>) -> PyResult<SpikeTensor> {
+    let array = predictions.as_array();
+    let (rows, cols) = (array.shape()[0], array.shape()[1]);
+
+    let mut tensor = SpikeTensor::zeros(rows, 1, cols, false);
+    for i in 0..rows {
+        for j in 0..cols {
+            tensor.set_spike(i, 0, j, array[[i, j]]).ok();
+        }
+    }
+    Ok(tensor)
+}
+
+fn targets_to_array(targets: &PyReadonlyArray2<f32>) -> Array2<f32> {
+    targets.as_array().to_owned()
+}
+
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use std::collections::HashMap;
@@ -70,9 +94,25 @@ impl PySpikeCountLoss {
         )
     }
 
-    fn compute(&self, predictions: Py<PyAny>, targets: Py<PyAny>, py: Python) -> PyResult<f32> {
-        // Placeholder - would compute actual spike count loss
-        Ok(0.0)
+    /// Compute the loss.
+    ///
+    /// `predictions` and `targets` are (samples x classes) float32 arrays.
+    /// The previous signature took untyped objects and returned 0.0 for
+    /// every input, which reads as a perfectly fitted model.
+    fn compute(
+        &self,
+        predictions: PyReadonlyArray2<f32>,
+        targets: PyReadonlyArray2<f32>,
+    ) -> PyResult<f32> {
+        let tensor = predictions_to_tensor(&predictions)?;
+        let target_array = targets_to_array(&targets);
+
+        SpikeCountLoss::new(self.weight)
+            .compute(&tensor, &target_array)
+            .map(|loss| loss * self.weight)
+            .map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("spike-count loss: {e}"))
+            })
     }
 }
 
@@ -109,9 +149,25 @@ impl PySpikeTimeLoss {
         )
     }
 
-    fn compute(&self, predictions: Py<PyAny>, targets: Py<PyAny>, py: Python) -> PyResult<f32> {
-        // Placeholder
-        Ok(0.0)
+    /// Compute the loss.
+    ///
+    /// `predictions` and `targets` are (samples x classes) float32 arrays.
+    /// The previous signature took untyped objects and returned 0.0 for
+    /// every input, which reads as a perfectly fitted model.
+    fn compute(
+        &self,
+        predictions: PyReadonlyArray2<f32>,
+        targets: PyReadonlyArray2<f32>,
+    ) -> PyResult<f32> {
+        let tensor = predictions_to_tensor(&predictions)?;
+        let target_array = targets_to_array(&targets);
+
+        SpikeTimingLoss::new(self.time_window)
+            .compute(&tensor, &target_array)
+            .map(|loss| loss * self.weight)
+            .map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("spike-timing loss: {e}"))
+            })
     }
 }
 
@@ -140,9 +196,25 @@ impl PyCrossEntropyLoss {
         )
     }
 
-    fn compute(&self, predictions: Py<PyAny>, targets: Py<PyAny>, py: Python) -> PyResult<f32> {
-        // Placeholder
-        Ok(0.0)
+    /// Compute the loss.
+    ///
+    /// `predictions` and `targets` are (samples x classes) float32 arrays.
+    /// The previous signature took untyped objects and returned 0.0 for
+    /// every input, which reads as a perfectly fitted model.
+    fn compute(
+        &self,
+        predictions: PyReadonlyArray2<f32>,
+        targets: PyReadonlyArray2<f32>,
+    ) -> PyResult<f32> {
+        let tensor = predictions_to_tensor(&predictions)?;
+        let target_array = targets_to_array(&targets);
+
+        SpikingCrossEntropy::new()
+            .compute(&tensor, &target_array)
+            .map(|loss| loss * self.weight)
+            .map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("cross-entropy loss: {e}"))
+            })
     }
 }
 
@@ -385,40 +457,19 @@ impl PyTrainer {
             callback.call_method0(py, "on_train_begin")?;
         }
 
-        // Training loop
-        for epoch in 0..epochs {
-            // Call on_epoch_begin callbacks
-            for callback in &self.callbacks {
-                callback.call_method1(py, "on_epoch_begin", (epoch,))?;
-            }
-
-            // Placeholder - would perform actual training
-            let epoch_loss = 0.0;
-
-            // Store metrics
-            self.history
-                .entry("loss".to_string())
-                .or_insert_with(Vec::new)
-                .push(epoch_loss);
-
-            if verbose {
-                println!("Epoch {}/{}: loss = {:.4}", epoch + 1, epochs, epoch_loss);
-            }
-
-            // Call on_epoch_end callbacks
-            let metrics = PyDict::new(py);
-            metrics.set_item("loss", epoch_loss)?;
-            for callback in &self.callbacks {
-                callback.call_method1(py, "on_epoch_end", (epoch, &metrics))?;
-            }
-        }
-
-        // Call on_train_end callbacks
-        for callback in &self.callbacks {
-            callback.call_method0(py, "on_train_end")?;
-        }
-
-        Ok(self.history.clone())
+        // Not implemented: a training loop needs a data-loader contract --
+        // how to iterate `data`, what a batch looks like, how targets pair with
+        // inputs -- and the Python API defines none, taking `data` as an opaque
+        // object.
+        //
+        // This used to run the epoch loop recording a loss of 0.0 each time and
+        // printing "loss = 0.0000", which reads as a perfectly converged model.
+        // Refusing is the honest answer until the contract exists.
+        let _ = (epochs, verbose, py);
+        Err(pyo3::exceptions::PyNotImplementedError::new_err(
+            "Trainer.fit is not implemented: no data-loader contract is defined yet. \
+             Use the loss functions and optimizers directly, or drive training from Rust.",
+        ))
     }
 
     /// Evaluate model on data
@@ -429,10 +480,12 @@ impl PyTrainer {
     /// Returns:
     ///     dict: Evaluation metrics
     fn evaluate(&self, data: Py<PyAny>, py: Python) -> PyResult<HashMap<String, f32>> {
-        // Placeholder
-        let mut metrics = HashMap::new();
-        metrics.insert("loss".to_string(), 0.0);
-        Ok(metrics)
+        // Same gap as `fit`: reporting a loss of 0.0 for any input is worse
+        // than refusing.
+        let _ = (data, py);
+        Err(pyo3::exceptions::PyNotImplementedError::new_err(
+            "Trainer.evaluate is not implemented: no data-loader contract is defined yet",
+        ))
     }
 
     /// Get training history
@@ -460,6 +513,13 @@ impl PyTrainer {
 ///     >>> scheduler.step()
 #[pyclass(name = "LRScheduler")]
 pub struct PyLRScheduler {
+    /// The optimizer whose rate this schedules.
+    ///
+    /// It used to be accepted and dropped, so the scheduler could neither read
+    /// the starting rate nor push an updated one back -- `step` incremented a
+    /// counter and nothing else, and `get_lr` returned a fixed 0.001.
+    optimizer: Py<PyAny>,
+    initial_lr: f32,
     schedule_type: String,
     step_size: usize,
     gamma: f32,
@@ -475,26 +535,60 @@ impl PyLRScheduler {
         schedule_type: &str,
         step_size: usize,
         gamma: f32,
-    ) -> Self {
-        Self {
+        py: Python,
+    ) -> PyResult<Self> {
+        // `learning_rate` is a pyo3 property, so it is read and written as an
+        // attribute rather than called.
+        let initial_lr: f32 = optimizer
+            .getattr(py, "learning_rate")
+            .and_then(|lr| lr.extract(py))
+            .unwrap_or(0.001);
+
+        Ok(Self {
+            optimizer,
+            initial_lr,
             schedule_type: schedule_type.to_string(),
             step_size,
             gamma,
             current_step: 0,
+        })
+    }
+
+    /// The rate this schedule prescribes at the current step.
+    fn scheduled_lr(&self) -> f32 {
+        match self.schedule_type.as_str() {
+            // Multiply by gamma every `step_size` steps.
+            "step" => {
+                let decays = if self.step_size == 0 {
+                    0
+                } else {
+                    self.current_step / self.step_size
+                };
+                self.initial_lr * self.gamma.powi(decays as i32)
+            }
+            // Multiply by gamma every step.
+            "exponential" => self.initial_lr * self.gamma.powi(self.current_step as i32),
+            // Anything else holds the initial rate.
+            _ => self.initial_lr,
         }
     }
 
     /// Step the scheduler
     fn step(&mut self, py: Python) -> PyResult<()> {
         self.current_step += 1;
-        // Would update optimizer learning rate based on schedule
+        // Push the new rate back to the optimizer, which is the whole point of
+        // holding a reference to it.
+        let lr = self.scheduled_lr();
+        self.optimizer.setattr(py, "learning_rate", lr)?;
         Ok(())
     }
 
     /// Get current learning rate
+    ///
+    /// Reports the scheduler's actual rate rather than a fixed 0.001, which
+    /// made every schedule look like it was doing nothing.
     fn get_lr(&self) -> f32 {
-        // Placeholder
-        0.001
+        self.scheduled_lr()
     }
 }
 

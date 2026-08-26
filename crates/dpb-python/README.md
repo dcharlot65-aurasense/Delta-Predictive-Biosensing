@@ -2,24 +2,24 @@
 
 Python bindings for the Delta-Predictive Biosensing Framework using PyO3.
 
-## ⚠️ Partially wired
+## Status
 
-**Wired to the Rust crates, and behaving exactly as they do:**
+**Wired to the Rust crates**, behaving exactly as they do: all five `encoders`;
+`neurons.LifNeuron`; `snn.SpikingLinear`; the `synth` ECG, PPG and EMG
+generators (including the ECG's event-level ground truth); `metrics` ROC and
+AUC; the three `training` losses; and `gpu` device enumeration, availability and
+shader validation.
 
-- `encoders` — all five call `dpb-encoders`. `LevelCrossingEncoder` carries the
-  `Delta` default and its one-quantum reconstruction bound; the derivative,
-  template-deviation, ECG and PPG encoders return real events where they
-  previously returned an empty list.
-- `neurons.LifNeuron` — delegates to `dpb_neurons::LifNeuron`, and so takes
-  biophysical units (mV, ms) rather than the normalised ones the placeholder
-  used.
+**Implemented here** rather than delegated, because the Rust crates have no
+equivalent: the van Rossum spike distance and the learning-rate schedules.
 
-**Not wired.** `snn`, `synth`, `training`, `metrics` and `gpu` remain standalone
-placeholders importing none of the DPB crates, several labelled as such in
-comments. They have the *shape* of the library's API but their own behaviour,
-and corrections to the Rust code do not reach them. Don't attribute results from
-those modules to DPB, and don't publish the package to PyPI until they are
-wired.
+**Not implemented, and refusing rather than pretending:** `Trainer.fit` and
+`evaluate` (no data-loader contract is defined yet), and GPU buffer allocation,
+transfer and dispatch (the binding owns no device or queue). These raise
+`NotImplementedError` rather than returning zero loss or reporting a successful
+allocation.
+
+The `gpu` profiler measures wall-clock time, not GPU timestamps.
 
 ## Overview
 

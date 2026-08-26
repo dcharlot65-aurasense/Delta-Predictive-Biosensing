@@ -1,21 +1,32 @@
 //! Python bindings for the Delta-Predictive Biosensing Framework
 //!
-//! # Most of this module is not wired to the library yet
+//! # Status
 //!
-//! **Wired, and behaving exactly as the Rust crates do:**
+//! **Wired to the Rust crates**, and behaving exactly as they do:
 //!
-//! - `encoders` -- all five call [`dpb_encoders`]. `LevelCrossingEncoder` has
-//!   the `Delta` default and its one-quantum reconstruction bound; the
-//!   derivative, template-deviation, ECG and PPG encoders return real events
-//!   where they previously returned an empty list.
-//! - `neurons.LifNeuron` -- delegates to [`dpb_neurons::LifNeuron`]. Its units
-//!   are biophysical (mV, ms) in consequence, matching the library.
+//! - `encoders` -- all five call [`dpb_encoders`].
+//! - `neurons.LifNeuron` -- [`dpb_neurons::LifNeuron`]; biophysical units in
+//!   consequence.
+//! - `snn.SpikingLinear` -- [`dpb_snn::SpikingLinear`], with spike trains binned
+//!   onto the timestep grid and read back as timed events.
+//! - `synth` ECG, PPG and EMG generators, including the ECG's event-level
+//!   ground truth.
+//! - `metrics` ROC and AUC -- [`dpb_core::validation::roc`].
+//! - `training` spike-count, spike-timing and cross-entropy losses.
+//! - `gpu` device enumeration, availability and shader validation, via wgpu and
+//!   [`dpb_core::gpu`].
 //!
-//! **Not wired.** `snn`, `synth`, `training`, `metrics` and `gpu` are still
-//! standalone placeholders that import none of the DPB crates, several
-//! labelled as such in comments. They have the SHAPE of the library's API but
-//! their own behaviour, and corrections to the Rust code do not reach them.
-//! Do not attribute results from those modules to DPB.
+//! **Implemented here** rather than delegated, because the Rust crates have no
+//! equivalent: the van Rossum spike distance, and the learning-rate schedules.
+//!
+//! **Not implemented, and refusing rather than pretending:** `Trainer.fit` and
+//! `evaluate` (no data-loader contract is defined), and GPU buffer allocation,
+//! transfer and dispatch (the binding owns no device or queue). These raise
+//! `NotImplementedError` instead of returning zero loss or reporting a
+//! successful allocation.
+//!
+//! The `gpu` profiler measures WALL-CLOCK time, not GPU timestamps, and says so
+//! at the call site.
 
 use pyo3::prelude::*;
 
