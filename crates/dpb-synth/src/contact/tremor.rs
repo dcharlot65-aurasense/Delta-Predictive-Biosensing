@@ -34,14 +34,26 @@ impl SyntheticGenerator for PhysiologicalTremorGenerator {
         let freq_noise = Normal::new(0.0, params.frequency_variability).unwrap();
         let amp_noise = Normal::new(1.0, 0.1).unwrap(); // 10% amplitude variation
 
+        // Frequency variability is applied by ACCUMULATING phase, not by
+        // resampling the frequency and multiplying it by absolute time.
+        //
+        // The previous form drew a fresh `freq` each sample and evaluated
+        // `sin(2*pi*freq*t)`. Because `t` grows, a perturbation of even 0.1 Hz
+        // moves the phase by `2*pi*0.1*t` -- a full cycle by t = 10 s -- so the
+        // phase was effectively random and the waveform was scrambled rather
+        // than jittered. A nominally 10 Hz tremor measured 22 Hz by zero
+        // crossings. Integrating the instantaneous frequency is what "the
+        // frequency wanders slightly" actually means.
+        let mut phase = 0.0_f64;
         let signal = Array1::from_vec(
             (0..n_samples)
-                .map(|i| {
-                    let t = i as f64 * dt;
+                .map(|_| {
                     let freq = params.frequency + freq_noise.sample(&mut rng);
                     let sample_val = amp_noise.sample(&mut rng);
                     let amp_mod = f64::max(sample_val, 0.0);
-                    params.amplitude * amp_mod * (2.0 * PI * freq * t).sin()
+                    let value = params.amplitude * amp_mod * phase.sin();
+                    phase += 2.0 * PI * freq * dt;
+                    value
                 })
                 .collect()
         );

@@ -387,3 +387,4 @@ fn test_event_timing_tolerance() {
 
     println!("Event timing validation: all {} events within bounds", r_peaks.len());
 }
+

@@ -98,20 +98,47 @@ fn test_derivative_encoder_zero_crossings() {
     let spike_train = encoder.encode(&signal, &config)
         .expect("Failed to encode");
 
-    // Expected zero crossings: 2 * frequency * duration
-    let expected = (2.0 * params.frequency * params.duration) as usize;
+    // A derivative encoder fires on RATE OF CHANGE, not on sign changes.
+    //
+    // This previously compared the event count against `2 * frequency *
+    // duration`, the number of zero crossings, which is what a zero-crossing
+    // detector would report. On a 10 Hz sinusoid sampled at 100 Hz with a
+    // threshold of 0.01, the derivative exceeds threshold over almost the whole
+    // cycle, so nearly every sample qualifies -- 493 of 500. That is the
+    // encoder working, not failing.
+    //
+    // What is worth asserting is the property the encoder actually has: raising
+    // the threshold must monotonically reduce the event count, and the count
+    // must sit between "silent" and "every sample".
+    let n_samples = (params.duration * params.sampling_rate) as usize;
+    assert!(
+        !spike_train.is_empty() && spike_train.len() <= n_samples,
+        "event count {} outside (0, {n_samples}]",
+        spike_train.len()
+    );
 
-    assert_in_range(
-        spike_train.len() as f64,
-        (expected - 20) as f64,
-        (expected + 20) as f64,
-        "Derivative encoder zero crossing count"
+    let mut previous = usize::MAX;
+    for threshold in [0.01f32, 0.05, 0.2, 1.0, 5.0] {
+        let config = DerivativeConfig { threshold, ..DerivativeConfig::default() };
+        let count = encoder.encode(&signal, &config).expect("Failed to encode").len();
+        assert!(
+            count <= previous,
+            "raising the threshold to {threshold} increased the count: {previous} -> {count}"
+        );
+        previous = count;
+    }
+
+    // A threshold far above any achievable slope must silence it entirely.
+    let silent = DerivativeConfig { threshold: 1.0e6, ..DerivativeConfig::default() };
+    assert!(
+        encoder.encode(&signal, &silent).expect("Failed to encode").is_empty(),
+        "an unreachable threshold should produce no events"
     );
 
     println!(
-        "Derivative encoder accuracy: {} zero crossings (expected ~{})",
+        "Derivative encoder: {} events from {} samples",
         spike_train.len(),
-        expected
+        n_samples
     );
 }
 
@@ -399,3 +426,4 @@ fn test_encoder_output_validation() {
         spike_train.len()
     );
 }
+

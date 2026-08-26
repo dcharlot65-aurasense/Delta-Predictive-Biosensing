@@ -90,6 +90,22 @@ impl SpikingRNN {
             self.state = (0..batch_size)
                 .map(|_| NeuronState::new(hidden_size, self.adaptive))
                 .collect();
+        }
+
+        // `prev_output` is checked on its own terms, not as a side effect of
+        // the neuron state being resized.
+        //
+        // Both `forward` and `reset_state` set it to None while leaving `state`
+        // at its existing length, so the batch-size branch above would not fire
+        // and `prev_output` stayed None -- which `forward_step` then unwrapped.
+        // The first forward pass survived only because `state` was still empty;
+        // every pass after it panicked, so a recurrent layer could be run
+        // exactly once.
+        let needs_init = self
+            .prev_output
+            .as_ref()
+            .is_none_or(|p| p.dim() != (batch_size, hidden_size));
+        if needs_init {
             self.prev_output = Some(Array2::zeros((batch_size, hidden_size)));
         }
     }
@@ -100,7 +116,10 @@ impl SpikingRNN {
         let hidden_size = self.w_input.shape()[0];
         self.ensure_state(batch_size);
 
-        let prev_out = self.prev_output.as_ref().unwrap();
+        let prev_out = self
+            .prev_output
+            .as_ref()
+            .expect("ensure_state guarantees prev_output is present");
         let mut output = Array2::zeros((batch_size, hidden_size));
 
         for b in 0..batch_size {

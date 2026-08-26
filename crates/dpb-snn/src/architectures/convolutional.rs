@@ -30,6 +30,20 @@ pub struct ConvolutionalSNN {
 
 impl ConvolutionalSNN {
     /// Create a simple convolutional SNN
+    /// Build a convolutional SNN.
+    ///
+    /// # Known limitation
+    ///
+    /// The fully-connected head is sized with a hardcoded flattened width of
+    /// 128 (see below). The correct width depends on the input's spatial
+    /// dimensions after two conv/pool stages, and this constructor is not given
+    /// them -- it receives only a channel count. The network therefore builds
+    /// successfully but fails inside `forward` with a matrix-shape mismatch for
+    /// any input whose flattened conv output is not 128.
+    ///
+    /// Fixing this properly means either taking the input dimensions here or
+    /// sizing the head lazily on the first forward pass. Until then, treat this
+    /// architecture as unfinished rather than as a working component.
     pub fn new(
         input_channels: usize,
         num_classes: usize,

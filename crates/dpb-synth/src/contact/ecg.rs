@@ -45,10 +45,14 @@ impl SyntheticGenerator for EcgMorphologyGenerator {
         let dt = 1.0 / params.sampling_rate;
         let omega = 2.0 * PI * (params.heart_rate / 60.0); // angular frequency
 
-        // McSharry model state variables
-        let mut x = 1.0;
-        let mut y = 0.0;
+        // McSharry model state variable.
+        //
+        // The (x, y) limit-cycle pair the original model uses to produce the
+        // cardiac phase is not needed here: `theta` is derived directly from
+        // `omega * t` below. It was retained only to detect R peaks, which it
+        // did wrongly -- see the detection comment in the loop.
         let mut z = 0.0;
+        let mut prev_theta = 0.0;
 
         let mut signal = Vec::with_capacity(n_samples);
         let mut r_peaks = Vec::new();
@@ -66,8 +70,24 @@ impl SyntheticGenerator for EcgMorphologyGenerator {
             let t = i as f64 * dt;
             let theta = (omega * t).rem_euclid(2.0 * PI);
 
-            // Detect R peaks
-            if i > 0 && x > 0.0 && (x - 1.0_f64).abs() < 0.01 {
+            // Emit one R peak per cardiac cycle, at the wrap of the cardiac
+            // phase.
+            //
+            // The R wave sits at `theta = 0` (see `waves` above), so the phase
+            // wrapping past 2*pi is exactly the R peak, and there is precisely
+            // one per beat.
+            //
+            // This previously tested `x`, the oscillator coordinate, rather
+            // than the signal or the phase -- and `x` starts at 1.0 and moves
+            // slowly, so `|x - 1| < 0.01` held for a whole run of consecutive
+            // samples at the start of the record. The generator therefore
+            // labelled 47 "R peaks" one MILLISECOND apart in a 3-second trace
+            // that contains three beats. Since these labels are the event-level
+            // ground truth the synthetic data exists to provide, anything
+            // validated against them was being scored against noise. The
+            // oscillator was also never coupled to `omega`, so it bore no
+            // relation to the heart rate at all.
+            if i > 0 && theta < prev_theta {
                 r_peaks.push(Event {
                     time: t,
                     event_type: "R_peak".to_string(),
@@ -75,23 +95,38 @@ impl SyntheticGenerator for EcgMorphologyGenerator {
                     attributes: HashMap::new(),
                 });
             }
+            prev_theta = theta;
 
-            // McSharry ODE: dz/dt = sum of Gaussian bumps
+            // McSharry ODE: dz/dt = sum of Gaussian bumps.
+            //
+            // The `a` coefficients here are ODE terms, not waveform amplitudes.
+            // Integrating `-a * dtheta * exp(-dtheta^2 / 2b^2)` over theta
+            // yields `a * b^2 * exp(...)`, so the resulting wave peaks at
+            // `a * b^2` -- with the published widths of ~0.1 that is a hundred
+            // times smaller than `a`.
+            //
+            // The loop integrates over TIME while the term is expressed in
+            // phase, which contributes a further factor of `1/omega`, so the
+            // wave actually peaks at `a * b^2 / omega`.
+            //
+            // The parameters this generator exposes are documented as
+            // amplitudes in mV, so each is converted into the matching ODE
+            // coefficient by `a * omega / b^2`. Without it the model produced
+            // an ECG spanning 0.004 mV peak to peak where 1 mV was asked for --
+            // four hundred times too small, far below any encoder threshold,
+            // so every downstream pipeline saw a flat line. Carrying `omega`
+            // also keeps the amplitude independent of heart rate, which it
+            // otherwise would not be.
             let mut dz_dt = 0.0;
             for (_, ai, bi, thetai) in &waves {
                 let delta_theta = (theta - thetai).rem_euclid(2.0 * PI);
                 let delta_theta = if delta_theta > PI { delta_theta - 2.0 * PI } else { delta_theta };
-                dz_dt += -ai * delta_theta * (-delta_theta.powi(2) / (2.0 * bi.powi(2))).exp();
+                let coefficient = ai * omega / bi.powi(2);
+                dz_dt += -coefficient * delta_theta
+                    * (-delta_theta.powi(2) / (2.0 * bi.powi(2))).exp();
             }
 
-            // Coupled ODEs for circular trajectory
-            let alpha = 1.0_f64; // restoring force
-            let dx_dt = alpha * (x - x.powi(3) / 3.0 - y);
-            let dy_dt = x / alpha;
-
-            // Euler integration
-            x += dx_dt * dt;
-            y += dy_dt * dt;
+            // Euler integration of the waveform state.
             z += (dz_dt - z) * dt;
 
             signal.push(z);

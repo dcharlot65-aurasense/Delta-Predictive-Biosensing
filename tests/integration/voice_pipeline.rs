@@ -112,7 +112,8 @@ fn test_voice_pipeline_sustained_vowel() {
         ..SNNConfig::default()
     };
 
-    let mut snn = SpikingTransformer::new(num_channels, 4, 64, 4, 4, snn_config.clone());
+    // (input_size, d_model, num_heads, num_blocks, output_size, config)
+    let mut snn = SpikingTransformer::new(num_channels, 64, 4, 2, 4, snn_config.clone());
     let output_spikes = snn.forward(&spike_tensor)
         .expect("Failed to run SNN forward pass");
 

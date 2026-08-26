@@ -128,7 +128,9 @@ fn test_gait_pipeline_end_to_end() {
         .expect("Failed to decode gait score");
 
     // Step 8: Validate output shape
-    assert_eq!(gait_score.shape()[1], 4, "Should have 4 gait metrics");
+    // `GaitScoreDecoder` defines five features: cadence, stride length,
+    // speed, balance and freezing.
+    assert_eq!(gait_score.shape()[1], 5, "Should have 5 gait metrics");
 
     // Verify joint angles in ground truth
     let joint_angles = &generated.ground_truth.joint_angles;
