@@ -154,6 +154,21 @@ lto = true
 codegen-units = 1
 opt-level = 3
 
+# dpb-wasm ships to a browser, so it wants size rather than speed. These
+# settings used to sit in crates/dpb-wasm/Cargo.toml, where cargo silently
+# ignored them -- profiles are only honoured in the workspace root. A
+# dedicated profile is the only place all four can live: `panic` and `lto`
+# apply to a whole artifact and cannot be per-package overrides.
+#
+# Build the wasm bundle with `--profile wasm-release`.
+[profile.wasm-release]
+inherits = "release"
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
 [profile.dev]
 opt-level = 1
 

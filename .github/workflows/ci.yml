@@ -79,7 +79,9 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
-      - run: cargo check -p dpb-wasm --lib --target wasm32-unknown-unknown
+      # Build rather than check, and with the profile the bundle actually
+      # ships under, so a broken [profile.wasm-release] is caught here.
+      - run: cargo build -p dpb-wasm --lib --profile wasm-release --target wasm32-unknown-unknown
 
   msrv:
     name: minimum supported rust version

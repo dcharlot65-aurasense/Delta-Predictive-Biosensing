@@ -16,7 +16,7 @@ dpb-snn.workspace = true
 dpb-synth.workspace = true
 
 # Benchmarking
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { workspace = true }
 iai-callgrind.workspace = true
 
 # Data structures

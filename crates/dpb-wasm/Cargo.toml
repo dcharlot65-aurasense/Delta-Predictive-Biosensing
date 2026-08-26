@@ -56,14 +56,8 @@ getrandom = { version = "0.2", features = ["js"] }
 [dev-dependencies]
 wasm-bindgen-test = "0.3.43"
 
-[profile.release]
-# Optimize for small code size
-opt-level = "z"
-# Enable link-time optimization
-lto = true
-# Compile everything in one codegen unit for better optimization
-codegen-units = 1
-# Abort on panic (smaller code)
-panic = "abort"
-# Strip symbols
-strip = true
+# The [profile.release] that used to be here -- opt-level "z", lto,
+# codegen-units 1, panic abort, strip -- was silently ignored: cargo only
+# honours profiles in the workspace root, so this crate was in fact being
+# built at the root's opt-level 3. Those settings now live in the root
+# manifest as [profile.wasm-release]; build with `--profile wasm-release`.

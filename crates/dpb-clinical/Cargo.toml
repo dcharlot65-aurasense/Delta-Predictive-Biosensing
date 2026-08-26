@@ -24,7 +24,7 @@ chrono = { version = "0.4", features = ["serde"] }
 rand.workspace = true
 
 # Optional
-statrs = { version = "0.16", optional = true }
+statrs = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile = "3.0"
