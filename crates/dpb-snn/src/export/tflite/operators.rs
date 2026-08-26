@@ -621,8 +621,8 @@ mod tests {
         assert_eq!(int_val.as_int(), Some(42));
         assert_eq!(int_val.as_float(), None);
 
-        let float_val = OptionValue::Float(3.14);
-        assert_eq!(float_val.as_float(), Some(3.14));
+        let float_val = OptionValue::Float(2.5);
+        assert_eq!(float_val.as_float(), Some(2.5));
         assert_eq!(float_val.as_int(), None);
 
         let string_val = OptionValue::String("test".to_string());

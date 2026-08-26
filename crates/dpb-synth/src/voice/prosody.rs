@@ -628,8 +628,16 @@ mod tests {
         let generator = PauseGenerator;
         let params = PauseGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        // Pauses are probabilistic, might be empty
-        assert!(result.signal.len() >= 0);
+        // How many pauses appear is probabilistic and may be zero, so the
+        // count is not worth asserting -- but each one is an interval, and
+        // generate() sorts them, so those invariants are.
+        for &(start, end) in &result.signal {
+            assert!(end > start, "pause interval {start}..{end} is not positive");
+        }
+        assert!(
+            result.signal.windows(2).all(|w| w[0].0 <= w[1].0),
+            "pauses are not sorted by start time"
+        );
     }
 
     #[test]
