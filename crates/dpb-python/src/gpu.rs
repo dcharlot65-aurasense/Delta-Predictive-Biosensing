@@ -7,8 +7,7 @@
 /// with no such card it was simply untrue.
 fn real_adapters() -> Vec<PyDeviceInfo> {
     let instance = wgpu::Instance::default();
-    instance
-        .enumerate_adapters(wgpu::Backends::all())
+    pollster::block_on(instance.enumerate_adapters(wgpu::Backends::all()))
         .into_iter()
         .map(|adapter| {
             let info = adapter.get_info();

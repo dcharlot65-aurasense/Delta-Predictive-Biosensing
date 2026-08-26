@@ -98,14 +98,17 @@ impl<T: Pod> GpuBuffer<T> {
             let _ = sender.send(result);
         });
 
-        device.poll(wgpu::Maintain::Wait);
+        device.poll(wgpu::PollType::Wait { submission_index: None, timeout: None })
+            .map_err(|e| DpbError::Gpu(format!("Device poll failed: {e}")))?;
 
         receiver
             .await
             .map_err(|_| DpbError::Gpu("Failed to receive map result".to_string()))?
             .map_err(|e| DpbError::Gpu(format!("Buffer mapping failed: {:?}", e)))?;
 
-        let data = buffer_slice.get_mapped_range();
+        let data = buffer_slice
+            .get_mapped_range()
+            .map_err(|e| DpbError::Gpu(format!("Failed to read mapped range: {e}")))?;
         let result: Vec<T> = bytemuck::cast_slice(&data).to_vec();
 
         drop(data);

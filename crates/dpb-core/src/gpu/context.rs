@@ -19,10 +19,12 @@ pub struct GpuContext {
 impl GpuContext {
     /// Creates a new GPU context.
     pub async fn new(config: &GpuConfig) -> Result<Self> {
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: Self::backends_from_config(config),
             flags: Default::default(),
             backend_options: Default::default(),
+            memory_budget_thresholds: Default::default(),
+            display: None,
         });
 
         let adapter = instance
@@ -30,9 +32,10 @@ impl GpuContext {
                 power_preference: config.power_preference.into(),
                 compatible_surface: None,
                 force_fallback_adapter: false,
+                apply_limit_buckets: false,
             })
             .await
-            .ok_or_else(|| DpbError::Gpu("Failed to find suitable GPU adapter".to_string()))?;
+            .map_err(|e| DpbError::Gpu(format!("Failed to find suitable GPU adapter: {e}")))?;
 
         let adapter_info = adapter.get_info();
         tracing::info!(
@@ -48,8 +51,9 @@ impl GpuContext {
                     required_features: wgpu::Features::empty(),
                     required_limits: wgpu::Limits::default(),
                     memory_hints: Default::default(),
+                    experimental_features: Default::default(),
+                    trace: wgpu::Trace::Off,
                 },
-                None,
             )
             .await
             .map_err(|e| DpbError::Gpu(format!("Failed to create device: {}", e)))?;
@@ -95,8 +99,8 @@ impl GpuContext {
 
         let pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Compute Pipeline Layout"),
-            bind_group_layouts: &[bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(bind_group_layout)],
+            immediate_size: 0,
         });
 
         let pipeline = self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -136,9 +140,15 @@ impl GpuContext {
     }
 
     /// Submits a command buffer and waits for completion.
-    pub async fn submit_and_wait(&self, command_buffer: wgpu::CommandBuffer) {
+    pub async fn submit_and_wait(&self, command_buffer: wgpu::CommandBuffer) -> Result<()> {
         self.queue.submit(Some(command_buffer));
-        self.device.poll(wgpu::Maintain::Wait);
+        self.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            })
+            .map_err(|e| DpbError::Gpu(format!("Device poll failed: {e}")))?;
+        Ok(())
     }
 
     /// Submits multiple command buffers.
@@ -174,13 +184,56 @@ impl std::fmt::Debug for GpuContext {
 mod tests {
     use super::*;
 
+    /// Bringing up a real device is the only thing that actually exercises the
+    /// wgpu descriptor structs; they change shape between major versions and a
+    /// clean compile does not prove they are filled in correctly.
+    ///
+    /// Not every environment has a GPU, so this distinguishes the two failures:
+    /// no adapter at all is a skip, but an adapter that refuses to yield a
+    /// device is a bug in this file.
     #[tokio::test]
     async fn test_gpu_context_creation() {
-        let result = GpuContext::new_default().await;
-        // GPU may not be available in all environments
-        if let Ok(ctx) = result {
-            println!("GPU: {}", ctx.device_name());
-            println!("Backend: {:?}", ctx.backend());
+        let adapters =
+            wgpu::Instance::default().enumerate_adapters(wgpu::Backends::all()).await;
+        if adapters.is_empty() {
+            eprintln!("no GPU adapter present; skipping device bring-up");
+            return;
         }
+
+        let ctx = GpuContext::new_default()
+            .await
+            .expect("an adapter is present, so device creation must succeed");
+        assert!(!ctx.device_name().is_empty(), "adapter reported an empty name");
+        println!("GPU: {} ({:?})", ctx.device_name(), ctx.backend());
+    }
+
+    /// Upload and read back. This covers the three pieces of surface wgpu 30
+    /// changed and a compile check cannot reach: PollType replacing Maintain,
+    /// the now-fallible get_mapped_range, and map_async completion.
+    #[tokio::test]
+    async fn test_gpu_roundtrip_preserves_data() {
+        let adapters =
+            wgpu::Instance::default().enumerate_adapters(wgpu::Backends::all()).await;
+        if adapters.is_empty() {
+            eprintln!("no GPU adapter present; skipping buffer round-trip");
+            return;
+        }
+
+        let ctx = GpuContext::new_default().await.expect("device creation");
+        let input: Vec<f32> = (0..256).map(|i| i as f32 * 0.5).collect();
+
+        // MAP_READ is only valid alongside COPY_DST, so this is the usage pair
+        // that lets one buffer be both written at creation and mapped back.
+        let buffer = crate::gpu::GpuBuffer::from_slice(
+            &ctx.device,
+            &input,
+            wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+        );
+        let read_back: Vec<f32> = buffer
+            .read(&ctx.device)
+            .await
+            .expect("reading a buffer we just wrote must succeed");
+
+        assert_eq!(read_back, input, "data did not survive the GPU round-trip");
     }
 }

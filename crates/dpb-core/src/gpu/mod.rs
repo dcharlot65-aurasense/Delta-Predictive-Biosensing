@@ -122,11 +122,11 @@ impl ComputePipelineBuilder {
 
         let shader = ShaderCompiler::compile_wgsl(device, &self.shader_source, Some("Compute Shader"));
 
-        let layout_refs: Vec<_> = self.bind_group_layouts.iter().collect();
+        let layout_refs: Vec<_> = self.bind_group_layouts.iter().map(Some).collect();
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Compute Pipeline Layout"),
             bind_group_layouts: &layout_refs,
-            push_constant_ranges: &[],
+            immediate_size: 0,
         });
 
         let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {

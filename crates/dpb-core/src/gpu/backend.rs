@@ -399,10 +399,12 @@ pub struct WebGPUBackend {
 impl WebGPUBackend {
     /// Creates a new WebGPU backend.
     pub async fn new() -> Result<Self> {
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             flags: Default::default(),
             backend_options: Default::default(),
+            memory_budget_thresholds: Default::default(),
+            display: None,
         });
 
         let adapter = instance
@@ -410,9 +412,10 @@ impl WebGPUBackend {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: None,
                 force_fallback_adapter: false,
+                apply_limit_buckets: false,
             })
             .await
-            .ok_or_else(|| DpbError::Gpu("Failed to find GPU adapter".to_string()))?;
+            .map_err(|e| DpbError::Gpu(format!("Failed to find GPU adapter: {e}")))?;
 
         let info = adapter.get_info();
         let limits = adapter.limits();
@@ -424,8 +427,9 @@ impl WebGPUBackend {
                     required_features: wgpu::Features::empty(),
                     required_limits: wgpu::Limits::default(),
                     memory_hints: Default::default(),
+                    experimental_features: Default::default(),
+                    trace: wgpu::Trace::Off,
                 },
-                None,
             )
             .await
             .map_err(|e| DpbError::Gpu(format!("Failed to create device: {}", e)))?;
@@ -578,12 +582,15 @@ impl ComputeBackend for WebGPUBackend {
             tx.send(result).unwrap();
         });
 
-        self.device.poll(wgpu::Maintain::Wait);
+        self.device.poll(wgpu::PollType::Wait { submission_index: None, timeout: None })
+            .map_err(|e| DpbError::Gpu(format!("Device poll failed: {e}")))?;
         rx.recv()
             .unwrap()
             .map_err(|e| DpbError::Gpu(format!("Buffer map failed: {:?}", e)))?;
 
-        let data = slice.get_mapped_range();
+        let data = slice
+            .get_mapped_range()
+            .map_err(|e| DpbError::Gpu(format!("Failed to read mapped range: {e}")))?;
         let result: Vec<u8> = data.to_vec();
 
         drop(data);
@@ -609,7 +616,7 @@ impl ComputeBackend for WebGPUBackend {
         let pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some(&format!("{}_layout", name)),
             bind_group_layouts: &[],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         });
 
         let pipeline = self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -661,7 +668,8 @@ impl ComputeBackend for WebGPUBackend {
     }
 
     fn synchronize(&self) -> Result<()> {
-        self.device.poll(wgpu::Maintain::Wait);
+        self.device.poll(wgpu::PollType::Wait { submission_index: None, timeout: None })
+            .map_err(|e| DpbError::Gpu(format!("Device poll failed: {e}")))?;
         Ok(())
     }
 }
@@ -698,8 +706,8 @@ impl WebGPUBackend {
 
         let pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Compute Pipeline Layout"),
-            bind_group_layouts: &[bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(bind_group_layout)],
+            immediate_size: 0,
         });
 
         self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -1041,7 +1049,8 @@ impl ComputeBackendExt for WebGPUBackend {
             }
 
             self.queue.submit(Some(encoder.finish()));
-            self.device.poll(wgpu::Maintain::Wait);
+            self.device.poll(wgpu::PollType::Wait { submission_index: None, timeout: None })
+            .map_err(|e| DpbError::Gpu(format!("Device poll failed: {e}")))?;
         }
 
         Ok(())

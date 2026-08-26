@@ -31,8 +31,11 @@ rust-version = "1.92.0"
 
 [workspace.dependencies]
 # Core dependencies
-wgpu = "24.0"
-bytemuck = { version = "1.21", features = ["derive"] }
+wgpu = "30.0"
+# wgpu 30 made adapter enumeration async; pollster blocks on it from the
+# synchronous Python binding without pulling in a full async runtime.
+pollster = "0.4"
+bytemuck = { version = "1.24", features = ["derive"] }
 glam = "0.33"
 nalgebra = "0.33"
 ndarray = "0.16"
