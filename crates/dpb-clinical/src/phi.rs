@@ -34,20 +34,30 @@
 //!
 //! ## Example
 //!
-//! ```rust,ignore
-//! use dpb_clinical::phi::{DeIdentifier, DeIdentificationConfig};
+//! ```rust
+//! use dpb_clinical::phi::{DeIdentificationConfig, DeIdentifier, PatientRecord};
 //!
+//! # fn example() -> dpb_clinical::Result<()> {
 //! let config = DeIdentificationConfig::safe_harbor();
 //! let deidentifier = DeIdentifier::new(config);
 //!
 //! let record = PatientRecord::new()
 //!     .with_name("John Doe")
-//!     .with_dob(NaiveDate::from_ymd(1985, 3, 15))
-//!     .with_ssn("123-45-6789");
+//!     .with_dob(1985, 3, 15)
+//!     .with_ssn("123-45-6789")
+//!     .with_clinical_value("alpha_power", 12.5);
 //!
 //! let deidentified = deidentifier.deidentify(&record)?;
-//! assert!(deidentified.name.is_none());
+//!
+//! // The de-identified record carries no name or SSN field at all: direct
+//! // identifiers are dropped rather than blanked.
 //! assert_eq!(deidentified.birth_year, Some(1985)); // Year retained
+//! assert!(deidentified.clinical_data.contains_key("alpha_power"));
+//!
+//! // Every transformation is recorded, so the de-identification is auditable.
+//! assert!(!deidentified.audit_log.is_empty());
+//! # Ok(())
+//! # }
 //! ```
 
 use chrono::Datelike;

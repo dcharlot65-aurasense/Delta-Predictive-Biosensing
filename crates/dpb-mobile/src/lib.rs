@@ -44,16 +44,16 @@
 //!
 //! # Example Usage
 //!
-//! ```rust,ignore
-//! use dpb_mobile::{MobileRuntime, MobileModel};
+//! ```rust
+//! use dpb_mobile::{MobileModel, MobileRuntime};
 //!
-//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! // Load model from bytes
-//! let model_bytes = include_bytes!("path/to/model.dpb");
-//! let model = MobileModel::from_bytes(model_bytes)?;
+//! # fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Describe the model: a name and its input/output widths.
+//! let model = MobileModel::new("demo".to_string(), 128, 8);
 //!
-//! // Create runtime with optimization settings
-//! let runtime = MobileRuntime::new(model)
+//! // Create runtime with optimization settings. `MobileRuntime::new` returns a
+//! // builder; `build` yields the runtime.
+//! let mut runtime = MobileRuntime::new(model)
 //!     .with_max_memory_mb(50)
 //!     .with_thread_count(2)
 //!     .build()?;
@@ -61,6 +61,7 @@
 //! // Perform inference
 //! let input = vec![0.5f32; 128];
 //! let output = runtime.infer(&input)?;
+//! assert_eq!(output.len(), 8);
 //! # Ok(())
 //! # }
 //! ```

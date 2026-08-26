@@ -20,19 +20,24 @@
 //!
 //! ## Example
 //!
-//! ```rust,ignore
-//! use dpb_export::{ModelExporter, ExportFormat, OnnxExporter};
+//! ```rust
+//! use dpb_export::{EncoderParams, JsonExporter, ModelMetadata};
 //!
-//! // Create exporter for a trained encoder
-//! let exporter = ModelExporter::new()
-//!     .with_metadata("encoder_type", "level_crossing")
-//!     .with_metadata("version", "0.4.0");
+//! # fn example() -> dpb_export::Result<()> {
+//! // Describe what is being exported.
+//! let mut metadata = ModelMetadata::new();
+//! metadata.set_name("level-crossing encoder");
+//! metadata.set_version("0.4.0");
 //!
-//! // Export to ONNX
-//! exporter.export_onnx("model.onnx", &encoder_params)?;
+//! // Encoder parameters travel with it.
+//! let params = EncoderParams::new("level_crossing", 8, 250.0);
 //!
-//! // Export to JSON for configuration
-//! exporter.export_json("config.json")?;
+//! // Serialise to JSON. `BinaryExporter` and `OnnxExporter` follow the same
+//! // shape for their formats.
+//! let exporter = JsonExporter::new(metadata).with_pretty(true);
+//! let _ = (&params, &exporter);
+//! # Ok(())
+//! # }
 //! ```
 
 pub mod error;

@@ -31,14 +31,22 @@
 //!
 //! ## Example
 //!
-//! ```rust,ignore
-//! use dpb_export::neuromorphic::{NeuromorphicExporter, NeuromorphicTarget, NetworkConfig};
+//! ```rust
+//! use dpb_export::neuromorphic::{NetworkConfig, NeuromorphicExporter, NeuromorphicTarget};
 //!
+//! # fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let config = NetworkConfig::new(128, 64, 32); // input, hidden, output
-//! let exporter = NeuromorphicExporter::new(NeuromorphicTarget::Loihi2);
 //!
-//! let lava_code = exporter.export(&config)?;
-//! std::fs::write("network.py", lava_code)?;
+//! // NIR is the portable target. Intel archived the Lava framework on
+//! // 2026-05-13, so `Loihi2` is deprecated and emits for an unsupported SDK.
+//! let exporter = NeuromorphicExporter::new(NeuromorphicTarget::Nir);
+//!
+//! // The exporter emits Python source; running it writes the .nir file.
+//! let nir_script = exporter.export(&config)?;
+//! assert!(nir_script.contains("nir.NIRGraph"));
+//! // std::fs::write("network.py", nir_script)?;
+//! # Ok(())
+//! # }
 //! ```
 
 use std::fmt::Write;

@@ -47,24 +47,32 @@
 //!
 //! ## Example
 //!
-//! ```rust,ignore
-//! use dpb_clinical::{NormativeDatabase, Population, Demographics};
+//! ```rust
+//! use dpb_clinical::{
+//!     Demographics, Ethnicity, NormativeDatabase, NormativeReference, PopulationNorms, Sex,
+//! };
 //!
-//! // Load normative data
-//! let norms = NormativeDatabase::load("eeg_norms.json")?;
-//!
-//! // Create patient demographics
+//! # fn example() -> dpb_clinical::Result<()> {
+//! // Describe the patient. Every field is optional.
 //! let patient = Demographics::new()
 //!     .with_age(45)
 //!     .with_sex(Sex::Female)
 //!     .with_ethnicity(Ethnicity::EastAsian);
 //!
-//! // Get population-specific reference
-//! let reference = norms.get_reference(&patient, "alpha_power")?;
+//! // Supply norms for the population that patient falls into. These are YOUR
+//! // cited values -- nothing usable ships with the crate.
+//! let mut norms = PopulationNorms::new("adult female, East Asian");
+//! norms.add_reference("alpha_power", NormativeReference::new(10.0, 2.0));
 //!
-//! // Calculate z-score
-//! let patient_value = 12.5;
-//! let z_score = reference.z_score(patient_value);
+//! let mut db = NormativeDatabase::new("Example Norms", "1.0");
+//! db.add_norms(&patient.population_key(), norms, 250);
+//!
+//! // Compare a measurement against them.
+//! let z_score = db.z_score("alpha_power", 12.5, &patient)?;
+//! let percentile = db.percentile("alpha_power", 12.5, &patient)?;
+//! println!("z = {z_score:.2}, percentile = {percentile:.1}");
+//! # Ok(())
+//! # }
 //! ```
 
 pub mod error;

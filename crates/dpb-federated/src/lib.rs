@@ -55,30 +55,39 @@
 //!
 //! ## Example
 //!
-//! ```rust,ignore
-//! use dpb_federated::{FederatedClient, FederatedServer, FedConfig};
+//! ```rust
+//! use dpb_federated::{FedConfig, FederatedClient, FederatedServer, LocalDataset, ModelWeights};
 //!
-//! // Server setup
-//! let config = FedConfig::default()
-//!     .with_rounds(100)
-//!     .with_min_clients(3);
-//! let mut server = FederatedServer::new(config);
+//! # fn example() -> dpb_federated::Result<()> {
+//! // Server setup. `FedConfig` is a plain struct, not a builder.
+//! let config = FedConfig {
+//!     num_rounds: 100,
+//!     min_clients: 1,
+//!     ..FedConfig::default()
+//! };
+//! let mut server = FederatedServer::new(config.clone());
 //!
-//! // Client setup at each site
-//! let client = FederatedClient::new("site_a", local_model);
+//! // Client setup at each site.
+//! let local_model = ModelWeights::zeros(&[("layer0", vec![8])]);
+//! let mut client = FederatedClient::new("site_a", local_model);
+//! server.register_client("site_a")?;
 //!
-//! // Training loop
-//! for round in 0..100 {
-//!     // Clients train locally
-//!     let update = client.train_round(&local_data)?;
+//! // One round: the client trains locally and the server aggregates.
+//! let local_data = LocalDataset::random(32, 8);
+//! server.start_round()?;
 //!
-//!     // Server aggregates
-//!     server.receive_update(client.id(), update)?;
+//! let update = client.train_round(&local_data)?;
+//! server.receive_update(update)?;
+//!
+//! if server.can_aggregate() {
+//!     // `aggregate` borrows the server mutably and hands back the new global
+//!     // model, so read anything else off the server before or after.
+//!     let round = server.current_round();
 //!     let global_model = server.aggregate()?;
-//!
-//!     // Clients sync
-//!     client.sync_model(&global_model)?;
+//!     println!("round {round} complete, {} params", global_model.flatten().len());
 //! }
+//! # Ok(())
+//! # }
 //! ```
 
 pub mod error;

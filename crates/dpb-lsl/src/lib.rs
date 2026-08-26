@@ -22,20 +22,24 @@
 //!
 //! ## Example
 //!
-//! ```rust,ignore
-//! use dpb_lsl::{LslInlet, LslOutlet, StreamResolver};
+//! ```rust,no_run
+//! use dpb_lsl::{LslInlet, StreamResolver};
 //!
-//! // Find EEG streams
+//! # fn example() -> dpb_lsl::Result<()> {
+//! // Find EEG streams. `no_run` because this needs a live LSL network.
 //! let resolver = StreamResolver::new();
 //! let streams = resolver.resolve_by_type("EEG", 5.0)?;
 //!
 //! // Connect to first stream
-//! let inlet = LslInlet::new(&streams[0])?;
+//! // `None` takes the default inlet configuration.
+//! let mut inlet = LslInlet::new(&streams[0], None)?;
 //!
 //! // Pull samples
 //! while let Ok((sample, timestamp)) = inlet.pull_sample(1.0) {
-//!     println!("Sample at {}: {:?}", timestamp, sample);
+//!     println!("Sample at {timestamp}: {sample:?}");
 //! }
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! ## Note on liblsl Dependency
