@@ -32,6 +32,10 @@ use crate::error::{DpbError, Result};
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
+// These are established domain acronyms -- clinical file formats, ECG
+// beat annotations, and hardware terms. Camel-casing them (Pvc, Wfdb,
+// Dram) would make this harder to read for anyone who works with them.
+#[allow(clippy::upper_case_acronyms)]
 /// Supported compute backend types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BackendType {

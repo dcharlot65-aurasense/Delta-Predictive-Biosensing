@@ -41,6 +41,10 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
+// These are established domain acronyms -- clinical file formats, ECG
+// beat annotations, and hardware terms. Camel-casing them (Pvc, Wfdb,
+// Dram) would make this harder to read for anyone who works with them.
+#[allow(clippy::upper_case_acronyms)]
 /// Biosignal file format type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FormatType {
@@ -271,6 +275,10 @@ pub trait UnifiedBiosignalReader {
     fn n_samples(&self, signal_index: usize) -> Result<usize>;
 }
 
+// These are established domain acronyms -- clinical file formats, ECG
+// beat annotations, and hardware terms. Camel-casing them (Pvc, Wfdb,
+// Dram) would make this harder to read for anyone who works with them.
+#[allow(clippy::upper_case_acronyms)]
 /// Unified reader that automatically selects the appropriate format reader
 pub enum UnifiedReader {
     /// EDF reader

@@ -26,6 +26,10 @@ pub struct RPeak {
     pub quality: f64,
 }
 
+// These are established domain acronyms -- clinical file formats, ECG
+// beat annotations, and hardware terms. Camel-casing them (Pvc, Wfdb,
+// Dram) would make this harder to read for anyone who works with them.
+#[allow(clippy::upper_case_acronyms)]
 /// Beat type classification
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BeatType {
