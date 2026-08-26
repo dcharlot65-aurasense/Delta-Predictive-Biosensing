@@ -38,6 +38,11 @@ pollster = "0.4"
 bytemuck = { version = "1.24", features = ["derive"] }
 glam = "0.33"
 nalgebra = "0.33"
+# Capped at 0.16 by `numpy`, which requires `ndarray >= 0.15, <= 0.17`.
+# Cargo reads that upper bound as <= 0.17.0, and 0.17.0 is yanked, so no
+# 0.17.x can coexist with numpy. Going to 0.17 anyway puts two ndarray
+# versions in the graph and the Array types stop being interchangeable
+# at the Python boundary. Revisit when numpy widens the bound.
 ndarray = "0.16"
 num-complex = "0.4"
 rustfft = "6.2"

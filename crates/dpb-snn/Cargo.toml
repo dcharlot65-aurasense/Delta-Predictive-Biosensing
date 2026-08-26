@@ -17,7 +17,7 @@ distributed = []
 dpb-core.workspace = true
 dpb-neurons.workspace = true
 dpb-encoders.workspace = true
-ndarray = { version = "0.16", features = ["serde"] }
+ndarray = { workspace = true, features = ["serde"] }
 nalgebra.workspace = true
 wgpu.workspace = true
 bytemuck.workspace = true

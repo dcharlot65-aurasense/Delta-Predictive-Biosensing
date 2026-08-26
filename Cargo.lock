@@ -1005,7 +1005,7 @@ dependencies = [
  "dpb-synth",
  "iai-callgrind",
  "nalgebra 0.33.3",
- "ndarray 0.16.1",
+ "ndarray",
  "num-complex 0.4.6",
  "rand 0.10.2",
  "rand_distr 0.6.0",
@@ -1052,7 +1052,7 @@ dependencies = [
  "glam 0.33.5",
  "metal",
  "nalgebra 0.33.3",
- "ndarray 0.16.1",
+ "ndarray",
  "num-complex 0.4.6",
  "proptest",
  "rand 0.10.2",
@@ -1078,7 +1078,7 @@ dependencies = [
  "dpb-core",
  "glam 0.33.5",
  "nalgebra 0.33.3",
- "ndarray 0.16.1",
+ "ndarray",
  "rand 0.10.2",
  "rayon",
  "serde",
@@ -1090,7 +1090,7 @@ name = "dpb-export"
 version = "0.4.0"
 dependencies = [
  "chrono",
- "ndarray 0.15.6",
+ "ndarray",
  "serde",
  "serde_json",
  "tempfile",
@@ -1139,7 +1139,7 @@ dependencies = [
  "dpb-encoders",
  "dpb-snn",
  "dpb-synth",
- "ndarray 0.16.1",
+ "ndarray",
  "serde",
  "serde_json",
 ]
@@ -1171,7 +1171,7 @@ dependencies = [
  "dpb-encoders",
  "dpb-neurons",
  "dpb-snn",
- "ndarray 0.16.1",
+ "ndarray",
  "rand 0.10.2",
  "serde",
  "serde_json",
@@ -1188,7 +1188,7 @@ dependencies = [
  "criterion 0.8.2",
  "dpb-core",
  "nalgebra 0.33.3",
- "ndarray 0.16.1",
+ "ndarray",
  "rand 0.10.2",
  "rand_distr 0.6.0",
  "serde",
@@ -1217,7 +1217,7 @@ dependencies = [
  "dpb-neurons",
  "dpb-snn",
  "dpb-synth",
- "ndarray 0.16.1",
+ "ndarray",
  "numpy",
  "pollster",
  "pyo3",
@@ -1238,7 +1238,7 @@ dependencies = [
  "dpb-neurons",
  "metal",
  "nalgebra 0.33.3",
- "ndarray 0.16.1",
+ "ndarray",
  "rand 0.10.2",
  "rand_distr 0.6.0",
  "rayon",
@@ -1259,7 +1259,7 @@ dependencies = [
  "image",
  "log",
  "nalgebra 0.33.3",
- "ndarray 0.16.1",
+ "ndarray",
  "num-complex 0.4.6",
  "rand 0.10.2",
  "rand_chacha 0.10.0",
@@ -1281,7 +1281,7 @@ dependencies = [
  "approx 0.5.1",
  "dpb-core",
  "glam 0.29.3",
- "ndarray 0.16.1",
+ "ndarray",
  "serde",
  "serde_json",
  "tempfile",
@@ -2350,19 +2350,6 @@ dependencies = [
 
 [[package]]
 name = "ndarray"
-version = "0.15.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adb12d4e967ec485a5f71c6311fe28158e9d6f4bc4a447b474184d0f91a8fa32"
-dependencies = [
- "matrixmultiply 0.3.11",
- "num-complex 0.4.6",
- "num-integer",
- "num-traits",
- "rawpointer",
-]
-
-[[package]]
-name = "ndarray"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "882ed72dce9365842bf196bdeedf5055305f11fc8c03dee7bb0194a6cad34841"
@@ -2601,7 +2588,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a5b15d63a5ff39e378daed0e1340d3a5964703ea9712eb09a0dc66fade996f4"
 dependencies = [
  "libc",
- "ndarray 0.16.1",
+ "ndarray",
  "num-complex 0.4.6",
  "num-integer",
  "num-traits",
@@ -4330,7 +4317,7 @@ dependencies = [
  "lazy_static",
  "log",
  "maplit",
- "ndarray 0.16.1",
+ "ndarray",
  "num-complex 0.4.6",
  "num-integer",
  "num-traits",
@@ -4355,7 +4342,7 @@ dependencies = [
  "itertools 0.12.1",
  "lazy_static",
  "maplit",
- "ndarray 0.16.1",
+ "ndarray",
  "nom 7.1.3",
  "num-integer",
  "num-traits",
