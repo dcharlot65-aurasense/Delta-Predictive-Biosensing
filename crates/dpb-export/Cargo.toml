@@ -11,8 +11,11 @@ categories = ["science", "encoding"]
 
 [features]
 default = []
-# Enable ONNX export support
-onnx = ["tract-onnx"]
+# Enables the ONNX graph builder in onnx.rs. Note that its output is
+# currently JSON, not ONNX protobuf -- see the note on
+# OnnxExporter::write_onnx_model. This used to pull in tract-onnx,
+# which nothing ever called.
+onnx = []
 # Enable TensorFlow/Keras support
 tensorflow = []
 # Enable PyTorch export support
@@ -22,7 +25,7 @@ full = ["onnx", "tensorflow", "pytorch"]
 
 [dependencies]
 # Error handling
-thiserror = "1.0"
+thiserror.workspace = true
 
 # Logging
 tracing = "0.1"
@@ -32,7 +35,6 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # ONNX runtime (optional)
-tract-onnx = { version = "0.21", optional = true }
 
 # Numeric operations
 ndarray.workspace = true

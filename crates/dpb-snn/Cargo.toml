@@ -11,12 +11,16 @@ default = []
 gpu = []
 cuda = ["gpu", "dep:cudarc"]
 metal = ["gpu", "dep:metal"]
-distributed = []
+# distributed/communication.rs needs crossbeam channels; the feature used to
+# gate that code without declaring the dependency, so enabling it did not
+# compile.
+distributed = ["dep:crossbeam"]
 
 [dependencies]
 dpb-core.workspace = true
 dpb-neurons.workspace = true
 dpb-encoders.workspace = true
+crossbeam = { workspace = true, optional = true }
 ndarray = { workspace = true, features = ["serde"] }
 nalgebra.workspace = true
 wgpu.workspace = true

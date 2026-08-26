@@ -20,7 +20,7 @@ full = ["native", "async"]
 
 [dependencies]
 # Error handling
-thiserror = "1.0"
+thiserror.workspace = true
 
 # Logging
 tracing = "0.1"

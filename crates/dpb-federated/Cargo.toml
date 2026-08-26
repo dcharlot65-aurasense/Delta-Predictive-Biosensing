@@ -11,7 +11,12 @@ categories = ["science", "algorithms"]
 
 [features]
 default = []
-differential-privacy = ["dep:opendp"]
+# privacy.rs implements the Gaussian and Laplace mechanisms directly on
+# top of rand, and does so unconditionally -- this feature gates no code.
+# It is kept only so that existing `--features differential-privacy`
+# invocations keep working; it previously also pulled in opendp, which
+# nothing ever called.
+differential-privacy = []
 compression = ["dep:zstd"]
 async = ["dep:tokio"]
 full = ["differential-privacy", "compression", "async"]
@@ -19,7 +24,7 @@ full = ["differential-privacy", "compression", "async"]
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-thiserror = "1.0"
+thiserror.workspace = true
 tracing = "0.1"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
@@ -27,7 +32,6 @@ rand.workspace = true
 rand_distr.workspace = true
 
 # Optional dependencies
-opendp = { version = "0.9", optional = true }
 zstd = { version = "0.13", optional = true }
 tokio = { version = "1.0", features = ["full"], optional = true }
 

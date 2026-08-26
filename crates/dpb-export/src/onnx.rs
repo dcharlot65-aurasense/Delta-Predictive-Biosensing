@@ -1,7 +1,14 @@
 //! ONNX export functionality.
 //!
-//! Provides export to ONNX format for universal model deployment.
 //! Requires the `onnx` feature to be enabled.
+//!
+//! # Status
+//!
+//! The ONNX *graph* is built faithfully -- inputs, outputs, initialisers and
+//! typed nodes -- but [`OnnxExporter::export`] currently writes it as JSON
+//! rather than ONNX protobuf, so the resulting file will not load in
+//! onnxruntime, tract, or any other ONNX consumer. Treat the output as a
+//! readable dump of the intended graph, not as a deployable model.
 
 use crate::{
     encoder_export::{EncoderParams, ExportableEncoder},
@@ -15,8 +22,10 @@ use tracing::{debug, info, warn};
 
 /// ONNX exporter for spike encoders.
 ///
-/// Converts encoder parameters and logic to ONNX format
-/// for deployment across different platforms and runtimes.
+/// Converts encoder parameters and logic into an ONNX graph.
+///
+/// See the module-level note: the graph is serialised as JSON, not as ONNX
+/// protobuf, so it is not yet loadable by an ONNX runtime.
 #[cfg(feature = "onnx")]
 pub struct OnnxExporter {
     /// Model metadata.
@@ -296,10 +305,14 @@ impl OnnxExporter {
         Ok(())
     }
 
-    /// Write ONNX model to file.
+    /// Write the model to file as JSON.
+    ///
+    /// This is the gap between what the module claims and what it does: ONNX
+    /// is a protobuf format, and a real exporter would encode `model` against
+    /// the onnx.proto schema. What lands on disk is a JSON rendering of the
+    /// same structure -- useful for inspection and conversion, but not an
+    /// ONNX file.
     fn write_onnx_model<W: Write>(&self, writer: &mut W, model: &OnnxModel) -> Result<()> {
-        // In production, this would serialize to protobuf format
-        // For now, write a JSON representation that can be converted
 
         let json = serde_json::to_string_pretty(model)
             .map_err(|e| ExportError::onnx(format!("Failed to serialize model: {}", e)))?;

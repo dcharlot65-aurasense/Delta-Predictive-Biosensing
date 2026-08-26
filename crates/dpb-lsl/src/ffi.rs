@@ -83,7 +83,7 @@ pub mod lsl_processing {
 // FFI functions are only linked when the native feature is enabled
 #[cfg(feature = "native")]
 #[link(name = "lsl")]
-extern "C" {
+unsafe extern "C" {
     // ========== Stream Info Functions ==========
 
     /// Create a new stream info object.

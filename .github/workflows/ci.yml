@@ -70,6 +70,30 @@ jobs:
       - name: cargo test --doc
         run: cargo test --workspace --doc
 
+  features:
+    name: optional features
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # Optional features were never compiled anywhere, so they drifted: the
+      # dpb-lsl FFI block predated edition 2024's `unsafe extern` rule, and
+      # dpb-snn's `distributed` gated code that used crossbeam without
+      # declaring it. Neither could have been caught by a default-feature build.
+      #
+      # `--all-features` is not usable here: it turns on the cuda/metal/vulkan
+      # backends, whose build scripts need vendor toolchains no hosted runner
+      # has. This lists the sets that are portable; the hardware backends are
+      # covered on machines that have the hardware.
+      - run: cargo check -p dpb-clinical  --features full        --all-targets
+      - run: cargo check -p dpb-export    --features full        --all-targets
+      - run: cargo check -p dpb-federated --features full        --all-targets
+      - run: cargo check -p dpb-lsl       --features full        --all-targets
+      - run: cargo check -p dpb-snn       --features distributed --all-targets
+      - run: cargo check -p dpb-viz       --features web         --all-targets
+      - run: cargo check -p dpb-mobile    --features quantized   --all-targets
+
   wasm:
     name: wasm32 build
     runs-on: ubuntu-latest

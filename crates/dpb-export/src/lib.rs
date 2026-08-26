@@ -13,7 +13,8 @@
 //!
 //! ## Features
 //!
-//! - `onnx` - Enable ONNX export support (requires tract-onnx)
+//! - `onnx` - Enable the ONNX graph builder (writes JSON, not protobuf --
+//!   see the `onnx` module docs)
 //! - `tensorflow` - Enable TensorFlow SavedModel export
 //! - `pytorch` - Enable PyTorch export support
 //! - `full` - Enable all export formats
