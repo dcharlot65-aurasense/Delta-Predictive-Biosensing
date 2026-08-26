@@ -1,5 +1,56 @@
 //! Python bindings for Spiking Neural Network layers and models
 
+use crate::types::PySpikeEvent;
+use dpb_snn::layers::SpikingLayer;
+use dpb_snn::{NeuronParams, SpikeTensor, SpikingLinear};
+
+/// Bin a spike train into the dense (batch, step, neuron) tensor the layers take.
+///
+/// A spike train carries event TIMES; a `SpikeTensor` carries a value per
+/// timestep, so the events are quantised onto a `dt` grid.
+fn train_to_tensor(train: &PySpikeTrain, dt: f32, num_neurons: usize) -> SpikeTensor {
+    let num_steps = ((train.duration / dt as f64).ceil() as usize).max(1);
+    let mut tensor = SpikeTensor::zeros(1, num_steps, num_neurons.max(1), false);
+
+    for event in &train.events {
+        let step = (event.timestamp / dt as f64) as usize;
+        let neuron = event.channel as usize;
+        if step < num_steps && neuron < num_neurons {
+            // Magnitude carries the event's weight; polarity its sign.
+            let value = event.magnitude * event.polarity as f32;
+            tensor.set_spike(0, step, neuron, value).ok();
+        }
+    }
+    tensor
+}
+
+/// The inverse: read a tensor back out as timed events.
+fn tensor_to_train(tensor: &SpikeTensor, dt: f32) -> PySpikeTrain {
+    let (_, num_steps, num_neurons) = tensor.shape();
+    let dense = tensor.to_dense();
+
+    let mut events = Vec::new();
+    for step in 0..num_steps {
+        for neuron in 0..num_neurons {
+            let value = dense[[0, step, neuron]];
+            if value != 0.0 {
+                events.push(PySpikeEvent::new(
+                    step as f64 * dt as f64,
+                    neuron as u32,
+                    if value >= 0.0 { 1 } else { -1 },
+                    value.abs(),
+                ));
+            }
+        }
+    }
+
+    PySpikeTrain::new(
+        Some(events),
+        num_steps as f64 * dt as f64,
+        num_neurons as u32,
+    )
+}
+
 use crate::types::PySpikeTrain;
 use numpy::{PyArray2, PyReadonlyArray2};
 use pyo3::prelude::*;
@@ -83,6 +134,8 @@ pub struct PySpikingLinear {
     neuron_type: String,
     weights: Vec<Vec<f32>>,
     biases: Vec<f32>,
+    /// The library layer this delegates to.
+    inner: SpikingLinear,
 }
 
 #[pymethods]
@@ -104,6 +157,14 @@ impl PySpikingLinear {
                 neuron_type: neuron.to_string(),
                 weights,
                 biases,
+                inner: SpikingLinear::new(
+                    input_size,
+                    output_size,
+                    true,
+                    NeuronParams::default(),
+                    1.0,
+                    neuron.eq_ignore_ascii_case("alif"),
+                ),
             },
             PySpikingLayer {
                 name: "SpikingLinear".to_string(),
@@ -144,16 +205,22 @@ impl PySpikingLinear {
         Ok(())
     }
 
-    fn forward(&self, input_spikes: &PySpikeTrain, dt: f32) -> PyResult<PySpikeTrain> {
-        // Placeholder implementation - would integrate spikes and generate output
-        let duration = input_spikes.duration;
-        let output_spikes = PySpikeTrain::new(None, duration, self.weights.len() as u32);
+    fn forward(&mut self, input_spikes: &PySpikeTrain, dt: f32) -> PyResult<PySpikeTrain> {
+        // Delegated to `dpb_snn::SpikingLinear`. The train is binned onto a `dt`
+        // grid on the way in and read back out as timed events.
+        let input_size = self.weights.first().map_or(0, |row| row.len());
+        let tensor = train_to_tensor(input_spikes, dt, input_size);
 
-        Ok(output_spikes)
+        let output = self
+            .inner
+            .forward(&tensor)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("forward failed: {e}")))?;
+
+        Ok(tensor_to_train(&output, dt))
     }
 
     fn reset(&mut self) {
-        // Reset neuron states
+        self.inner.reset_state();
     }
 }
 
