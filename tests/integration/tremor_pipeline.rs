@@ -25,9 +25,6 @@ use dpb_synth::traits::SyntheticGenerator;
 use super::utils::*;
 
 #[test]
-#[ignore = "Uses ConvolutionalSNN, whose FC head is sized with a hardcoded \
-             flattened width and fails on a shape mismatch for these inputs. \
-             See the note on ConvolutionalSNN::new."]
 fn test_tremor_pipeline_physiological() {
     // Step 1: Generate physiological tremor (8-12 Hz)
     let params = PhysiologicalTremorParams {
@@ -138,7 +135,9 @@ fn test_tremor_pipeline_physiological() {
         .expect("Failed to decode tremor classification");
 
     // Step 8: Validate output
-    assert_eq!(tremor_class.shape()[1], 3, "Should have 3 tremor classes");
+    // `TremorSeverityDecoder` reports its three frequency bands
+    // (parkinsonian, essential, physiological) plus an overall score.
+    assert_eq!(tremor_class.shape()[1], 4, "Should have 3 bands plus an overall score");
 
     println!(
         "Physiological Tremor Pipeline:\n\

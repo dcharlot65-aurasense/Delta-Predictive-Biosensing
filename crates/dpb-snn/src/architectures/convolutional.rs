@@ -32,18 +32,12 @@ impl ConvolutionalSNN {
     /// Create a simple convolutional SNN
     /// Build a convolutional SNN.
     ///
-    /// # Known limitation
-    ///
-    /// The fully-connected head is sized with a hardcoded flattened width of
-    /// 128 (see below). The correct width depends on the input's spatial
-    /// dimensions after two conv/pool stages, and this constructor is not given
-    /// them -- it receives only a channel count. The network therefore builds
-    /// successfully but fails inside `forward` with a matrix-shape mismatch for
-    /// any input whose flattened conv output is not 128.
-    ///
-    /// Fixing this properly means either taking the input dimensions here or
-    /// sizing the head lazily on the first forward pass. Until then, treat this
-    /// architecture as unfinished rather than as a working component.
+    /// The fully-connected head is sized on the first forward pass, once the
+    /// width of the flattened convolutional output is actually known. This
+    /// constructor receives only a channel count, so it cannot compute that
+    /// width itself -- it depends on the input's spatial extent after two
+    /// conv/pool stages. The placeholder below is replaced by
+    /// [`ensure_fc_head`](Self::ensure_fc_head) before it is ever used.
     pub fn new(
         input_channels: usize,
         num_classes: usize,
@@ -68,9 +62,18 @@ impl ConvolutionalSNN {
         ));
         pool_layers.push(SpikingSumPool2d::new((2, 2), (2, 2)));
 
-        // Second conv layer: 16 -> 32
+        // Second conv layer.
+        //
+        // Its input width is the FIRST conv's 16 outputs after the pooling
+        // stage, which divides the neuron axis by the pool factor -- so 4, not
+        // 16. `SpikingConv2d` treats that axis as channels and
+        // `SpikingSumPool2d` shrinks it, and the two were declared as though
+        // the pool were not there: conv2 asked for 16 inputs and received 4,
+        // so `forward` failed on a shape mismatch for EVERY input, whatever
+        // its size.
+        const POOL_FACTOR: usize = 2 * 2;
         conv_layers.push(SpikingConv2d::new(
-            16,
+            16 / POOL_FACTOR,
             32,
             (3, 3),
             (1, 1),
@@ -82,9 +85,13 @@ impl ConvolutionalSNN {
         ));
         pool_layers.push(SpikingSumPool2d::new((2, 2), (2, 2)));
 
-        // FC layers (sizes are placeholders, would need proper calculation)
+        // Placeholder head. The real input width is not knowable here -- it
+        // depends on the input's spatial extent after the conv/pool stages --
+        // so `ensure_fc_head` rebuilds this on the first forward pass. It was
+        // previously left at this fixed 128, which made `forward` fail with a
+        // matrix-shape mismatch for any input whose flattened width differed.
         fc_layers.push(SpikingLinear::new(
-            128, // Flattened conv output size (approximate)
+            128, // placeholder; resized on first forward
             64,
             true,
             config.neuron_params.clone(),
@@ -110,6 +117,38 @@ impl ConvolutionalSNN {
             num_classes,
         }
     }
+
+    /// Rebuild the fully-connected head for a given flattened input width.
+    ///
+    /// Called from `forward` once the convolutional stack has run and the width
+    /// is known. A no-op when the head is already the right size, so it costs
+    /// one comparison per pass after the first.
+    fn ensure_fc_head(&mut self, flattened: usize) {
+        let current_input = self.fc_layers.first().map(|l| l.weights.ncols());
+        if current_input == Some(flattened) {
+            return;
+        }
+
+        const HIDDEN: usize = 64;
+        self.fc_layers = vec![
+            SpikingLinear::new(
+                flattened,
+                HIDDEN,
+                true,
+                self.config.neuron_params.clone(),
+                self.config.dt,
+                false,
+            ),
+            SpikingLinear::new(
+                HIDDEN,
+                self.num_classes,
+                true,
+                self.config.neuron_params.clone(),
+                self.config.dt,
+                false,
+            ),
+        ];
+    }
 }
 
 impl SNNArchitecture for ConvolutionalSNN {
@@ -123,6 +162,9 @@ impl SNNArchitecture for ConvolutionalSNN {
                 current = self.pool_layers[i].forward(&current)?;
             }
         }
+
+        // Size the head to whatever the convolutional stack actually produced.
+        self.ensure_fc_head(current.num_neurons());
 
         // Forward through FC layers
         for layer in &mut self.fc_layers {

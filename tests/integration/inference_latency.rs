@@ -305,10 +305,6 @@ fn test_recurrent_snn_latency() {
 }
 
 #[test]
-#[ignore = "ConvolutionalSNN sizes its FC head with a hardcoded flattened width \
-             of 128 and is never told the input's spatial dimensions, so forward \
-             fails on a shape mismatch for any other input. See the note on \
-             ConvolutionalSNN::new."]
 fn test_convolutional_snn_latency() {
     // Compare convolutional SNN latency
     let batch_size = 1;
