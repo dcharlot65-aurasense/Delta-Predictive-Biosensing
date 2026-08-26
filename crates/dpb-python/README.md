@@ -2,22 +2,24 @@
 
 Python bindings for the Delta-Predictive Biosensing Framework using PyO3.
 
-## ⚠️ These bindings do not yet call the library
+## ⚠️ Partially wired
 
-**Every algorithm here is a standalone placeholder, not a binding.** The crate
-declares `dpb-core`, `dpb-encoders`, `dpb-neurons`, `dpb-snn` and `dpb-synth` as
-dependencies and imports none of them — searching `src/` for any of those names
-returns nothing. Several functions say as much in a comment:
-`// Placeholder implementation - would call Rust encoder`.
+**Wired to the Rust crates, and behaving exactly as they do:**
 
-So the Python API has the *shape* of the Rust library but its own behaviour, and
-fixes made to the Rust crates do not reach Python users. Do not attribute
-results obtained through this module to DPB, and do not publish it to PyPI in
-this state.
+- `encoders` — all five call `dpb-encoders`. `LevelCrossingEncoder` carries the
+  `Delta` default and its one-quantum reconstruction bound; the derivative,
+  template-deviation, ECG and PPG encoders return real events where they
+  previously returned an empty list.
+- `neurons.LifNeuron` — delegates to `dpb_neurons::LifNeuron`, and so takes
+  biophysical units (mV, ms) rather than the normalised ones the placeholder
+  used.
 
-The surface below is worth keeping as a specification of what the bindings
-should expose. It is not usable as bindings until each function is wired to the
-crate it names.
+**Not wired.** `snn`, `synth`, `training`, `metrics` and `gpu` remain standalone
+placeholders importing none of the DPB crates, several labelled as such in
+comments. They have the *shape* of the library's API but their own behaviour,
+and corrections to the Rust code do not reach them. Don't attribute results from
+those modules to DPB, and don't publish the package to PyPI until they are
+wired.
 
 ## Overview
 

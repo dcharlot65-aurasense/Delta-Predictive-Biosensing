@@ -1,27 +1,21 @@
 //! Python bindings for the Delta-Predictive Biosensing Framework
 //!
-//! # These bindings do not yet call the library
+//! # Most of this module is not wired to the library yet
 //!
-//! **Every algorithm exposed here is a standalone placeholder, not a binding.**
-//! The crate declares `dpb-core`, `dpb-encoders`, `dpb-neurons`, `dpb-snn` and
-//! `dpb-synth` as dependencies and imports none of them: `grep` for them across
-//! `src/` returns nothing. Several functions say so in a comment --
-//! "Placeholder implementation - would call Rust encoder".
+//! **Wired, and behaving exactly as the Rust crates do:**
 //!
-//! What that means in practice:
+//! - `encoders` -- all five call [`dpb_encoders`]. `LevelCrossingEncoder` has
+//!   the `Delta` default and its one-quantum reconstruction bound; the
+//!   derivative, template-deviation, ECG and PPG encoders return real events
+//!   where they previously returned an empty list.
+//! - `neurons.LifNeuron` -- delegates to [`dpb_neurons::LifNeuron`]. Its units
+//!   are biophysical (mV, ms) in consequence, matching the library.
 //!
-//! - The Python API has the SHAPE of the Rust library but its own behaviour.
-//!   `LevelCrossingEncoder` here re-implements threshold detection inline; it
-//!   does not use [`dpb_encoders::LevelCrossingEncoder`], and so does not have
-//!   that encoder's default `Delta` mode or its bounded-reconstruction
-//!   guarantee.
-//! - Corrections made to the Rust crates do not reach Python users, because
-//!   nothing connects the two.
-//! - Results obtained through this module should not be attributed to DPB.
-//!
-//! The API surface is worth keeping as a specification of what the bindings
-//! should expose. It is not usable as bindings until each function is wired to
-//! the crate it names.
+//! **Not wired.** `snn`, `synth`, `training`, `metrics` and `gpu` are still
+//! standalone placeholders that import none of the DPB crates, several
+//! labelled as such in comments. They have the SHAPE of the library's API but
+//! their own behaviour, and corrections to the Rust code do not reach them.
+//! Do not attribute results from those modules to DPB.
 
 use pyo3::prelude::*;
 

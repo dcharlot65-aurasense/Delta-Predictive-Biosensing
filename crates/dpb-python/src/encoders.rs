@@ -1,10 +1,65 @@
 //! Python bindings for event-based encoders
+//!
+//! These call the encoders in `dpb-encoders` rather than reimplementing them,
+//! so behaviour here matches the Rust library exactly -- including
+//! `LevelCrossingMode::Delta` being the default and carrying its
+//! one-quantum reconstruction bound.
 
 use crate::types::{PySpikeEvent, PySpikeTrain, PyTimeSeries};
+use dpb_core::traits::EventEncoder;
+use dpb_core::types::{SignalBuffer, SpikeEvent};
+use dpb_encoders::{
+    DerivativeConfig, DerivativeEncoder, EcgRPeakConfig, EcgRPeakEncoder, LevelCrossingConfig,
+    LevelCrossingEncoder, PpgPulseConfig, PpgPulseEncoder, TemplateDeviationConfig,
+    TemplateDeviationEncoder,
+};
 use numpy::PyArrayMethods;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use std::collections::HashMap;
+
+/// Convert a `TimeSeries` into the buffer the Rust encoders take.
+///
+/// `PyTimeSeries` stores its samples channel-major as (samples x channels);
+/// `SignalBuffer` wants them interleaved.
+fn to_signal_buffer(signal: &PyTimeSeries, py: Python) -> PyResult<SignalBuffer> {
+    let num_channels = signal.num_channels(py);
+    let num_samples = signal.num_samples(py);
+
+    let mut interleaved = Vec::with_capacity(num_channels * num_samples);
+    let mut channels = Vec::with_capacity(num_channels);
+    for ch in 0..num_channels {
+        let data = signal.get_channel(py, ch)?;
+        let readonly = data.bind(py).readonly();
+        channels.push(readonly.as_slice()?.to_vec());
+    }
+    for i in 0..num_samples {
+        for channel in &channels {
+            interleaved.push(channel.get(i).copied().unwrap_or(0.0));
+        }
+    }
+
+    Ok(SignalBuffer::multi_channel(
+        interleaved,
+        signal.sample_rate,
+        num_channels.max(1),
+    ))
+}
+
+/// Convert the library's events into the Python ones. The two types carry the
+/// same four fields.
+fn to_py_events(events: Vec<SpikeEvent>) -> Vec<PySpikeEvent> {
+    events
+        .into_iter()
+        .map(|e| PySpikeEvent::new(e.timestamp, e.channel, e.polarity, e.magnitude))
+        .collect()
+}
+
+/// Surface a library error as a Python exception.
+fn encode_err(e: impl std::fmt::Display) -> PyErr {
+    PyValueError::new_err(format!("encoding failed: {e}"))
+}
 
 /// Base encoder trait - all encoders implement this
 #[pyclass(name = "EventEncoder", subclass)]
@@ -93,33 +148,23 @@ impl PyLevelCrossingEncoder {
     fn encode(&self, signal: &PyTimeSeries, py: Python) -> PyResult<PySpikeTrain> {
         let duration = signal.duration(py);
         let num_channels = signal.num_channels(py);
-        let num_samples = signal.num_samples(py);
+        let buffer = to_signal_buffer(signal, py)?;
 
-        // Placeholder implementation - would call Rust encoder
-        let mut events = Vec::new();
+        let config = LevelCrossingConfig {
+            threshold: self.threshold as f32,
+            ..LevelCrossingConfig::default()
+        };
 
-        // Simple level crossing detection (simplified for example)
-        for ch in 0..num_channels {
-            let channel_data = signal.get_channel(py, ch)?;
-            let readonly = channel_data.bind(py).readonly();
-            let samples = readonly.as_slice()?;
+        let encoder = LevelCrossingEncoder::new("level_crossing");
+        let mut events = to_py_events(encoder.encode(&buffer, &config).map_err(encode_err)?);
 
-            let mut last_val = 0.0;
-            for (i, &val) in samples.iter().enumerate() {
-                let t = i as f64 / signal.sample_rate;
-
-                // Up-crossing
-                if self.positive_polarity && last_val < self.threshold as f32 && val >= self.threshold as f32 {
-                    events.push(PySpikeEvent::new(t, ch as u32, 1, 1.0));
-                }
-                // Down-crossing
-                if self.negative_polarity && last_val > self.threshold as f32 && val <= self.threshold as f32 {
-                    events.push(PySpikeEvent::new(t, ch as u32, -1, 1.0));
-                }
-
-                last_val = val;
-            }
-        }
+        // The polarity flags are a Python-side filter; the encoder itself emits
+        // both directions.
+        events.retain(|e| match e.polarity {
+            p if p > 0 => self.positive_polarity,
+            p if p < 0 => self.negative_polarity,
+            _ => true,
+        });
 
         Ok(PySpikeTrain::new(Some(events), duration, num_channels as u32))
     }
@@ -152,13 +197,22 @@ pub struct PyTemplateDeviationEncoder {
     template_type: String,
     deviation_threshold: f64,
     window_size: usize,
+    /// Explicit template waveform, if the caller supplied one.
+    template: Option<Vec<f32>>,
 }
 
 #[pymethods]
 impl PyTemplateDeviationEncoder {
     #[new]
-    #[pyo3(signature = (template_type="generic", deviation_threshold=0.1, window_size=100))]
-    fn new(template_type: &str, deviation_threshold: f64, window_size: usize) -> (Self, PyEventEncoder) {
+    #[pyo3(signature = (template_type="generic", deviation_threshold=0.1, window_size=100, template=None))]
+    fn new(
+        template_type: &str,
+        deviation_threshold: f64,
+        window_size: usize,
+        // The population prior as an explicit waveform. Optional: without one
+        // the signal's own opening window is used. See `encode`.
+        template: Option<Vec<f32>>,
+    ) -> (Self, PyEventEncoder) {
         let mut config = HashMap::new();
         config.insert("deviation_threshold".to_string(), deviation_threshold);
         config.insert("window_size".to_string(), window_size as f64);
@@ -168,6 +222,7 @@ impl PyTemplateDeviationEncoder {
                 template_type: template_type.to_string(),
                 deviation_threshold,
                 window_size,
+                template,
             },
             PyEventEncoder {
                 name: "TemplateDeviation".to_string(),
@@ -179,9 +234,42 @@ impl PyTemplateDeviationEncoder {
     fn encode(&self, signal: &PyTimeSeries, py: Python) -> PyResult<PySpikeTrain> {
         let duration = signal.duration(py);
         let num_channels = signal.num_channels(py);
+        let buffer = to_signal_buffer(signal, py)?;
 
-        // Placeholder - would implement actual template matching
-        let events = Vec::new();
+        // The encoder deviates against a WAVEFORM. `template_type` names the
+        // physiological shape but carries no samples, so absent an explicit
+        // template the leading `window_size` samples of channel 0 stand in --
+        // the "align to prior, encode the residual" idea with the signal's own
+        // opening cycle as the prior.
+        let template: Vec<f32> = match &self.template {
+            Some(t) => t.clone(),
+            None => {
+                let first = signal.get_channel(py, 0)?;
+                let readonly = first.bind(py).readonly();
+                readonly
+                    .as_slice()?
+                    .iter()
+                    .take(self.window_size.max(1))
+                    .copied()
+                    .collect()
+            }
+        };
+
+        if template.is_empty() {
+            return Err(PyValueError::new_err(
+                "template deviation needs a non-empty template",
+            ));
+        }
+
+        let config = TemplateDeviationConfig {
+            template,
+            threshold: self.deviation_threshold as f32,
+            window_size: self.window_size,
+            ..TemplateDeviationConfig::default()
+        };
+
+        let encoder = TemplateDeviationEncoder::new("template_deviation");
+        let events = to_py_events(encoder.encode(&buffer, &config).map_err(encode_err)?);
 
         Ok(PySpikeTrain::new(Some(events), duration, num_channels as u32))
     }
@@ -230,9 +318,16 @@ impl PyDerivativeEncoder {
     fn encode(&self, signal: &PyTimeSeries, py: Python) -> PyResult<PySpikeTrain> {
         let duration = signal.duration(py);
         let num_channels = signal.num_channels(py);
+        let buffer = to_signal_buffer(signal, py)?;
 
-        // Placeholder - would implement derivative-based encoding
-        let events = Vec::new();
+        let config = DerivativeConfig {
+            threshold: self.threshold as f32,
+            order: self.order as u32,
+            ..DerivativeConfig::default()
+        };
+
+        let encoder = DerivativeEncoder::new("derivative");
+        let events = to_py_events(encoder.encode(&buffer, &config).map_err(encode_err)?);
 
         Ok(PySpikeTrain::new(Some(events), duration, num_channels as u32))
     }
@@ -283,9 +378,20 @@ impl PyEcgRPeakEncoder {
     fn encode(&self, signal: &PyTimeSeries, py: Python) -> PyResult<PySpikeTrain> {
         let duration = signal.duration(py);
         let num_channels = signal.num_channels(py);
+        let buffer = to_signal_buffer(signal, py)?;
 
-        // Placeholder - would implement R-peak detection
-        let events = Vec::new();
+        // `refractory_ms` and `min_rr_interval` both express the shortest
+        // permissible gap between beats; take whichever is stricter, in seconds.
+        let min_distance = (self.refractory_ms / 1000.0).max(self.min_rr_interval);
+
+        let config = EcgRPeakConfig {
+            min_height: self.threshold as f32,
+            min_distance,
+            ..EcgRPeakConfig::default()
+        };
+
+        let encoder = EcgRPeakEncoder::new();
+        let events = to_py_events(encoder.encode(&buffer, &config).map_err(encode_err)?);
 
         Ok(PySpikeTrain::new(Some(events), duration, num_channels as u32))
     }
@@ -332,9 +438,16 @@ impl PyPpgPeakEncoder {
     fn encode(&self, signal: &PyTimeSeries, py: Python) -> PyResult<PySpikeTrain> {
         let duration = signal.duration(py);
         let num_channels = signal.num_channels(py);
+        let buffer = to_signal_buffer(signal, py)?;
 
-        // Placeholder - would implement PPG peak detection
-        let events = Vec::new();
+        let config = PpgPulseConfig {
+            min_height: self.threshold as f32,
+            min_distance: self.min_peak_distance,
+            ..PpgPulseConfig::default()
+        };
+
+        let encoder = PpgPulseEncoder::new();
+        let events = to_py_events(encoder.encode(&buffer, &config).map_err(encode_err)?);
 
         Ok(PySpikeTrain::new(Some(events), duration, num_channels as u32))
     }
@@ -369,7 +482,7 @@ fn create_encoder(name: &str, config: Option<&Bound<'_, PyDict>>) -> PyResult<Py
                     .map(|v| v.extract::<String>().unwrap_or_else(|_| "generic".to_string()))
                     .unwrap_or_else(|| "generic".to_string());
 
-                Py::new(py, PyTemplateDeviationEncoder::new(&template_type, 0.1, 100))?.into_any()
+                Py::new(py, PyTemplateDeviationEncoder::new(&template_type, 0.1, 100, None))?.into_any()
             }
             "derivative" => {
                 let threshold = config

@@ -1,5 +1,8 @@
 //! Python bindings for neuron models
 
+use dpb_neurons::traits::{MembraneDynamics, NeuronModel as NeuronDynamics};
+use dpb_neurons::lif::LifConfig;
+use dpb_neurons::LifNeuron;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use std::collections::HashMap;
@@ -76,14 +79,24 @@ pub struct PyLifNeuron {
     threshold: f64,
     reset: f64,
     refractory_period: f64,
-    voltage: f64,
-    refractory_time: f64,
+    /// The library neuron this delegates to.
+    inner: LifNeuron,
 }
 
 #[pymethods]
 impl PyLifNeuron {
+    /// Leaky integrate-and-fire neuron.
+    ///
+    /// Units are BIOPHYSICAL, matching `dpb_neurons::LifNeuron`, which this
+    /// delegates to: `tau` and `refractory_period` in milliseconds, `threshold`
+    /// and `reset` in millivolts. The defaults are the library's.
+    ///
+    /// The previous defaults (tau 0.02, threshold 1.0, reset 0.0) described a
+    /// normalised neuron and belonged to the placeholder implementation that
+    /// used to live here; they would leave a real neuron 66 mV below threshold
+    /// and silent.
     #[new]
-    #[pyo3(signature = (tau=0.02, threshold=1.0, reset=0.0, refractory_period=0.002))]
+    #[pyo3(signature = (tau=20.0, threshold=-50.0, reset=-65.0, refractory_period=2.0))]
     fn new(tau: f64, threshold: f64, reset: f64, refractory_period: f64) -> (Self, PyNeuronModel) {
         let mut params = HashMap::new();
         params.insert("tau".to_string(), tau);
@@ -97,8 +110,17 @@ impl PyLifNeuron {
                 threshold,
                 reset,
                 refractory_period,
-                voltage: 0.0,
-                refractory_time: 0.0,
+                inner: LifNeuron::new(LifConfig {
+                    tau_mem: tau as f32,
+                    v_thresh: threshold as f32,
+                    v_reset: reset as f32,
+                    // Rest tracks reset: a neuron that resets to -65 should
+                    // also idle there, or its first interval differs from the
+                    // rest.
+                    v_rest: reset as f32,
+                    tau_refrac: refractory_period as f32,
+                    ..LifConfig::default()
+                }),
             },
             PyNeuronModel {
                 name: "LIF".to_string(),
@@ -108,34 +130,18 @@ impl PyLifNeuron {
     }
 
     fn step(&mut self, input_current: f32, dt: f32) -> bool {
-        // Update refractory period
-        if self.refractory_time > 0.0 {
-            self.refractory_time -= dt as f64;
-            return false;
-        }
-
-        // Integrate membrane potential
-        let decay = (-dt as f64 / self.tau).exp();
-        self.voltage = self.voltage * decay + input_current as f64 * (1.0 - decay);
-
-        // Check for spike
-        if self.voltage >= self.threshold {
-            self.voltage = self.reset;
-            self.refractory_time = self.refractory_period;
-            true
-        } else {
-            false
-        }
+        // Delegated to `dpb_neurons::LifNeuron` rather than re-integrated here,
+        // so the dynamics -- refractory handling included -- are the library's.
+        self.inner.update(input_current, dt)
     }
 
     fn reset(&mut self) {
-        self.voltage = 0.0;
-        self.refractory_time = 0.0;
+        NeuronDynamics::reset(&mut self.inner);
     }
 
     #[getter]
     fn voltage(&self) -> f64 {
-        self.voltage
+        self.inner.membrane_potential() as f64
     }
 
     #[getter]
