@@ -86,7 +86,7 @@ impl EdssScore {
     }
 
     /// Convert to disease stage
-    pub fn to_disease_stage(&self) -> DiseaseStage {
+    pub fn to_disease_stage(self) -> DiseaseStage {
         match self.0 {
             x if x < 2.0 => DiseaseStage::Prodromal,
             x if x < 4.0 => DiseaseStage::Early,
@@ -141,7 +141,7 @@ pub enum MsFunctionalSystem {
 
 impl MsFunctionalSystem {
     /// Map to body region
-    pub fn to_body_region(&self) -> BodyRegion {
+    pub fn to_body_region(self) -> BodyRegion {
         match self {
             MsFunctionalSystem::Visual => BodyRegion::Sensory,
             MsFunctionalSystem::Brainstem => BodyRegion::Bulbar,

@@ -56,6 +56,9 @@ pub struct CogVideoConfig {
 
 /// CogVideoX model variants
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// I2V is how CogVideo names its image-to-video checkpoints; camel-casing it
+// would diverge from the model identifiers this maps onto.
+#[allow(non_camel_case_types)]
 pub enum CogVideoVariant {
     /// 2B parameter model - faster, less VRAM
     V2B,

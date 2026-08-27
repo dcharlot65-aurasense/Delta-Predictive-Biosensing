@@ -109,7 +109,7 @@ impl SyntheticGenerator for GaitCycleGenerator {
 
             // Fill in upper body keypoints (simplified - roughly stationary)
             for (i_off, i_slot) in frame_keypoints[1..23].iter_mut().enumerate() {
-                let i = 1 + i_off;
+                let _i = 1 + i_off;
                 *i_slot = [0.0, params.height * 0.8, pelvis_z];
             }
 

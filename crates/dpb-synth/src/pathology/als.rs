@@ -32,7 +32,7 @@ pub enum AlsStage {
 
 impl AlsStage {
     /// Convert to generic disease stage
-    pub fn to_disease_stage(&self) -> DiseaseStage {
+    pub fn to_disease_stage(self) -> DiseaseStage {
         match self {
             AlsStage::Stage1 => DiseaseStage::Early,
             AlsStage::Stage2a | AlsStage::Stage2b => DiseaseStage::Moderate,

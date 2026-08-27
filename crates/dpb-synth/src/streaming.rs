@@ -1288,7 +1288,6 @@ impl StreamingGenerator for StreamingEda {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::RngExt;
         use rand_distr::{Distribution, Normal, Exp};
         use std::f64::consts::PI;
 

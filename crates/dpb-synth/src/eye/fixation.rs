@@ -140,7 +140,7 @@ impl SyntheticGenerator for MicrosaccadeGenerator {
                 current_pos = target_pos;
                 // Fill until next microsaccade
                 for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
-                    let i = end_idx + i_off;
+                    let _i = end_idx + i_off;
                     *i_slot = current_pos;
                 }
             }
@@ -213,7 +213,7 @@ impl SyntheticGenerator for SquareWaveJerksGenerator {
             let end_idx1 = ((jerk_time + 0.02) * params.sampling_rate) as usize; // 20ms
 
             for (i_off, i_slot) in gaze_position[start_idx1..end_idx1.min(n_samples)].iter_mut().enumerate() {
-                let i = start_idx1 + i_off;
+                let _i = start_idx1 + i_off;
                 *i_slot = [
                     params.fixation_position[0] + params.jerk_amplitude * direction,
                     params.fixation_position[1],
@@ -226,7 +226,7 @@ impl SyntheticGenerator for SquareWaveJerksGenerator {
 
             // Second saccade (back to fixation)
             for (i_off, i_slot) in gaze_position[start_idx2..end_idx2.min(n_samples)].iter_mut().enumerate() {
-                let i = start_idx2 + i_off;
+                let _i = start_idx2 + i_off;
                 *i_slot = params.fixation_position;
             }
         }
@@ -390,7 +390,7 @@ impl SyntheticGenerator for FixationDurationGenerator {
             // Stable fixation with small drift
             let mut current_pos = target;
             for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
-                let i = start_idx + i_off;
+                let _i = start_idx + i_off;
                 current_pos[0] += drift_dist.sample(&mut rng);
                 current_pos[1] += drift_dist.sample(&mut rng);
 

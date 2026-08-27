@@ -187,7 +187,7 @@ impl SyntheticGenerator for HypometricSaccadeGenerator {
 
         // Fill after primary saccade
         for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
-            let i = end_idx + i_off;
+            let _i = end_idx + i_off;
             *i_slot = current_position;
         }
 
@@ -215,7 +215,7 @@ impl SyntheticGenerator for HypometricSaccadeGenerator {
 
             // Fill rest
             for (i_off, i_slot) in gaze_position[corr_end_idx..n_samples].iter_mut().enumerate() {
-                let i = corr_end_idx + i_off;
+                let _i = corr_end_idx + i_off;
                 *i_slot = [target_x, 0.0];
             }
         }
@@ -300,7 +300,7 @@ impl SyntheticGenerator for SaccadeLatencyGenerator {
             let end_idx = ((saccade_time + duration) * params.sampling_rate) as usize;
 
             for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
-                let i = start_idx + i_off;
+                let _i = start_idx + i_off;
                 *i_slot = [params.amplitude, 0.0];
             }
         }
@@ -375,7 +375,7 @@ impl SyntheticGenerator for AntisaccadeGenerator {
             let end_idx = ((saccade_time + duration) * params.sampling_rate) as usize;
 
             for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
-                let i = start_idx + i_off;
+                let _i = start_idx + i_off;
                 *i_slot = [params.amplitude * direction, 0.0];
             }
         }
@@ -464,7 +464,7 @@ impl SyntheticGenerator for HypermetricSaccadeGenerator {
 
         // Fill after primary saccade
         for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
-            let i = end_idx + i_off;
+            let _i = end_idx + i_off;
             *i_slot = current_position;
         }
 
@@ -492,7 +492,7 @@ impl SyntheticGenerator for HypermetricSaccadeGenerator {
 
             // Fill rest
             for (i_off, i_slot) in gaze_position[corr_end_idx..n_samples].iter_mut().enumerate() {
-                let i = corr_end_idx + i_off;
+                let _i = corr_end_idx + i_off;
                 *i_slot = [target_x, 0.0];
             }
         }
@@ -695,7 +695,7 @@ impl SyntheticGenerator for DelayedSaccadeGenerator {
 
             // Fill after
             for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
-                let i = end_idx + i_off;
+                let _i = end_idx + i_off;
                 *i_slot = [params.amplitude, 0.0];
             }
         }
@@ -789,7 +789,7 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
 
         // Fill between saccades
         for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
-            let i = end_idx + i_off;
+            let _i = end_idx + i_off;
             *i_slot = [current_x, 0.0];
         }
 
@@ -835,7 +835,7 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
 
             // Fill after this correction
             for (i_off, i_slot) in gaze_position[corr_end_idx..n_samples].iter_mut().enumerate() {
-                let i = corr_end_idx + i_off;
+                let _i = corr_end_idx + i_off;
                 *i_slot = [current_x, 0.0];
             }
 
@@ -967,7 +967,7 @@ impl SyntheticGenerator for SaccadeSequenceGenerator {
             let fix_end_idx = ((current_time + fixation_duration) * params.sampling_rate) as usize;
 
             for (i_off, i_slot) in gaze_position[fix_start_idx..fix_end_idx.min(n_samples)].iter_mut().enumerate() {
-                let i = fix_start_idx + i_off;
+                let _i = fix_start_idx + i_off;
                 *i_slot = current_pos;
             }
 
@@ -1042,7 +1042,7 @@ impl SyntheticGenerator for MemoryGuidedSaccadeGenerator {
         let mut gaze_position = vec![[0.0, 0.0]; n_samples];
         let mut events = Vec::new();
 
-        for (_idx, (&cue_time, target_pos)) in params.cue_times.iter().zip(&params.target_positions).enumerate() {
+        for (&cue_time, target_pos) in params.cue_times.iter().zip(&params.target_positions) {
             let saccade_time = cue_time + params.delay_period;
 
             if saccade_time >= params.duration {
@@ -1100,7 +1100,7 @@ impl SyntheticGenerator for MemoryGuidedSaccadeGenerator {
 
             // Fill after saccade
             for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
-                let i = end_idx + i_off;
+                let _i = end_idx + i_off;
                 *i_slot = remembered_target;
             }
         }

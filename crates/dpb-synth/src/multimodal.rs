@@ -379,9 +379,9 @@ impl SyntheticGenerator for HandVoiceTremorCouplingGenerator {
     type Parameters = HandVoiceTremorParams;
 
     fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+        use rand::SeedableRng;
         Self::validate_params(params)?;
 
-        use rand::{RngExt, SeedableRng};
         use rand_distr::{Distribution, Normal};
         use std::f64::consts::PI;
 
@@ -649,9 +649,9 @@ impl SyntheticGenerator for SaccadeReactionTimeCouplingGenerator {
     type Parameters = SaccadeReactionTimeParams;
 
     fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+        use rand::SeedableRng;
         Self::validate_params(params)?;
 
-        use rand::{RngExt, SeedableRng};
         use rand_distr::{Distribution, Normal};
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -798,9 +798,9 @@ impl SyntheticGenerator for PupilVoiceAffectGenerator {
     type Parameters = PupilVoiceAffectParams;
 
     fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+        use rand::SeedableRng;
         Self::validate_params(params)?;
 
-        use rand::{RngExt, SeedableRng};
         use rand_distr::{Distribution, Normal};
 
         let n_samples = (params.duration * params.sampling_rate) as usize;

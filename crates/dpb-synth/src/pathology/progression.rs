@@ -36,7 +36,7 @@ pub enum TimeUnit {
 
 impl TimeUnit {
     /// Convert to days
-    pub fn to_days(&self, value: f64) -> f64 {
+    pub fn to_days(self, value: f64) -> f64 {
         match self {
             TimeUnit::Hours => value / 24.0,
             TimeUnit::Days => value,

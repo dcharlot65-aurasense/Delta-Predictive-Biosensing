@@ -353,6 +353,10 @@ impl SyntheticGenerator for HrvSpectralGenerator {
 /// Arrhythmia generator (PAC, PVC, AF)
 pub struct ArrhythmiaGenerator;
 
+// Domain acronyms -- ECG beat annotations, audio codecs, ERP components,
+// the SMPL-X body model, drug classes. Camel case would diverge from how
+// these are written everywhere they are used.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone)]
 pub enum ArrhythmiaType {
     PAC,  // Premature atrial contraction

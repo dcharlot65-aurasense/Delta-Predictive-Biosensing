@@ -116,6 +116,10 @@ pub struct ErpComponentInfo {
     pub offset_latency: f64,
 }
 
+// Domain acronyms -- ECG beat annotations, audio codecs, ERP components,
+// the SMPL-X body model, drug classes. Camel case would diverge from how
+// these are written everywhere they are used.
+#[allow(clippy::upper_case_acronyms)]
 /// Standard ERP component types
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum ErpComponentType {

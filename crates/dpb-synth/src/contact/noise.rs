@@ -720,7 +720,7 @@ impl SyntheticGenerator for MissingDataGenerator {
 
                 // Mark samples as missing
                 for (i_off, i_slot) in valid_mask[dropout_idx..end_idx].iter_mut().enumerate() {
-                    let i = dropout_idx + i_off;
+                    let _i = dropout_idx + i_off;
                     *i_slot = false;
                 }
 

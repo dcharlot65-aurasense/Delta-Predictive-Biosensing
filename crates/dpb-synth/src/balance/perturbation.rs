@@ -69,7 +69,7 @@ pub enum PerturbationDirection {
 }
 
 impl PerturbationDirection {
-    fn to_angle(&self) -> f64 {
+    fn to_angle(self) -> f64 {
         match self {
             Self::Anterior => 0.0,
             Self::Posterior => PI,

@@ -388,7 +388,7 @@ impl SleepMicrostructureGenerator {
 
     // Helper methods
 
-    fn add_n2_background(&mut self, signal: &mut [Vec<f64>], n_samples: usize) {
+    fn add_n2_background(&mut self, signal: &mut [Vec<f64>], _n_samples: usize) {
         let noise_dist = Normal::new(0.0, self.config.background_amplitude * 0.3).unwrap();
 
         for ch in signal.iter_mut() {
@@ -410,7 +410,7 @@ impl SleepMicrostructureGenerator {
         }
     }
 
-    fn add_n3_background(&mut self, signal: &mut [Vec<f64>], n_samples: usize) {
+    fn add_n3_background(&mut self, signal: &mut [Vec<f64>], _n_samples: usize) {
         let noise_dist = Normal::new(0.0, self.config.background_amplitude * 0.2).unwrap();
 
         for ch in signal.iter_mut() {

@@ -200,10 +200,10 @@ impl SyntheticGenerator for PpgArtifactGenerator {
 }
 
 /// Heart rate recovery generator (post-exercise)
-pub struct HeartRateRecoveryGenerator;
+pub struct PulseRateRecoveryGenerator;
 
 #[derive(Debug, Clone)]
-pub struct HeartRateRecoveryParams {
+pub struct PulseRateRecoveryParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub peak_hr: f64,        // bpm at exercise end
@@ -211,10 +211,10 @@ pub struct HeartRateRecoveryParams {
     pub recovery_tau: f64,   // time constant (seconds)
 }
 
-impl SyntheticGenerator for HeartRateRecoveryGenerator {
+impl SyntheticGenerator for PulseRateRecoveryGenerator {
     type Output = Vec<f64>; // RR intervals
     type GroundTruth = TimeSeriesGroundTruth;
-    type Parameters = HeartRateRecoveryParams;
+    type Parameters = PulseRateRecoveryParams;
 
     fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
@@ -254,7 +254,7 @@ impl SyntheticGenerator for HeartRateRecoveryGenerator {
     }
 
     fn default_params() -> Self::Parameters {
-        HeartRateRecoveryParams {
+        PulseRateRecoveryParams {
             duration: 300.0, // 5 minutes
             sampling_rate: 4.0,
             peak_hr: 150.0,
@@ -299,8 +299,8 @@ mod tests {
 
     #[test]
     fn test_heart_rate_recovery() {
-        let generator = HeartRateRecoveryGenerator;
-        let params = HeartRateRecoveryGenerator::default_params();
+        let generator = PulseRateRecoveryGenerator;
+        let params = PulseRateRecoveryGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
 
         // Check HR is decreasing over time

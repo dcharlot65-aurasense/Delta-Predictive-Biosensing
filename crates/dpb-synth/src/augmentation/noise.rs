@@ -69,7 +69,7 @@ impl PinkNoise {
             // Update generators based on counter bits
             let mut sum = 0.0;
             for (i_off, i_slot) in generators[0..NUM_GENERATORS].iter_mut().enumerate() {
-                let i = 0 + i_off;
+                let i = i_off;
                 if counter & (1 << i) != 0 {
                     *i_slot = ((rng.next_u64() as f64) / (u64::MAX as f64)) * 2.0 - 1.0;
                 }
@@ -224,7 +224,7 @@ impl MotionArtifact {
         let decay_rate = random_f64_range(rng, 5.0, 20.0);
 
         for (i_off, i_slot) in artifact[0..length].iter_mut().enumerate() {
-            let i = 0 + i_off;
+            let i = i_off;
             let t = i as f64 / length as f64;
             *i_slot = peak * (-decay_rate * t).exp();
         }

@@ -362,6 +362,10 @@ pub struct CodecArtifactsParams {
     pub bitrate_kbps: f64,
 }
 
+// Domain acronyms -- ECG beat annotations, audio codecs, ERP components,
+// the SMPL-X body model, drug classes. Camel case would diverge from how
+// these are written everywhere they are used.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone)]
 pub enum CodecType {
     MP3,

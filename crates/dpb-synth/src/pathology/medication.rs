@@ -12,6 +12,10 @@
 use super::SignalModulation;
 use serde::{Deserialize, Serialize};
 
+// Domain acronyms -- ECG beat annotations, audio codecs, ERP components,
+// the SMPL-X body model, drug classes. Camel case would diverge from how
+// these are written everywhere they are used.
+#[allow(clippy::upper_case_acronyms)]
 /// Medication classes with biosignal effects
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MedicationClass {

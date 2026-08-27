@@ -153,7 +153,7 @@ impl StrokeSeverity {
     }
 
     /// Convert to disease stage
-    pub fn to_disease_stage(&self) -> DiseaseStage {
+    pub fn to_disease_stage(self) -> DiseaseStage {
         match self {
             StrokeSeverity::Minor => DiseaseStage::Early,
             StrokeSeverity::Moderate => DiseaseStage::Moderate,

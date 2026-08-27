@@ -133,6 +133,10 @@ pub enum MediaError {
 
 pub type Result<T> = std::result::Result<T, MediaError>;
 
+// Domain acronyms -- ECG beat annotations, audio codecs, ERP components,
+// the SMPL-X body model, drug classes. Camel case would diverge from how
+// these are written everywhere they are used.
+#[allow(clippy::upper_case_acronyms)]
 /// Motion simulation backend selection
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum MotionBackend {

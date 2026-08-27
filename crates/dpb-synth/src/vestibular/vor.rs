@@ -297,8 +297,13 @@ impl VorGenerator {
         let ground_truth = VorGroundTruth {
             gain: VorGain {
                 overall: self.config.normal_gain,
-                leftward: if rightward { self.config.normal_gain } else { self.config.normal_gain },
-                rightward: if rightward { self.config.normal_gain } else { self.config.normal_gain },
+                // VorConfig has a single normal_gain and no asymmetry term, so
+                // both directions are by construction equal -- the `rightward`
+                // conditional that used to sit here selected between two copies
+                // of the same value and implied a directionality the model does
+                // not represent. `asymmetry: 0.0` below says the same thing.
+                leftward: self.config.normal_gain,
+                rightward: self.config.normal_gain,
                 frequency_gains: vec![],
             },
             phase: 0.0,
