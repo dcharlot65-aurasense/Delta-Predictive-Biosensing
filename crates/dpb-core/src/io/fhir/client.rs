@@ -86,7 +86,11 @@ impl FhirClient {
         &self.config.base_url
     }
 
-    /// Builds a resource URL
+    /// Builds a resource URL.
+    ///
+    /// Unused until the HTTP methods below stop returning "not implemented" --
+    /// they are the only callers this is for.
+    #[allow(dead_code)]
     fn resource_url(&self, resource_type: ResourceType, id: Option<&str>) -> String {
         match id {
             Some(id) => format!("{}/{}/{}", self.config.base_url, resource_type, id),
@@ -94,7 +98,10 @@ impl FhirClient {
         }
     }
 
-    /// Builds a search URL with parameters
+    /// Builds a search URL with parameters.
+    ///
+    /// See [`Self::resource_url`] -- waiting on the same HTTP implementation.
+    #[allow(dead_code)]
     fn search_url(&self, resource_type: ResourceType, params: &SearchParams) -> String {
         let base = self.resource_url(resource_type, None);
         let query = params.to_query_string();

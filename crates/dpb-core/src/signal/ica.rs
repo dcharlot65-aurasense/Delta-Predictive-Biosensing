@@ -16,7 +16,12 @@ pub enum NonlinearFunction {
 }
 
 impl NonlinearFunction {
-    /// Computes the nonlinear function G(u).
+    /// Computes the contrast function G(u).
+    ///
+    /// The FastICA update uses only G' and G'' (`g_prime`/`g_double_prime`),
+    /// so this is not on the hot path; it completes the triple and is what the
+    /// negentropy approximation is defined in terms of.
+    #[allow(dead_code)]
     fn g(&self, u: f64) -> f64 {
         match self {
             NonlinearFunction::LogCosh => u.cosh().ln(),

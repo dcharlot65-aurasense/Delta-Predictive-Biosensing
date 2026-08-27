@@ -627,14 +627,21 @@ pub struct XdfWriter {
 }
 
 impl XdfWriter {
-    /// Create a new XDF writer
+    /// Create a new XDF writer.
+    ///
+    /// The file header is written immediately. It used not to be written at
+    /// all -- write_file_header existed but nothing called it -- so the
+    /// resulting files carried no `XDF:` magic and no version chunk, and no
+    /// XDF reader would open them.
     pub fn new(path: &Path) -> Result<Self> {
         let file = File::create(path)?;
-        Ok(Self {
+        let mut writer = Self {
             file,
             streams: Vec::new(),
             stream_id_counter: 1,
-        })
+        };
+        writer.write_file_header()?;
+        Ok(writer)
     }
 
     /// Write file header
@@ -737,6 +744,26 @@ impl XdfWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn writer_emits_the_xdf_magic() {
+        let dir = std::env::temp_dir().join("dpb_xdf_writer_test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("out.xdf");
+
+        // Constructing the writer must be enough to produce a valid preamble;
+        // callers have no other way to ask for one.
+        let _writer = XdfWriter::new(&path).expect("writer created");
+        drop(_writer);
+
+        let bytes = std::fs::read(&path).unwrap();
+        assert!(
+            bytes.starts_with(b"XDF:"),
+            "file does not begin with the XDF magic: {:?}",
+            &bytes[..bytes.len().min(8)]
+        );
+        let _ = std::fs::remove_file(&path);
+    }
 
     #[test]
     fn test_channel_format() {

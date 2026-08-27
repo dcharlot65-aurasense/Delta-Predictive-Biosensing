@@ -4,7 +4,9 @@ use ndarray::Array2;
 use std::f64::consts::PI;
 
 /// Wavelet family types for wavelet transforms.
-#[derive(Debug, Clone, PartialEq)]
+///
+/// Every variant carries only `f64`/`u8` parameters, so this is `Copy`.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum WaveletFamily {
     /// Morlet wavelet with center frequency parameter omega0 (typically 5.0-7.0)
     Morlet { omega0: f64 },
@@ -207,6 +209,10 @@ pub struct DiscreteWaveletTransform {
 }
 
 impl DiscreteWaveletTransform {
+    /// The wavelet family whose filter coefficients this transform uses.
+    pub fn wavelet(&self) -> WaveletFamily {
+        self.wavelet
+    }
     /// Creates a new DWT processor.
     ///
     /// # Arguments

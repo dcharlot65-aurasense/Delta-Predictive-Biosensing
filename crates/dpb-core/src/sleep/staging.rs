@@ -349,6 +349,11 @@ struct BandPowers {
     theta: f64,
     alpha: f64,
     beta: f64,
+    // AASM scores on delta/theta/alpha/beta, so gamma feeds no decision --
+    // but the per-branch weights are a partition of 1.0, and gamma is the
+    // residual that makes the five bands sum to `total`. Dropping it would
+    // silently break that invariant.
+    #[allow(dead_code)]
     gamma: f64,
     total: f64,
 }

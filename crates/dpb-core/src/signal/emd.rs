@@ -105,7 +105,8 @@ pub enum BoundaryCondition {
 #[derive(Debug, Clone)]
 pub struct CubicSpline {
     x: Vec<f64>,
-    y: Vec<f64>,
+    // The `a` term of each segment is that segment's y, so the sample values
+    // are already carried here -- storing them twice just risks divergence.
     coefficients: Vec<(f64, f64, f64, f64)>, // (a, b, c, d) for each segment
 }
 
@@ -159,7 +160,6 @@ impl CubicSpline {
 
         Ok(Self {
             x,
-            y,
             coefficients,
         })
     }
