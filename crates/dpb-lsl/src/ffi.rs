@@ -11,6 +11,9 @@
 #![allow(dead_code)]
 
 use std::os::raw::{c_char, c_double, c_int, c_void};
+// Only the native extern block uses these.
+#[cfg(feature = "native")]
+use std::os::raw::{c_float, c_long};
 
 /// Opaque type for LSL stream info.
 pub type lsl_streaminfo = *mut c_void;

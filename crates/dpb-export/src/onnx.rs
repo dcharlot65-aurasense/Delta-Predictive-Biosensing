@@ -19,11 +19,15 @@ use crate::metadata::ModelMetadata;
 #[cfg(feature = "onnx")]
 use crate::encoder_export::{EncoderParams, ExportableEncoder};
 #[cfg(feature = "onnx")]
+use crate::error::{ExportError, Result};
+#[cfg(feature = "onnx")]
 use crate::protobuf::Writer;
 #[cfg(feature = "onnx")]
 use std::fs::File;
 #[cfg(feature = "onnx")]
 use std::io::Write;
+#[cfg(feature = "onnx")]
+use std::path::Path;
 #[cfg(feature = "onnx")]
 use tracing::{debug, info, warn};
 
