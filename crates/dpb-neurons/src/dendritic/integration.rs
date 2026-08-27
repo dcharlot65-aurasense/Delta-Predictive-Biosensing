@@ -107,8 +107,16 @@ impl DendriticIntegration for PassiveIntegration {
 pub struct ActiveIntegration {
     /// Space constant (μm)
     lambda: f64,
-    /// Sodium channel density (mS/cm²)
-    /// Potassium channel density (mS/cm²)
+    /// Sodium channel density (mS/cm²).
+    ///
+    /// Recorded from the constructor but not yet consumed: the dendritic
+    /// spike below is triggered on `spike_threshold` alone, with no
+    /// conductance dynamics. Kept so the parameter a caller supplies is not
+    /// silently discarded.
+    #[allow(dead_code)]
+    g_na: f64,
+    /// Potassium channel density (mS/cm²). Not yet consumed; see `g_na`.
+    #[allow(dead_code)]
     g_k: f64,
     /// Dendritic spike threshold (mV)
     spike_threshold: f64,
@@ -123,6 +131,7 @@ impl ActiveIntegration {
     pub fn new(lambda: f64, g_na: f64, g_k: f64) -> Self {
         Self {
             lambda,
+            g_na,
             g_k,
             spike_threshold: -40.0, // Dendritic spike threshold
             last_spike_time: -1000.0,

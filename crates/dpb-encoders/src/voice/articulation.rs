@@ -1,6 +1,6 @@
 //! Articulation encoders (formants, vowel space)
 
-use dpb_core::{Context, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent};
+use dpb_core::{Context, DpbError, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent};
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
@@ -154,11 +154,6 @@ impl VowelSpaceEncoder {
         }
     }
 
-    fn calculate_vowel_space_area(&self, _formants: &[(f32, f32)]) -> f32 {
-        // Calculate area of polygon formed by F1-F2 points
-        // Simplified implementation
-        250000.0 // Placeholder
-    }
 }
 
 impl Default for VowelSpaceEncoder {
@@ -170,10 +165,18 @@ impl Default for VowelSpaceEncoder {
 impl EventEncoder for VowelSpaceEncoder {
     type Config = VowelSpaceConfig;
 
+    /// Not implemented.
+    ///
+    /// Vowel space area is defined over pre-segmented vowel tokens, so this
+    /// needs phoneme-level annotation that the raw signal does not carry.
+    /// Returning an empty event list instead would be indistinguishable from
+    /// "this recording contains no vowels".
     fn encode(&self, _signal: &dyn Signal, _config: &Self::Config) -> Result<Vec<SpikeEvent>> {
-        // This would typically operate on pre-segmented vowel tokens
-        // For now, return empty as it requires phoneme-level annotation
-        Ok(Vec::new())
+        Err(DpbError::Other(
+            "VowelSpaceEncoder requires phoneme-level vowel segmentation, which \
+             is not implemented"
+                .to_string(),
+        ))
     }
 
     fn name(&self) -> &str {

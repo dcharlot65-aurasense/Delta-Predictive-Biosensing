@@ -191,10 +191,11 @@ impl StochasticLifNeuron {
                 let Ok(normal) = Normal::new(0.0, 1.0) else {
                     return self.state.ou_noise;
                 };
-                let dW = normal.sample(&mut self.rng) * (dt as f64).sqrt();
+                // dw is the Wiener increment, written dW in the SDE above.
+                let dw = normal.sample(&mut self.rng) * (dt as f64).sqrt();
 
                 let dou = -self.state.ou_noise as f64 / self.config.tau_ou as f64 * dt as f64
-                          + self.config.noise_sigma as f64 * dW;
+                          + self.config.noise_sigma as f64 * dw;
                 self.state.ou_noise += dou as f32;
 
                 self.state.ou_noise

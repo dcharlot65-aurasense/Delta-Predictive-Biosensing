@@ -3,7 +3,7 @@
 //! This module provides the fundamental encoder types that other encoders build upon.
 
 use dpb_core::traits::EventDecoder;
-use dpb_core::{EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent};
+use dpb_core::{EventEncoder, Result, Signal, SpikeEvent};
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
@@ -179,15 +179,6 @@ pub struct TemplateDeviationEncoder {
 
 impl TemplateDeviationEncoder {
     pub fn new(name: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-        }
-    }
-
-    pub fn with_template(
-        name: impl Into<String>,
-        template: Box<dyn PopulationTemplate>,
-    ) -> Self {
         Self {
             name: name.into(),
         }
