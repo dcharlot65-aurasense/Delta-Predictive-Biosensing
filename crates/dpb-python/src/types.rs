@@ -14,7 +14,7 @@ use std::collections::HashMap;
 ///     channel (int): Channel/neuron index
 ///     polarity (int): Event polarity (-1, 0, +1)
 ///     magnitude (float): Event magnitude/strength
-#[pyclass(name = "SpikeEvent")]
+#[pyclass(from_py_object, name = "SpikeEvent")]
 #[derive(Clone, Debug)]
 pub struct PySpikeEvent {
     #[pyo3(get, set)]
@@ -95,7 +95,7 @@ impl PySpikeEvent {
 ///     events (list[SpikeEvent]): List of spike events
 ///     duration (float): Total duration in seconds
 ///     num_channels (int): Number of channels
-#[pyclass(name = "SpikeTrain")]
+#[pyclass(from_py_object, name = "SpikeTrain")]
 #[derive(Clone)]
 pub struct PySpikeTrain {
     #[pyo3(get)]
@@ -300,7 +300,7 @@ impl PyTimeSeries {
 ///     labels (dict): Dictionary of label types to values
 ///     timestamps (list[float]): Event timestamps
 ///     regions (list[tuple]): List of (start, end) time pairs
-#[pyclass(name = "GroundTruth")]
+#[pyclass(from_py_object, name = "GroundTruth")]
 #[derive(Clone)]
 pub struct PyGroundTruth {
     #[pyo3(get, set)]
@@ -370,7 +370,7 @@ impl PyGroundTruth {
 ///
 /// Attributes:
 ///     metadata (dict): Key-value metadata
-#[pyclass(name = "Context")]
+#[pyclass(from_py_object, name = "Context")]
 #[derive(Clone)]
 pub struct PyContext {
     #[pyo3(get, set)]

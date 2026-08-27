@@ -5,7 +5,7 @@
 
 #[cfg(test)]
 mod fpga_export_tests {
-    use std::collections::HashMap;
+    
 
     /// FPGA target platforms.
     #[derive(Debug, Clone, Copy, PartialEq)]
@@ -17,6 +17,7 @@ mod fpga_export_tests {
 
     /// Data types for FPGA implementation.
     #[derive(Debug, Clone, Copy, PartialEq)]
+    #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
     enum FpgaDataType {
         Float32,
         FixedQ16,  // Q16.16 fixed-point
@@ -285,6 +286,7 @@ mod fpga_export_tests {
     /// Test resource estimation.
     #[test]
     fn test_resource_estimation() {
+        #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
         struct ResourceEstimate {
             luts: u32,
             ffs: u32,

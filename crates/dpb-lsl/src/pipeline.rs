@@ -538,10 +538,12 @@ mod tests {
 
     #[test]
     fn test_pipeline_stats_clone() {
-        let mut stats = PipelineStats::default();
-        stats.samples_processed = 1000;
-        stats.spikes_generated = 50;
-        stats.spike_rate = 5.0;
+        let stats = PipelineStats {
+            samples_processed: 1000,
+            spikes_generated: 50,
+            spike_rate: 5.0,
+            ..Default::default()
+        };
 
         let cloned = stats.clone();
         assert_eq!(cloned.samples_processed, 1000);
@@ -571,8 +573,11 @@ mod tests {
 
     #[test]
     fn test_encoding_pipeline_config_accessor() {
-        let mut config = PipelineConfig::default();
-        config.input_stream = "TestStream".to_string();
+        // encoder_params is nested, so it stays a follow-up assignment.
+        let mut config = PipelineConfig {
+            input_stream: "TestStream".to_string(),
+            ..Default::default()
+        };
         config.encoder_params.threshold = 0.05;
 
         let pipeline = EncodingPipeline::new(config);

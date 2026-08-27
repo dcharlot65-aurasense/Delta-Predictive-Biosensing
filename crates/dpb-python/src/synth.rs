@@ -44,7 +44,7 @@ impl PySyntheticGenerator {
         &self,
         duration: f64,
         sample_rate: f64,
-        seed: Option<u64>,
+        _seed: Option<u64>,
         py: Python,
     ) -> PyResult<(PyTimeSeries, PyGroundTruth)> {
         // Base implementation - override in subclasses
@@ -85,6 +85,10 @@ impl PySyntheticGenerator {
 ///     >>> gen = EcgGenerator(heart_rate=70, hrv_sdnn=50)
 ///     >>> signal, ground_truth = gen.generate(duration=60.0, sample_rate=250.0)
 #[pyclass(name = "EcgGenerator", extends=PySyntheticGenerator)]
+// Recorded from the Python-side constructor. The wrapper does not consume
+// these yet, but dropping them would silently discard what a caller
+// passed through the binding.
+#[allow(dead_code)]
 pub struct PyEcgGenerator {
     heart_rate: f64,
     hrv_sdnn: f64,
@@ -185,6 +189,10 @@ impl PyEcgGenerator {
 ///     >>> gen = PpgGenerator(heart_rate=75, hrv_sdnn=40)
 ///     >>> signal, ground_truth = gen.generate(duration=30.0, sample_rate=100.0)
 #[pyclass(name = "PpgGenerator", extends=PySyntheticGenerator)]
+// Recorded from the Python-side constructor. The wrapper does not consume
+// these yet, but dropping them would silently discard what a caller
+// passed through the binding.
+#[allow(dead_code)]
 pub struct PyPpgGenerator {
     heart_rate: f64,
     hrv_sdnn: f64,
@@ -263,6 +271,10 @@ impl PyPpgGenerator {
 ///     >>> gen = AccelerometerGenerator(activity='walk')
 ///     >>> signal, ground_truth = gen.generate(duration=10.0, sample_rate=50.0)
 #[pyclass(name = "AccelerometerGenerator", extends=PySyntheticGenerator)]
+// Recorded from the Python-side constructor. The wrapper does not consume
+// these yet, but dropping them would silently discard what a caller
+// passed through the binding.
+#[allow(dead_code)]
 pub struct PyAccelerometerGenerator {
     activity: String,
     noise_level: f64,
@@ -293,7 +305,7 @@ impl PyAccelerometerGenerator {
         &self,
         duration: f64,
         sample_rate: f64,
-        seed: Option<u64>,
+        _seed: Option<u64>,
         py: Python,
     ) -> PyResult<(PyTimeSeries, PyGroundTruth)> {
         let num_samples = (duration * sample_rate) as usize;
@@ -323,6 +335,10 @@ impl PyAccelerometerGenerator {
 ///     >>> gen = EmgGenerator(muscle_activation=0.6, fatigue_rate=0.01)
 ///     >>> signal, ground_truth = gen.generate(duration=20.0, sample_rate=1000.0)
 #[pyclass(name = "EmgGenerator", extends=PySyntheticGenerator)]
+// Recorded from the Python-side constructor. The wrapper does not consume
+// these yet, but dropping them would silently discard what a caller
+// passed through the binding.
+#[allow(dead_code)]
 pub struct PyEmgGenerator {
     muscle_activation: f64,
     fatigue_rate: f64,
@@ -398,6 +414,10 @@ impl PyEmgGenerator {
 ///     >>> gen = EegGenerator(num_channels=8, dominant_frequency=10.0)
 ///     >>> signal, ground_truth = gen.generate(duration=60.0, sample_rate=256.0)
 #[pyclass(name = "EegGenerator", extends=PySyntheticGenerator)]
+// Recorded from the Python-side constructor. The wrapper does not consume
+// these yet, but dropping them would silently discard what a caller
+// passed through the binding.
+#[allow(dead_code)]
 pub struct PyEegGenerator {
     num_channels: usize,
     dominant_frequency: f64,
@@ -429,7 +449,7 @@ impl PyEegGenerator {
         &self,
         duration: f64,
         sample_rate: f64,
-        seed: Option<u64>,
+        _seed: Option<u64>,
         py: Python,
     ) -> PyResult<(PyTimeSeries, PyGroundTruth)> {
         let num_samples = (duration * sample_rate) as usize;

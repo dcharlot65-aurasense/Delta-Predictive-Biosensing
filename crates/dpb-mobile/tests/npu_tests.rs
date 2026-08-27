@@ -9,6 +9,7 @@ mod npu_tests {
 
     /// NPU backend types.
     #[derive(Debug, Clone, Copy, PartialEq)]
+    #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
     enum NpuBackend {
         QualcommHexagon,
         ArmEthosU,
@@ -19,6 +20,7 @@ mod npu_tests {
 
     /// Hexagon DSP configuration.
     #[derive(Debug, Clone)]
+    #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
     struct HexagonConfig {
         dsp_clock_mhz: u32,
         hvx_threads: u32,
@@ -27,6 +29,7 @@ mod npu_tests {
     }
 
     #[derive(Debug, Clone, Copy, PartialEq)]
+    #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
     enum HexagonPowerLevel {
         Turbo,
         NominalPlus,
@@ -70,6 +73,7 @@ mod npu_tests {
 
     /// ARM Ethos-U configuration.
     #[derive(Debug, Clone)]
+    #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
     struct EthosUConfig {
         variant: EthosUVariant,
         macs_per_cycle: u32,
@@ -123,6 +127,7 @@ mod npu_tests {
 
     /// Apple ANE configuration.
     #[derive(Debug, Clone)]
+    #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
     struct AppleAneConfig {
         use_fp16: bool,
         batch_size: u32,
@@ -274,12 +279,14 @@ mod npu_tests {
     #[test]
     fn test_model_conversion() {
         #[derive(Debug)]
+        #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
         struct ModelConverter {
             input_format: String,
             output_format: String,
             optimizations: Vec<String>,
         }
 
+        #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
         impl ModelConverter {
             fn for_hexagon() -> Self {
                 Self {
@@ -372,7 +379,7 @@ mod npu_tests {
         let mut manager = NpuMemoryManager::new(1024 * 1024); // 1MB
 
         let alloc1 = manager.allocate(256 * 1024).unwrap();
-        let alloc2 = manager.allocate(256 * 1024).unwrap();
+        let _alloc2 = manager.allocate(256 * 1024).unwrap();
         assert_eq!(manager.available(), 512 * 1024);
 
         manager.free(alloc1).unwrap();
@@ -391,6 +398,7 @@ mod npu_tests {
             max_level: u32,
         }
 
+        #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
         impl PowerManager {
             fn new() -> Self {
                 Self {
@@ -466,7 +474,7 @@ mod npu_tests {
     /// Test latency benchmarking.
     #[test]
     fn test_latency_benchmark() {
-        use std::time::{Duration, Instant};
+        use std::time::Duration;
 
         struct LatencyStats {
             samples: Vec<Duration>,

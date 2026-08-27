@@ -480,9 +480,11 @@ mod tests {
     #[test]
     fn test_cadence_template() {
         let template = CadenceTemplate;
-        let mut context = Context::default();
-
-        context.age = Some(30.0);
+        // Reassigned below, so it stays mut.
+        let context = Context {
+            age: Some(30.0),
+            ..Default::default()
+        };
         assert_eq!(template.expected_value(&context), 115.0);
     }
 

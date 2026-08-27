@@ -196,8 +196,10 @@ mod tests {
 
     #[test]
     fn test_refractory_period() {
-        let mut state = NeuronState::default();
-        state.refrac_timer = 2.0;
+        let mut state = NeuronState {
+            refrac_timer: 2.0,
+            ..Default::default()
+        };
 
         assert!(state.is_refractory());
 

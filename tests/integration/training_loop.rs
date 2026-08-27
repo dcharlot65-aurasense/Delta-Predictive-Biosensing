@@ -7,8 +7,7 @@
 //! 4. Network parameters update correctly
 
 use dpb_snn::{
-    FeedforwardSNN, SpikeTensor, SpikeRateDecoder,
-    BPTT, AdamOptimizer, SpikingCrossEntropy,
+    FeedforwardSNN, SpikeTensor, SpikeRateDecoder, AdamOptimizer, SpikingCrossEntropy,
     NeuronModel, NeuronParams, SNNConfig,
 };
 // `forward` and `decode` are trait methods.
@@ -18,7 +17,6 @@ use dpb_snn::decoders::Decoder;
 use dpb_snn::training::LossFunction;
 use ndarray::{Array2, Array1};
 
-use super::utils::*;
 
 #[test]
 fn test_training_loss_decreases() {
@@ -60,13 +58,12 @@ fn test_training_loss_decreases() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut snn = FeedforwardSNN::new(vec![num_channels, 16, num_classes], snn_config, true).expect("SNN");
 
     // Create optimizer and loss
-    let optimizer = AdamOptimizer::new(0.001, 0.9, 0.999, 0.0);
+    let _optimizer = AdamOptimizer::new(0.001, 0.9, 0.999, 0.0);
     let loss_fn = SpikingCrossEntropy::new();
 
     // Training loop
@@ -80,7 +77,7 @@ fn test_training_loss_decreases() {
 
         // Decode output
         let decoder = SpikeRateDecoder::new(num_classes, None, false);
-        let predictions = decoder.decode(&output)
+        let _predictions = decoder.decode(&output)
             .expect("Decoding failed");
 
         // Compute loss
@@ -130,7 +127,6 @@ fn test_bptt_gradient_computation() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut snn = FeedforwardSNN::new(vec![num_channels, 8, num_classes], snn_config, true).expect("SNN");
@@ -156,7 +152,7 @@ fn test_optimizer_parameter_updates() {
 
     // Create dummy parameters and gradients
     let params = Array1::from_vec(vec![1.0, 2.0, 3.0]);
-    let gradients = Array1::from_vec(vec![0.1, 0.2, 0.1]);
+    let _gradients = Array1::from_vec(vec![0.1, 0.2, 0.1]);
 
     // In a real implementation, optimizer.step() would update parameters
     // This test verifies the optimizer is configured correctly
@@ -262,7 +258,6 @@ fn test_training_convergence_simple_task() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut snn = FeedforwardSNN::new(vec![num_channels, 4, num_classes], snn_config, true).expect("SNN");
@@ -293,7 +288,6 @@ fn test_batch_processing() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut snn = FeedforwardSNN::new(vec![num_channels, 8, 4], snn_config, true).expect("SNN");
@@ -350,7 +344,6 @@ fn test_surrogate_gradient_backprop() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut snn = FeedforwardSNN::new(vec![num_channels, 4, 2], snn_config, true).expect("SNN");

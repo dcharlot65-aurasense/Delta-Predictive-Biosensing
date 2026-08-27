@@ -119,6 +119,6 @@ mod tests {
 
     #[test]
     fn test_model_version_range() {
-        assert!(MIN_MODEL_VERSION <= MAX_MODEL_VERSION);
+        const { assert!(MIN_MODEL_VERSION <= MAX_MODEL_VERSION) };
     }
 }

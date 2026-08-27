@@ -432,7 +432,7 @@ mod tests {
             ..Default::default()
         };
         let mut generator = PainGenerator::new(config);
-        let (baseline, conditioned) = generator.generate_cpm(8.0);
+        let (_baseline, conditioned) = generator.generate_cpm(8.0);
 
         // Conditioned should have higher threshold (less pain)
         assert!(conditioned.ground_truth.cpm_effect > 0.0);

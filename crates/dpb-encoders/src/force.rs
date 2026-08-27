@@ -554,6 +554,7 @@ mod tests {
         let bw = 750.0;
 
         // Stance phase (samples 50-200)
+        #[allow(clippy::needless_range_loop)] // the index carries meaning beyond the lookup
         for i in 50..200 {
             let phase = (i - 50) as f32 / 150.0;
             // Double-bump pattern
@@ -592,9 +593,11 @@ mod tests {
     fn test_grip_onset_encoder() {
         // Simulate grip force ramp
         let mut data = vec![0.0; 200];
+        #[allow(clippy::needless_range_loop)] // the index carries meaning beyond the lookup
         for i in 50..150 {
             data[i] = ((i - 50) as f32 * 2.0).min(100.0); // Ramp up to 100N
         }
+        #[allow(clippy::needless_range_loop)] // the index carries meaning beyond the lookup
         for i in 150..180 {
             data[i] = 100.0 - ((i - 150) as f32 * 3.0); // Release
         }
@@ -612,6 +615,7 @@ mod tests {
         // Simulate rapid force development
         let mut data = vec![0.0; 300];
         // Quick ramp from sample 50
+        #[allow(clippy::needless_range_loop)] // the index carries meaning beyond the lookup
         for i in 50..150 {
             data[i] = (i - 50) as f32 * 10.0; // 10N per sample = 10000 N/s at 1kHz
         }

@@ -521,9 +521,11 @@ mod tests {
     #[test]
     fn test_heart_rate_template() {
         let template = HeartRateTemplate;
-        let mut context = Context::default();
-
-        context.age = Some(30.0);
+        // Reassigned below, so it stays mut.
+        let mut context = Context {
+            age: Some(30.0),
+            ..Default::default()
+        };
         assert_eq!(template.expected_value(&context), 72.0);
 
         context.age = Some(5.0);

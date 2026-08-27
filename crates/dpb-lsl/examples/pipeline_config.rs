@@ -6,7 +6,7 @@
 //! Run with: cargo run --example pipeline_config -p dpb-lsl
 
 use dpb_lsl::pipeline::{
-    EncoderParams, EncoderType, EncodingPipeline, PipelineBuilder, PipelineConfig, PipelineStats,
+    EncoderParams, EncoderType, PipelineBuilder, PipelineConfig, PipelineStats,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

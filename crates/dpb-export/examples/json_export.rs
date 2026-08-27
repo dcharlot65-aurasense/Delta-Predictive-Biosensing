@@ -6,7 +6,7 @@
 //! Run with: cargo run --example json_export -p dpb-export
 
 use dpb_export::{
-    encoder_export::{EncoderParams, EncoderState, MockEncoder},
+    encoder_export::{EncoderParams, MockEncoder},
     json::JsonExporter,
     metadata::ModelMetadata,
     ModelExporter,

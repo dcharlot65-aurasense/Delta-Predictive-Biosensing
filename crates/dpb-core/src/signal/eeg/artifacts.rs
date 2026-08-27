@@ -351,9 +351,7 @@ mod tests {
         let sample_rate = 250.0;
         // Signal with a brief high-amplitude artifact
         let mut signal = vec![10.0; 100];
-        for i in 40..50 {
-            signal[i] = 200.0; // Artifact
-        }
+        signal[40..50].fill(200.0); // Artifact
 
         let artifacts = detect_artifacts(&signal, sample_rate, 100.0).unwrap();
 

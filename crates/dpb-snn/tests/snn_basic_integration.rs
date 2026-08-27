@@ -43,7 +43,6 @@ fn test_basic_snn_forward_pass() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..Default::default()
     };
 
     // Create SNN
@@ -85,7 +84,6 @@ fn test_snn_with_decoder() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..Default::default()
     };
 
     // Create SNN
@@ -132,7 +130,6 @@ fn test_multiple_snn_architectures() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..Default::default()
     };
 
     let input = create_test_spikes(batch_size, num_timesteps, num_input);
@@ -149,7 +146,7 @@ fn test_multiple_snn_architectures() {
             .expect("Failed to create SNN");
         let output = snn.forward(&input).unwrap_or_else(|_| panic!("{} forward failed", name));
 
-        let (out_batch, out_time, out_neurons) = output.shape();
+        let (out_batch, _out_time, out_neurons) = output.shape();
         assert_eq!(out_batch, batch_size);
         assert_eq!(out_neurons, num_output);
 
@@ -204,7 +201,6 @@ fn test_neuron_models() {
             num_steps: num_timesteps,
             neuron_model: model,
             neuron_params: NeuronParams::default(),
-            ..Default::default()
         };
 
         let mut snn = FeedforwardSNN::new(
@@ -236,7 +232,6 @@ fn test_batch_processing() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..Default::default()
     };
 
     let mut snn = FeedforwardSNN::new(

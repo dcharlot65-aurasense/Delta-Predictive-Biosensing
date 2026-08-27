@@ -222,14 +222,16 @@ impl EventEncoder for PupilLightReflexEncoder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dpb_core::SignalBuffer;
+    
 
     #[test]
     fn test_pupil_diameter_template() {
         let template = PupilDiameterTemplate;
-        let mut context = Context::default();
-
-        context.age = Some(25.0);
+        // Reassigned below, so it stays mut.
+        let context = Context {
+            age: Some(25.0),
+            ..Default::default()
+        };
         assert_eq!(template.expected_value(&context), 5.0);
     }
 }

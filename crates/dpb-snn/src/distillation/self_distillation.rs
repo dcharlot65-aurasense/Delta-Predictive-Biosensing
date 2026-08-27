@@ -593,8 +593,10 @@ mod tests {
 
     #[test]
     fn test_progressive_config_invalid() {
-        let mut config = ProgressiveConfig::default();
-        config.stage_compression = vec![0.7, 0.8, 0.5]; // Not decreasing
+        let config = ProgressiveConfig {
+            stage_compression: vec![0.7, 0.8, 0.5], // Not decreasing
+            ..Default::default()
+        };
         assert!(config.validate().is_err());
     }
 
@@ -670,8 +672,10 @@ mod tests {
 
     #[test]
     fn test_checkpoint_limit() {
-        let mut config = SelfDistillationConfig::default();
-        config.ensemble_size = 3;
+        let config = SelfDistillationConfig {
+            ensemble_size: 3,
+            ..Default::default()
+        };
 
         let mut distiller = SelfDistillation::new(config).unwrap();
 

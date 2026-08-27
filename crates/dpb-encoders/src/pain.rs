@@ -536,9 +536,7 @@ mod tests {
             let pain = 3.0 + stim as f32 * 0.4; // 3.0 to 6.6
 
             // 1 second per stimulus
-            for _ in 0..100 {
-                data.push(pain);
-            }
+            data.resize(data.len() + 100, pain);
         }
 
         let signal = SignalBuffer::single_channel(data, sample_rate);
@@ -563,14 +561,10 @@ mod tests {
         let sample_rate = 10.0; // Low rate for longer duration
 
         // Baseline (30s at 6/10 pain)
-        for _ in 0..300 {
-            data.push(6.0);
-        }
+        data.resize(data.len() + 300, 6.0);
 
         // Conditioning period (60s at 4/10 - CPM effect)
-        for _ in 0..600 {
-            data.push(4.0);
-        }
+        data.resize(data.len() + 600, 4.0);
 
         let signal = SignalBuffer::single_channel(data, sample_rate);
         let encoder = CpmEncoder::new();

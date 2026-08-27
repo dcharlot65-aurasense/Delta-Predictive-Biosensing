@@ -52,6 +52,7 @@ pub mod utils {
     }
 
     /// Assert event timing is within tolerance (1ms)
+    #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
     pub fn assert_event_timing(actual_time: f64, expected_time: f64, context: &str) {
         let tolerance = 0.001; // 1ms
         assert!(

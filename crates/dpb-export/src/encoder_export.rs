@@ -579,10 +579,12 @@ mod tests {
 
     #[test]
     fn test_channel_state_serialization() {
-        let mut state = ChannelState::default();
-        state.last_value = 1.5;
-        state.current_threshold = 0.1;
-        state.spike_count = 42;
+        let state = ChannelState {
+            last_value: 1.5,
+            current_threshold: 0.1,
+            spike_count: 42,
+            ..Default::default()
+        };
 
         let json = serde_json::to_string(&state).unwrap();
         let deserialized: ChannelState = serde_json::from_str(&json).unwrap();

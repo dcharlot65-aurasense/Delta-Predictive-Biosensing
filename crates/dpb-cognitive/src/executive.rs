@@ -4,7 +4,7 @@
 //! executive functions including response inhibition, cognitive flexibility,
 //! and interference control.
 
-use rand::{Rng, RngExt};
+use rand::RngExt;
 
 /// Go/No-Go task for assessing response inhibition
 #[derive(Debug, Clone)]

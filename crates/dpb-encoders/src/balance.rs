@@ -534,6 +534,7 @@ mod tests {
         // Create CoP signal with excursion
         let mut data = vec![0.0; 200];
         // Add excursion at sample 100
+        #[allow(clippy::needless_range_loop)] // the index carries meaning beyond the lookup
         for i in 100..150 {
             data[i] = 2.0; // 2cm excursion
         }
@@ -556,6 +557,7 @@ mod tests {
         // Create CoP signal with rapid movement
         let mut data = vec![0.0; 200];
         // Rapid movement from sample 50-60
+        #[allow(clippy::needless_range_loop)] // the index carries meaning beyond the lookup
         for i in 50..60 {
             data[i] = (i - 50) as f32 * 0.5; // 0.5 cm per sample = 50 cm/s at 100Hz
         }
@@ -573,6 +575,7 @@ mod tests {
         // Create CoP signal approaching anterior limit
         let mut data = vec![0.0; 200];
         // Approach anterior limit
+        #[allow(clippy::needless_range_loop)] // the index carries meaning beyond the lookup
         for i in 50..100 {
             data[i] = 10.0; // 10cm anterior (80% of 12cm limit)
         }

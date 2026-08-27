@@ -397,8 +397,10 @@ mod tests {
 
     #[test]
     fn test_distillation_config_validation() {
-        let mut config = DistillationConfig::default();
-        config.temperature = -1.0;
+        let mut config = DistillationConfig {
+            temperature: -1.0,
+            ..Default::default()
+        };
         assert!(config.validate().is_err());
 
         config.temperature = 4.0;

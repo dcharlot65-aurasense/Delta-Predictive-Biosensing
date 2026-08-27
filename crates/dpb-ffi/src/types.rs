@@ -86,6 +86,7 @@ pub(crate) enum EncoderType {
     // Add more encoder types as needed
 }
 
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
 impl DpbEncoder {
     /// Creates a new level-crossing encoder.
     pub fn new_level_crossing(_threshold: f64) -> Self {
@@ -98,7 +99,9 @@ impl DpbEncoder {
     }
 
     /// Gets the encoder type.
-    pub fn encoder(&self) -> &EncoderType {
+    // EncoderType is deliberately crate-internal, so this accessor matches
+    // its visibility rather than leaking a private type through a pub fn.
+    pub(crate) fn encoder(&self) -> &EncoderType {
         &self.encoder
     }
 }

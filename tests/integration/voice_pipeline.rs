@@ -63,7 +63,6 @@ fn test_voice_pipeline_sustained_vowel() {
         // default `Delta` mode instead emits one event per threshold of
         // travel, which is the reconstructable sampling behaviour.
         mode: LevelCrossingMode::FixedLevel,
-        ..LevelCrossingConfig::default()
     };
 
     let spike_train = encoder.encode(&signal, &encoder_config)
@@ -109,7 +108,6 @@ fn test_voice_pipeline_sustained_vowel() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     // (input_size, d_model, num_heads, num_blocks, output_size, config)

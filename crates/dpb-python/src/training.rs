@@ -3,7 +3,7 @@
 use dpb_snn::training::LossFunction as _;
 use dpb_snn::{SpikeCountLoss, SpikeTensor, SpikeTimingLoss, SpikingCrossEntropy};
 use numpy::ndarray::Array2;
-use numpy::{PyReadonlyArray2, PyArrayMethods as _};
+use numpy::PyReadonlyArray2;
 
 /// Lift a (samples x classes) prediction matrix into the single-timestep
 /// `SpikeTensor` the loss functions take.
@@ -276,6 +276,10 @@ impl PyOptimizer {
 ///     >>> optimizer = Adam(learning_rate=0.001)
 ///     >>> optimizer.step()
 #[pyclass(name = "Adam", extends=PyOptimizer)]
+// Recorded from the Python-side constructor. The wrapper does not consume
+// these yet, but dropping them would silently discard what a caller
+// passed through the binding.
+#[allow(dead_code)]
 pub struct PyAdam {
     beta1: f32,
     beta2: f32,
@@ -312,6 +316,10 @@ impl PyAdam {
 ///     >>> optimizer = SGD(learning_rate=0.01, momentum=0.9)
 ///     >>> optimizer.step()
 #[pyclass(name = "SGD", extends=PyOptimizer)]
+// Recorded from the Python-side constructor. The wrapper does not consume
+// these yet, but dropping them would silently discard what a caller
+// passed through the binding.
+#[allow(dead_code)]
 pub struct PySGD {
     momentum: f32,
     weight_decay: f32,
@@ -335,6 +343,10 @@ impl PySGD {
 
 /// Training callback interface
 #[pyclass(name = "Callback")]
+// Recorded from the Python-side constructor. The wrapper does not consume
+// these yet, but dropping them would silently discard what a caller
+// passed through the binding.
+#[allow(dead_code)]
 pub struct PyCallback {
     name: String,
 }
@@ -392,6 +404,10 @@ impl PyCallback {
 ///     >>> trainer = Trainer(model, loss='spike_count', optimizer='adam')
 ///     >>> trainer.fit(train_data, epochs=10)
 #[pyclass(name = "Trainer")]
+// Recorded from the Python-side constructor. The wrapper does not consume
+// these yet, but dropping them would silently discard what a caller
+// passed through the binding.
+#[allow(dead_code)]
 pub struct PyTrainer {
     loss_name: String,
     optimizer_name: String,
@@ -402,6 +418,9 @@ pub struct PyTrainer {
 
 #[pymethods]
 impl PyTrainer {
+    // pyo3's signature attribute names these parameters, so they cannot be
+    // underscored; the body ignores the ones it has not wired up yet.
+    #[allow(unused_variables)]
     #[new]
     #[pyo3(signature = (model, loss="spike_count", optimizer="adam", learning_rate=0.001))]
     fn new(
@@ -424,6 +443,9 @@ impl PyTrainer {
         self.callbacks.push(callback);
     }
 
+    // pyo3's signature attribute names these parameters, so they cannot be
+    // underscored; the body ignores the ones it has not wired up yet.
+    #[allow(unused_variables)]
     /// Fit the model on training data
     ///
     /// Args:
@@ -550,11 +572,7 @@ impl PyLRScheduler {
         match self.schedule_type.as_str() {
             // Multiply by gamma every `step_size` steps.
             "step" => {
-                let decays = if self.step_size == 0 {
-                    0
-                } else {
-                    self.current_step / self.step_size
-                };
+                let decays = self.current_step.checked_div(self.step_size).unwrap_or_default();
                 self.initial_lr * self.gamma.powi(decays as i32)
             }
             // Multiply by gamma every step.

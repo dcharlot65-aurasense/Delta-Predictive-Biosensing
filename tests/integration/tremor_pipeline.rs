@@ -47,7 +47,7 @@ fn test_tremor_pipeline_physiological() {
     assert_approx_eq(*tremor_type, 0.0, "Tremor type (physiological)");
 
     // Step 2: Create 3-axis tremor (replicate to x, y, z with phase shifts)
-    let signal_len = generated.signal.len();
+    let _signal_len = generated.signal.len();
     let x_axis: Vec<f32> = generated.signal.iter().map(|&v| v as f32).collect();
 
     let y_axis: Vec<f32> = generated.signal.iter()
@@ -122,7 +122,6 @@ fn test_tremor_pipeline_physiological() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut snn = ConvolutionalSNN::new(num_channels, 3, snn_config.clone());

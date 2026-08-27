@@ -5,10 +5,12 @@
 
 #[cfg(test)]
 mod neuromorphic_export_tests {
-    use std::collections::HashMap;
+    
 
+    #[allow(clippy::upper_case_acronyms)] // domain notation
     /// Neuromorphic target platforms.
     #[derive(Debug, Clone, Copy, PartialEq)]
+    #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
     enum NeuromorphicTarget {
         Loihi2,
         SpiNNaker2,
@@ -16,8 +18,10 @@ mod neuromorphic_export_tests {
         PyNN,
     }
 
+    #[allow(clippy::upper_case_acronyms)] // domain notation
     /// Neuron model types.
     #[derive(Debug, Clone, Copy, PartialEq)]
+    #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
     enum NeuronModel {
         LIF,   // Leaky Integrate-and-Fire
         CUBA,  // Current-Based
@@ -147,7 +151,7 @@ mod neuromorphic_export_tests {
             code.push_str("from lava.magma.core.run_conditions import RunSteps\n\n");
 
             // Network configuration
-            code.push_str(&"# Network Configuration\n".to_string());
+            code.push_str("# Network Configuration\n");
             code.push_str(&format!("INPUT_SIZE = {}\n", self.config.input_size));
             code.push_str(&format!("HIDDEN_SIZES = {:?}\n", self.config.hidden_sizes));
             code.push_str(&format!("OUTPUT_SIZE = {}\n", self.config.output_size));
@@ -156,7 +160,7 @@ mod neuromorphic_export_tests {
 
             // LIF parameters
             code.push_str("# LIF Neuron Parameters\n");
-            code.push_str(&"lif_params = {\n".to_string());
+            code.push_str("lif_params = {\n");
             code.push_str(&format!("    'du': {},  # Decay constant\n",
                 (1.0 / self.params.tau_mem * 4095.0) as u32));
             code.push_str(&format!("    'dv': {},  # Voltage decay\n",
@@ -231,7 +235,7 @@ mod neuromorphic_export_tests {
 
             // Parameters
             code.push_str("# LIF Parameters\n");
-            code.push_str(&"cell_params = {\n".to_string());
+            code.push_str("cell_params = {\n");
             code.push_str(&format!("    'tau_m': {},\n", self.params.tau_mem));
             code.push_str(&format!("    'tau_syn_E': {},\n", self.params.tau_syn));
             code.push_str(&format!("    'tau_syn_I': {},\n", self.params.tau_syn));
@@ -248,13 +252,13 @@ mod neuromorphic_export_tests {
                 self.config.input_size
             ));
 
-            let mut prev_size = self.config.input_size;
+            // The PyNN generator emits Populations only; prev_size used to be
+            // tracked for the Projections between them, which it does not emit.
             for (i, &size) in self.config.hidden_sizes.iter().enumerate() {
                 code.push_str(&format!(
                     "hidden_{} = sim.Population({}, sim.{}, cell_params)\n",
                     i, size, self.config.neuron_model.pynn_name()
                 ));
-                prev_size = size;
             }
 
             code.push_str(&format!(
@@ -449,6 +453,7 @@ mod neuromorphic_export_tests {
     #[test]
     fn test_spike_encoding() {
         #[derive(Debug, Clone)]
+        #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
         struct SpikeEvent {
             time: f32,
             neuron_id: u32,
@@ -488,6 +493,7 @@ mod neuromorphic_export_tests {
     /// Test hardware constraints.
     #[test]
     fn test_hardware_constraints() {
+        #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
         struct HardwareSpecs {
             max_neurons: u32,
             max_synapses: u32,

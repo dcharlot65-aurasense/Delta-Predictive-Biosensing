@@ -8,9 +8,8 @@
 
 use dpb_synth::{
     // Augmentation imports
-    AugmentationPipeline, GaussianNoise, PinkNoise, BaselineWander,
-    PowerlineNoise, MotionArtifact, TimeWarp, TimeShift, WindowCrop,
-    Resample, RandomDropout, MagnitudeScale, FrequencyMask, TimeMask,
+    AugmentationPipeline, GaussianNoise, BaselineWander,
+    PowerlineNoise, MotionArtifact, TimeWarp, MagnitudeScale,
     // Cohort imports
     CohortGenerator, Sex,
 };

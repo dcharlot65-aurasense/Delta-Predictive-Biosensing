@@ -16,7 +16,7 @@
 //! Research and educational use only. Not a medical device.
 
 use crate::{
-    Demographics, ImpairmentLevel, MetricDirection, MetricDomain, MetricType,
+    Demographics, ImpairmentLevel, MetricDomain, MetricType,
     NormativeComparison, NormativeDatabase, NormsError, Result,
 };
 use serde::{Deserialize, Serialize};

@@ -131,6 +131,10 @@ impl PySpikingLayer {
 ///     >>> layer = SpikingLinear(input_size=100, output_size=50, neuron='lif')
 ///     >>> output = layer.forward(input_spikes, dt=0.001)
 #[pyclass(name = "SpikingLinear", extends=PySpikingLayer)]
+// Recorded from the Python-side constructor. The wrapper does not consume
+// these yet, but dropping them would silently discard what a caller
+// passed through the binding.
+#[allow(dead_code)]
 pub struct PySpikingLinear {
     neuron_type: String,
     weights: Vec<Vec<f32>>,
@@ -141,6 +145,9 @@ pub struct PySpikingLinear {
 
 #[pymethods]
 impl PySpikingLinear {
+    // pyo3's signature attribute names these parameters, so they cannot be
+    // underscored; the body ignores the ones it has not wired up yet.
+    #[allow(unused_variables)]
     #[new]
     #[pyo3(signature = (input_size, output_size, neuron="lif", weight_init="uniform"))]
     fn new(
@@ -175,10 +182,6 @@ impl PySpikingLinear {
 
     /// Get weights as numpy array
     fn get_weights(&self, py: Python) -> PyResult<Py<PyArray2<f32>>> {
-        let rows = self.weights.len();
-        let cols = if rows > 0 { self.weights[0].len() } else { 0 };
-        let flat: Vec<f32> = self.weights.iter().flatten().copied().collect();
-
         Ok(PyArray2::from_vec2(py, &self.weights)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
             .into())
@@ -239,6 +242,10 @@ impl PySpikingLinear {
 ///     >>> layer = SpikingConv2d(in_channels=1, out_channels=32, kernel_size=3)
 ///     >>> output = layer.forward(input_spikes, dt=0.001)
 #[pyclass(name = "SpikingConv2d", extends=PySpikingLayer)]
+// Recorded from the Python-side constructor. The wrapper does not consume
+// these yet, but dropping them would silently discard what a caller
+// passed through the binding.
+#[allow(dead_code)]
 pub struct PySpikingConv2d {
     in_channels: usize,
     out_channels: usize,
@@ -304,6 +311,10 @@ impl PySpikingConv2d {
 ///     >>> layer = SpikingRecurrent(input_size=50, hidden_size=100, neuron='lif')
 ///     >>> output = layer.forward(input_spikes, dt=0.001)
 #[pyclass(name = "SpikingRecurrent", extends=PySpikingLayer)]
+// Recorded from the Python-side constructor. The wrapper does not consume
+// these yet, but dropping them would silently discard what a caller
+// passed through the binding.
+#[allow(dead_code)]
 pub struct PySpikingRecurrent {
     hidden_size: usize,
     neuron_type: String,
@@ -450,6 +461,10 @@ impl PySequential {
 ///     >>> builder.add_linear(64, 10, neuron='lif')
 ///     >>> model = builder.build()
 #[pyclass(name = "SNNBuilder")]
+// Recorded from the Python-side constructor. The wrapper does not consume
+// these yet, but dropping them would silently discard what a caller
+// passed through the binding.
+#[allow(dead_code)]
 pub struct PySNNBuilder {
     layers: Vec<Py<PyAny>>,
     config: HashMap<String, String>,

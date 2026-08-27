@@ -158,7 +158,7 @@ fn main() {
         benchmark_runner.record_latency(iter_duration.as_secs_f32() * 1000.0);
     }
 
-    let total_duration = start.elapsed();
+    let _total_duration = start.elapsed();
 
     let memory_metrics = MemoryMetrics::new(
         runtime.memory_usage_bytes(),

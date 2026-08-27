@@ -520,9 +520,11 @@ mod tests {
     #[test]
     fn test_spike_rate_impact() {
         let estimator = SynapticOpEstimator::default();
-        let mut stats = ModelStats::default();
-
-        stats.spike_rate = 0.01;
+        // Reassigned below, so it stays mut.
+        let mut stats = ModelStats {
+            spike_rate: 0.01,
+            ..Default::default()
+        };
         let low_activity = estimator.estimate_inference(&stats);
 
         stats.spike_rate = 0.5;

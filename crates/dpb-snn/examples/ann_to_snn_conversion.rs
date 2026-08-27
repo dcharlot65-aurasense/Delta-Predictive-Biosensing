@@ -44,7 +44,7 @@ fn main() {
 
     // Example 1: Default conversion
     println!("1. Default Conversion (Data-based normalization):");
-    let (norm_weights1, norm_biases1, converter1) = convert_model_to_snn(
+    let (_norm_weights1, _norm_biases1, converter1) = convert_model_to_snn(
         weights.clone(),
         biases.clone(),
         &sample_data,
@@ -64,7 +64,7 @@ fn main() {
         clip_negative_weights: false,
     };
 
-    let (norm_weights2, norm_biases2, converter2) = convert_model_to_snn(
+    let (_norm_weights2, _norm_biases2, converter2) = convert_model_to_snn(
         weights.clone(),
         biases.clone(),
         &sample_data,
@@ -84,7 +84,7 @@ fn main() {
         clip_negative_weights: true,
     };
 
-    let (norm_weights3, norm_biases3, converter3) = convert_model_to_snn(
+    let (_norm_weights3, _norm_biases3, converter3) = convert_model_to_snn(
         weights.clone(),
         biases.clone(),
         &sample_data,

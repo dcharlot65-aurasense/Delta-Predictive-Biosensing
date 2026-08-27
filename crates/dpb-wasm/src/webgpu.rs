@@ -454,7 +454,7 @@ mod tests {
         signal[7] = 0.7; // Ch1, sample 3 - crossing
 
         let samples = Float32Array::from(&signal[..]);
-        let spikes = encoder.encode_batch(samples);
+        let _spikes = encoder.encode_batch(samples);
 
         // Should detect some crossings
         // Exact count depends on implementation details

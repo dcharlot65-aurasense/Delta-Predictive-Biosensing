@@ -300,7 +300,7 @@ impl EventEncoder for SaccadeLatencyEncoder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dpb_core::SignalBuffer;
+    
 
     #[test]
     fn test_saccade_velocity_template() {

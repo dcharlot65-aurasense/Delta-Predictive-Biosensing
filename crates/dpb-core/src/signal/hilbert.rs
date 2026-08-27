@@ -195,6 +195,7 @@ mod tests {
         }
 
         // Imaginary part should be approximately -cos (90 degree phase shift)
+        #[allow(clippy::needless_range_loop)] // i also drives the expected value
         for i in 10..n - 10 {
             // Skip edges due to boundary effects
             let expected = -(2.0 * PI * 5.0 * i as f64 / n as f64).cos();
@@ -213,6 +214,7 @@ mod tests {
         let analytic = hilbert_transform(&signal);
 
         // Imaginary part should be approximately sin (90 degree phase shift)
+        #[allow(clippy::needless_range_loop)] // i also drives the expected value
         for i in 10..n - 10 {
             let expected = (2.0 * PI * 5.0 * i as f64 / n as f64).sin();
             assert_relative_eq!(analytic[i].im, expected, epsilon = 0.1);
@@ -275,6 +277,7 @@ mod tests {
         assert_eq!(analytic_sig.len(), n);
 
         // For a pure sine wave, amplitude should be relatively constant (near 1.0)
+        #[allow(clippy::needless_range_loop)] // i also drives the expected value
         for i in 10..n - 10 {
             assert!(analytic_sig.amplitude_envelope[i] > 0.8);
             assert!(analytic_sig.amplitude_envelope[i] < 1.2);

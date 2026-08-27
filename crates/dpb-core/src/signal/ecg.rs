@@ -679,9 +679,9 @@ mod tests {
         // Create synthetic QRS template
         let template_len = 50;
         let mut template = vec![0.0; template_len];
-        for i in 0..template_len {
+        for (i, i_slot) in template.iter_mut().enumerate().take(template_len) {
             let t = i as f64 / template_len as f64;
-            template[i] = (t * std::f64::consts::PI * 2.0).sin();
+            *i_slot = (t * std::f64::consts::PI * 2.0).sin();
         }
 
         // Similar beat should be classified as Normal
@@ -779,7 +779,7 @@ mod tests {
 
         assert!(irregularity > 0.0);
 
-        let (detected, confidence) = detector.detect_afib(&irregular_rr, irregularity);
+        let (_detected, confidence) = detector.detect_afib(&irregular_rr, irregularity);
         // With sufficient irregularity, AFib should be detected
         assert!((0.0..=1.0).contains(&confidence));
     }

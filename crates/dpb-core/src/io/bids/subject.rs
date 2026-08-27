@@ -351,10 +351,12 @@ mod tests {
         let subject = BidsSubject::new(temp_dir.path(), "01");
         subject.create()?;
 
-        let mut metadata = SubjectMetadata::default();
-        metadata.age = Some(25.0);
-        metadata.sex = Some("F".to_string());
-        metadata.handedness = Some("right".to_string());
+        let metadata = SubjectMetadata {
+            age: Some(25.0),
+            sex: Some("F".to_string()),
+            handedness: Some("right".to_string()),
+            ..Default::default()
+        };
 
         subject.write_metadata("test", &metadata)?;
 

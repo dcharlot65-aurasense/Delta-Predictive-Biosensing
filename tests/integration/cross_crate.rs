@@ -121,7 +121,6 @@ fn test_synth_to_encoder_pipeline() {
         // default `Delta` mode instead emits one event per threshold of
         // travel, which is the reconstructable sampling behaviour.
         mode: LevelCrossingMode::FixedLevel,
-        ..LevelCrossingConfig::default()
     };
 
     let spike_train = encoder.encode(&signal, &config)
@@ -152,7 +151,6 @@ fn test_encoder_to_snn_pipeline() {
         // default `Delta` mode instead emits one event per threshold of
         // travel, which is the reconstructable sampling behaviour.
         mode: LevelCrossingMode::FixedLevel,
-        ..LevelCrossingConfig::default()
     };
 
     let spike_train = encoder.encode(&signal, &config)
@@ -175,7 +173,6 @@ fn test_encoder_to_snn_pipeline() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut snn = FeedforwardSNN::new(vec![num_channels, 8, 4], snn_config, true).expect("SNN");
@@ -223,7 +220,6 @@ fn test_full_pipeline_integration() {
         // default `Delta` mode instead emits one event per threshold of
         // travel, which is the reconstructable sampling behaviour.
         mode: LevelCrossingMode::FixedLevel,
-        ..LevelCrossingConfig::default()
     };
     let spike_train = encoder.encode(&signal, &config).unwrap();
 
@@ -244,7 +240,6 @@ fn test_full_pipeline_integration() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
     let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 4], snn_config, true).expect("SNN");
     let output = snn.forward(&spike_tensor).unwrap();
@@ -282,7 +277,6 @@ fn test_event_encoder_trait() {
         // default `Delta` mode instead emits one event per threshold of
         // travel, which is the reconstructable sampling behaviour.
         mode: LevelCrossingMode::FixedLevel,
-        ..LevelCrossingConfig::default()
     };
     let spikes1 = encoder1.encode(&signal, &config1).unwrap();
 
@@ -344,7 +338,6 @@ fn test_neuron_model_compatibility() {
             num_steps: num_timesteps,
             neuron_model: model,
             neuron_params: NeuronParams::default(),
-            ..SNNConfig::default()
         };
 
         let mut snn = FeedforwardSNN::new(vec![num_channels, 8, 4], snn_config, true).expect("SNN");

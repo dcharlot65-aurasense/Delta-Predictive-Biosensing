@@ -544,15 +544,11 @@ mod tests {
         let mut data = Vec::new();
         let sample_rate = 100.0;
 
-        for beat in 0..5 {
+        for _beat in 0..5 {
             // Slow phase (0.3s at 10 deg/s)
-            for _ in 0..30 {
-                data.push(10.0);
-            }
+            data.resize(data.len() + 30, 10.0);
             // Quick phase (0.05s at -200 deg/s)
-            for _ in 0..5 {
-                data.push(-200.0);
-            }
+            data.resize(data.len() + 5, -200.0);
         }
 
         let signal = SignalBuffer::single_channel(data, sample_rate);

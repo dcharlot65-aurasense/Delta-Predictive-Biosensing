@@ -61,7 +61,7 @@ impl ColorScale {
     }
 
     /// Convert RGB to hex string
-    pub fn to_hex(&self, t: f32) -> String {
+    pub fn to_hex(self, t: f32) -> String {
         let (r, g, b) = self.color_at(t);
         format!("#{:02X}{:02X}{:02X}", r, g, b)
     }
@@ -411,8 +411,10 @@ impl ActivationHeatmap {
     /// Create a new activation heatmap
     pub fn new(data: Array2<f32>, layer_name: impl Into<String>) -> Self {
         let layer_name = layer_name.into();
-        let mut config = HeatmapConfig::default();
-        config.title = Some(format!("{} Activations", layer_name));
+        let config = HeatmapConfig {
+            title: Some(format!("{} Activations", layer_name)),
+            ..Default::default()
+        };
 
         Self {
             data,
@@ -475,9 +477,11 @@ impl CorrelationMatrix {
 
         let labels = (0..n_vars).map(|i| format!("Var{}", i)).collect();
 
-        let mut config = HeatmapConfig::default();
-        config.color_scale = ColorScale::RedBlue;
-        config.title = Some("Correlation Matrix".to_string());
+        let config = HeatmapConfig {
+            color_scale: ColorScale::RedBlue,
+            title: Some("Correlation Matrix".to_string()),
+            ..Default::default()
+        };
 
         Ok(Self {
             data: corr,

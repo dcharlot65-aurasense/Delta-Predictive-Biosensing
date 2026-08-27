@@ -35,7 +35,7 @@
 //!
 //! Research and educational use only. Not a medical device.
 
-use crate::{Demographics, MetricType, NormativeStats, NormsError, Result, Sex};
+use crate::Sex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

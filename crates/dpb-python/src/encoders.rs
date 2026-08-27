@@ -262,7 +262,6 @@ impl PyTemplateDeviationEncoder {
             template,
             threshold: self.deviation_threshold as f32,
             window_size: self.window_size,
-            ..TemplateDeviationConfig::default()
         };
 
         let encoder = TemplateDeviationEncoder::new("template_deviation");
@@ -318,7 +317,6 @@ impl PyDerivativeEncoder {
         let config = DerivativeConfig {
             threshold: self.threshold as f32,
             order: self.order as u32,
-            ..DerivativeConfig::default()
         };
 
         let encoder = DerivativeEncoder::new("derivative");

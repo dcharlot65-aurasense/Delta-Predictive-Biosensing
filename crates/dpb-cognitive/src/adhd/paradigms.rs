@@ -4,7 +4,7 @@
 //! measuring attention, impulsivity, and activity during a sustained attention task.
 
 use rand::rngs::StdRng;
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 
 /// QbTest-style continuous performance test
 #[derive(Debug, Clone)]

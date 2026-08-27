@@ -5,13 +5,8 @@
 
 use dpb_snn::*;
 use dpb_snn::architectures::SNNArchitecture;
-use dpb_snn::calibration::*;
-use dpb_snn::explain::*;
 use dpb_snn::tensor::SpikeTensor;
-use dpb_snn::decoders::*;
-use dpb_snn::training::*;
-use ndarray::{Array1, Array2, Array3, s};
-use rand::Rng;
+use ndarray::Array2;
 
 /// Create a simple synthetic spike tensor for testing
 fn create_test_spike_tensor(batch_size: usize, num_neurons: usize, num_timesteps: usize) -> SpikeTensor {
@@ -59,7 +54,6 @@ fn test_encoder_to_snn_to_decoder() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..Default::default()
     };
 
     let mut snn = FeedforwardSNN::new(
@@ -121,7 +115,6 @@ fn test_calibrated_snn_predictions() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..Default::default()
     };
 
     let mut snn = FeedforwardSNN::new(vec![num_input, 20, num_classes], snn_config, true)
@@ -250,7 +243,6 @@ fn test_explainability_pipeline() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..Default::default()
     };
 
     let mut snn = FeedforwardSNN::new(
@@ -488,7 +480,6 @@ fn test_uncertainty_estimation_pipeline() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..Default::default()
     };
 
     for _ in 0..num_models {
@@ -657,7 +648,6 @@ fn test_training_with_convergence_analysis() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..Default::default()
     };
 
     let mut snn = FeedforwardSNN::new(vec![num_input, 20, num_output], snn_config, true)

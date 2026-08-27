@@ -2,7 +2,7 @@
 //!
 //! Includes simple reaction time (SRT) and choice reaction time (CRT) paradigms.
 
-use rand::{Rng, RngExt};
+use rand::RngExt;
 use rand_distr::{Distribution, Uniform};
 
 /// A simple reaction time task where participant responds to a single stimulus
@@ -54,7 +54,7 @@ impl SimpleReactionTime {
         let mut anticipations = 0;
         let mut lapses = 0;
 
-        for (trial, response) in trials.iter().zip(responses.iter()) {
+        for (_trial, response) in trials.iter().zip(responses.iter()) {
             match response.response_time {
                 Some(rt) => {
                     if rt < 100.0 {

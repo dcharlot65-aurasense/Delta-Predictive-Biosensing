@@ -9,6 +9,13 @@ use dpb_bench::datasets::{SyntheticECG, SyntheticGait, SyntheticTremor, Benchmar
 use dpb_encoders::prelude::*;
 use dpb_core::{EventEncoder, SignalBuffer};
 
+/// A named encoder, boxed so the benchmark can hold several kinds in one
+/// list and drive them through the same loop.
+type NamedEncoder = (
+    &'static str,
+    Box<dyn Fn(&SignalBuffer) -> dpb_core::Result<Vec<dpb_core::SpikeEvent>>>,
+);
+
 fn benchmark_level_crossing(c: &mut Criterion) {
     let mut group = c.benchmark_group("level_crossing_encoder");
 
@@ -57,7 +64,6 @@ fn benchmark_template_deviation(c: &mut Criterion) {
             template,
             threshold: 0.2,
             window_size: 5,
-            ..TemplateDeviationConfig::default()
         };
 
         group.bench_with_input(
@@ -185,7 +191,7 @@ fn benchmark_throughput(c: &mut Criterion) {
     let dataset = SyntheticECG::new(1000, 250.0, Some(42));
     let (signal, _) = dataset.generate().unwrap();
 
-    let encoders: Vec<(&str, Box<dyn Fn(&SignalBuffer) -> dpb_core::Result<Vec<dpb_core::SpikeEvent>>>)> = vec![
+    let encoders: Vec<NamedEncoder> = vec![
         ("level_crossing", Box::new(|s| {
             let encoder = LevelCrossingEncoder::new("bench");
             let config = LevelCrossingConfig {

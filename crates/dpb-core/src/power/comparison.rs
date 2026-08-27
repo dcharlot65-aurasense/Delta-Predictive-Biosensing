@@ -569,11 +569,15 @@ mod tests {
 
     #[test]
     fn test_leakage_temperature_scaling() {
-        let mut cold = LeakagePowerEstimator::default();
-        cold.temperature_c = 0.0;
+        let cold = LeakagePowerEstimator {
+            temperature_c: 0.0,
+            ..Default::default()
+        };
 
-        let mut hot = LeakagePowerEstimator::default();
-        hot.temperature_c = 85.0;
+        let hot = LeakagePowerEstimator {
+            temperature_c: 85.0,
+            ..Default::default()
+        };
 
         let power_cold = cold.compute_leakage_power();
         let power_hot = hot.compute_leakage_power();

@@ -409,9 +409,11 @@ mod tests {
         let session = BidsSession::new(temp_dir.path(), "01", "baseline");
         session.create()?;
 
-        let mut metadata = SessionMetadata::default();
-        metadata.acq_time = Some("2025-01-15T10:30:00".to_string());
-        metadata.condition = Some("resting_state".to_string());
+        let metadata = SessionMetadata {
+            acq_time: Some("2025-01-15T10:30:00".to_string()),
+            condition: Some("resting_state".to_string()),
+            ..Default::default()
+        };
 
         session.write_metadata("test", &metadata)?;
 

@@ -585,7 +585,7 @@ mod tests {
     fn test_graph_builder() {
         let mut builder = WebNNGraphBuilder::new();
         let input = builder.input("x", WebNNTensorDesc::float32(vec![1, 128]));
-        let output = builder.relu(&input);
+        let _output = builder.relu(&input);
         assert_eq!(builder.operation_count(), 1);
     }
 }

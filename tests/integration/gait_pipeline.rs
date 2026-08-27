@@ -7,10 +7,10 @@
 //! 4. Decode to UPDRS gait score
 //! 5. Validate against ground truth
 
-use dpb_core::{SignalBuffer, Context};
+use dpb_core::SignalBuffer;
 use dpb_encoders::prelude::*;
 use dpb_snn::{
-    RecurrentSNN, SpikeTensor, SpikeRateDecoder, GaitScoreDecoder,
+    RecurrentSNN, SpikeTensor, GaitScoreDecoder,
     NeuronModel, NeuronParams, SNNConfig,
 };
 // `forward` and `decode` are trait methods.
@@ -115,7 +115,6 @@ fn test_gait_pipeline_end_to_end() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut snn = RecurrentSNN::new(num_channels, vec![32], 4, snn_config.clone()).expect("SNN");

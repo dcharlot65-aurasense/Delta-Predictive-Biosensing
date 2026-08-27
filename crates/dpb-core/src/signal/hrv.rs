@@ -644,9 +644,7 @@ mod tests {
         let mut rr_intervals = Vec::new();
 
         // 10 minutes of data at 60 bpm
-        for _ in 0..600 {
-            rr_intervals.push(1000.0);
-        }
+        rr_intervals.resize(rr_intervals.len() + 600, 1000.0);
 
         let sdann = analyzer.compute_sdann(&rr_intervals);
         // Should be near zero for constant RR

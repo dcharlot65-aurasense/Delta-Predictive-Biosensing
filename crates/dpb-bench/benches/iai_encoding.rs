@@ -58,7 +58,6 @@ mod setup {
         let config = DerivativeConfig {
             threshold: 0.5,
             order: 1,
-            ..DerivativeConfig::default()
         };
         (encoder, config)
     }

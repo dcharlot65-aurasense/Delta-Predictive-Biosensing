@@ -353,7 +353,6 @@ fn json_number_array(values: &[f64]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::explain::{SpatialAttention, TemporalAttention};
 
     #[test]
     fn test_heatmap_creation() {

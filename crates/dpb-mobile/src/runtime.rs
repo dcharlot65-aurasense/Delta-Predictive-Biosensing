@@ -432,7 +432,7 @@ impl RuntimeBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::MobileModel;
+    
 
     #[test]
     fn test_runtime_config_default() {

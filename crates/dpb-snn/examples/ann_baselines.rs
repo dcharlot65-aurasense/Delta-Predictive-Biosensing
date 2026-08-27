@@ -96,7 +96,7 @@ fn main() {
         Tensor::randn(vec![10, 20], 42),
         Tensor::randn(vec![20, 10], 43),
     ];
-    let biases = [Tensor::zeros(vec![20]),
+    let _biases = [Tensor::zeros(vec![20]),
         Tensor::zeros(vec![10])];
     let sample_data = vec![
         Tensor::randn(vec![10], 123),

@@ -403,9 +403,11 @@ mod tests {
     #[test]
     fn test_runtime_create_with_config() {
         unsafe {
-            let mut config = DpbRuntimeConfig::default();
-            config.max_memory_mb = 50;
-            config.thread_count = 4;
+            let config = DpbRuntimeConfig {
+                max_memory_mb: 50,
+                thread_count: 4,
+                ..Default::default()
+            };
 
             let runtime = dpb_runtime_create_with_config(&config);
             assert!(!runtime.is_null());

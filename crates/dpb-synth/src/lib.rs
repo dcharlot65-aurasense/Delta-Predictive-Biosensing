@@ -248,8 +248,8 @@ mod tests {
 
     #[test]
     fn test_module_structure() {
-        // Smoke test to ensure modules compile
-        assert!(true);
+        // Compiling this test is the check: it names the module's items
+        // through the imports above. An assert!(true) added nothing.
     }
 
     #[test]

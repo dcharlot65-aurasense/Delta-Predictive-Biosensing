@@ -1124,7 +1124,7 @@ mod tests {
         assert!(output.is_ok());
 
         let tensor = output.unwrap();
-        let (batch, time, features) = tensor.shape();
+        let (batch, time, _features) = tensor.shape();
         assert_eq!(batch, 1);
         assert_eq!(time, 10);
     }

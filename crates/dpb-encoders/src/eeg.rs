@@ -1140,9 +1140,8 @@ mod tests {
         let encoder = AlphaBandEncoder::new();
         let config = BandPowerConfig::alpha();
 
-        let events = encoder.encode(&signal, &config).unwrap();
+        let _events = encoder.encode(&signal, &config).unwrap();
         // Should detect consistent alpha power
-        assert!(events.len() >= 0); // May or may not generate events depending on threshold
     }
 
     #[test]
@@ -1174,6 +1173,7 @@ mod tests {
         // Create signal with artifact (large amplitude spike)
         let mut data = vec![0.0_f32; n_samples];
         // Add blink-like artifact
+        #[allow(clippy::needless_range_loop)] // the index carries meaning beyond the lookup
         for i in 100..150 {
             let offset = (i as i32) - 125; // Use signed arithmetic
             data[i] = 150.0 * ((-(offset as f32).powi(2)) / 100.0).exp();

@@ -17,7 +17,6 @@ use dpb_snn::architectures::SNNArchitecture;
 use dpb_snn::decoders::Decoder;
 use std::time::Instant;
 
-use super::utils::*;
 
 #[test]
 fn test_encoder_throughput() {
@@ -41,7 +40,6 @@ fn test_encoder_throughput() {
         // default `Delta` mode instead emits one event per threshold of
         // travel, which is the reconstructable sampling behaviour.
         mode: LevelCrossingMode::FixedLevel,
-        ..LevelCrossingConfig::default()
     };
 
     // Benchmark encoding
@@ -81,7 +79,6 @@ fn test_snn_inference_latency() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 16, 4], snn_config, true).expect("SNN");
@@ -91,7 +88,7 @@ fn test_snn_inference_latency() {
 
     // Benchmark inference
     let start = Instant::now();
-    let output = snn.forward(&spike_tensor)
+    let _output = snn.forward(&spike_tensor)
         .expect("Failed to run SNN");
     let duration = start.elapsed();
 
@@ -169,7 +166,6 @@ fn test_end_to_end_pipeline_latency() {
         // default `Delta` mode instead emits one event per threshold of
         // travel, which is the reconstructable sampling behaviour.
         mode: LevelCrossingMode::FixedLevel,
-        ..LevelCrossingConfig::default()
     };
 
     // SNN
@@ -180,7 +176,6 @@ fn test_end_to_end_pipeline_latency() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
     let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 4], snn_config, true).expect("SNN");
 
@@ -236,7 +231,6 @@ fn test_batch_inference_throughput() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 4], snn_config, true).expect("SNN");
@@ -281,7 +275,6 @@ fn test_recurrent_snn_latency() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut snn = RecurrentSNN::new(num_channels, vec![32], 4, snn_config).expect("SNN");
@@ -291,7 +284,7 @@ fn test_recurrent_snn_latency() {
 
     // Benchmark
     let start = Instant::now();
-    let output = snn.forward(&spike_tensor)
+    let _output = snn.forward(&spike_tensor)
         .expect("Failed to run recurrent SNN");
     let duration = start.elapsed();
 
@@ -318,7 +311,6 @@ fn test_convolutional_snn_latency() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut snn = ConvolutionalSNN::new(num_channels, 4, snn_config);
@@ -328,7 +320,7 @@ fn test_convolutional_snn_latency() {
 
     // Benchmark
     let start = Instant::now();
-    let output = snn.forward(&spike_tensor)
+    let _output = snn.forward(&spike_tensor)
         .expect("Failed to run convolutional SNN");
     let duration = start.elapsed();
 
@@ -351,12 +343,11 @@ fn test_memory_footprint() {
     let spike_tensor_bytes = num_channels * num_timesteps * std::mem::size_of::<f32>();
 
     // SNN config
-    let snn_config = SNNConfig {
+    let _snn_config = SNNConfig {
         dt: 1.0,
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     // Network layers
@@ -400,7 +391,6 @@ fn test_scalability_timesteps() {
         num_steps: 100,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     for num_timesteps in timestep_counts {

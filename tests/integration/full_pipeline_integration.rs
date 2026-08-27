@@ -3,7 +3,7 @@
 //! These tests exercise the complete DPB framework pipeline:
 //! Synthesis → Processing → Encoding → SNN → Decoding → Analysis
 
-use dpb_core::{SignalBuffer, SpikeEvent, Result};
+use dpb_core::SignalBuffer;
 use dpb_encoders::prelude::*;
 use dpb_snn::{
     FeedforwardSNN, SpikeTensor, SpikeRateDecoder, Decoder,
@@ -109,7 +109,6 @@ fn test_synthetic_to_analysis_pipeline() {
         // default `Delta` mode instead emits one event per threshold of
         // travel, which is the reconstructable sampling behaviour.
         mode: LevelCrossingMode::FixedLevel,
-        ..LevelCrossingConfig::default()
     };
 
     let spike_train = encoder
@@ -139,7 +138,6 @@ fn test_synthetic_to_analysis_pipeline() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 16, num_output], snn_config, true).expect("SNN");
@@ -249,7 +247,6 @@ fn test_multimodal_synthesis_and_fusion() {
         // default `Delta` mode instead emits one event per threshold of
         // travel, which is the reconstructable sampling behaviour.
         mode: LevelCrossingMode::FixedLevel,
-        ..LevelCrossingConfig::default()
     };
 
     let resp_config = LevelCrossingConfig {
@@ -260,7 +257,6 @@ fn test_multimodal_synthesis_and_fusion() {
         // default `Delta` mode instead emits one event per threshold of
         // travel, which is the reconstructable sampling behaviour.
         mode: LevelCrossingMode::FixedLevel,
-        ..LevelCrossingConfig::default()
     };
 
     let ecg_spikes = ecg_encoder
@@ -306,7 +302,6 @@ fn test_multimodal_synthesis_and_fusion() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut fusion_snn = FeedforwardSNN::new(vec![total_channels, 32, 8], snn_config, true).expect("SNN");
@@ -493,7 +488,6 @@ fn test_real_time_streaming_simulation() {
         // default `Delta` mode instead emits one event per threshold of
         // travel, which is the reconstructable sampling behaviour.
         mode: LevelCrossingMode::FixedLevel,
-        ..LevelCrossingConfig::default()
     };
 
     let mut total_latency = 0.0;
@@ -642,7 +636,6 @@ fn test_end_to_end_feature_extraction() {
         // default `Delta` mode instead emits one event per threshold of
         // travel, which is the reconstructable sampling behaviour.
         mode: LevelCrossingMode::FixedLevel,
-        ..LevelCrossingConfig::default()
     };
 
     let spikes = encoder

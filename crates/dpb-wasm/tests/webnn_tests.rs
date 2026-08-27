@@ -387,7 +387,7 @@ mod webnn_tests {
             webnn_npu: bool,
         }
 
-        let browsers = vec![
+        let browsers = [
             BrowserSupport {
                 name: "Chrome".to_string(),
                 version: 122,

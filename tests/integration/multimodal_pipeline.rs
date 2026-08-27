@@ -66,7 +66,6 @@ fn test_multimodal_ecg_tremor_fusion() {
         // default `Delta` mode instead emits one event per threshold of
         // travel, which is the reconstructable sampling behaviour.
         mode: LevelCrossingMode::FixedLevel,
-        ..LevelCrossingConfig::default()
     };
 
     let ecg_spikes = ecg_encoder.encode(&ecg_buffer, &ecg_config)
@@ -113,7 +112,6 @@ fn test_multimodal_ecg_tremor_fusion() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut snn = FeedforwardSNN::new(vec![total_channels, 64, 32, 8], snn_config.clone(), true).expect("SNN");

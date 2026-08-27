@@ -4,7 +4,7 @@
 //! to TensorFlow Lite format with various quantization options.
 
 use dpb_snn::export::{
-    TFLiteExporter, TFLiteConfig, QuantizationConfig, QuantizationMode,
+    TFLiteExporter, TFLiteConfig, QuantizationConfig,
     ModelWeights, LayerConfig, LayerType,
     weights::LayerWeights,
 };

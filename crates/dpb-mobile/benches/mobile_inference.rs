@@ -3,8 +3,6 @@ use std::hint::black_box;
 use dpb_mobile::{
     MobileModel, MobileRuntime,
     model::{LayerInfo, LayerType, QuantizationType},
-    optimization::{WeightPruner, PruningStrategy, OperatorFusion, QuantizationOptimizer},
-    benchmark::{BenchmarkRunner, BenchmarkConfig},
 };
 
 fn create_test_model(input_dim: usize, hidden_dim: usize, output_dim: usize) -> MobileModel {

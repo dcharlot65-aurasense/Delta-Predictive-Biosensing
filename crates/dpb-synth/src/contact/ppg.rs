@@ -304,9 +304,8 @@ mod tests {
         let result = generator.generate(&params, 42).unwrap();
 
         // Check HR is decreasing over time
-        let mut cumulative_time = 0.0;
         let hr_early = 60.0 / result.signal[0];
-        cumulative_time = result.signal[0];
+        let mut cumulative_time = result.signal[0];
 
         let mid_idx = result.signal.len() / 2;
         for rr in &result.signal[1..mid_idx] {

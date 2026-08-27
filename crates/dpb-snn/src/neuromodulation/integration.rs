@@ -645,8 +645,10 @@ mod tests {
 
     #[test]
     fn test_synergistic_interaction() {
-        let mut config = ModulatoryNetworkConfig::default();
-        config.interaction_type = ModulatorInteraction::Synergistic;
+        let config = ModulatoryNetworkConfig {
+            interaction_type: ModulatorInteraction::Synergistic,
+            ..Default::default()
+        };
 
         let mut network = ModulatoryNetwork::new(config);
 

@@ -517,7 +517,7 @@ mod tests {
             WaveletFamily::Daubechies(4),
         ] {
             for levels in 1..=2 {
-                let dwt = DiscreteWaveletTransform::new(wavelet.clone(), levels);
+                let dwt = DiscreteWaveletTransform::new(wavelet, levels);
                 let reconstructed = dwt.reconstruct(&dwt.decompose(&signal));
 
                 assert_eq!(reconstructed.len(), signal.len());

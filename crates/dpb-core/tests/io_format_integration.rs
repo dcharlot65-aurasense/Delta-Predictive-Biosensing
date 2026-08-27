@@ -4,8 +4,6 @@
 //! including WFDB and EDF, verifying roundtrip consistency.
 
 use dpb_core::io::*;
-use std::io::Cursor;
-use std::path::PathBuf;
 use tempfile::TempDir;
 
 /// Create synthetic signal data for testing
@@ -172,7 +170,7 @@ fn test_wfdb_multi_channel_roundtrip() {
         num_channels
     );
 
-    for ch in 0..num_channels {
+    for (ch, ch_slot) in channel_data.iter_mut().enumerate().take(num_channels) {
         let read_data = reader
             .read_all_samples(ch)
             .unwrap_or_else(|_| panic!("Failed to read channel {}", ch));
@@ -180,7 +178,7 @@ fn test_wfdb_multi_channel_roundtrip() {
         assert_eq!(read_data.len(), num_samples);
 
         // Verify correlation with original
-        let correlation = compute_correlation(&channel_data[ch], &read_data);
+        let correlation = compute_correlation(&*ch_slot, &read_data);
         println!("  Channel {} correlation: {:.6}", ch, correlation);
         assert!(
             correlation > 0.99,

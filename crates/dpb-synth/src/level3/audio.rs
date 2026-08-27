@@ -660,12 +660,14 @@ mod tests {
     #[test]
     fn test_festival_script_generation() {
         let generator = Level3AudioGenerator::new();
-        let mut params = VoiceAudioParams::default();
-        params.text = "Hello world".to_string();
-        params.speaking_rate = 120.0;
-        params.pitch_mean = 180.0;
-        params.pitch_std = 25.0;
-        params.output_path = "/tmp/test_festival.wav".to_string();
+        let params = VoiceAudioParams {
+            text: "Hello world".to_string(),
+            speaking_rate: 120.0,
+            pitch_mean: 180.0,
+            pitch_std: 25.0,
+            output_path: "/tmp/test_festival.wav".to_string(),
+            ..Default::default()
+        };
 
         let script = generator.create_festival_script(&params).unwrap();
 
@@ -680,9 +682,11 @@ mod tests {
     #[test]
     fn test_festival_script_with_voice() {
         let generator = Level3AudioGenerator::new();
-        let mut params = VoiceAudioParams::default();
-        params.voice = Some("kal_diphone".to_string());
-        params.output_path = "/tmp/test_voice.wav".to_string();
+        let params = VoiceAudioParams {
+            voice: Some("kal_diphone".to_string()),
+            output_path: "/tmp/test_voice.wav".to_string(),
+            ..Default::default()
+        };
 
         let script = generator.create_festival_script(&params).unwrap();
 
@@ -692,10 +696,12 @@ mod tests {
     #[test]
     fn test_festival_script_with_pathological_params() {
         let generator = Level3AudioGenerator::new();
-        let mut params = VoiceAudioParams::default();
-        params.monotonicity = 0.6;
-        params.hypophonia_severity = 0.4;
-        params.output_path = "/tmp/test_pathology.wav".to_string();
+        let params = VoiceAudioParams {
+            monotonicity: 0.6,
+            hypophonia_severity: 0.4,
+            output_path: "/tmp/test_pathology.wav".to_string(),
+            ..Default::default()
+        };
 
         let script = generator.create_festival_script(&params).unwrap();
 
@@ -707,11 +713,13 @@ mod tests {
     #[test]
     fn test_praat_script_generation() {
         let generator = Level3AudioGenerator::new();
-        let mut params = VoiceAudioParams::default();
-        params.text = "Test speech".to_string();
-        params.pitch_mean = 200.0;
-        params.speaking_rate = 140.0;
-        params.output_path = "/tmp/test_praat.wav".to_string();
+        let params = VoiceAudioParams {
+            text: "Test speech".to_string(),
+            pitch_mean: 200.0,
+            speaking_rate: 140.0,
+            output_path: "/tmp/test_praat.wav".to_string(),
+            ..Default::default()
+        };
 
         let script = generator.create_praat_script(&params, "/tmp/input.wav").unwrap();
 
@@ -727,10 +735,12 @@ mod tests {
     #[test]
     fn test_praat_script_with_tremor() {
         let generator = Level3AudioGenerator::new();
-        let mut params = VoiceAudioParams::default();
-        params.tremor_frequency = 5.0;
-        params.tremor_amplitude = 0.3;
-        params.output_path = "/tmp/test_tremor.wav".to_string();
+        let params = VoiceAudioParams {
+            tremor_frequency: 5.0,
+            tremor_amplitude: 0.3,
+            output_path: "/tmp/test_tremor.wav".to_string(),
+            ..Default::default()
+        };
 
         let script = generator.create_praat_script(&params, "/tmp/input.wav").unwrap();
 
@@ -741,9 +751,11 @@ mod tests {
     #[test]
     fn test_praat_script_with_monotonicity() {
         let generator = Level3AudioGenerator::new();
-        let mut params = VoiceAudioParams::default();
-        params.monotonicity = 0.7;
-        params.output_path = "/tmp/test_mono.wav".to_string();
+        let params = VoiceAudioParams {
+            monotonicity: 0.7,
+            output_path: "/tmp/test_mono.wav".to_string(),
+            ..Default::default()
+        };
 
         let script = generator.create_praat_script(&params, "/tmp/input.wav").unwrap();
 
@@ -776,7 +788,7 @@ mod tests {
 
     #[test]
     fn test_backend_selection() {
-        let generator = Level3AudioGenerator::new();
+        let _generator = Level3AudioGenerator::new();
 
         // Test each backend type
         let backends = vec![
@@ -786,8 +798,10 @@ mod tests {
         ];
 
         for backend in backends {
-            let mut params = VoiceAudioParams::default();
-            params.backend = backend;
+            let _params = VoiceAudioParams {
+                backend,
+                ..Default::default()
+            };
             // Note: This just tests the selection logic, not actual execution
             // which requires the tools to be installed
         }
@@ -798,18 +812,24 @@ mod tests {
         let generator = Level3AudioGenerator::new();
 
         // Test empty text
-        let mut params = VoiceAudioParams::default();
-        params.text = "".to_string();
+        let params = VoiceAudioParams {
+            text: "".to_string(),
+            ..Default::default()
+        };
         assert!(generator.validate_voice_params(&params).is_err());
 
         // Test invalid speaking rate
-        let mut params = VoiceAudioParams::default();
-        params.speaking_rate = 0.0;
+        let params = VoiceAudioParams {
+            speaking_rate: 0.0,
+            ..Default::default()
+        };
         assert!(generator.validate_voice_params(&params).is_err());
 
         // Test invalid volume
-        let mut params = VoiceAudioParams::default();
-        params.volume = 1.5;
+        let params = VoiceAudioParams {
+            volume: 1.5,
+            ..Default::default()
+        };
         assert!(generator.validate_voice_params(&params).is_err());
 
         // Test valid params
@@ -820,10 +840,12 @@ mod tests {
     #[test]
     fn test_festival_duration_calculation() {
         let generator = Level3AudioGenerator::new();
-        let mut params = VoiceAudioParams::default();
-        params.speaking_rate = 100.0; // Slower than default 150
-        params.text = "Test".to_string();
-        params.output_path = "/tmp/test.wav".to_string();
+        let params = VoiceAudioParams {
+            speaking_rate: 100.0, // Slower than default 150
+            text: "Test".to_string(),
+            output_path: "/tmp/test.wav".to_string(),
+            ..Default::default()
+        };
 
         let script = generator.create_festival_script(&params).unwrap();
 
@@ -834,10 +856,12 @@ mod tests {
     #[test]
     fn test_praat_volume_modification() {
         let generator = Level3AudioGenerator::new();
-        let mut params = VoiceAudioParams::default();
-        params.volume = 0.5;
-        params.hypophonia_severity = 0.3;
-        params.output_path = "/tmp/test_volume.wav".to_string();
+        let params = VoiceAudioParams {
+            volume: 0.5,
+            hypophonia_severity: 0.3,
+            output_path: "/tmp/test_volume.wav".to_string(),
+            ..Default::default()
+        };
 
         let script = generator.create_praat_script(&params, "/tmp/input.wav").unwrap();
 
@@ -847,9 +871,11 @@ mod tests {
     #[test]
     fn test_text_escaping_festival() {
         let generator = Level3AudioGenerator::new();
-        let mut params = VoiceAudioParams::default();
-        params.text = "He said \"Hello world\"".to_string();
-        params.output_path = "/tmp/test_escape.wav".to_string();
+        let params = VoiceAudioParams {
+            text: "He said \"Hello world\"".to_string(),
+            output_path: "/tmp/test_escape.wav".to_string(),
+            ..Default::default()
+        };
 
         let script = generator.create_festival_script(&params).unwrap();
 

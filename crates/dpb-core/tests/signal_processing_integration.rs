@@ -5,8 +5,8 @@
 
 use dpb_core::signal::*;
 use dpb_core::pipeline::*;
-use dpb_core::{SignalBuffer, Result};
-use ndarray::{Array1, Array2};
+use dpb_core::SignalBuffer;
+use ndarray::Array1;
 use std::f64::consts::PI;
 
 /// Generate synthetic ECG signal with known heart rate
@@ -16,6 +16,7 @@ fn generate_synthetic_ecg(duration: f64, sample_rate: f64, heart_rate: f64) -> V
 
     let beat_period = 60.0 / heart_rate; // seconds per beat
 
+    #[allow(clippy::needless_range_loop)] // i drives the time base, not just the index
     for i in 0..num_samples {
         let t = i as f64 / sample_rate;
         let beat_phase = (t % beat_period) / beat_period;
@@ -59,6 +60,7 @@ fn generate_synthetic_eeg_with_seizure(
 
     let seizure_end = seizure_start + seizure_duration;
 
+    #[allow(clippy::needless_range_loop)] // i drives the time base, not just the index
     for i in 0..num_samples {
         let t = i as f64 / sample_rate;
 
@@ -93,6 +95,7 @@ fn generate_respiratory_with_apnea(
 
     let breath_period = 60.0 / breath_rate;
 
+    #[allow(clippy::needless_range_loop)] // i drives the time base, not just the index
     for i in 0..num_samples {
         let t = i as f64 / sample_rate;
 
@@ -129,7 +132,7 @@ fn test_ecg_processing_pipeline() {
     let ecg_data = generate_synthetic_ecg(duration, sample_rate, heart_rate);
 
     // Step 2: Create signal buffer
-    let signal = SignalBuffer::single_channel(
+    let _signal = SignalBuffer::single_channel(
         ecg_data.iter().map(|&x| x as f32).collect(),
         sample_rate,
     );
@@ -476,8 +479,8 @@ fn test_signal_quality_assessment() {
 
     // Generate noisy signal
     let mut noisy_signal = clean_signal.clone();
-    for i in 0..noisy_signal.len() {
-        noisy_signal[i] += 0.5 * ((i as f64 * 0.1).sin());
+    for (i, sample) in noisy_signal.iter_mut().enumerate() {
+        *sample += 0.5 * ((i as f64 * 0.1).sin());
     }
 
     println!("Signal Quality Assessment:");

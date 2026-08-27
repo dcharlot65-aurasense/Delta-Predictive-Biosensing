@@ -92,7 +92,8 @@ impl ContinuousPerformanceTest {
         let mut hit_rts = Vec::new();
         let mut hits = 0;
         let mut false_alarms = 0;
-        let mut correct_rejections = 0;
+        // Correct rejections are not counted: they are n_non_targets minus
+        // false_alarms, and d' below is computed from n_non_targets directly.
 
         for (trial, response) in trials.iter().zip(responses.iter()) {
             match (trial.is_target, response.responded) {
@@ -107,7 +108,7 @@ impl ContinuousPerformanceTest {
                     commissions += 1;
                     false_alarms += 1;
                 }
-                (false, false) => correct_rejections += 1,
+                (false, false) => {}
             }
         }
 
@@ -224,7 +225,7 @@ impl StroopTask {
             StroopCondition::Incongruent,
             StroopCondition::Neutral,
         ] {
-            for i in 0..self.trials_per_condition {
+            for _i in 0..self.trials_per_condition {
                 let color_idx = rng.random_range(0..colors.len());
                 let color = colors[color_idx];
 

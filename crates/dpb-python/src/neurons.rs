@@ -75,6 +75,10 @@ impl PyNeuronModel {
 ///     >>> neuron = LifNeuron(tau=0.02, threshold=1.0, reset=0.0)
 ///     >>> spiked = neuron.step(input_current=0.5, dt=0.001)
 #[pyclass(name = "LifNeuron", extends=PyNeuronModel)]
+// Recorded from the Python-side constructor. The wrapper does not consume
+// these yet, but dropping them would silently discard what a caller
+// passed through the binding.
+#[allow(dead_code)]
 pub struct PyLifNeuron {
     tau: f64,
     threshold: f64,
@@ -359,6 +363,10 @@ pub struct PyHodgkinHuxleyNeuron {
 #[pymethods]
 impl PyHodgkinHuxleyNeuron {
     #[new]
+    // gNa/gK/gL and ENa/EK/EL are the Hodgkin-Huxley symbols, and pyo3's
+    // signature names them for Python callers too; snake case would
+    // diverge from the model and from the documented keyword arguments.
+    #[allow(non_snake_case)]
     #[pyo3(signature = (gNa=120.0, gK=36.0, gL=0.3, ENa=50.0, EK=-77.0, EL=-54.387))]
     fn new(gNa: f64, gK: f64, gL: f64, ENa: f64, EK: f64, EL: f64) -> PyClassInitializer<Self> {
         let mut params = HashMap::new();

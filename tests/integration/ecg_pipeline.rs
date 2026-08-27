@@ -7,7 +7,7 @@
 //! 4. Decode to heart rate estimate
 //! 5. Validate against ground truth
 
-use dpb_core::{SignalBuffer, SpikeEvent, Context};
+use dpb_core::SignalBuffer;
 use dpb_encoders::prelude::*;
 use dpb_snn::{
     FeedforwardSNN, SpikeTensor, SpikeRateDecoder,
@@ -82,7 +82,6 @@ fn test_ecg_pipeline_end_to_end() {
         // default `Delta` mode instead emits one event per threshold of
         // travel, which is the reconstructable sampling behaviour.
         mode: LevelCrossingMode::FixedLevel,
-        ..LevelCrossingConfig::default()
     };
 
     let spike_train = encoder.encode(&signal, &encoder_config)
@@ -119,7 +118,6 @@ fn test_ecg_pipeline_end_to_end() {
         num_steps: num_timesteps,
         neuron_model: NeuronModel::LIF,
         neuron_params: NeuronParams::default(),
-        ..SNNConfig::default()
     };
 
     let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 16, 1], snn_config.clone(), true).expect("SNN");
@@ -292,7 +290,6 @@ fn test_ecg_encoder_threshold_sensitivity() {
         // default `Delta` mode instead emits one event per threshold of
         // travel, which is the reconstructable sampling behaviour.
         mode: LevelCrossingMode::FixedLevel,
-        ..LevelCrossingConfig::default()
         };
 
         let spike_train = encoder.encode(&signal, &config)

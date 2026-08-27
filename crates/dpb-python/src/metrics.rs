@@ -4,6 +4,15 @@ use dpb_core::validation::roc::RocAnalyzer;
 
 use numpy::{PyArray2, PyReadonlyArray1};
 use pyo3::prelude::*;
+
+/// The three arrays an ROC curve is returned as: false-positive rate,
+/// true-positive rate, and the threshold each point was measured at.
+type RocCurveArrays = (
+    Py<numpy::PyArray1<f64>>,
+    Py<numpy::PyArray1<f64>>,
+    Py<numpy::PyArray1<f64>>,
+);
+
 use pyo3::PyClassInitializer;
 use std::collections::HashMap;
 
@@ -429,7 +438,7 @@ impl PyROCCurve {
         predictions: PyReadonlyArray1<f32>,
         targets: PyReadonlyArray1<i32>,
         py: Python,
-    ) -> PyResult<(Py<numpy::PyArray1<f64>>, Py<numpy::PyArray1<f64>>, Py<numpy::PyArray1<f64>>)> {
+    ) -> PyResult<RocCurveArrays> {
         // Computed by `dpb_core::validation::roc`, which emits one point per
         // DISTINCT threshold so the curve does not depend on the order tied
         // scores happen to arrive in.

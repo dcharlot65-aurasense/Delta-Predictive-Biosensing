@@ -200,9 +200,11 @@ mod tests {
     #[test]
     fn test_formant_template() {
         let template = FormantTemplate;
-        let mut context = Context::default();
-
-        context.sex = Some("Male".to_string());
+        // Reassigned below, so it stays mut.
+        let mut context = Context {
+            sex: Some("Male".to_string()),
+            ..Default::default()
+        };
         assert_eq!(template.expected_value(&context), 700.0);
 
         context.sex = Some("Female".to_string());

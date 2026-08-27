@@ -14,7 +14,7 @@ pub enum Sex {
 
 impl Sex {
     /// Parse from string (case-insensitive)
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn from_name(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "male" | "m" => Some(Sex::Male),
             "female" | "f" => Some(Sex::Female),
@@ -71,7 +71,7 @@ pub enum Handedness {
 
 impl Handedness {
     /// Parse from string
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn from_name(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "right" | "r" => Some(Handedness::Right),
             "left" | "l" => Some(Handedness::Left),
@@ -118,7 +118,7 @@ pub enum EducationLevel {
 
 impl EducationLevel {
     /// Convert to approximate years of education
-    pub fn to_years(&self) -> u8 {
+    pub fn to_years(self) -> u8 {
         match self {
             EducationLevel::LessThanHighSchool => 10,
             EducationLevel::HighSchool => 12,

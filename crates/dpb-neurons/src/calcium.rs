@@ -314,8 +314,8 @@ mod tests {
 
         // Inter-spike intervals should increase due to adaptation
         if spike_times.len() >= 3 {
-            let isi1 = spike_times[1] - spike_times[0];
-            let isi2 = spike_times[2] - spike_times[1];
+            let _isi1 = spike_times[1] - spike_times[0];
+            let _isi2 = spike_times[2] - spike_times[1];
             // Later ISI should generally be longer (though not guaranteed every time)
             // Just check that adaptation is present by checking calcium builds up
             assert!(neuron.calcium() > 0.05);

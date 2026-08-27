@@ -29,7 +29,7 @@ use pyo3::prelude::*;
 use std::collections::HashMap;
 
 /// GPU device information
-#[pyclass(name = "DeviceInfo")]
+#[pyclass(from_py_object, name = "DeviceInfo")]
 #[derive(Clone)]
 pub struct PyDeviceInfo {
     #[pyo3(get)]
@@ -67,6 +67,10 @@ impl PyDeviceInfo {
 ///     >>> info = ctx.device_info()
 ///     >>> print(f"Using device: {info.name}")
 #[pyclass(name = "GpuContext")]
+// Recorded from the Python-side constructor. The wrapper does not consume
+// these yet, but dropping them would silently discard what a caller
+// passed through the binding.
+#[allow(dead_code)]
 pub struct PyGpuContext {
     device_id: Option<usize>,
     enable_validation: bool,
@@ -246,7 +250,7 @@ impl PyGpuBuffer {
     }
 
     /// Read data from buffer
-    fn read(&self, py: Python) -> PyResult<Py<PyAny>> {
+    fn read(&self, _py: Python) -> PyResult<Py<PyAny>> {
         if !self.allocated {
             return Err(pyo3::exceptions::PyRuntimeError::new_err(
                 "Buffer not allocated",
@@ -333,7 +337,7 @@ impl PyGpuShader {
     }
 
     /// Dispatch compute shader
-    fn dispatch(&self, workgroups: (u32, u32, u32)) -> PyResult<()> {
+    fn dispatch(&self, _workgroups: (u32, u32, u32)) -> PyResult<()> {
         if !self.compiled {
             return Err(pyo3::exceptions::PyRuntimeError::new_err(
                 "Shader not compiled",

@@ -138,6 +138,6 @@ mod tests {
 
     #[test]
     fn test_max_clients() {
-        assert!(MAX_CLIENTS >= 100);
+        const { assert!(MAX_CLIENTS >= 100) };
     }
 }

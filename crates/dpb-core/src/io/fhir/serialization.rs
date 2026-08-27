@@ -338,10 +338,10 @@ impl Extension {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::io::fhir::resources::{Patient, HumanName, Observation};
+    use crate::io::fhir::resources::{Patient, HumanName};
     // Only the tests build resources directly; the serializers are generic.
     use crate::io::fhir::{Bundle, FhirResource};
-    use crate::io::fhir::observations::VitalSignsObservation;
+    
 
     #[test]
     fn test_json_serialization() {

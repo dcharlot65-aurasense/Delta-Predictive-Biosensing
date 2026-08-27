@@ -261,7 +261,6 @@ impl SLTT {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array3;
 
     #[test]
     fn test_box_surrogate() {

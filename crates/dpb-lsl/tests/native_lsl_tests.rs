@@ -10,6 +10,7 @@ mod native_lsl_tests {
 
     /// Simulated channel format matching liblsl.
     #[derive(Debug, Clone, Copy, PartialEq)]
+    #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
     enum ChannelFormat {
         Float32,
         Double64,
@@ -46,6 +47,7 @@ mod native_lsl_tests {
 
     /// Simulated stream info.
     #[derive(Debug, Clone)]
+    #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
     struct StreamInfo {
         name: String,
         stream_type: String,
@@ -161,6 +163,7 @@ mod native_lsl_tests {
     }
 
     /// Simulated inlet for receiving data.
+    #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
     struct MockInlet {
         info: StreamInfo,
         buffer: VecDeque<Vec<f32>>,

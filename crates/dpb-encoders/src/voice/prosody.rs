@@ -308,9 +308,11 @@ mod tests {
     #[test]
     fn test_speech_rate_template() {
         let template = SpeechRateTemplate;
-        let mut context = Context::default();
-
-        context.age = Some(25.0);
+        // Reassigned below, so it stays mut.
+        let mut context = Context {
+            age: Some(25.0),
+            ..Default::default()
+        };
         assert_eq!(template.expected_value(&context), 5.0);
 
         context.age = Some(75.0);

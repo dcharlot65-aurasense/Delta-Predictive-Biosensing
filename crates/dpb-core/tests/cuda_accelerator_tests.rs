@@ -3,7 +3,6 @@
 //! These tests verify the CUDA accelerator implementation without requiring
 //! actual CUDA hardware (simulation mode).
 
-use std::collections::HashMap;
 
 // Test module for CUDA accelerator
 #[cfg(test)]
@@ -113,6 +112,7 @@ mod cuda_tests {
     /// Test device info parsing and validation.
     #[test]
     fn test_device_info_parsing() {
+        #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
         struct CudaDeviceInfo {
             name: String,
             compute_capability: (u32, u32),
@@ -263,6 +263,7 @@ mod cuda_tests {
         use std::sync::atomic::{AtomicBool, Ordering};
         use std::sync::Arc;
 
+        #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
         struct MockStream {
             id: usize,
             operations_pending: Arc<AtomicBool>,
@@ -356,11 +357,9 @@ mod cuda_tests {
             } else {
                 u32::MAX
             };
-            let blocks_by_shared = if shared_memory_per_block > 0 {
-                (max_shared_per_sm / shared_memory_per_block) as u32
-            } else {
-                u32::MAX
-            };
+            let blocks_by_shared = max_shared_per_sm
+                .checked_div(shared_memory_per_block)
+                .map_or(u32::MAX, |b| b as u32);
 
             let blocks = blocks_by_threads
                 .min(blocks_by_registers)
@@ -482,6 +481,7 @@ mod cuda_tests {
         use std::collections::VecDeque;
 
         #[derive(Debug, Clone)]
+        #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
         enum OperationStatus {
             Pending,
             Running,

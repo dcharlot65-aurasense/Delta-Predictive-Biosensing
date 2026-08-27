@@ -1,30 +1,33 @@
 //! Utilities for NumPy array conversion and integration
 
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+use ndarray::{Array1, Array2, ArrayView1};
 use numpy::{PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
 /// Convert PyArray1 to ndarray Array1
-pub fn pyarray1_to_array1<T: numpy::Element>(
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
+pub fn pyarray1_to_array1<T>(
     py_array: PyReadonlyArray1<T>,
 ) -> Array1<T>
 where
-    T: Clone,
+    T: numpy::Element + Clone,
 {
     py_array.as_array().to_owned()
 }
 
 /// Convert PyArray2 to ndarray Array2
-pub fn pyarray2_to_array2<T: numpy::Element>(
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
+pub fn pyarray2_to_array2<T>(
     py_array: PyReadonlyArray2<T>,
 ) -> Array2<T>
 where
-    T: Clone,
+    T: numpy::Element + Clone,
 {
     py_array.as_array().to_owned()
 }
 
 /// Convert ndarray Array1 to PyArray1 (zero-copy when possible)
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
 pub fn array1_to_pyarray1<'py, T: numpy::Element>(
     py: Python<'py>,
     array: Array1<T>,
@@ -33,6 +36,7 @@ pub fn array1_to_pyarray1<'py, T: numpy::Element>(
 }
 
 /// Convert ndarray Array2 to PyArray2 (zero-copy when possible)
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
 pub fn array2_to_pyarray2<'py, T: numpy::Element>(
     py: Python<'py>,
     array: Array2<T>,
@@ -41,6 +45,7 @@ pub fn array2_to_pyarray2<'py, T: numpy::Element>(
 }
 
 /// Convert Vec to PyArray1
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
 pub fn vec_to_pyarray1<'py, T: numpy::Element>(
     py: Python<'py>,
     vec: Vec<T>,
@@ -49,6 +54,7 @@ pub fn vec_to_pyarray1<'py, T: numpy::Element>(
 }
 
 /// Convert Vec<Vec<T>> to PyArray2
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
 pub fn vec2_to_pyarray2<'py, T: numpy::Element + Clone>(
     py: Python<'py>,
     data: Vec<Vec<T>>,
@@ -76,6 +82,7 @@ pub fn vec2_to_pyarray2<'py, T: numpy::Element + Clone>(
 }
 
 /// Create a batch of samples from a list of arrays
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
 pub fn batch_arrays<'py>(
     py: Python<'py>,
     arrays: Vec<Array2<f32>>,
@@ -114,6 +121,7 @@ pub fn batch_arrays<'py>(
 }
 
 /// Normalize array to zero mean and unit variance
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
 pub fn normalize(mut data: Array2<f32>) -> Array2<f32> {
     let mean = data.mean().unwrap_or(0.0);
     let std = data.std(0.0);
@@ -126,6 +134,7 @@ pub fn normalize(mut data: Array2<f32>) -> Array2<f32> {
 }
 
 /// Standardize array columns independently
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
 pub fn standardize_columns(mut data: Array2<f32>) -> Array2<f32> {
     let ncols = data.ncols();
 
@@ -145,6 +154,7 @@ pub fn standardize_columns(mut data: Array2<f32>) -> Array2<f32> {
 }
 
 /// Apply moving average filter
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
 pub fn moving_average(data: ArrayView1<f32>, window_size: usize) -> Array1<f32> {
     let n = data.len();
     let mut result = Array1::zeros(n);
@@ -164,6 +174,7 @@ pub fn moving_average(data: ArrayView1<f32>, window_size: usize) -> Array1<f32> 
 }
 
 /// Resample data to target length using linear interpolation
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
 pub fn resample(data: ArrayView1<f32>, target_len: usize) -> Array1<f32> {
     let src_len = data.len();
     if src_len == 0 || target_len == 0 {
@@ -193,6 +204,7 @@ pub fn resample(data: ArrayView1<f32>, target_len: usize) -> Array1<f32> {
 }
 
 /// Compute sliding windows from 1D array
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
 pub fn sliding_windows(
     data: ArrayView1<f32>,
     window_size: usize,
@@ -216,6 +228,7 @@ pub fn sliding_windows(
 }
 
 /// Compute root mean square
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
 pub fn rms(data: ArrayView1<f32>) -> f32 {
     if data.is_empty() {
         return 0.0;
@@ -224,6 +237,7 @@ pub fn rms(data: ArrayView1<f32>) -> f32 {
 }
 
 /// Compute peak-to-peak amplitude
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
 pub fn peak_to_peak(data: ArrayView1<f32>) -> f32 {
     if data.is_empty() {
         return 0.0;
@@ -234,6 +248,7 @@ pub fn peak_to_peak(data: ArrayView1<f32>) -> f32 {
 }
 
 /// Find peaks in 1D signal
+#[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
 pub fn find_peaks(data: ArrayView1<f32>, threshold: f32, min_distance: usize) -> Vec<usize> {
     let n = data.len();
     let mut peaks = Vec::new();
