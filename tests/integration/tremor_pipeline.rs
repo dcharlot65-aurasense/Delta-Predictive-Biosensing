@@ -10,15 +10,14 @@
 use dpb_core::SignalBuffer;
 use dpb_encoders::prelude::*;
 use dpb_snn::{
-    ConvolutionalSNN, SpikeTensor, TremorSeverityDecoder,
-    NeuronModel, NeuronParams, SNNConfig,
+    ConvolutionalSNN, NeuronModel, NeuronParams, SNNConfig, SpikeTensor, TremorSeverityDecoder,
 };
 // `forward` and `decode` are trait methods.
 use dpb_snn::architectures::SNNArchitecture;
 use dpb_snn::decoders::Decoder;
 use dpb_synth::contact::tremor::{
-    PhysiologicalTremorGenerator, PhysiologicalTremorParams,
-    ParkinsonianTremorGenerator, ParkinsonianTremorParams,
+    ParkinsonianTremorGenerator, ParkinsonianTremorParams, PhysiologicalTremorGenerator,
+    PhysiologicalTremorParams,
 };
 use dpb_synth::traits::SyntheticGenerator;
 
@@ -36,26 +35,35 @@ fn test_tremor_pipeline_physiological() {
     };
 
     let generator = PhysiologicalTremorGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate physiological tremor");
 
     // Verify ground truth
     let gt_freq = generated.ground_truth.parameters.get("frequency").unwrap();
     assert_approx_eq(*gt_freq, params.frequency, "Ground truth frequency");
 
-    let tremor_type = generated.ground_truth.parameters.get("tremor_type").unwrap();
+    let tremor_type = generated
+        .ground_truth
+        .parameters
+        .get("tremor_type")
+        .unwrap();
     assert_approx_eq(*tremor_type, 0.0, "Tremor type (physiological)");
 
     // Step 2: Create 3-axis tremor (replicate to x, y, z with phase shifts)
     let _signal_len = generated.signal.len();
     let x_axis: Vec<f32> = generated.signal.iter().map(|&v| v as f32).collect();
 
-    let y_axis: Vec<f32> = generated.signal.iter()
+    let y_axis: Vec<f32> = generated
+        .signal
+        .iter()
         .enumerate()
         .map(|(i, &v)| (v * (std::f64::consts::PI / 3.0 * i as f64).cos()) as f32)
         .collect();
 
-    let z_axis: Vec<f32> = generated.signal.iter()
+    let z_axis: Vec<f32> = generated
+        .signal
+        .iter()
         .enumerate()
         .map(|(i, &v)| (v * (std::f64::consts::PI / 4.0 * i as f64).sin()) as f32)
         .collect();
@@ -72,11 +80,14 @@ fn test_tremor_pipeline_physiological() {
         ..DerivativeConfig::default()
     };
 
-    let spikes_x = encoder.encode(&signal_x, &encoder_config)
+    let spikes_x = encoder
+        .encode(&signal_x, &encoder_config)
         .expect("Failed to encode X axis");
-    let spikes_y = encoder.encode(&signal_y, &encoder_config)
+    let spikes_y = encoder
+        .encode(&signal_y, &encoder_config)
         .expect("Failed to encode Y axis");
-    let spikes_z = encoder.encode(&signal_z, &encoder_config)
+    let spikes_z = encoder
+        .encode(&signal_z, &encoder_config)
         .expect("Failed to encode Z axis");
 
     // Step 4: Verify encoding produced spikes
@@ -101,19 +112,25 @@ fn test_tremor_pipeline_physiological() {
     for event in &spikes_x {
         let timestep = ((event.timestamp * 100.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = event.channel as usize % 32;
-        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
+        spike_tensor
+            .set_spike(0, timestep, channel, event.magnitude)
+            .ok();
     }
 
     for event in &spikes_y {
         let timestep = ((event.timestamp * 100.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = 32 + (event.channel as usize % 32);
-        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
+        spike_tensor
+            .set_spike(0, timestep, channel, event.magnitude)
+            .ok();
     }
 
     for event in &spikes_z {
         let timestep = ((event.timestamp * 100.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = 64 + (event.channel as usize % 32);
-        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
+        spike_tensor
+            .set_spike(0, timestep, channel, event.magnitude)
+            .ok();
     }
 
     // Step 6: Create and run convolutional SNN
@@ -125,18 +142,24 @@ fn test_tremor_pipeline_physiological() {
     };
 
     let mut snn = ConvolutionalSNN::new(num_channels, 3, snn_config.clone());
-    let output_spikes = snn.forward(&spike_tensor)
+    let output_spikes = snn
+        .forward(&spike_tensor)
         .expect("Failed to run SNN forward pass");
 
     // Step 7: Decode output to tremor classification
     let decoder = TremorSeverityDecoder::new(250.0);
-    let tremor_class = decoder.decode(&output_spikes)
+    let tremor_class = decoder
+        .decode(&output_spikes)
         .expect("Failed to decode tremor classification");
 
     // Step 8: Validate output
     // `TremorSeverityDecoder` reports its three frequency bands
     // (parkinsonian, essential, physiological) plus an overall score.
-    assert_eq!(tremor_class.shape()[1], 4, "Should have 3 bands plus an overall score");
+    assert_eq!(
+        tremor_class.shape()[1],
+        4,
+        "Should have 3 bands plus an overall score"
+    );
 
     println!(
         "Physiological Tremor Pipeline:\n\
@@ -164,17 +187,26 @@ fn test_tremor_pipeline_parkinsonian() {
     };
 
     let generator = ParkinsonianTremorGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate Parkinsonian tremor");
 
     // Verify ground truth
     let gt_freq = generated.ground_truth.parameters.get("frequency").unwrap();
     assert_approx_eq(*gt_freq, params.frequency, "Ground truth frequency");
 
-    let tremor_type = generated.ground_truth.parameters.get("tremor_type").unwrap();
+    let tremor_type = generated
+        .ground_truth
+        .parameters
+        .get("tremor_type")
+        .unwrap();
     assert_approx_eq(*tremor_type, 1.0, "Tremor type (Parkinsonian)");
 
-    let pill_rolling = generated.ground_truth.parameters.get("pill_rolling").unwrap();
+    let pill_rolling = generated
+        .ground_truth
+        .parameters
+        .get("pill_rolling")
+        .unwrap();
     assert_approx_eq(*pill_rolling, 1.0, "Pill rolling enabled");
 
     println!(
@@ -183,10 +215,7 @@ fn test_tremor_pipeline_parkinsonian() {
          - Amplitude: {:.2}\n\
          - Pill rolling: {}\n\
          - Amplitude modulation: {:.1}s",
-        params.frequency,
-        params.amplitude,
-        params.pill_rolling,
-        params.amplitude_modulation
+        params.frequency, params.amplitude, params.pill_rolling, params.amplitude_modulation
     );
 }
 
@@ -209,7 +238,8 @@ fn test_tremor_frequency_discrimination() {
         };
 
         let generator = PhysiologicalTremorGenerator;
-        let generated = generator.generate(&params, TEST_SEED)
+        let generated = generator
+            .generate(&params, TEST_SEED)
             .expect("Failed to generate tremor");
 
         let gt_freq = generated.ground_truth.parameters.get("frequency").unwrap();
@@ -217,9 +247,17 @@ fn test_tremor_frequency_discrimination() {
 
         // Verify signal has expected frequency content
         // (In a real test, we'd use FFT to verify dominant frequency)
-        assert_eq!(generated.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            generated.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
 
-        println!("{} tremor: {:.1} Hz, {} samples", label, freq, generated.signal.len());
+        println!(
+            "{} tremor: {:.1} Hz, {} samples",
+            label,
+            freq,
+            generated.signal.len()
+        );
     }
 }
 
@@ -238,11 +276,14 @@ fn test_tremor_amplitude_range() {
         };
 
         let generator = PhysiologicalTremorGenerator;
-        let generated = generator.generate(&params, TEST_SEED)
+        let generated = generator
+            .generate(&params, TEST_SEED)
             .expect("Failed to generate tremor");
 
         // Verify signal amplitude is within expected range
-        let max_val = generated.signal.iter()
+        let max_val = generated
+            .signal
+            .iter()
             .map(|&x| x.abs())
             .fold(f64::NEG_INFINITY, |a, b| a.max(b));
 
@@ -271,20 +312,22 @@ fn test_tremor_reproducibility() {
 
     let generator = PhysiologicalTremorGenerator;
 
-    let gen1 = generator.generate(&params, TEST_SEED)
+    let gen1 = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate (run 1)");
-    let gen2 = generator.generate(&params, TEST_SEED)
+    let gen2 = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate (run 2)");
 
-    assert_eq!(gen1.signal.len(), gen2.signal.len(), "Signal lengths should match");
+    assert_eq!(
+        gen1.signal.len(),
+        gen2.signal.len(),
+        "Signal lengths should match"
+    );
 
     // Signals should be identical
     for i in 0..gen1.signal.len().min(10) {
-        assert_approx_eq(
-            gen1.signal[i],
-            gen2.signal[i],
-            &format!("Sample {}", i)
-        );
+        assert_approx_eq(gen1.signal[i], gen2.signal[i], &format!("Sample {}", i));
     }
 }
 
@@ -300,7 +343,8 @@ fn test_tremor_zero_crossings() {
     };
 
     let generator = PhysiologicalTremorGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate tremor");
 
     // Count zero crossings
@@ -320,12 +364,11 @@ fn test_tremor_zero_crossings() {
         zero_crossings as f64,
         (expected - 20) as f64,
         (expected + 20) as f64,
-        "Zero crossing count"
+        "Zero crossing count",
     );
 
     println!(
         "Zero crossings: {} (expected ~{})",
-        zero_crossings,
-        expected
+        zero_crossings, expected
     );
 }

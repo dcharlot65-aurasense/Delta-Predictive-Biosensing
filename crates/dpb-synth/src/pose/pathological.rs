@@ -1,8 +1,8 @@
 //! Pathological gait pattern generators
 //! Specific clinical gait abnormalities with biomechanical accuracy
 
-use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth, GaitPhase};
 use crate::pose::gait::{GaitCycleGenerator, GaitCycleParams};
+use crate::traits::{GaitPhase, GeneratedData, SpatialGroundTruth, SyntheticGenerator};
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
@@ -15,9 +15,9 @@ pub struct ShufflingGaitGenerator;
 pub struct ShufflingGaitParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub step_height_reduction: f64,  // 0-1 (0 = normal, 1 = no lift)
-    pub stride_shortening: f64,      // 0-1 (0 = normal, 1 = minimal stride)
-    pub height: f64,                 // meters
+    pub step_height_reduction: f64, // 0-1 (0 = normal, 1 = no lift)
+    pub stride_shortening: f64,     // 0-1 (0 = normal, 1 = minimal stride)
+    pub height: f64,                // meters
 }
 
 impl SyntheticGenerator for ShufflingGaitGenerator {
@@ -25,7 +25,11 @@ impl SyntheticGenerator for ShufflingGaitGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = ShufflingGaitParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         // Start with normal gait
@@ -47,12 +51,18 @@ impl SyntheticGenerator for ShufflingGaitGenerator {
             for kp in frame_kps.iter_mut() {
                 // Reduce vertical movement
                 let baseline_height = params.height * 0.55;
-                kp[1] = baseline_height + (kp[1] - baseline_height) * (1.0 - params.step_height_reduction);
+                kp[1] = baseline_height
+                    + (kp[1] - baseline_height) * (1.0 - params.step_height_reduction);
             }
         }
 
-        result.metadata.insert("pathology".to_string(), "shuffling".to_string());
-        result.metadata.insert("step_height_reduction".to_string(), params.step_height_reduction.to_string());
+        result
+            .metadata
+            .insert("pathology".to_string(), "shuffling".to_string());
+        result.metadata.insert(
+            "step_height_reduction".to_string(),
+            params.step_height_reduction.to_string(),
+        );
 
         Ok(result)
     }
@@ -69,10 +79,14 @@ impl SyntheticGenerator for ShufflingGaitGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.step_height_reduction < 0.0 || params.step_height_reduction > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("step_height_reduction must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "step_height_reduction must be 0-1".to_string(),
+            ));
         }
         if params.stride_shortening < 0.0 || params.stride_shortening > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("stride_shortening must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "stride_shortening must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -85,8 +99,8 @@ pub struct FestinationGenerator;
 pub struct FestinationParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub acceleration_rate: f64,     // cadence increase per second
-    pub trigger_time: f64,          // when festination starts (seconds)
+    pub acceleration_rate: f64, // cadence increase per second
+    pub trigger_time: f64,      // when festination starts (seconds)
     pub height: f64,
 }
 
@@ -95,7 +109,11 @@ impl SyntheticGenerator for FestinationGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = FestinationParams;
 
-    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        _seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -124,7 +142,10 @@ impl SyntheticGenerator for FestinationGenerator {
             cumulative_phase += dt / cycle_duration;
             let gait_phase = cumulative_phase % 1.0;
 
-            joint_angles.get_mut("cadence").unwrap().push(current_cadence);
+            joint_angles
+                .get_mut("cadence")
+                .unwrap()
+                .push(current_cadence);
 
             // Generate simplified keypoints
             let mut frame_keypoints = vec![[0.0; 3]; num_keypoints];
@@ -151,7 +172,9 @@ impl SyntheticGenerator for FestinationGenerator {
         };
 
         let mut result = GeneratedData::new(keypoints, ground_truth, params.frame_rate);
-        result.metadata.insert("pathology".to_string(), "festination".to_string());
+        result
+            .metadata
+            .insert("pathology".to_string(), "festination".to_string());
 
         Ok(result)
     }
@@ -160,7 +183,7 @@ impl SyntheticGenerator for FestinationGenerator {
         FestinationParams {
             duration: 10.0,
             frame_rate: 30.0,
-            acceleration_rate: 10.0,  // 10 steps/min increase per second
+            acceleration_rate: 10.0, // 10 steps/min increase per second
             trigger_time: 2.0,
             height: 1.75,
         }
@@ -168,7 +191,9 @@ impl SyntheticGenerator for FestinationGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -181,9 +206,9 @@ pub struct FreezingOfGaitGenerator;
 pub struct FreezingOfGaitParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub fog_probability: f64,       // probability per second
-    pub fog_duration_mean: f64,     // mean duration (seconds)
-    pub fog_duration_std: f64,      // std deviation
+    pub fog_probability: f64,            // probability per second
+    pub fog_duration_mean: f64,          // mean duration (seconds)
+    pub fog_duration_std: f64,           // std deviation
     pub trigger_situations: Vec<String>, // "turning", "doorway", "initiation"
     pub height: f64,
 }
@@ -193,7 +218,11 @@ impl SyntheticGenerator for FreezingOfGaitGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = FreezingOfGaitParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -213,7 +242,8 @@ impl SyntheticGenerator for FreezingOfGaitGenerator {
         let mut result = gait_gen.generate(&gait_params, seed)?;
 
         // Inject FOG episodes
-        let fog_duration_dist = Normal::new(params.fog_duration_mean, params.fog_duration_std).unwrap();
+        let fog_duration_dist =
+            Normal::new(params.fog_duration_mean, params.fog_duration_std).unwrap();
         let mut in_fog = false;
         let mut fog_end_frame = 0;
         let mut fog_episodes = Vec::new();
@@ -248,8 +278,12 @@ impl SyntheticGenerator for FreezingOfGaitGenerator {
             }
         }
 
-        result.metadata.insert("pathology".to_string(), "freezing_of_gait".to_string());
-        result.metadata.insert("fog_episodes".to_string(), fog_episodes.len().to_string());
+        result
+            .metadata
+            .insert("pathology".to_string(), "freezing_of_gait".to_string());
+        result
+            .metadata
+            .insert("fog_episodes".to_string(), fog_episodes.len().to_string());
 
         Ok(result)
     }
@@ -258,8 +292,8 @@ impl SyntheticGenerator for FreezingOfGaitGenerator {
         FreezingOfGaitParams {
             duration: 20.0,
             frame_rate: 30.0,
-            fog_probability: 0.05,      // 5% per second
-            fog_duration_mean: 2.0,     // 2 seconds mean
+            fog_probability: 0.05,  // 5% per second
+            fog_duration_mean: 2.0, // 2 seconds mean
             fog_duration_std: 0.5,
             trigger_situations: vec!["turning".to_string()],
             height: 1.75,
@@ -268,7 +302,9 @@ impl SyntheticGenerator for FreezingOfGaitGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.fog_probability < 0.0 || params.fog_probability > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("fog_probability must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "fog_probability must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -281,8 +317,8 @@ pub struct AsymmetricGaitGenerator;
 pub struct AsymmetricGaitParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub asymmetry_ratio: f64,       // 0-1 (ratio of affected to unaffected)
-    pub affected_side: String,      // "left" or "right"
+    pub asymmetry_ratio: f64,  // 0-1 (ratio of affected to unaffected)
+    pub affected_side: String, // "left" or "right"
     pub height: f64,
 }
 
@@ -291,7 +327,11 @@ impl SyntheticGenerator for AsymmetricGaitGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = AsymmetricGaitParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let gait_params = GaitCycleParams {
@@ -321,8 +361,12 @@ impl SyntheticGenerator for AsymmetricGaitGenerator {
             }
         }
 
-        result.metadata.insert("pathology".to_string(), "asymmetric".to_string());
-        result.metadata.insert("affected_side".to_string(), params.affected_side.clone());
+        result
+            .metadata
+            .insert("pathology".to_string(), "asymmetric".to_string());
+        result
+            .metadata
+            .insert("affected_side".to_string(), params.affected_side.clone());
 
         Ok(result)
     }
@@ -331,7 +375,7 @@ impl SyntheticGenerator for AsymmetricGaitGenerator {
         AsymmetricGaitParams {
             duration: 10.0,
             frame_rate: 30.0,
-            asymmetry_ratio: 0.7,       // affected side 70% of normal
+            asymmetry_ratio: 0.7, // affected side 70% of normal
             affected_side: "right".to_string(),
             height: 1.75,
         }
@@ -339,10 +383,14 @@ impl SyntheticGenerator for AsymmetricGaitGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.asymmetry_ratio < 0.0 || params.asymmetry_ratio > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("asymmetry_ratio must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "asymmetry_ratio must be 0-1".to_string(),
+            ));
         }
         if params.affected_side != "left" && params.affected_side != "right" {
-            return Err(crate::GeneratorError::InvalidParameter("affected_side must be 'left' or 'right'".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "affected_side must be 'left' or 'right'".to_string(),
+            ));
         }
         Ok(())
     }
@@ -355,8 +403,8 @@ pub struct AtaxicGaitGenerator;
 pub struct AtaxicGaitParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub variability_increase: f64,  // 0-1 (0 = normal, 1 = severe ataxia)
-    pub base_widening: f64,         // meters (additional step width)
+    pub variability_increase: f64, // 0-1 (0 = normal, 1 = severe ataxia)
+    pub base_widening: f64,        // meters (additional step width)
     pub height: f64,
 }
 
@@ -365,7 +413,11 @@ impl SyntheticGenerator for AtaxicGaitGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = AtaxicGaitParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let gait_params = GaitCycleParams {
@@ -393,8 +445,13 @@ impl SyntheticGenerator for AtaxicGaitGenerator {
             }
         }
 
-        result.metadata.insert("pathology".to_string(), "ataxic".to_string());
-        result.metadata.insert("base_widening".to_string(), params.base_widening.to_string());
+        result
+            .metadata
+            .insert("pathology".to_string(), "ataxic".to_string());
+        result.metadata.insert(
+            "base_widening".to_string(),
+            params.base_widening.to_string(),
+        );
 
         Ok(result)
     }
@@ -404,14 +461,16 @@ impl SyntheticGenerator for AtaxicGaitGenerator {
             duration: 10.0,
             frame_rate: 30.0,
             variability_increase: 0.7,
-            base_widening: 0.10,  // 10 cm wider base
+            base_widening: 0.10, // 10 cm wider base
             height: 1.75,
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.variability_increase < 0.0 || params.variability_increase > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("variability_increase must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "variability_increase must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -424,8 +483,8 @@ pub struct SpasticGaitGenerator;
 pub struct SpasticGaitParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub stiffness: f64,             // 0-1 (reduced joint ROM)
-    pub circumduction: f64,         // meters (lateral swing)
+    pub stiffness: f64,     // 0-1 (reduced joint ROM)
+    pub circumduction: f64, // meters (lateral swing)
     pub height: f64,
 }
 
@@ -434,7 +493,11 @@ impl SyntheticGenerator for SpasticGaitGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = SpasticGaitParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let gait_params = GaitCycleParams {
@@ -470,8 +533,12 @@ impl SyntheticGenerator for SpasticGaitGenerator {
             }
         }
 
-        result.metadata.insert("pathology".to_string(), "spastic".to_string());
-        result.metadata.insert("stiffness".to_string(), params.stiffness.to_string());
+        result
+            .metadata
+            .insert("pathology".to_string(), "spastic".to_string());
+        result
+            .metadata
+            .insert("stiffness".to_string(), params.stiffness.to_string());
 
         Ok(result)
     }
@@ -481,14 +548,16 @@ impl SyntheticGenerator for SpasticGaitGenerator {
             duration: 10.0,
             frame_rate: 30.0,
             stiffness: 0.6,
-            circumduction: 0.08,  // 8 cm lateral swing
+            circumduction: 0.08, // 8 cm lateral swing
             height: 1.75,
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.stiffness < 0.0 || params.stiffness > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("stiffness must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "stiffness must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -501,8 +570,8 @@ pub struct AntalglicGaitGenerator;
 pub struct AntalglicGaitParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub pain_side: String,          // "left" or "right"
-    pub severity: f64,              // 0-1 (stance time reduction)
+    pub pain_side: String, // "left" or "right"
+    pub severity: f64,     // 0-1 (stance time reduction)
     pub height: f64,
 }
 
@@ -511,7 +580,11 @@ impl SyntheticGenerator for AntalglicGaitGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = AntalglicGaitParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let gait_params = GaitCycleParams {
@@ -540,8 +613,12 @@ impl SyntheticGenerator for AntalglicGaitGenerator {
             }
         }
 
-        result.metadata.insert("pathology".to_string(), "antalgic".to_string());
-        result.metadata.insert("pain_side".to_string(), params.pain_side.clone());
+        result
+            .metadata
+            .insert("pathology".to_string(), "antalgic".to_string());
+        result
+            .metadata
+            .insert("pain_side".to_string(), params.pain_side.clone());
 
         Ok(result)
     }
@@ -558,10 +635,14 @@ impl SyntheticGenerator for AntalglicGaitGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.severity < 0.0 || params.severity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("severity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "severity must be 0-1".to_string(),
+            ));
         }
         if params.pain_side != "left" && params.pain_side != "right" {
-            return Err(crate::GeneratorError::InvalidParameter("pain_side must be 'left' or 'right'".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "pain_side must be 'left' or 'right'".to_string(),
+            ));
         }
         Ok(())
     }
@@ -574,8 +655,8 @@ pub struct HemiplegicGaitGenerator;
 pub struct HemiplegicGaitParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub affected_side: String,      // "left" or "right"
-    pub severity: f64,              // 0-1
+    pub affected_side: String, // "left" or "right"
+    pub severity: f64,         // 0-1
     pub height: f64,
 }
 
@@ -584,7 +665,11 @@ impl SyntheticGenerator for HemiplegicGaitGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = HemiplegicGaitParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let gait_params = GaitCycleParams {
@@ -625,8 +710,12 @@ impl SyntheticGenerator for HemiplegicGaitGenerator {
             frame_kps[ankle_idx][1] *= 1.0 - params.severity * 0.1;
         }
 
-        result.metadata.insert("pathology".to_string(), "hemiplegic".to_string());
-        result.metadata.insert("affected_side".to_string(), params.affected_side.clone());
+        result
+            .metadata
+            .insert("pathology".to_string(), "hemiplegic".to_string());
+        result
+            .metadata
+            .insert("affected_side".to_string(), params.affected_side.clone());
 
         Ok(result)
     }
@@ -643,10 +732,14 @@ impl SyntheticGenerator for HemiplegicGaitGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.severity < 0.0 || params.severity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("severity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "severity must be 0-1".to_string(),
+            ));
         }
         if params.affected_side != "left" && params.affected_side != "right" {
-            return Err(crate::GeneratorError::InvalidParameter("affected_side must be 'left' or 'right'".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "affected_side must be 'left' or 'right'".to_string(),
+            ));
         }
         Ok(())
     }
@@ -661,7 +754,10 @@ mod tests {
         let generator = ShufflingGaitGenerator;
         let params = ShufflingGaitGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -669,7 +765,10 @@ mod tests {
         let generator = FestinationGenerator;
         let params = FestinationGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -677,7 +776,10 @@ mod tests {
         let generator = FreezingOfGaitGenerator;
         let params = FreezingOfGaitGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -685,7 +787,10 @@ mod tests {
         let generator = AsymmetricGaitGenerator;
         let params = AsymmetricGaitGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -693,7 +798,10 @@ mod tests {
         let generator = AtaxicGaitGenerator;
         let params = AtaxicGaitGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -701,7 +809,10 @@ mod tests {
         let generator = SpasticGaitGenerator;
         let params = SpasticGaitGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -709,7 +820,10 @@ mod tests {
         let generator = AntalglicGaitGenerator;
         let params = AntalglicGaitGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -717,6 +831,9 @@ mod tests {
         let generator = HemiplegicGaitGenerator;
         let params = HemiplegicGaitGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 }

@@ -12,9 +12,7 @@ impl TemporalAttention {
     /// Create a new temporal attention tracker
     pub fn new(duration_ms: f64, resolution_ms: f64) -> Self {
         let n_steps = (duration_ms / resolution_ms).ceil() as usize;
-        let time_steps: Vec<f64> = (0..n_steps)
-            .map(|i| i as f64 * resolution_ms)
-            .collect();
+        let time_steps: Vec<f64> = (0..n_steps).map(|i| i as f64 * resolution_ms).collect();
 
         Self {
             time_steps,

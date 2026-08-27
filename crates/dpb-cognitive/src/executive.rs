@@ -136,16 +136,16 @@ impl GoNoGoTask {
             } else {
                 metrics.total_nogo_trials += 1;
                 if let Some(r) = response
-                    && r.responded {
-                        metrics.commission_errors += 1;
-                    }
+                    && r.responded
+                {
+                    metrics.commission_errors += 1;
+                }
             }
         }
 
         // Calculate RT statistics
         if !correct_go_rts.is_empty() {
-            metrics.mean_rt_go =
-                correct_go_rts.iter().sum::<f64>() / correct_go_rts.len() as f64;
+            metrics.mean_rt_go = correct_go_rts.iter().sum::<f64>() / correct_go_rts.len() as f64;
 
             if correct_go_rts.len() > 1 {
                 let variance = correct_go_rts
@@ -479,12 +479,7 @@ impl WisconsinCardSort {
     }
 
     /// Check if a sort matches the current rule
-    pub fn check_match(
-        &self,
-        stimulus: &WcstCard,
-        target: &WcstCard,
-        rule: WcstDimension,
-    ) -> bool {
+    pub fn check_match(&self, stimulus: &WcstCard, target: &WcstCard, rule: WcstDimension) -> bool {
         match rule {
             WcstDimension::Color => stimulus.color == target.color,
             WcstDimension::Shape => stimulus.shape == target.shape,

@@ -43,8 +43,8 @@ impl ConvergenceAnalyzer for GradientNormTracker {
         self.min_gradient = self.min_gradient.min(grad_norm);
 
         if !self.gradient_history.is_empty() {
-            self.mean_gradient = self.gradient_history.iter().sum::<f64>()
-                / self.gradient_history.len() as f64;
+            self.mean_gradient =
+                self.gradient_history.iter().sum::<f64>() / self.gradient_history.len() as f64;
         }
     }
 
@@ -67,7 +67,9 @@ impl ConvergenceAnalyzer for GradientNormTracker {
             report.add_metric("current_gradient_norm", current_grad);
 
             if current_grad < 1e-7 {
-                report.add_recommendation("Gradients are very small. May indicate vanishing gradients.");
+                report.add_recommendation(
+                    "Gradients are very small. May indicate vanishing gradients.",
+                );
             } else if current_grad > 10.0 {
                 report.add_recommendation("Gradients are large. May indicate exploding gradients.");
             }
@@ -281,10 +283,11 @@ impl ConvergenceAnalyzer for ExplodingGradientDetector {
         self.gradient_history.push(grad_norm);
 
         if (grad_norm > self.threshold || grad_norm.is_nan() || grad_norm.is_infinite())
-            && !self.detected {
-                self.detected = true;
-                self.detection_epoch = Some(epoch);
-            }
+            && !self.detected
+        {
+            self.detected = true;
+            self.detection_epoch = Some(epoch);
+        }
     }
 
     fn is_converged(&self) -> bool {
@@ -385,7 +388,9 @@ impl ConvergenceAnalyzer for SurrogateGradientAnalyzer {
             }
 
             if mean_of_stds > mean_of_means * 2.0 {
-                report.add_recommendation("High variance in surrogate gradients. Training may be unstable.");
+                report.add_recommendation(
+                    "High variance in surrogate gradients. Training may be unstable.",
+                );
             }
         }
 

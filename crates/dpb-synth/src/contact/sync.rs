@@ -2,7 +2,7 @@
 //!
 //! Generators for coupled biosignals with physiological relationships
 
-use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
+use crate::traits::{Event, GeneratedData, SyntheticGenerator, TimeSeriesGroundTruth};
 use ndarray::Array1;
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
@@ -16,12 +16,12 @@ pub struct EcgPpgSynchronizedGenerator;
 pub struct EcgPpgSyncParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub heart_rate: f64,           // bpm
-    pub ptt_mean: f64,             // Pulse Transit Time in ms (typically 150-250ms)
-    pub ptt_std: f64,              // ms
-    pub pat_offset: f64,           // Pre-ejection period offset (ms)
-    pub ppg_amplitude: f64,        // relative PPG amplitude
-    pub hrv_std: f64,              // ms (heart rate variability)
+    pub heart_rate: f64,    // bpm
+    pub ptt_mean: f64,      // Pulse Transit Time in ms (typically 150-250ms)
+    pub ptt_std: f64,       // ms
+    pub pat_offset: f64,    // Pre-ejection period offset (ms)
+    pub ppg_amplitude: f64, // relative PPG amplitude
+    pub hrv_std: f64,       // ms (heart rate variability)
 }
 
 impl SyntheticGenerator for EcgPpgSynchronizedGenerator {
@@ -29,7 +29,11 @@ impl SyntheticGenerator for EcgPpgSynchronizedGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = EcgPpgSyncParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -129,7 +133,11 @@ impl SyntheticGenerator for EcgPpgSynchronizedGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new((ecg, ppg), ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            (ecg, ppg),
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -137,9 +145,9 @@ impl SyntheticGenerator for EcgPpgSynchronizedGenerator {
             duration: 60.0,
             sampling_rate: 100.0,
             heart_rate: 70.0,
-            ptt_mean: 200.0,       // ms
+            ptt_mean: 200.0, // ms
             ptt_std: 20.0,
-            pat_offset: 100.0,     // Pre-ejection period
+            pat_offset: 100.0, // Pre-ejection period
             ppg_amplitude: 1.0,
             hrv_std: 40.0,
         }
@@ -147,13 +155,19 @@ impl SyntheticGenerator for EcgPpgSynchronizedGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.sampling_rate <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("sampling_rate must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "sampling_rate must be positive".to_string(),
+            ));
         }
         if params.ptt_mean <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("ptt_mean must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "ptt_mean must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -166,10 +180,10 @@ pub struct CardiorespiratoryCouplngGenerator;
 pub struct CardiorespiratoryParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub mean_hr: f64,              // bpm
-    pub respiratory_rate: f64,     // breaths per minute
-    pub rsa_amplitude: f64,        // bpm (respiratory sinus arrhythmia)
-    pub phase_coupling: f64,       // 0-1 (strength of phase coupling)
+    pub mean_hr: f64,          // bpm
+    pub respiratory_rate: f64, // breaths per minute
+    pub rsa_amplitude: f64,    // bpm (respiratory sinus arrhythmia)
+    pub phase_coupling: f64,   // 0-1 (strength of phase coupling)
 }
 
 impl SyntheticGenerator for CardiorespiratoryCouplngGenerator {
@@ -177,7 +191,11 @@ impl SyntheticGenerator for CardiorespiratoryCouplngGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = CardiorespiratoryParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -253,7 +271,11 @@ impl SyntheticGenerator for CardiorespiratoryCouplngGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new((rr_intervals, respiratory), ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            (rr_intervals, respiratory),
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -269,10 +291,14 @@ impl SyntheticGenerator for CardiorespiratoryCouplngGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.phase_coupling < 0.0 || params.phase_coupling > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("phase_coupling must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "phase_coupling must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -283,9 +309,9 @@ pub struct AutonomicStateGenerator;
 
 #[derive(Debug, Clone)]
 pub enum AutonomicState {
-    Parasympathetic,  // Rest and digest
-    Balanced,         // Normal
-    Sympathetic,      // Fight or flight
+    Parasympathetic, // Rest and digest
+    Balanced,        // Normal
+    Sympathetic,     // Fight or flight
 }
 
 #[derive(Debug, Clone)]
@@ -293,7 +319,7 @@ pub struct AutonomicStateParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub state_transitions: Vec<(f64, AutonomicState)>, // (time, state)
-    pub transition_duration: f64, // seconds
+    pub transition_duration: f64,                      // seconds
 }
 
 impl SyntheticGenerator for AutonomicStateGenerator {
@@ -301,7 +327,11 @@ impl SyntheticGenerator for AutonomicStateGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = AutonomicStateParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -312,9 +342,9 @@ impl SyntheticGenerator for AutonomicStateGenerator {
         let state_to_params = |state: &AutonomicState| -> (f64, f64, f64) {
             // (HR, HRV, EDA)
             match state {
-                AutonomicState::Parasympathetic => (60.0, 80.0, 2.0),   // Low HR, high HRV, low EDA
-                AutonomicState::Balanced => (70.0, 50.0, 5.0),          // Normal
-                AutonomicState::Sympathetic => (90.0, 20.0, 10.0),      // High HR, low HRV, high EDA
+                AutonomicState::Parasympathetic => (60.0, 80.0, 2.0), // Low HR, high HRV, low EDA
+                AutonomicState::Balanced => (70.0, 50.0, 5.0),        // Normal
+                AutonomicState::Sympathetic => (90.0, 20.0, 10.0),    // High HR, low HRV, high EDA
             }
         };
 
@@ -356,7 +386,8 @@ impl SyntheticGenerator for AutonomicStateGenerator {
         let eda = Array1::from_vec(eda);
 
         // Create segments for state transitions
-        let segments: Vec<_> = params.state_transitions
+        let segments: Vec<_> = params
+            .state_transitions
             .windows(2)
             .map(|w| crate::traits::Segment {
                 start: w[0].0,
@@ -366,7 +397,10 @@ impl SyntheticGenerator for AutonomicStateGenerator {
             .collect();
 
         let mut gt_params = HashMap::new();
-        gt_params.insert("num_states".to_string(), params.state_transitions.len() as f64);
+        gt_params.insert(
+            "num_states".to_string(),
+            params.state_transitions.len() as f64,
+        );
 
         let ground_truth = TimeSeriesGroundTruth {
             parameters: gt_params,
@@ -374,7 +408,11 @@ impl SyntheticGenerator for AutonomicStateGenerator {
             segments,
         };
 
-        Ok(GeneratedData::new((rr_intervals, hrv, eda), ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            (rr_intervals, hrv, eda),
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -392,10 +430,14 @@ impl SyntheticGenerator for AutonomicStateGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.state_transitions.is_empty() {
-            return Err(crate::GeneratorError::InvalidParameter("state_transitions cannot be empty".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "state_transitions cannot be empty".to_string(),
+            ));
         }
         Ok(())
     }
@@ -430,17 +472,19 @@ impl AutonomicStateGenerator {
 
         // Apply smooth transition if we're in transition period
         if let Some(next) = next_state
-            && t >= current_time && t < current_time + params.transition_duration {
-                let next_params = state_to_params(next);
-                let progress = (t - current_time) / params.transition_duration;
+            && t >= current_time
+            && t < current_time + params.transition_duration
+        {
+            let next_params = state_to_params(next);
+            let progress = (t - current_time) / params.transition_duration;
 
-                // Linear interpolation
-                return (
-                    current_params.0 + (next_params.0 - current_params.0) * progress,
-                    current_params.1 + (next_params.1 - current_params.1) * progress,
-                    current_params.2 + (next_params.2 - current_params.2) * progress,
-                );
-            }
+            // Linear interpolation
+            return (
+                current_params.0 + (next_params.0 - current_params.0) * progress,
+                current_params.1 + (next_params.1 - current_params.1) * progress,
+                current_params.2 + (next_params.2 - current_params.2) * progress,
+            );
+        }
 
         current_params
     }
@@ -453,8 +497,8 @@ pub struct StressResponseGenerator;
 pub struct StressResponseParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub stressor_times: Vec<f64>,  // times of stress events
-    pub recovery_tau: f64,         // recovery time constant (s)
+    pub stressor_times: Vec<f64>, // times of stress events
+    pub recovery_tau: f64,        // recovery time constant (s)
 }
 
 impl SyntheticGenerator for StressResponseGenerator {
@@ -462,7 +506,11 @@ impl SyntheticGenerator for StressResponseGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = StressResponseParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -557,7 +605,10 @@ impl SyntheticGenerator for StressResponseGenerator {
         let cortisol = Array1::from_vec(cortisol);
 
         let mut gt_params = HashMap::new();
-        gt_params.insert("num_stressors".to_string(), params.stressor_times.len() as f64);
+        gt_params.insert(
+            "num_stressors".to_string(),
+            params.stressor_times.len() as f64,
+        );
         gt_params.insert("recovery_tau".to_string(), params.recovery_tau);
 
         let ground_truth = TimeSeriesGroundTruth {
@@ -566,24 +617,32 @@ impl SyntheticGenerator for StressResponseGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new((rr_intervals, eda, cortisol), ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            (rr_intervals, eda, cortisol),
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
         StressResponseParams {
-            duration: 3600.0,      // 1 hour
-            sampling_rate: 1.0,    // 1 Hz
+            duration: 3600.0,   // 1 hour
+            sampling_rate: 1.0, // 1 Hz
             stressor_times: vec![600.0, 1800.0, 3000.0],
-            recovery_tau: 300.0,   // 5 minutes
+            recovery_tau: 300.0, // 5 minutes
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.recovery_tau <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("recovery_tau must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "recovery_tau must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -614,7 +673,10 @@ mod tests {
 
         let (rr_intervals, respiratory) = result.signal;
         assert!(!rr_intervals.is_empty());
-        assert_eq!(respiratory.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            respiratory.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -642,6 +704,9 @@ mod tests {
         assert!(!rr_intervals.is_empty());
         assert_eq!(eda.len(), expected_len);
         assert_eq!(cortisol.len(), expected_len);
-        assert_eq!(result.ground_truth.events.len(), params.stressor_times.len());
+        assert_eq!(
+            result.ground_truth.events.len(),
+            params.stressor_times.len()
+        );
     }
 }

@@ -22,7 +22,9 @@ pub use adhd::{
     ActivityMetrics, AdhdEyeTracking, AdhdGazeMetrics, AdhdPattern, AttentionMetrics,
     ImpulsivityMetrics, QbTest, QbTestMetrics,
 };
-pub use attention::{ContinuousPerformanceTest, CptMetrics, StroopTask, StroopMetrics};
-pub use executive::{FlankerMetrics, FlankerTask, GoNoGoMetrics, GoNoGoTask, WcstMetrics, WisconsinCardSort};
+pub use attention::{ContinuousPerformanceTest, CptMetrics, StroopMetrics, StroopTask};
+pub use executive::{
+    FlankerMetrics, FlankerTask, GoNoGoMetrics, GoNoGoTask, WcstMetrics, WisconsinCardSort,
+};
 pub use reaction_time::{ChoiceReactionTime, ReactionTimeMetrics, SimpleReactionTime};
 pub use working_memory::{NBackMetrics, NBackTask};

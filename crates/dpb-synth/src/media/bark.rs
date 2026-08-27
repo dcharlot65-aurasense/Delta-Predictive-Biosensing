@@ -230,44 +230,42 @@ impl BarkBioPrompts {
         BarkPrompt::text(
             "The rainbow is a division of white light into many beautiful colors. \
              These take the shape of a long round arch, with its path high above, \
-             and its two ends apparently beyond the horizon."
-        ).with_speaker(BarkSpeaker::EnglishSpeaker0)
+             and its two ends apparently beyond the horizon.",
+        )
+        .with_speaker(BarkSpeaker::EnglishSpeaker0)
     }
 
     /// Speech with coughing (respiratory symptom)
     pub fn speech_with_cough() -> BarkPrompt {
-        BarkPrompt::text(
-            "The rainbow is a division of white light into many beautiful colors."
-        ).with_speaker(BarkSpeaker::EnglishSpeaker0)
-        .with_cough(35)
+        BarkPrompt::text("The rainbow is a division of white light into many beautiful colors.")
+            .with_speaker(BarkSpeaker::EnglishSpeaker0)
+            .with_cough(35)
     }
 
     /// Hesitant speech (cognitive/motor symptom)
     pub fn hesitant_speech() -> BarkPrompt {
         BarkPrompt::text(
-            "The rainbow... is a division... of white light... into many... beautiful colors."
-        ).with_speaker(BarkSpeaker::EnglishSpeaker0)
+            "The rainbow... is a division... of white light... into many... beautiful colors.",
+        )
+        .with_speaker(BarkSpeaker::EnglishSpeaker0)
     }
 
     /// Breathy/fatigued speech
     pub fn fatigued_speech() -> BarkPrompt {
-        BarkPrompt::text(
-            "The rainbow is a division of white light into many beautiful colors."
-        ).with_speaker(BarkSpeaker::EnglishSpeaker0)
-        .with_tag(0, BarkTag::Sighs)
+        BarkPrompt::text("The rainbow is a division of white light into many beautiful colors.")
+            .with_speaker(BarkSpeaker::EnglishSpeaker0)
+            .with_tag(0, BarkTag::Sighs)
     }
 
     /// Sustained vowel "ahhh" for voice analysis
     pub fn sustained_vowel() -> BarkPrompt {
-        BarkPrompt::text("Ahhhhhhhhhhhhhhhhh")
-            .with_speaker(BarkSpeaker::EnglishSpeaker0)
+        BarkPrompt::text("Ahhhhhhhhhhhhhhhhh").with_speaker(BarkSpeaker::EnglishSpeaker0)
     }
 
     /// Counting task
     pub fn counting_task() -> BarkPrompt {
-        BarkPrompt::text(
-            "One, two, three, four, five, six, seven, eight, nine, ten."
-        ).with_speaker(BarkSpeaker::EnglishSpeaker0)
+        BarkPrompt::text("One, two, three, four, five, six, seven, eight, nine, ten.")
+            .with_speaker(BarkSpeaker::EnglishSpeaker0)
     }
 }
 
@@ -293,7 +291,10 @@ impl BarkGenerator {
     pub fn new(config: BarkConfig) -> Result<Self> {
         // Check for bark
         let check = Command::new("python3")
-            .args(["-c", "from bark import SAMPLE_RATE, generate_audio, preload_models; print('ok')"])
+            .args([
+                "-c",
+                "from bark import SAMPLE_RATE, generate_audio, preload_models; print('ok')",
+            ])
             .output();
 
         match check {
@@ -306,11 +307,10 @@ impl BarkGenerator {
             }
         }
 
-        let python_path = which::which("python3")
-            .map_err(|_| MediaError::ToolNotFound {
-                tool: "python3".to_string(),
-                install_url: "https://www.python.org/downloads/".to_string(),
-            })?;
+        let python_path = which::which("python3").map_err(|_| MediaError::ToolNotFound {
+            tool: "python3".to_string(),
+            install_url: "https://www.python.org/downloads/".to_string(),
+        })?;
 
         std::fs::create_dir_all(&config.output_dir)?;
 
@@ -363,10 +363,12 @@ impl BarkGenerator {
         let seed_code = if let Some(seed) = self.config.seed {
             format!("import numpy as np; np.random.seed({})", seed)
         } else {
-            "import numpy as np; seed = np.random.randint(0, 2**32-1); np.random.seed(seed)".to_string()
+            "import numpy as np; seed = np.random.randint(0, 2**32-1); np.random.seed(seed)"
+                .to_string()
         };
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import os
 os.environ["SUNO_USE_SMALL_MODELS"] = "{use_small}"
 
@@ -407,7 +409,11 @@ result = {{
 }}
 print('RESULT_JSON:' + json.dumps(result))
 "#,
-            use_small = if self.config.use_small { "True" } else { "False" },
+            use_small = if self.config.use_small {
+                "True"
+            } else {
+                "False"
+            },
             seed_code = seed_code,
             text = text.replace("'", "\\'"),
             speaker = speaker,
@@ -432,7 +438,8 @@ print('RESULT_JSON:' + json.dumps(result))
 
         // Parse result
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result_line = stdout.lines()
+        let result_line = stdout
+            .lines()
             .find(|l| l.starts_with("RESULT_JSON:"))
             .ok_or_else(|| MediaError::SerializationError("No result found".to_string()))?;
 
@@ -493,9 +500,7 @@ mod tests {
 
     #[test]
     fn test_tag_building() {
-        let prompt = BarkPrompt::text("Hello world")
-            .with_cough(5)
-            .with_laugh(0);
+        let prompt = BarkPrompt::text("Hello world").with_cough(5).with_laugh(0);
 
         let text = prompt.build_text();
         assert!(text.contains("[coughs]"));
@@ -513,7 +518,13 @@ mod tests {
 
     #[test]
     fn test_speaker_presets() {
-        assert_eq!(BarkSpeaker::EnglishSpeaker0.preset_name(), "v2/en_speaker_0");
-        assert_eq!(BarkSpeaker::ChineseSpeaker0.preset_name(), "v2/zh_speaker_0");
+        assert_eq!(
+            BarkSpeaker::EnglishSpeaker0.preset_name(),
+            "v2/en_speaker_0"
+        );
+        assert_eq!(
+            BarkSpeaker::ChineseSpeaker0.preset_name(),
+            "v2/zh_speaker_0"
+        );
     }
 }

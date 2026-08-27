@@ -64,7 +64,10 @@ fn dpb(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register version info
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add("__author__", "AuraSense Tech Corporation")?;
-    m.add("__doc__", "Delta-Predictive Biosensing Framework - Neuromorphic signal processing")?;
+    m.add(
+        "__doc__",
+        "Delta-Predictive Biosensing Framework - Neuromorphic signal processing",
+    )?;
 
     // Register core types
     m.add_class::<types::PySpikeEvent>()?;

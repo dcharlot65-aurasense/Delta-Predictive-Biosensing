@@ -134,7 +134,7 @@ pub struct GrfPhaseConfig {
 impl Default for GrfPhaseConfig {
     fn default() -> Self {
         Self {
-            body_weight: 750.0,      // ~75kg person
+            body_weight: 750.0,       // ~75kg person
             contact_threshold: 0.05,  // 5% BW for contact detection
             min_stance_duration: 0.3, // 300ms minimum stance
             peak_threshold: 0.9,      // 90% BW for peak detection
@@ -274,9 +274,9 @@ pub struct GripOnsetConfig {
 impl Default for GripOnsetConfig {
     fn default() -> Self {
         Self {
-            onset_threshold: 10.0,   // 10N onset threshold
-            release_threshold: 0.1,  // Release at 10% of peak
-            min_duration: 0.1,       // 100ms minimum
+            onset_threshold: 10.0,  // 10N onset threshold
+            release_threshold: 0.1, // Release at 10% of peak
+            min_duration: 0.1,      // 100ms minimum
             relative_threshold: false,
         }
     }
@@ -358,7 +358,8 @@ impl EventEncoder for GripOnsetEncoder {
 
                 // Calculate onset rate (force rise over first few samples)
                 let onset_window = 5.min(i);
-                let onset_rate = (force - samples[i - onset_window]) / (onset_window as f32 * dt as f32);
+                let onset_rate =
+                    (force - samples[i - onset_window]) / (onset_window as f32 * dt as f32);
 
                 events.push(SpikeEvent::new(time, 0, 1, onset_rate.max(0.0)));
             }
@@ -512,7 +513,12 @@ impl EventEncoder for RfdEncoder {
         }
 
         // Also emit onset event
-        events.push(SpikeEvent::new(onset_time, config.time_windows.len() as u32, 1, onset_force));
+        events.push(SpikeEvent::new(
+            onset_time,
+            config.time_windows.len() as u32,
+            1,
+            onset_force,
+        ));
 
         events.sort_by(|a, b| a.timestamp.total_cmp(&b.timestamp));
         Ok(events)
@@ -559,13 +565,13 @@ mod tests {
             let phase = (i - 50) as f32 / 150.0;
             // Double-bump pattern
             let force = if phase < 0.3 {
-                bw * (0.5 + phase * 2.5)  // Rising to first peak
+                bw * (0.5 + phase * 2.5) // Rising to first peak
             } else if phase < 0.5 {
-                bw * (1.25 - (phase - 0.3) * 2.5)  // Falling to midstance
+                bw * (1.25 - (phase - 0.3) * 2.5) // Falling to midstance
             } else if phase < 0.7 {
-                bw * (0.75 + (phase - 0.5) * 2.5)  // Rising to second peak
+                bw * (0.75 + (phase - 0.5) * 2.5) // Rising to second peak
             } else {
-                bw * (1.25 - (phase - 0.7) * 4.0)  // Falling to toe-off
+                bw * (1.25 - (phase - 0.7) * 4.0) // Falling to toe-off
             };
             data[i] = force.max(0.0);
         }
@@ -580,12 +586,18 @@ mod tests {
         let events = encoder.encode(&signal, &config).unwrap();
         // The encoder should detect at least some gait events from the simulated data
         // Exact events depend on thresholds and simulated pattern
-        assert!(events.is_empty() || !events.is_empty(), "Encoder should process without error");
+        assert!(
+            events.is_empty() || !events.is_empty(),
+            "Encoder should process without error"
+        );
 
         // Check that heel strikes are detected if any events found
         if !events.is_empty() {
             let heel_strikes: Vec<_> = events.iter().filter(|e| e.channel == 0).collect();
-            assert!(!heel_strikes.is_empty(), "Should detect heel strike when events are found");
+            assert!(
+                !heel_strikes.is_empty(),
+                "Should detect heel strike when events are found"
+            );
         }
     }
 

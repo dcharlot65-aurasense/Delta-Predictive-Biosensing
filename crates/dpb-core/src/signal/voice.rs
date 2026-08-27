@@ -9,7 +9,7 @@
 //! - Spectral analysis for speech
 
 use crate::error::{DpbError, Result};
-use ndarray::{ArrayView1};
+use ndarray::ArrayView1;
 use serde::{Deserialize, Serialize};
 
 /// Fundamental frequency (F0) metrics
@@ -152,7 +152,7 @@ impl VoiceAnalyzer {
     /// Create a new voice analyzer
     pub fn new(sample_rate: f64) -> Self {
         let frame_size = (sample_rate * 0.025) as usize; // 25ms frames
-        let hop_size = (sample_rate * 0.010) as usize;   // 10ms hop
+        let hop_size = (sample_rate * 0.010) as usize; // 10ms hop
 
         Self {
             sample_rate,
@@ -215,7 +215,10 @@ impl VoiceAnalyzer {
         }
 
         let mean_f0 = voiced_f0.iter().sum::<f64>() / voiced_f0.len() as f64;
-        let variance = voiced_f0.iter().map(|&f| (f - mean_f0).powi(2)).sum::<f64>()
+        let variance = voiced_f0
+            .iter()
+            .map(|&f| (f - mean_f0).powi(2))
+            .sum::<f64>()
             / voiced_f0.len() as f64;
         let std_f0 = variance.sqrt();
 
@@ -325,7 +328,8 @@ impl VoiceAnalyzer {
         let mut ppq5_count = 0;
         for i in 2..n.saturating_sub(2) {
             let local_mean =
-                (periods[i - 2] + periods[i - 1] + periods[i] + periods[i + 1] + periods[i + 2]) / 5.0;
+                (periods[i - 2] + periods[i - 1] + periods[i] + periods[i + 1] + periods[i + 2])
+                    / 5.0;
             ppq5_sum += (periods[i] - local_mean).abs();
             ppq5_count += 1;
         }
@@ -360,8 +364,8 @@ impl VoiceAnalyzer {
 
         // Shimmer (local)
         let local_diffs: Vec<f64> = amplitudes.windows(2).map(|w| (w[1] - w[0]).abs()).collect();
-        let shimmer_local = local_diffs.iter().sum::<f64>() / local_diffs.len() as f64 / mean_amplitude
-            * 100.0;
+        let shimmer_local =
+            local_diffs.iter().sum::<f64>() / local_diffs.len() as f64 / mean_amplitude * 100.0;
 
         // Shimmer (local, dB)
         let db_diffs: Vec<f64> = amplitudes
@@ -406,7 +410,10 @@ impl VoiceAnalyzer {
         let mut apq11_sum = 0.0;
         let mut apq11_count = 0;
         for i in 5..n.saturating_sub(5) {
-            let local_mean: f64 = (-5..=5).map(|j| amplitudes[(i as i64 + j) as usize]).sum::<f64>() / 11.0;
+            let local_mean: f64 = (-5..=5)
+                .map(|j| amplitudes[(i as i64 + j) as usize])
+                .sum::<f64>()
+                / 11.0;
             apq11_sum += (amplitudes[i] - local_mean).abs();
             apq11_count += 1;
         }
@@ -683,7 +690,11 @@ impl VoiceAnalyzer {
     }
 
     /// Detect voiced/unvoiced segments and pauses
-    pub fn analyze_timing(&self, signal: ArrayView1<f64>, total_syllables: Option<usize>) -> Result<SpeechTimingMetrics> {
+    pub fn analyze_timing(
+        &self,
+        signal: ArrayView1<f64>,
+        total_syllables: Option<usize>,
+    ) -> Result<SpeechTimingMetrics> {
         let duration_seconds = signal.len() as f64 / self.sample_rate;
 
         // Calculate frame energies

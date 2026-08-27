@@ -125,13 +125,15 @@ impl TimeProfiler {
         }
 
         let avg = self.average_ms();
-        let variance: f64 = self.measurements
+        let variance: f64 = self
+            .measurements
             .iter()
             .map(|d| {
                 let diff = d.as_secs_f64() * 1000.0 - avg;
                 diff * diff
             })
-            .sum::<f64>() / (self.measurements.len() - 1) as f64;
+            .sum::<f64>()
+            / (self.measurements.len() - 1) as f64;
 
         variance.sqrt()
     }
@@ -281,7 +283,10 @@ impl SpikeProfiler {
 
     /// Get number of active neurons
     pub fn num_active_neurons(&self) -> usize {
-        self.spike_times.iter().filter(|spikes| !spikes.is_empty()).count()
+        self.spike_times
+            .iter()
+            .filter(|spikes| !spikes.is_empty())
+            .count()
     }
 
     /// Get inter-spike intervals for a neuron
@@ -302,12 +307,14 @@ impl SpikeProfiler {
         }
 
         let mean = isis.iter().sum::<usize>() as f64 / isis.len() as f64;
-        let variance = isis.iter()
+        let variance = isis
+            .iter()
             .map(|&isi| {
                 let diff = isi as f64 - mean;
                 diff * diff
             })
-            .sum::<f64>() / (isis.len() - 1) as f64;
+            .sum::<f64>()
+            / (isis.len() - 1) as f64;
 
         variance.sqrt() / mean
     }
@@ -389,15 +396,20 @@ impl EnergyEstimator {
 
     /// Create CMOS estimator
     pub fn cmos(name: &str) -> Self {
-        Self::new(name, EnergyModel::CMOS {
-            energy_per_mac_pj: 4600.0, // 4.6 pJ for 45nm CMOS
-        })
+        Self::new(
+            name,
+            EnergyModel::CMOS {
+                energy_per_mac_pj: 4600.0, // 4.6 pJ for 45nm CMOS
+            },
+        )
     }
 
     /// Record operations
     pub fn record_operations(&mut self, num_operations: usize) {
         let energy_per_op = match self.model {
-            EnergyModel::Neuromorphic { energy_per_spike_op_pj } => energy_per_spike_op_pj,
+            EnergyModel::Neuromorphic {
+                energy_per_spike_op_pj,
+            } => energy_per_spike_op_pj,
             EnergyModel::CMOS { energy_per_mac_pj } => energy_per_mac_pj,
             EnergyModel::Custom { energy_per_op_pj } => energy_per_op_pj,
         };

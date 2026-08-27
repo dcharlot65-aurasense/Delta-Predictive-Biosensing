@@ -81,9 +81,11 @@ impl<T: Pod> GpuBuffer<T> {
     /// Writes data to the buffer.
     pub fn write(&self, queue: &wgpu::Queue, data: &[T]) -> Result<()> {
         if data.len() != self.len {
-            return Err(DpbError::InvalidDimensions(
-                format!("Data length {} does not match buffer length {}", data.len(), self.len),
-            ));
+            return Err(DpbError::InvalidDimensions(format!(
+                "Data length {} does not match buffer length {}",
+                data.len(),
+                self.len
+            )));
         }
         queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(data));
         Ok(())
@@ -98,7 +100,11 @@ impl<T: Pod> GpuBuffer<T> {
             let _ = sender.send(result);
         });
 
-        device.poll(wgpu::PollType::Wait { submission_index: None, timeout: None })
+        device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            })
             .map_err(|e| DpbError::Gpu(format!("Device poll failed: {e}")))?;
 
         receiver

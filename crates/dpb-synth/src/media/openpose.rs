@@ -213,11 +213,10 @@ impl OpenPoseExtractor {
             });
         }
 
-        let python_path = which::which("python3")
-            .map_err(|_| MediaError::ToolNotFound {
-                tool: "python3".to_string(),
-                install_url: "https://www.python.org/downloads/".to_string(),
-            })?;
+        let python_path = which::which("python3").map_err(|_| MediaError::ToolNotFound {
+            tool: "python3".to_string(),
+            install_url: "https://www.python.org/downloads/".to_string(),
+        })?;
 
         std::fs::create_dir_all(&config.output_dir)?;
 
@@ -258,9 +257,11 @@ impl OpenPoseExtractor {
     /// Process a single image
     pub fn process_image(&self, image_path: &Path) -> Result<OpenPoseFrame> {
         let output = self.process_video(image_path)?;
-        output.frames.into_iter().next().ok_or_else(|| {
-            MediaError::ExecutionFailed("No poses detected in image".to_string())
-        })
+        output
+            .frames
+            .into_iter()
+            .next()
+            .ok_or_else(|| MediaError::ExecutionFailed("No poses detected in image".to_string()))
     }
 
     fn generate_video_script(&self, video_path: &Path, output_json: &Path) -> Result<String> {
@@ -273,7 +274,8 @@ impl OpenPoseExtractor {
             "None".to_string()
         };
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import sys
 import cv2
 import json
@@ -479,7 +481,8 @@ print('RESULT_JSON:' + json.dumps({{
 
         // Parse result
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result_line = stdout.lines()
+        let result_line = stdout
+            .lines()
             .find(|l| l.starts_with("RESULT_JSON:"))
             .ok_or_else(|| MediaError::SerializationError("No result found".to_string()))?;
 
@@ -509,38 +512,50 @@ print('RESULT_JSON:' + json.dumps({{
                                         person_id: p["person_id"].as_u64()? as u32,
                                         body: p["body"].as_array().map(|kps| {
                                             kps.iter()
-                                                .filter_map(|k| Some(Keypoint {
-                                                    x: k["x"].as_f64()? as f32,
-                                                    y: k["y"].as_f64()? as f32,
-                                                    confidence: k["confidence"].as_f64()? as f32,
-                                                }))
+                                                .filter_map(|k| {
+                                                    Some(Keypoint {
+                                                        x: k["x"].as_f64()? as f32,
+                                                        y: k["y"].as_f64()? as f32,
+                                                        confidence: k["confidence"].as_f64()?
+                                                            as f32,
+                                                    })
+                                                })
                                                 .collect()
                                         }),
                                         left_hand: p["left_hand"].as_array().map(|kps| {
                                             kps.iter()
-                                                .filter_map(|k| Some(Keypoint {
-                                                    x: k["x"].as_f64()? as f32,
-                                                    y: k["y"].as_f64()? as f32,
-                                                    confidence: k["confidence"].as_f64()? as f32,
-                                                }))
+                                                .filter_map(|k| {
+                                                    Some(Keypoint {
+                                                        x: k["x"].as_f64()? as f32,
+                                                        y: k["y"].as_f64()? as f32,
+                                                        confidence: k["confidence"].as_f64()?
+                                                            as f32,
+                                                    })
+                                                })
                                                 .collect()
                                         }),
                                         right_hand: p["right_hand"].as_array().map(|kps| {
                                             kps.iter()
-                                                .filter_map(|k| Some(Keypoint {
-                                                    x: k["x"].as_f64()? as f32,
-                                                    y: k["y"].as_f64()? as f32,
-                                                    confidence: k["confidence"].as_f64()? as f32,
-                                                }))
+                                                .filter_map(|k| {
+                                                    Some(Keypoint {
+                                                        x: k["x"].as_f64()? as f32,
+                                                        y: k["y"].as_f64()? as f32,
+                                                        confidence: k["confidence"].as_f64()?
+                                                            as f32,
+                                                    })
+                                                })
                                                 .collect()
                                         }),
                                         face: p["face"].as_array().map(|kps| {
                                             kps.iter()
-                                                .filter_map(|k| Some(Keypoint {
-                                                    x: k["x"].as_f64()? as f32,
-                                                    y: k["y"].as_f64()? as f32,
-                                                    confidence: k["confidence"].as_f64()? as f32,
-                                                }))
+                                                .filter_map(|k| {
+                                                    Some(Keypoint {
+                                                        x: k["x"].as_f64()? as f32,
+                                                        y: k["y"].as_f64()? as f32,
+                                                        confidence: k["confidence"].as_f64()?
+                                                            as f32,
+                                                    })
+                                                })
                                                 .collect()
                                         }),
                                         confidence: p["confidence"].as_f64().unwrap_or(0.0) as f32,
@@ -557,9 +572,7 @@ print('RESULT_JSON:' + json.dumps({{
             })
             .unwrap_or_default();
 
-        let render_path = summary["render_path"]
-            .as_str()
-            .map(PathBuf::from);
+        let render_path = summary["render_path"].as_str().map(PathBuf::from);
 
         Ok(OpenPoseOutput {
             frames,
@@ -609,11 +622,7 @@ pub mod analysis {
 
     /// Calculate elbow angle from body keypoints
     pub fn elbow_angle(body: &[Keypoint], is_right: bool) -> Option<f32> {
-        let (shoulder, elbow, wrist) = if is_right {
-            (2, 3, 4)
-        } else {
-            (5, 6, 7)
-        };
+        let (shoulder, elbow, wrist) = if is_right { (2, 3, 4) } else { (5, 6, 7) };
 
         if body.len() > wrist {
             Some(calculate_angle(&body[shoulder], &body[elbow], &body[wrist]))
@@ -624,11 +633,7 @@ pub mod analysis {
 
     /// Calculate knee angle from body keypoints
     pub fn knee_angle(body: &[Keypoint], is_right: bool) -> Option<f32> {
-        let (hip, knee, ankle) = if is_right {
-            (9, 10, 11)
-        } else {
-            (12, 13, 14)
-        };
+        let (hip, knee, ankle) = if is_right { (9, 10, 11) } else { (12, 13, 14) };
 
         if body.len() > ankle {
             Some(calculate_angle(&body[hip], &body[knee], &body[ankle]))
@@ -642,10 +647,9 @@ pub mod analysis {
         let mut displacements = Vec::new();
 
         for i in 1..frames.len() {
-            if let (Some(prev_pose), Some(curr_pose)) = (
-                frames[i - 1].poses.first(),
-                frames[i].poses.first(),
-            ) {
+            if let (Some(prev_pose), Some(curr_pose)) =
+                (frames[i - 1].poses.first(), frames[i].poses.first())
+            {
                 let (prev_hand, curr_hand) = if hand {
                     (&prev_pose.right_hand, &curr_pose.right_hand)
                 } else {
@@ -698,9 +702,21 @@ mod tests {
 
     #[test]
     fn test_angle_calculation() {
-        let a = Keypoint { x: 0.0, y: 0.0, confidence: 1.0 };
-        let b = Keypoint { x: 1.0, y: 0.0, confidence: 1.0 };
-        let c = Keypoint { x: 1.0, y: 1.0, confidence: 1.0 };
+        let a = Keypoint {
+            x: 0.0,
+            y: 0.0,
+            confidence: 1.0,
+        };
+        let b = Keypoint {
+            x: 1.0,
+            y: 0.0,
+            confidence: 1.0,
+        };
+        let c = Keypoint {
+            x: 1.0,
+            y: 1.0,
+            confidence: 1.0,
+        };
 
         let angle = analysis::calculate_angle(&a, &b, &c);
         // Should be approximately 90 degrees (π/2)

@@ -1,9 +1,9 @@
-use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
-use std::hint::black_box;
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use dpb_mobile::{
     MobileModel, MobileRuntime,
     model::{LayerInfo, LayerType, QuantizationType},
 };
+use std::hint::black_box;
 
 fn create_test_model(input_dim: usize, hidden_dim: usize, output_dim: usize) -> MobileModel {
     let mut model = MobileModel::new("benchmark_model".into(), input_dim, output_dim);
@@ -87,10 +87,6 @@ fn bench_model_serialization(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(
-    benches,
-    bench_inference,
-    bench_model_serialization,
-);
+criterion_group!(benches, bench_inference, bench_model_serialization,);
 
 criterion_main!(benches);

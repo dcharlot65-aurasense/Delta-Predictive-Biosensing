@@ -2,8 +2,8 @@
 
 use super::SNNArchitecture;
 use crate::{
-    layers::{NeuronState, SpikingLayer, SpikingLinear},
     NeuronParams, SNNConfig, SNNError, SNNResult, SpikeTensor,
+    layers::{NeuronState, SpikingLayer, SpikingLinear},
 };
 use ndarray::{Array1, Array2, Array3, s};
 use serde::{Deserialize, Serialize};
@@ -92,19 +92,15 @@ impl SpikingGCN {
         }
 
         // D^(-1/2)
-        let degree_inv_sqrt: Array1<f32> = degree.mapv(|d| {
-            if d > 0.0 {
-                1.0 / d.sqrt()
-            } else {
-                0.0
-            }
-        });
+        let degree_inv_sqrt: Array1<f32> =
+            degree.mapv(|d| if d > 0.0 { 1.0 / d.sqrt() } else { 0.0 });
 
         // Normalize: D^(-1/2) A D^(-1/2)
         let mut normalized = Array2::zeros((n, n));
         for i in 0..n {
             for j in 0..n {
-                normalized[[i, j]] = degree_inv_sqrt[i] * adj_with_loops[[i, j]] * degree_inv_sqrt[j];
+                normalized[[i, j]] =
+                    degree_inv_sqrt[i] * adj_with_loops[[i, j]] * degree_inv_sqrt[j];
             }
         }
 
@@ -142,13 +138,13 @@ impl SNNArchitecture for SpikingGCN {
 
         // Flatten node features for output layer
         let dense = current.to_dense();
-        let (batch_size, num_steps, features) = (
-            dense.shape()[0],
-            dense.shape()[1],
-            dense.shape()[2],
-        );
+        let (batch_size, num_steps, features) =
+            (dense.shape()[0], dense.shape()[1], dense.shape()[2]);
 
-        let flattened = dense.to_shape((batch_size, num_steps, features)).unwrap().to_owned();
+        let flattened = dense
+            .to_shape((batch_size, num_steps, features))
+            .unwrap()
+            .to_owned();
         let flattened_tensor = SpikeTensor::from_dense(flattened, current.requires_grad);
 
         // Forward through output layer
@@ -228,9 +224,8 @@ impl SpikingGraphConvLayer {
         let normal = Normal::new(0.0, std).unwrap();
         let mut rng = rng();
 
-        let weights = Array2::from_shape_fn((out_features, in_features), |_| {
-            normal.sample(&mut rng)
-        });
+        let weights =
+            Array2::from_shape_fn((out_features, in_features), |_| normal.sample(&mut rng));
 
         Self {
             weights,
@@ -299,7 +294,8 @@ impl SpikingLayer for SpikingGraphConvLayer {
                 // Apply neuron dynamics to each node
                 for n in 0..num_nodes {
                     let node_input = aggregated.row(n).to_owned();
-                    let spikes = self.state[b][n].update_lif(&node_input, &self.neuron_params, self.dt);
+                    let spikes =
+                        self.state[b][n].update_lif(&node_input, &self.neuron_params, self.dt);
 
                     // Store spikes for this node
                     for f in 0..out_features {
@@ -358,10 +354,23 @@ impl SkeletonType {
 
                 // Define skeleton connectivity (COCO format)
                 let edges = vec![
-                    (0, 1), (0, 14), (0, 15), (14, 16), (15, 17), // Head
-                    (0, 2), (2, 4), (0, 3), (3, 5), // Arms
-                    (0, 8), (8, 10), (0, 9), (9, 11), // Torso to hips
-                    (8, 6), (6, 12), (9, 7), (7, 13), // Legs
+                    (0, 1),
+                    (0, 14),
+                    (0, 15),
+                    (14, 16),
+                    (15, 17), // Head
+                    (0, 2),
+                    (2, 4),
+                    (0, 3),
+                    (3, 5), // Arms
+                    (0, 8),
+                    (8, 10),
+                    (0, 9),
+                    (9, 11), // Torso to hips
+                    (8, 6),
+                    (6, 12),
+                    (9, 7),
+                    (7, 13), // Legs
                 ];
 
                 for (i, j) in edges {
@@ -393,15 +402,8 @@ mod tests {
 
     #[test]
     fn test_adjacency_normalization() {
-        let adj = Array2::from_shape_vec(
-            (3, 3),
-            vec![
-                0.0, 1.0, 0.0,
-                1.0, 0.0, 1.0,
-                0.0, 1.0, 0.0,
-            ],
-        )
-        .unwrap();
+        let adj = Array2::from_shape_vec((3, 3), vec![0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0])
+            .unwrap();
 
         let normalized = SpikingGCN::normalize_adjacency(&adj);
         assert_eq!(normalized.shape(), &[3, 3]);
@@ -439,13 +441,8 @@ mod tests {
 
     #[test]
     fn test_gcn_for_skeleton() {
-        let gcn = SpikingGCN::for_skeleton(
-            SkeletonType::COCO18,
-            3,
-            vec![8],
-            4,
-            SNNConfig::default(),
-        );
+        let gcn =
+            SpikingGCN::for_skeleton(SkeletonType::COCO18, 3, vec![8], 4, SNNConfig::default());
         assert_eq!(gcn.num_nodes, 18);
     }
 }

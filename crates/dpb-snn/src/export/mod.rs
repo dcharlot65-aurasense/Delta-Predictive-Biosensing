@@ -3,15 +3,14 @@
 //! Provides ONNX export capabilities and other deployment formats
 //! for trained spiking neural networks.
 
-pub mod onnx;
-pub mod weights;
 pub mod config;
+pub mod onnx;
 pub mod tflite;
+pub mod weights;
 
-pub use onnx::{OnnxExporter, OnnxConfig, ExportResult};
-pub use weights::{WeightExporter, WeightFormat, ModelWeights};
 pub use config::{ExportMetadata, LayerConfig, LayerType, ModelConfig};
+pub use onnx::{ExportResult, OnnxConfig, OnnxExporter};
 pub use tflite::{
-    TFLiteExporter, TFLiteConfig, TFLiteExportResult,
-    QuantizationConfig, QuantizationMode,
+    QuantizationConfig, QuantizationMode, TFLiteConfig, TFLiteExportResult, TFLiteExporter,
 };
+pub use weights::{ModelWeights, WeightExporter, WeightFormat};

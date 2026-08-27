@@ -220,9 +220,7 @@ impl Decoder for TremorSeverityDecoder {
             }
 
             // Overall severity (max across bands)
-            let max_power = total_band_powers
-                .iter()
-                .fold(0.0f32, |a, &b| a.max(b));
+            let max_power = total_band_powers.iter().fold(0.0f32, |a, &b| a.max(b));
             output[[b, num_bands]] = self.classify_severity(max_power);
         }
 
@@ -273,11 +271,7 @@ impl GaitScoreDecoder {
         }
     }
 
-    fn compute_feature_score(
-        &self,
-        feature: GaitFeature,
-        spike_rates: &[f32],
-    ) -> f32 {
+    fn compute_feature_score(&self, feature: GaitFeature, spike_rates: &[f32]) -> f32 {
         match feature {
             GaitFeature::Cadence => {
                 // Higher spike rate = higher cadence
@@ -287,10 +281,7 @@ impl GaitScoreDecoder {
             GaitFeature::StrideLength => {
                 // Variability in spike patterns indicates stride length
                 let mean = spike_rates.iter().sum::<f32>() / spike_rates.len() as f32;
-                let variance = spike_rates
-                    .iter()
-                    .map(|&x| (x - mean).powi(2))
-                    .sum::<f32>()
+                let variance = spike_rates.iter().map(|&x| (x - mean).powi(2)).sum::<f32>()
                     / spike_rates.len() as f32;
                 variance.sqrt() * 5.0
             }
@@ -410,7 +401,11 @@ impl UPDRSTremorDecoder {
 impl Decoder for UPDRSTremorDecoder {
     fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
         let spike_dense = spikes.to_dense();
-        let (batch_size, _, _) = (spike_dense.shape()[0], spike_dense.shape()[1], spike_dense.shape()[2]);
+        let (batch_size, _, _) = (
+            spike_dense.shape()[0],
+            spike_dense.shape()[1],
+            spike_dense.shape()[2],
+        );
 
         // Tremor score (0-4 for each limb, 0-20 total)
         let mut output = Array2::zeros((batch_size, 1));
@@ -831,10 +826,14 @@ impl Decoder for TinettiDecoder {
 
         for b in 0..batch_size {
             // Gait score (0-12): regularity of spike patterns
-            let gait_rates: Vec<f32> = rates.slice(s![b, 0..self.gait_neurons.min(rates.shape()[1])]).to_vec();
+            let gait_rates: Vec<f32> = rates
+                .slice(s![b, 0..self.gait_neurons.min(rates.shape()[1])])
+                .to_vec();
             let gait_regularity = if gait_rates.len() >= 2 {
                 let mean = gait_rates.iter().sum::<f32>() / gait_rates.len() as f32;
-                let std = (gait_rates.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / gait_rates.len() as f32).sqrt();
+                let std = (gait_rates.iter().map(|x| (x - mean).powi(2)).sum::<f32>()
+                    / gait_rates.len() as f32)
+                    .sqrt();
                 1.0 - (std / (mean + 0.01)).min(1.0)
             } else {
                 0.5
@@ -847,7 +846,11 @@ impl Decoder for TinettiDecoder {
             let balance_rates: Vec<f32> = rates.slice(s![b, start..end]).to_vec();
             let balance_stability = if !balance_rates.is_empty() {
                 let mean = balance_rates.iter().sum::<f32>() / balance_rates.len() as f32;
-                let variance = balance_rates.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / balance_rates.len() as f32;
+                let variance = balance_rates
+                    .iter()
+                    .map(|x| (x - mean).powi(2))
+                    .sum::<f32>()
+                    / balance_rates.len() as f32;
                 1.0 - variance.sqrt().min(1.0)
             } else {
                 0.5
@@ -900,14 +903,16 @@ impl Decoder for MiniBESTDecoder {
                 if start < end {
                     let domain_rates: Vec<f32> = rates.slice(s![b, start..end]).to_vec();
                     let mean = domain_rates.iter().sum::<f32>() / domain_rates.len() as f32;
-                    let variance = domain_rates.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / domain_rates.len() as f32;
+                    let variance = domain_rates.iter().map(|x| (x - mean).powi(2)).sum::<f32>()
+                        / domain_rates.len() as f32;
 
                     // Higher stability = better balance
                     let domain_score = match domain {
-                        0 => mean * 8.0,                          // Anticipatory: activity level
-                        1 => (1.0 - variance.sqrt()) * 8.0,       // Reactive: consistency
+                        0 => mean * 8.0,                               // Anticipatory: activity level
+                        1 => (1.0 - variance.sqrt()) * 8.0,            // Reactive: consistency
                         2 => ((mean + 1.0 - variance) * 4.0).max(0.0), // Sensory: combined
-                        3 => {                                     // Dynamic gait: regularity
+                        3 => {
+                            // Dynamic gait: regularity
                             let regularity = 1.0 - variance.sqrt();
                             regularity * 8.0
                         }
@@ -1066,14 +1071,16 @@ impl Decoder for QstPhenotypeDecoder {
                     let z_score = (mean - 0.5) * 4.0; // Centered at 0.5, scaled
 
                     match m {
-                        0..=3 => { // Thermal modalities
+                        0..=3 => {
+                            // Thermal modalities
                             if z_score < -1.0 {
                                 thermal_loss += z_score.abs();
                             } else if z_score > 1.0 {
                                 thermal_gain += z_score;
                             }
                         }
-                        4..=7 => { // Mechanical modalities
+                        4..=7 => {
+                            // Mechanical modalities
                             if z_score < -1.0 {
                                 mech_loss += z_score.abs();
                             } else if z_score > 1.0 {
@@ -1087,15 +1094,23 @@ impl Decoder for QstPhenotypeDecoder {
 
             // Calculate phenotype probabilities (softmax-like)
             let total = thermal_loss + thermal_gain + mech_loss + mech_gain + 1.0;
-            output[[b, 0]] = 1.0 / total;                    // Normal
-            output[[b, 1]] = thermal_loss / total;           // Sensory loss
-            output[[b, 2]] = thermal_gain / total;           // Thermal hyperalgesia
-            output[[b, 3]] = mech_gain / total;              // Mechanical hyperalgesia
+            output[[b, 0]] = 1.0 / total; // Normal
+            output[[b, 1]] = thermal_loss / total; // Sensory loss
+            output[[b, 2]] = thermal_gain / total; // Thermal hyperalgesia
+            output[[b, 3]] = mech_gain / total; // Mechanical hyperalgesia
             output[[b, 4]] = (thermal_gain + mech_gain) / total; // Mixed
 
             // Dominant phenotype (argmax)
-            let phenotypes = [output[[b, 0]], output[[b, 1]], output[[b, 2]], output[[b, 3]], output[[b, 4]]];
-            let max_idx = phenotypes.iter().enumerate()
+            let phenotypes = [
+                output[[b, 0]],
+                output[[b, 1]],
+                output[[b, 2]],
+                output[[b, 3]],
+                output[[b, 4]],
+            ];
+            let max_idx = phenotypes
+                .iter()
+                .enumerate()
                 .max_by(|a, b| a.1.total_cmp(b.1))
                 .map(|(i, _)| i)
                 .unwrap_or(0);
@@ -1177,9 +1192,18 @@ impl Decoder for VorGainDecoder {
             let left_eye: f32 = rates.slice(s![b, eye_start..mid_eye]).mean().unwrap_or(0.5);
             let right_eye: f32 = rates.slice(s![b, mid_eye..eye_end]).mean().unwrap_or(0.5);
 
-            let left_gain = if head_activity > 0.01 { left_eye / head_activity } else { 1.0 };
-            let right_gain = if head_activity > 0.01 { right_eye / head_activity } else { 1.0 };
-            let asymmetry = ((left_gain - right_gain) / (left_gain + right_gain + 0.01) * 100.0).abs();
+            let left_gain = if head_activity > 0.01 {
+                left_eye / head_activity
+            } else {
+                1.0
+            };
+            let right_gain = if head_activity > 0.01 {
+                right_eye / head_activity
+            } else {
+                1.0
+            };
+            let asymmetry =
+                ((left_gain - right_gain) / (left_gain + right_gain + 0.01) * 100.0).abs();
 
             output[[b, 0]] = vor_gain.clamp(0.0, 2.0);
             output[[b, 1]] = asymmetry.clamp(0.0, 100.0);
@@ -1223,9 +1247,15 @@ impl Decoder for CanalParesisDecoder {
             // Where: RW=right warm, RC=right cool, LW=left warm, LC=left cool
 
             let lw: f32 = rates.slice(s![b, 0..quarter]).mean().unwrap_or(0.0);
-            let lc: f32 = rates.slice(s![b, quarter..quarter*2]).mean().unwrap_or(0.0);
-            let rw: f32 = rates.slice(s![b, quarter*2..quarter*3]).mean().unwrap_or(0.0);
-            let rc: f32 = rates.slice(s![b, quarter*3..]).mean().unwrap_or(0.0);
+            let lc: f32 = rates
+                .slice(s![b, quarter..quarter * 2])
+                .mean()
+                .unwrap_or(0.0);
+            let rw: f32 = rates
+                .slice(s![b, quarter * 2..quarter * 3])
+                .mean()
+                .unwrap_or(0.0);
+            let rc: f32 = rates.slice(s![b, quarter * 3..]).mean().unwrap_or(0.0);
 
             let total = lw + lc + rw + rc + 0.001; // Avoid division by zero
             let cp = ((rw + rc - lw - lc) / total * 100.0).abs();
@@ -1460,10 +1490,10 @@ impl Decoder for GripStrengthDecoder {
             let max_grip = max_activity * self.normalization_max;
 
             // Fatigue index: (initial - final) / initial
-            let initial = activities.iter().take(num_steps / 4).sum::<f32>()
-                / (num_steps / 4) as f32;
-            let final_val = activities.iter().skip(3 * num_steps / 4).sum::<f32>()
-                / (num_steps / 4) as f32;
+            let initial =
+                activities.iter().take(num_steps / 4).sum::<f32>() / (num_steps / 4) as f32;
+            let final_val =
+                activities.iter().skip(3 * num_steps / 4).sum::<f32>() / (num_steps / 4) as f32;
             let fatigue = if initial > 0.01 {
                 ((initial - final_val) / initial * 100.0).max(0.0)
             } else {
@@ -1472,7 +1502,10 @@ impl Decoder for GripStrengthDecoder {
 
             // Variability (coefficient of variation)
             let mean_activity = activities.iter().sum::<f32>() / activities.len() as f32;
-            let variance = activities.iter().map(|x| (x - mean_activity).powi(2)).sum::<f32>()
+            let variance = activities
+                .iter()
+                .map(|x| (x - mean_activity).powi(2))
+                .sum::<f32>()
                 / activities.len() as f32;
             let cv = if mean_activity > 0.01 {
                 variance.sqrt() / mean_activity * 100.0
@@ -1629,16 +1662,23 @@ impl Decoder for HrvDecoder {
 
             // Mean heart rate (assuming 1000Hz sampling -> intervals in ms)
             let mean_interval = intervals.iter().sum::<f32>() / intervals.len() as f32;
-            let mean_hr = if mean_interval > 0.0 { 60000.0 / mean_interval } else { 0.0 };
+            let mean_hr = if mean_interval > 0.0 {
+                60000.0 / mean_interval
+            } else {
+                0.0
+            };
 
             // SDNN (standard deviation of intervals)
-            let variance = intervals.iter()
+            let variance = intervals
+                .iter()
                 .map(|&x| (x - mean_interval).powi(2))
-                .sum::<f32>() / intervals.len() as f32;
+                .sum::<f32>()
+                / intervals.len() as f32;
             let sdnn = variance.sqrt();
 
             // RMSSD (root mean square of successive differences)
-            let successive_diffs: Vec<f32> = intervals.windows(2)
+            let successive_diffs: Vec<f32> = intervals
+                .windows(2)
                 .map(|w| (w[1] - w[0]).powi(2))
                 .collect();
             let rmssd = if !successive_diffs.is_empty() {
@@ -1648,7 +1688,8 @@ impl Decoder for HrvDecoder {
             };
 
             // pNN50 (percentage of successive differences > 50ms)
-            let nn50_count = intervals.windows(2)
+            let nn50_count = intervals
+                .windows(2)
                 .filter(|w| (w[1] - w[0]).abs() > 50.0)
                 .count();
             let pnn50 = if intervals.len() > 1 {
@@ -1685,7 +1726,10 @@ pub struct RespiratoryDecoder {
 
 impl RespiratoryDecoder {
     pub fn new(num_neurons: usize, sample_rate: f32) -> Self {
-        Self { num_neurons, sample_rate }
+        Self {
+            num_neurons,
+            sample_rate,
+        }
     }
 }
 
@@ -1714,16 +1758,23 @@ impl Decoder for RespiratoryDecoder {
             let mut valleys = Vec::new();
 
             for i in 1..pattern.len() - 1 {
-                if pattern[i] > pattern[i - 1] && pattern[i] > pattern[i + 1] && pattern[i] > mean_activity {
+                if pattern[i] > pattern[i - 1]
+                    && pattern[i] > pattern[i + 1]
+                    && pattern[i] > mean_activity
+                {
                     peaks.push(i);
                 }
-                if pattern[i] < pattern[i - 1] && pattern[i] < pattern[i + 1] && pattern[i] < mean_activity {
+                if pattern[i] < pattern[i - 1]
+                    && pattern[i] < pattern[i + 1]
+                    && pattern[i] < mean_activity
+                {
                     valleys.push(i);
                 }
             }
 
             // Respiratory rate from peak-to-peak intervals
-            let breath_intervals: Vec<f32> = peaks.windows(2)
+            let breath_intervals: Vec<f32> = peaks
+                .windows(2)
                 .map(|w| (w[1] - w[0]) as f32 / self.sample_rate)
                 .collect();
 
@@ -1733,7 +1784,11 @@ impl Decoder for RespiratoryDecoder {
                 4.0 // Default 15 breaths/min
             };
 
-            let rr = if mean_breath_time > 0.0 { 60.0 / mean_breath_time } else { 0.0 };
+            let rr = if mean_breath_time > 0.0 {
+                60.0 / mean_breath_time
+            } else {
+                0.0
+            };
 
             // Inspiratory and expiratory times (simplified)
             let ti = mean_breath_time * 0.4; // Typical I:E ratio ~1:1.5
@@ -1742,9 +1797,11 @@ impl Decoder for RespiratoryDecoder {
 
             // Variability (CV of breath intervals)
             let variance = if !breath_intervals.is_empty() {
-                breath_intervals.iter()
+                breath_intervals
+                    .iter()
                     .map(|x| (x - mean_breath_time).powi(2))
-                    .sum::<f32>() / breath_intervals.len() as f32
+                    .sum::<f32>()
+                    / breath_intervals.len() as f32
             } else {
                 0.0
             };
@@ -1801,14 +1858,20 @@ impl Decoder for Vo2Decoder {
             let vo2 = vo2_activity * self.max_vo2;
 
             // VCO2 from second quarter
-            let vco2_activity: f32 = rates.slice(s![b, quarter..quarter*2]).mean().unwrap_or(0.0);
+            let vco2_activity: f32 = rates
+                .slice(s![b, quarter..quarter * 2])
+                .mean()
+                .unwrap_or(0.0);
             let vco2 = vco2_activity * self.max_vo2 * 0.9; // Typically slightly less
 
             // RER = VCO2/VO2
             let rer = if vo2 > 0.1 { vco2 / vo2 } else { 0.85 };
 
             // VE from third quarter
-            let ve_activity: f32 = rates.slice(s![b, quarter*2..quarter*3]).mean().unwrap_or(0.0);
+            let ve_activity: f32 = rates
+                .slice(s![b, quarter * 2..quarter * 3])
+                .mean()
+                .unwrap_or(0.0);
             let ve = ve_activity * 150.0; // L/min
 
             output[[b, 0]] = vo2.clamp(0.0, 80.0);
@@ -1838,7 +1901,10 @@ pub struct CognitiveRtDecoder {
 
 impl CognitiveRtDecoder {
     pub fn new(num_neurons: usize, sample_rate: f32) -> Self {
-        Self { num_neurons, sample_rate }
+        Self {
+            num_neurons,
+            sample_rate,
+        }
     }
 }
 
@@ -1876,13 +1942,18 @@ impl Decoder for CognitiveRtDecoder {
             }
 
             let mean_rt = reaction_times.iter().sum::<f32>() / reaction_times.len() as f32;
-            let variance = reaction_times.iter()
+            let variance = reaction_times
+                .iter()
                 .map(|x| (x - mean_rt).powi(2))
-                .sum::<f32>() / reaction_times.len() as f32;
+                .sum::<f32>()
+                / reaction_times.len() as f32;
             let rt_sd = variance.sqrt();
 
             let min_rt = reaction_times.iter().cloned().fold(f32::INFINITY, f32::min);
-            let max_rt = reaction_times.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+            let max_rt = reaction_times
+                .iter()
+                .cloned()
+                .fold(f32::NEG_INFINITY, f32::max);
 
             output[[b, 0]] = mean_rt.clamp(100.0, 2000.0);
             output[[b, 1]] = rt_sd.clamp(0.0, 500.0);
@@ -1970,7 +2041,10 @@ pub struct WorkingMemoryDecoder {
 
 impl WorkingMemoryDecoder {
     pub fn new(num_neurons: usize, n_back_level: usize) -> Self {
-        Self { num_neurons, n_back_level }
+        Self {
+            num_neurons,
+            n_back_level,
+        }
     }
 }
 
@@ -1994,7 +2068,8 @@ impl Decoder for WorkingMemoryDecoder {
                 mean_rate / variance.sqrt()
             } else {
                 mean_rate * 3.0
-            }.clamp(-4.0, 4.0);
+            }
+            .clamp(-4.0, 4.0);
 
             // Working memory capacity (Cowan's K approximation)
             // K = (hit_rate - false_alarm_rate) * set_size
@@ -2026,7 +2101,10 @@ pub struct ScrDecoder {
 
 impl ScrDecoder {
     pub fn new(num_neurons: usize, sample_rate: f32) -> Self {
-        Self { num_neurons, sample_rate }
+        Self {
+            num_neurons,
+            sample_rate,
+        }
     }
 }
 
@@ -2083,7 +2161,9 @@ impl Decoder for ScrDecoder {
             };
 
             let sum_amp = amplitudes.iter().sum::<f32>();
-            let latency = first_latency.map(|t| t as f32 / self.sample_rate * 1000.0).unwrap_or(0.0);
+            let latency = first_latency
+                .map(|t| t as f32 / self.sample_rate * 1000.0)
+                .unwrap_or(0.0);
 
             output[[b, 0]] = scr_count as f32;
             output[[b, 1]] = mean_amp.max(0.0);

@@ -141,7 +141,8 @@ impl LossFunction for SpikeCountLoss {
             for n in 0..num_neurons {
                 let spike_count: f32 = pred_dense.slice(s![b, .., n]).sum();
                 let target_spikes = targets[[b, n]] * self.target_count * num_steps as f32;
-                let grad_coef = 2.0 * (spike_count - target_spikes) / (batch_size * num_neurons) as f32;
+                let grad_coef =
+                    2.0 * (spike_count - target_spikes) / (batch_size * num_neurons) as f32;
 
                 for t in 0..num_steps {
                     gradient[[b, t, n]] = grad_coef;
@@ -216,7 +217,8 @@ impl LossFunction for SpikeTimingLoss {
                     if pred_dense[[b, t, n]] > 0.5 {
                         let desired_time = (1.0 - targets[[b, n]]) * num_steps as f32;
                         let error = t as f32 - desired_time;
-                        gradient[[b, t, n]] = 2.0 * self.timing_weight * error / (batch_size * num_neurons) as f32;
+                        gradient[[b, t, n]] =
+                            2.0 * self.timing_weight * error / (batch_size * num_neurons) as f32;
                         break;
                     }
                 }

@@ -412,18 +412,14 @@ impl HebbianLayer {
                 trace.update(pre_spikes[j], post_spikes[i], dt);
 
                 // Compute weight update
-                let delta_w = self.rule.compute_weight_update(
-                    trace.pre,
-                    trace.post,
-                    self.weights[[i, j]],
-                );
+                let delta_w =
+                    self.rule
+                        .compute_weight_update(trace.pre, trace.post, self.weights[[i, j]]);
 
                 // Apply update with bounds
-                self.weights[[i, j]] = self.rule.apply_bounds(
-                    self.weights[[i, j]] + delta_w,
-                    self.w_min,
-                    self.w_max,
-                );
+                self.weights[[i, j]] =
+                    self.rule
+                        .apply_bounds(self.weights[[i, j]] + delta_w, self.w_min, self.w_max);
             }
         }
     }
@@ -442,7 +438,11 @@ impl HebbianLayer {
 
     /// Get weight sparsity (fraction of near-zero weights)
     pub fn sparsity(&self, threshold: f64) -> f64 {
-        let near_zero = self.weights.iter().filter(|&&w| w.abs() < threshold).count();
+        let near_zero = self
+            .weights
+            .iter()
+            .filter(|&&w| w.abs() < threshold)
+            .count();
         near_zero as f64 / self.weights.len() as f64
     }
 }
@@ -475,7 +475,10 @@ mod tests {
 
         // Exact simultaneity carries no ordering, so no directed change.
         let zero = stdp.stdp_kernel(0.0);
-        assert_eq!(zero, 0.0, "simultaneous spikes must not drive a signed change");
+        assert_eq!(
+            zero, 0.0,
+            "simultaneous spikes must not drive a signed change"
+        );
 
         // The kernel stays one-sided either side of the origin.
         assert!(stdp.stdp_kernel(0.001) > 0.0);

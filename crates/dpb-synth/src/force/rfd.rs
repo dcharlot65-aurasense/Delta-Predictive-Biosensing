@@ -175,12 +175,12 @@ impl RfdGenerator {
                 let tau_rise = self.config.time_to_peak / 3.0; // Time constant
 
                 // Early phase (neural drive)
-                let early_component = self.config.early_rfd_factor
-                    * (1.0 - (-active_time / (tau_rise * 0.5)).exp());
+                let early_component =
+                    self.config.early_rfd_factor * (1.0 - (-active_time / (tau_rise * 0.5)).exp());
 
                 // Late phase (contractile)
-                let late_component = self.config.late_rfd_factor
-                    * (1.0 - (-active_time / tau_rise).exp());
+                let late_component =
+                    self.config.late_rfd_factor * (1.0 - (-active_time / tau_rise).exp());
 
                 // Combined force
                 let force_fraction = (early_component * 0.4 + late_component * 0.6).min(1.0);
@@ -193,7 +193,14 @@ impl RfdGenerator {
         }
 
         let rfd = self.calculate_rfd(&time, &force);
-        let ground_truth = self.calculate_ground_truth(&time, &force, &rfd, onset_time, RfdTaskType::IsometricRapid, None);
+        let ground_truth = self.calculate_ground_truth(
+            &time,
+            &force,
+            &rfd,
+            onset_time,
+            RfdTaskType::IsometricRapid,
+            None,
+        );
 
         RfdOutput {
             time,
@@ -271,7 +278,14 @@ impl RfdGenerator {
         let onset_idx = time.iter().position(|&t| t >= braking_end).unwrap_or(0);
         let onset_time = time[onset_idx];
 
-        let ground_truth = self.calculate_ground_truth(&time, &force, &rfd, onset_time, RfdTaskType::CountermovementJump, None);
+        let ground_truth = self.calculate_ground_truth(
+            &time,
+            &force,
+            &rfd,
+            onset_time,
+            RfdTaskType::CountermovementJump,
+            None,
+        );
 
         RfdOutput {
             time,
@@ -326,7 +340,14 @@ impl RfdGenerator {
         }
 
         let rfd = self.calculate_rfd(&time, &force);
-        let ground_truth = self.calculate_ground_truth(&time, &force, &rfd, squat_hold_end, RfdTaskType::SquatJump, None);
+        let ground_truth = self.calculate_ground_truth(
+            &time,
+            &force,
+            &rfd,
+            squat_hold_end,
+            RfdTaskType::SquatJump,
+            None,
+        );
 
         RfdOutput {
             time,
@@ -390,7 +411,14 @@ impl RfdGenerator {
         }
 
         let rfd = self.calculate_rfd(&time, &force);
-        let ground_truth = self.calculate_ground_truth(&time, &force, &rfd, drop_phase_end, RfdTaskType::DropJump, None);
+        let ground_truth = self.calculate_ground_truth(
+            &time,
+            &force,
+            &rfd,
+            drop_phase_end,
+            RfdTaskType::DropJump,
+            None,
+        );
 
         RfdOutput {
             time,
@@ -402,7 +430,11 @@ impl RfdGenerator {
     }
 
     /// Generate repeated RFD trials showing fatigue
-    pub fn generate_fatigue_series(&mut self, n_trials: usize, rest_interval: f64) -> Vec<RfdOutput> {
+    pub fn generate_fatigue_series(
+        &mut self,
+        n_trials: usize,
+        rest_interval: f64,
+    ) -> Vec<RfdOutput> {
         let mut outputs = Vec::with_capacity(n_trials);
         let trial_duration = 1.0;
 
@@ -470,10 +502,10 @@ impl RfdGenerator {
                 let active_time = t - onset_time;
                 let tau_rise = self.config.time_to_peak / 3.0;
 
-                let early_component = self.config.early_rfd_factor
-                    * (1.0 - (-active_time / (tau_rise * 0.5)).exp());
-                let late_component = self.config.late_rfd_factor
-                    * (1.0 - (-active_time / tau_rise).exp());
+                let early_component =
+                    self.config.early_rfd_factor * (1.0 - (-active_time / (tau_rise * 0.5)).exp());
+                let late_component =
+                    self.config.late_rfd_factor * (1.0 - (-active_time / tau_rise).exp());
 
                 let force_fraction = (early_component * 0.4 + late_component * 0.6).min(1.0);
                 self.config.max_force * force_fraction
@@ -532,8 +564,12 @@ impl RfdGenerator {
 
         let rfd = self.calculate_rfd(&time, &force);
         let ground_truth = self.calculate_ground_truth(
-            &time, &force, &rfd, onset_time,
-            RfdTaskType::IsometricRapid, Some(pathology)
+            &time,
+            &force,
+            &rfd,
+            onset_time,
+            RfdTaskType::IsometricRapid,
+            Some(pathology),
         );
 
         RfdOutput {
@@ -580,25 +616,26 @@ impl RfdGenerator {
 
         // Find onset index (force > 5% of max)
         let threshold = self.config.max_force * 0.05;
-        let onset_idx = force.iter()
-            .position(|&f| f > threshold)
-            .unwrap_or(0);
+        let onset_idx = force.iter().position(|&f| f > threshold).unwrap_or(0);
         let actual_onset = time.get(onset_idx).copied().unwrap_or(onset_time);
 
         // Peak force and time
-        let (peak_idx, peak_force) = force.iter()
-            .enumerate()
-            .fold((0, 0.0_f64), |(max_i, max_f), (i, &f)| {
-                if f > max_f { (i, f) } else { (max_i, max_f) }
-            });
+        let (peak_idx, peak_force) =
+            force
+                .iter()
+                .enumerate()
+                .fold((0, 0.0_f64), |(max_i, max_f), (i, &f)| {
+                    if f > max_f { (i, f) } else { (max_i, max_f) }
+                });
         let time_to_peak = time.get(peak_idx).copied().unwrap_or(0.0) - actual_onset;
 
         // Peak RFD
-        let (peak_rfd_idx, peak_rfd) = rfd.iter()
-            .enumerate()
-            .fold((0, 0.0_f64), |(max_i, max_r), (i, &r)| {
-                if r > max_r { (i, r) } else { (max_i, max_r) }
-            });
+        let (peak_rfd_idx, peak_rfd) =
+            rfd.iter()
+                .enumerate()
+                .fold((0, 0.0_f64), |(max_i, max_r), (i, &r)| {
+                    if r > max_r { (i, r) } else { (max_i, max_r) }
+                });
         let time_to_peak_rfd = time.get(peak_rfd_idx).copied().unwrap_or(0.0) - actual_onset;
 
         // RFD windows (relative to onset)
@@ -640,7 +677,8 @@ impl RfdGenerator {
         // Impulse to peak
         let impulse_to_peak: f64 = force[onset_idx..=peak_idx.min(force.len() - 1)]
             .iter()
-            .sum::<f64>() * dt;
+            .sum::<f64>()
+            * dt;
 
         // Electromechanical delay (time from "stimulus" to force onset)
         let emd = (actual_onset - onset_time) * 1000.0; // Convert to ms
@@ -750,13 +788,14 @@ mod tests {
         };
         let mut generator = RfdGenerator::new(config);
 
-        let delayed = generator.generate_pathological(
-            PathologicalRfd::DelayedOnset { delay_ms: 50.0 },
-            2.0,
-        );
+        let delayed =
+            generator.generate_pathological(PathologicalRfd::DelayedOnset { delay_ms: 50.0 }, 2.0);
 
         // Verify pathology is applied and data is generated
-        assert!(matches!(delayed.ground_truth.pathology, Some(PathologicalRfd::DelayedOnset { .. })));
+        assert!(matches!(
+            delayed.ground_truth.pathology,
+            Some(PathologicalRfd::DelayedOnset { .. })
+        ));
         assert!(!delayed.force.is_empty());
         assert!(delayed.ground_truth.peak_force > 0.0);
     }
@@ -770,15 +809,16 @@ mod tests {
         let mut generator = RfdGenerator::new(config);
 
         let normal = generator.generate_isometric_rapid(2.0);
-        let reduced = generator.generate_pathological(
-            PathologicalRfd::ReducedEarlyRfd { reduction: 0.5 },
-            2.0,
-        );
+        let reduced = generator
+            .generate_pathological(PathologicalRfd::ReducedEarlyRfd { reduction: 0.5 }, 2.0);
 
         // Verify pathology is applied - early RFD should be reduced or equal
         // (threshold detection can cause edge cases)
         assert!(reduced.ground_truth.rfd_0_50 <= normal.ground_truth.rfd_0_50 + 1000.0);
-        assert!(matches!(reduced.ground_truth.pathology, Some(PathologicalRfd::ReducedEarlyRfd { .. })));
+        assert!(matches!(
+            reduced.ground_truth.pathology,
+            Some(PathologicalRfd::ReducedEarlyRfd { .. })
+        ));
     }
 
     #[test]

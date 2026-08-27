@@ -152,29 +152,21 @@ impl EyeAnalyzer {
     pub fn new(sample_rate: f64) -> Self {
         Self {
             sample_rate,
-            velocity_threshold: 30.0,      // deg/s
-            min_saccade_duration: 10.0,    // ms
-            min_fixation_duration: 100.0,  // ms
-            max_fixation_dispersion: 1.0,  // degrees
+            velocity_threshold: 30.0,     // deg/s
+            min_saccade_duration: 10.0,   // ms
+            min_fixation_duration: 100.0, // ms
+            max_fixation_dispersion: 1.0, // degrees
         }
     }
 
     /// Configure saccade detection parameters
-    pub fn configure_saccade_detection(
-        &mut self,
-        velocity_threshold: f64,
-        min_duration: f64,
-    ) {
+    pub fn configure_saccade_detection(&mut self, velocity_threshold: f64, min_duration: f64) {
         self.velocity_threshold = velocity_threshold;
         self.min_saccade_duration = min_duration;
     }
 
     /// Configure fixation detection parameters
-    pub fn configure_fixation_detection(
-        &mut self,
-        min_duration: f64,
-        max_dispersion: f64,
-    ) {
+    pub fn configure_fixation_detection(&mut self, min_duration: f64, max_dispersion: f64) {
         self.min_fixation_duration = min_duration;
         self.max_fixation_dispersion = max_dispersion;
     }
@@ -208,11 +200,7 @@ impl EyeAnalyzer {
     }
 
     /// Detect saccades using velocity threshold
-    pub fn detect_saccades(
-        &self,
-        x: ArrayView1<f64>,
-        y: ArrayView1<f64>,
-    ) -> Result<Vec<Saccade>> {
+    pub fn detect_saccades(&self, x: ArrayView1<f64>, y: ArrayView1<f64>) -> Result<Vec<Saccade>> {
         let velocity = self.calculate_velocity(x, y)?;
         let min_samples = (self.min_saccade_duration * self.sample_rate / 1000.0) as usize;
         let min_samples = min_samples.max(2);
@@ -313,9 +301,15 @@ impl EyeAnalyzer {
                 let center_y = window_y.mean().unwrap_or(0.0);
 
                 let position_std = {
-                    let var_x = window_x.iter().map(|&v| (v - center_x).powi(2)).sum::<f64>()
+                    let var_x = window_x
+                        .iter()
+                        .map(|&v| (v - center_x).powi(2))
+                        .sum::<f64>()
                         / window_x.len() as f64;
-                    let var_y = window_y.iter().map(|&v| (v - center_y).powi(2)).sum::<f64>()
+                    let var_y = window_y
+                        .iter()
+                        .map(|&v| (v - center_y).powi(2))
+                        .sum::<f64>()
                         / window_y.len() as f64;
                     ((var_x + var_y) / 2.0).sqrt()
                 };
@@ -423,7 +417,10 @@ impl EyeAnalyzer {
         let std_diameter = variance.sqrt();
 
         let min_diameter = valid_samples.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max_diameter = valid_samples.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let max_diameter = valid_samples
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
 
         // Baseline calculation
         let baseline_diameter = if let Some(n) = baseline_samples {
@@ -478,7 +475,11 @@ impl EyeAnalyzer {
         let mut dilation_velocities = Vec::new();
 
         for i in 1..pupil.len() {
-            if pupil[i].is_finite() && pupil[i - 1].is_finite() && pupil[i] > 0.0 && pupil[i - 1] > 0.0 {
+            if pupil[i].is_finite()
+                && pupil[i - 1].is_finite()
+                && pupil[i] > 0.0
+                && pupil[i - 1] > 0.0
+            {
                 let velocity = (pupil[i] - pupil[i - 1]) / dt * 1000.0;
                 if velocity < 0.0 {
                     constriction_velocities.push(-velocity);
@@ -526,8 +527,9 @@ impl EyeAnalyzer {
             })
             .collect();
 
-        let position_error_rms =
-            (position_errors.iter().map(|e| e * e).sum::<f64>() / position_errors.len() as f64).sqrt();
+        let position_error_rms = (position_errors.iter().map(|e| e * e).sum::<f64>()
+            / position_errors.len() as f64)
+            .sqrt();
 
         // Velocity calculation
         let eye_velocity = self.calculate_velocity(eye_x, eye_y)?;
@@ -537,8 +539,9 @@ impl EyeAnalyzer {
         let velocity_errors: Vec<f64> = (0..eye_velocity.len())
             .map(|i| (eye_velocity[i] - target_velocity[i]).abs())
             .collect();
-        let velocity_error_rms =
-            (velocity_errors.iter().map(|e| e * e).sum::<f64>() / velocity_errors.len() as f64).sqrt();
+        let velocity_error_rms = (velocity_errors.iter().map(|e| e * e).sum::<f64>()
+            / velocity_errors.len() as f64)
+            .sqrt();
 
         // Gain (eye velocity / target velocity)
         let mean_eye_vel = eye_velocity.mean().unwrap_or(0.0);
@@ -555,8 +558,7 @@ impl EyeAnalyzer {
 
         // Calculate pursuit proportion (time not in saccades)
         let total_saccade_samples: usize = saccades.iter().map(|s| s.end - s.start).sum();
-        let pursuit_proportion =
-            1.0 - (total_saccade_samples as f64 / eye_x.len() as f64);
+        let pursuit_proportion = 1.0 - (total_saccade_samples as f64 / eye_x.len() as f64);
 
         // Lag estimation (simplified - cross-correlation would be better)
         let lag = position_errors.iter().sum::<f64>() / position_errors.len() as f64 * 0.1;
@@ -674,10 +676,7 @@ mod tests {
                     // mid-flight, which is the shape of a real saccade.
                     let frac = ((t - start) / SACCADE_DURATION_S).clamp(0.0, 1.0);
                     let s = 0.5 * (1.0 - (std::f64::consts::PI * frac).cos());
-                    pos = (
-                        from.0 + (to.0 - from.0) * s,
-                        from.1 + (to.1 - from.1) * s,
-                    );
+                    pos = (from.0 + (to.0 - from.0) * s, from.1 + (to.1 - from.1) * s);
                 }
             }
 
@@ -743,8 +742,10 @@ mod tests {
         let sample_rate = 1000.0;
         // Stable gaze with small jitter
         let n_samples = 1000;
-        let x: Array1<f64> = Array1::from_iter((0..n_samples).map(|i| 5.0 + 0.05 * (i as f64 * 0.1).sin()));
-        let y: Array1<f64> = Array1::from_iter((0..n_samples).map(|i| 5.0 + 0.05 * (i as f64 * 0.15).cos()));
+        let x: Array1<f64> =
+            Array1::from_iter((0..n_samples).map(|i| 5.0 + 0.05 * (i as f64 * 0.1).sin()));
+        let y: Array1<f64> =
+            Array1::from_iter((0..n_samples).map(|i| 5.0 + 0.05 * (i as f64 * 0.15).cos()));
 
         let analyzer = EyeAnalyzer::new(sample_rate);
         let fixations = analyzer.detect_fixations(x.view(), y.view()).unwrap();
@@ -800,7 +801,9 @@ mod tests {
         let (x, y) = generate_saccadic_movement(sample_rate, 5.0);
 
         let analyzer = EyeAnalyzer::new(sample_rate);
-        let summary = analyzer.summarize_gaze_pattern(x.view(), y.view(), None).unwrap();
+        let summary = analyzer
+            .summarize_gaze_pattern(x.view(), y.view(), None)
+            .unwrap();
 
         assert!(summary.saccade_count > 0 || summary.fixation_count > 0);
         assert!(summary.fixation_rate >= 0.0);

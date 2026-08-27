@@ -61,8 +61,14 @@ pub enum NystagmusDirection {
     Left,
     Up,
     Down,
-    Torsional { clockwise: bool },
-    Mixed { horizontal: f64, vertical: f64, torsional: f64 },
+    Torsional {
+        clockwise: bool,
+    },
+    Mixed {
+        horizontal: f64,
+        vertical: f64,
+        torsional: f64,
+    },
 }
 
 /// Output from nystagmus generation
@@ -160,7 +166,11 @@ impl NystagmusGenerator {
             NystagmusDirection::Up => (0.0, 1.0),
             NystagmusDirection::Down => (0.0, -1.0),
             NystagmusDirection::Torsional { .. } => (0.0, 0.0),
-            NystagmusDirection::Mixed { horizontal, vertical, .. } => (horizontal, vertical),
+            NystagmusDirection::Mixed {
+                horizontal,
+                vertical,
+                ..
+            } => (horizontal, vertical),
         };
 
         let noise_dist = Normal::new(0.0, self.config.noise_level).unwrap();
@@ -192,8 +202,10 @@ impl NystagmusGenerator {
                 // Quick phase - rapid return
                 let quick_progress = (phase_in_beat - slow_phase_duration) / quick_phase_duration;
                 let quick_factor = (PI * quick_progress).sin();
-                current_h += h_component * beat_amplitude * quick_factor * dt / quick_phase_duration;
-                current_v += v_component * beat_amplitude * quick_factor * dt / quick_phase_duration;
+                current_h +=
+                    h_component * beat_amplitude * quick_factor * dt / quick_phase_duration;
+                current_v +=
+                    v_component * beat_amplitude * quick_factor * dt / quick_phase_duration;
             } else {
                 // New beat
                 beats.push(BeatInfo {
@@ -281,11 +293,7 @@ impl NystagmusGenerator {
     }
 
     /// Generate BPPV-type positional nystagmus
-    pub fn generate_bppv(
-        &mut self,
-        canal: BppvCanal,
-        duration: f64,
-    ) -> NystagmusOutput {
+    pub fn generate_bppv(&mut self, canal: BppvCanal, duration: f64) -> NystagmusOutput {
         let dt = 1.0 / self.config.sample_rate;
         let n_samples = (duration * self.config.sample_rate) as usize;
 
@@ -293,8 +301,12 @@ impl NystagmusGenerator {
         let (direction, peak_spv, latency, duration_s, _torsional) = match canal {
             BppvCanal::PosteriorRight => (NystagmusDirection::Up, 30.0, 1.0, 30.0, true),
             BppvCanal::PosteriorLeft => (NystagmusDirection::Up, 30.0, 1.0, 30.0, true),
-            BppvCanal::HorizontalRightGeotropic => (NystagmusDirection::Right, 60.0, 0.5, 60.0, false),
-            BppvCanal::HorizontalLeftGeotropic => (NystagmusDirection::Left, 60.0, 0.5, 60.0, false),
+            BppvCanal::HorizontalRightGeotropic => {
+                (NystagmusDirection::Right, 60.0, 0.5, 60.0, false)
+            }
+            BppvCanal::HorizontalLeftGeotropic => {
+                (NystagmusDirection::Left, 60.0, 0.5, 60.0, false)
+            }
             BppvCanal::AnteriorRight => (NystagmusDirection::Down, 20.0, 1.0, 20.0, true),
             BppvCanal::AnteriorLeft => (NystagmusDirection::Down, 20.0, 1.0, 20.0, true),
         };
@@ -368,7 +380,13 @@ impl NystagmusGenerator {
             beat_frequency: peak_spv / 5.0,
             amplitude: 5.0,
             beats,
-            intensity: if peak_spv < 15.0 { 1 } else if peak_spv < 30.0 { 2 } else { 3 },
+            intensity: if peak_spv < 15.0 {
+                1
+            } else if peak_spv < 30.0 {
+                2
+            } else {
+                3
+            },
             fixation_suppression: true,
         };
 
@@ -412,11 +430,8 @@ impl NystagmusGenerator {
         slow_phase_velocity: f64,
         duration: f64,
     ) -> NystagmusOutput {
-        let mut output = self.generate_spontaneous(
-            NystagmusDirection::Down,
-            slow_phase_velocity,
-            duration,
-        );
+        let mut output =
+            self.generate_spontaneous(NystagmusDirection::Down, slow_phase_velocity, duration);
         output.ground_truth.nystagmus_type = NystagmusType::Downbeat;
         output.ground_truth.fixation_suppression = false;
         output
@@ -499,7 +514,10 @@ mod tests {
         let mut generator = NystagmusGenerator::new(config);
         let output = generator.generate_bppv(BppvCanal::PosteriorRight, 60.0);
 
-        assert_eq!(output.ground_truth.nystagmus_type, NystagmusType::Positional);
+        assert_eq!(
+            output.ground_truth.nystagmus_type,
+            NystagmusType::Positional
+        );
         assert!(output.ground_truth.slow_phase_velocity > 0.0);
     }
 

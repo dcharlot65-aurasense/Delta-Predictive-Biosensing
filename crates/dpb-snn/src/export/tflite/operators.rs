@@ -3,7 +3,7 @@
 //! Defines built-in and custom operators for TFLite models, including
 //! special operators for spiking neural networks.
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// TensorFlow Lite operator
@@ -269,7 +269,14 @@ impl CustomOperator {
                 vec!["tau_mem", "tau_syn", "v_threshold", "v_reset", "dt"]
             }
             CustomOperator::AdaptiveLIFNeuron => {
-                vec!["tau_mem", "tau_syn", "v_threshold", "v_reset", "dt", "tau_adapt"]
+                vec![
+                    "tau_mem",
+                    "tau_syn",
+                    "v_threshold",
+                    "v_reset",
+                    "dt",
+                    "tau_adapt",
+                ]
             }
             CustomOperator::IzhikevichNeuron => {
                 vec!["a", "b", "c", "d", "dt"]
@@ -467,16 +474,34 @@ impl OperatorRegistry {
     /// Register default SNN to TFLite operator mappings
     fn register_default_mappings(&mut self) {
         // Standard layers map to built-in operators
-        self.register("Linear", OperatorType::Builtin(BuiltinOperator::FullyConnected));
+        self.register(
+            "Linear",
+            OperatorType::Builtin(BuiltinOperator::FullyConnected),
+        );
         self.register("Conv2d", OperatorType::Builtin(BuiltinOperator::Conv2D));
-        self.register("AvgPool2d", OperatorType::Builtin(BuiltinOperator::AveragePool2D));
-        self.register("MaxPool2d", OperatorType::Builtin(BuiltinOperator::MaxPool2D));
+        self.register(
+            "AvgPool2d",
+            OperatorType::Builtin(BuiltinOperator::AveragePool2D),
+        );
+        self.register(
+            "MaxPool2d",
+            OperatorType::Builtin(BuiltinOperator::MaxPool2D),
+        );
 
         // Spiking layers map to custom operators
-        self.register("SpikingLinear", OperatorType::Custom(CustomOperator::LIFNeuron));
+        self.register(
+            "SpikingLinear",
+            OperatorType::Custom(CustomOperator::LIFNeuron),
+        );
         self.register("LIFLayer", OperatorType::Custom(CustomOperator::LIFNeuron));
-        self.register("AdaptiveLIF", OperatorType::Custom(CustomOperator::AdaptiveLIFNeuron));
-        self.register("Izhikevich", OperatorType::Custom(CustomOperator::IzhikevichNeuron));
+        self.register(
+            "AdaptiveLIF",
+            OperatorType::Custom(CustomOperator::AdaptiveLIFNeuron),
+        );
+        self.register(
+            "Izhikevich",
+            OperatorType::Custom(CustomOperator::IzhikevichNeuron),
+        );
     }
 
     /// Register a custom mapping
@@ -526,11 +551,8 @@ mod tests {
         );
         assert!(valid_op.validate().is_ok());
 
-        let invalid_op = TFLiteOperator::new(
-            OperatorType::Builtin(BuiltinOperator::Add),
-            vec![],
-            vec![2],
-        );
+        let invalid_op =
+            TFLiteOperator::new(OperatorType::Builtin(BuiltinOperator::Add), vec![], vec![2]);
         assert!(invalid_op.validate().is_err());
     }
 
@@ -687,10 +709,12 @@ mod tests {
         }
 
         // A builtin has no custom code, and must not acquire one.
-        let builtin =
-            TFLiteOperator::new(OperatorType::Builtin(BuiltinOperator::Add), vec![0], vec![1]);
+        let builtin = TFLiteOperator::new(
+            OperatorType::Builtin(BuiltinOperator::Add),
+            vec![0],
+            vec![1],
+        );
         assert!(builtin.custom_code.is_none());
         assert!(builtin.validate().is_ok());
     }
-
 }

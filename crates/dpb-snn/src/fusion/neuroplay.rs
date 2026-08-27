@@ -3,12 +3,11 @@
 //! Combines all 5 modalities (Contact, Pose, Hand, Eye, Voice) using
 //! hierarchical processing to predict clinical scores (UPDRS total).
 
-use super::{FusionNetwork, FusionConfig, Modality, concatenate_spikes};
-use crate::{
-    SpikeTensor, SpikingLinear, SpikingRNN, SpikingAttention,
-    SNNResult, SNNError, NeuronParams,
-};
+use super::{FusionConfig, FusionNetwork, Modality, concatenate_spikes};
 use crate::layers::SpikingLayer;
+use crate::{
+    NeuronParams, SNNError, SNNResult, SpikeTensor, SpikingAttention, SpikingLinear, SpikingRNN,
+};
 use ndarray::Array3;
 use std::collections::HashMap;
 
@@ -90,21 +89,54 @@ impl NeuroPlaySNN {
         for modality in &all_modalities {
             temporal_processors.insert(
                 *modality,
-                SpikingRNN::new(config.hidden_size, config.hidden_size, true, neuron_params.clone(), dt, adaptive),
+                SpikingRNN::new(
+                    config.hidden_size,
+                    config.hidden_size,
+                    true,
+                    neuron_params.clone(),
+                    dt,
+                    adaptive,
+                ),
             );
         }
 
         // Cross-modal attention for each group
-        let motor_attention = SpikingAttention::new(config.hidden_size, config.attention_heads, neuron_params.clone(), dt, adaptive);
+        let motor_attention = SpikingAttention::new(
+            config.hidden_size,
+            config.attention_heads,
+            neuron_params.clone(),
+            dt,
+            adaptive,
+        );
 
-        let cognitive_attention = SpikingAttention::new(config.hidden_size, config.attention_heads, neuron_params.clone(), dt, adaptive);
+        let cognitive_attention = SpikingAttention::new(
+            config.hidden_size,
+            config.attention_heads,
+            neuron_params.clone(),
+            dt,
+            adaptive,
+        );
 
         // Group fusion layers
         // Motor: Contact + Pose + Hand = 3 modalities
-        let motor_fusion = SpikingLinear::new(3 * config.hidden_size, config.hidden_size, true, neuron_params.clone(), dt, adaptive);
+        let motor_fusion = SpikingLinear::new(
+            3 * config.hidden_size,
+            config.hidden_size,
+            true,
+            neuron_params.clone(),
+            dt,
+            adaptive,
+        );
 
         // Cognitive: Eye + Voice = 2 modalities
-        let cognitive_fusion = SpikingLinear::new(2 * config.hidden_size, config.hidden_size, true, neuron_params.clone(), dt, adaptive);
+        let cognitive_fusion = SpikingLinear::new(
+            2 * config.hidden_size,
+            config.hidden_size,
+            true,
+            neuron_params.clone(),
+            dt,
+            adaptive,
+        );
 
         // Final integration layers
         let final_fusion = vec![
@@ -130,7 +162,7 @@ impl NeuroPlaySNN {
         // UPDRS score regression (typically 0-132 for total UPDRS)
         let updrs_head = SpikingLinear::new(
             config.hidden_size / 2,
-            config.output_size,  // Default: 1 for total score
+            config.output_size, // Default: 1 for total score
             true,
             neuron_params.clone(),
             dt,
@@ -161,11 +193,15 @@ impl NeuroPlaySNN {
         let mut motor_features = Vec::new();
 
         // Get reference shape for filling missing modalities
-        let reference = contact.or(pose).or(hand)
+        let reference = contact
+            .or(pose)
+            .or(hand)
             .ok_or_else(|| SNNError::InvalidConfig("No motor modalities available".to_string()))?;
 
         let ref_shape = match &reference.data {
-            crate::SpikeRepresentation::Dense(arr) => (arr.dim().0, arr.dim().1, self.config.hidden_size),
+            crate::SpikeRepresentation::Dense(arr) => {
+                (arr.dim().0, arr.dim().1, self.config.hidden_size)
+            }
             _ => return Err(SNNError::InvalidConfig("Sparse not supported".to_string())),
         };
 
@@ -216,18 +252,18 @@ impl NeuroPlaySNN {
         let mut cognitive_features = Vec::new();
 
         // Get reference shape
-        let reference = eye.or(voice)
-            .ok_or_else(|| SNNError::InvalidConfig("No cognitive modalities available".to_string()))?;
+        let reference = eye.or(voice).ok_or_else(|| {
+            SNNError::InvalidConfig("No cognitive modalities available".to_string())
+        })?;
 
         let ref_shape = match &reference.data {
-            crate::SpikeRepresentation::Dense(arr) => (arr.dim().0, arr.dim().1, self.config.hidden_size),
+            crate::SpikeRepresentation::Dense(arr) => {
+                (arr.dim().0, arr.dim().1, self.config.hidden_size)
+            }
             _ => return Err(SNNError::InvalidConfig("Sparse not supported".to_string())),
         };
 
-        for (modality, input) in [
-            (Modality::Eye, eye),
-            (Modality::Voice, voice),
-        ] {
+        for (modality, input) in [(Modality::Eye, eye), (Modality::Voice, voice)] {
             let feature = if let Some(inp) = input {
                 // Encode and process
                 let mut x = inp.clone();
@@ -329,7 +365,9 @@ impl FusionNetwork for NeuroPlaySNN {
                 concatenate_spikes(&refs)?
             }
             (None, None) => {
-                return Err(SNNError::InvalidConfig("No modality groups available".to_string()));
+                return Err(SNNError::InvalidConfig(
+                    "No modality groups available".to_string(),
+                ));
             }
         };
 
@@ -351,44 +389,53 @@ impl FusionNetwork for NeuroPlaySNN {
         // Modality encoder parameters
         for layers in self.modality_encoders.values() {
             for layer in layers {
-                total += layer.parameters().iter()
-                    .map(|p| p.len())
-                    .sum::<usize>();
+                total += layer.parameters().iter().map(|p| p.len()).sum::<usize>();
             }
         }
 
         // Temporal processor parameters
         for rnn in self.temporal_processors.values() {
-            total += rnn.parameters().iter()
-                .map(|p| p.len())
-                .sum::<usize>();
+            total += rnn.parameters().iter().map(|p| p.len()).sum::<usize>();
         }
 
         // Attention parameters
-        total += self.motor_attention.parameters().iter()
+        total += self
+            .motor_attention
+            .parameters()
+            .iter()
             .map(|p| p.len())
             .sum::<usize>();
-        total += self.cognitive_attention.parameters().iter()
+        total += self
+            .cognitive_attention
+            .parameters()
+            .iter()
             .map(|p| p.len())
             .sum::<usize>();
 
         // Fusion parameters
-        total += self.motor_fusion.parameters().iter()
+        total += self
+            .motor_fusion
+            .parameters()
+            .iter()
             .map(|p| p.len())
             .sum::<usize>();
-        total += self.cognitive_fusion.parameters().iter()
+        total += self
+            .cognitive_fusion
+            .parameters()
+            .iter()
             .map(|p| p.len())
             .sum::<usize>();
 
         // Final fusion parameters
         for layer in &self.final_fusion {
-            total += layer.parameters().iter()
-                .map(|p| p.len())
-                .sum::<usize>();
+            total += layer.parameters().iter().map(|p| p.len()).sum::<usize>();
         }
 
         // UPDRS head parameters
-        total += self.updrs_head.parameters().iter()
+        total += self
+            .updrs_head
+            .parameters()
+            .iter()
             .map(|p| p.len())
             .sum::<usize>();
 
@@ -419,7 +466,7 @@ impl FusionNetwork for NeuroPlaySNN {
     }
 
     fn handles_missing_modalities(&self) -> bool {
-        true  // NeuroPlay is designed to handle missing modalities
+        true // NeuroPlay is designed to handle missing modalities
     }
 }
 
@@ -464,7 +511,7 @@ mod tests {
 
         match output.data {
             crate::SpikeRepresentation::Dense(arr) => {
-                assert_eq!(arr.dim().2, 1);  // UPDRS score
+                assert_eq!(arr.dim().2, 1); // UPDRS score
             }
             _ => panic!("Expected dense output"),
         }

@@ -3,8 +3,8 @@
 //! Implements post-training quantization (PTQ) and quantization-aware training (QAT)
 //! support for TFLite model export.
 
-use super::tensors::{TensorType, QuantizationParams};
-use serde::{Serialize, Deserialize};
+use super::tensors::{QuantizationParams, TensorType};
+use serde::{Deserialize, Serialize};
 
 /// Quantization configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -99,10 +99,10 @@ impl QuantizationConfig {
             }
             QuantizationStrategy::FullInteger
                 if (!self.weight_dtype.supports_quantization()
-                    || !self.activation_dtype.supports_quantization())
-                => {
-                    return Err("FullInteger strategy requires integer dtypes".to_string());
-                }
+                    || !self.activation_dtype.supports_quantization()) =>
+            {
+                return Err("FullInteger strategy requires integer dtypes".to_string());
+            }
             _ => {}
         }
 
@@ -195,10 +195,7 @@ impl PostTrainingQuantizer {
     }
 
     /// Quantize activations (requires calibration data)
-    pub fn quantize_activations(
-        &self,
-        layer_name: &str,
-    ) -> Result<QuantizationParams, String> {
+    pub fn quantize_activations(&self, layer_name: &str) -> Result<QuantizationParams, String> {
         let calib_data = self
             .calibration_data
             .as_ref()
@@ -229,7 +226,10 @@ impl PostTrainingQuantizer {
     }
 
     /// Per-tensor quantization
-    fn quantize_per_tensor(&self, weights: &[f32]) -> Result<(Vec<i8>, QuantizationParams), String> {
+    fn quantize_per_tensor(
+        &self,
+        weights: &[f32],
+    ) -> Result<(Vec<i8>, QuantizationParams), String> {
         // Find min/max
         let min = weights.iter().cloned().fold(f32::INFINITY, f32::min);
         let max = weights.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
@@ -239,7 +239,10 @@ impl PostTrainingQuantizer {
         // Quantize values
         let quantized: Vec<i8> = weights
             .iter()
-            .map(|&w| ((w / params.scales[0]).round() as i32 + params.zero_points[0]).clamp(-128, 127) as i8)
+            .map(|&w| {
+                ((w / params.scales[0]).round() as i32 + params.zero_points[0]).clamp(-128, 127)
+                    as i8
+            })
             .collect();
 
         Ok((quantized, params))
@@ -273,8 +276,14 @@ impl PostTrainingQuantizer {
             let channel_weights = &weights[start..end];
 
             // Find min/max for this channel
-            let min = channel_weights.iter().cloned().fold(f32::INFINITY, f32::min);
-            let max = channel_weights.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+            let min = channel_weights
+                .iter()
+                .cloned()
+                .fold(f32::INFINITY, f32::min);
+            let max = channel_weights
+                .iter()
+                .cloned()
+                .fold(f32::NEG_INFINITY, f32::max);
 
             let params = Self::compute_quantization_params(min, max, TensorType::Int8)?;
             scales.push(params.scales[0]);
@@ -288,11 +297,10 @@ impl PostTrainingQuantizer {
             }
         }
 
-        let params = QuantizationParams::per_channel(scales, zero_points, 0)
-            .with_min_max(
-                weights.iter().cloned().fold(f32::INFINITY, f32::min),
-                weights.iter().cloned().fold(f32::NEG_INFINITY, f32::max),
-            );
+        let params = QuantizationParams::per_channel(scales, zero_points, 0).with_min_max(
+            weights.iter().cloned().fold(f32::INFINITY, f32::min),
+            weights.iter().cloned().fold(f32::NEG_INFINITY, f32::max),
+        );
 
         Ok((quantized, params))
     }
@@ -308,7 +316,10 @@ impl PostTrainingQuantizer {
         }
 
         if min > max {
-            return Err(format!("Min ({}) cannot be greater than max ({})", min, max));
+            return Err(format!(
+                "Min ({}) cannot be greater than max ({})",
+                min, max
+            ));
         }
 
         // Ensure range includes zero
@@ -459,11 +470,8 @@ mod tests {
 
     #[test]
     fn test_compute_quantization_params() {
-        let params = PostTrainingQuantizer::compute_quantization_params(
-            -1.0,
-            1.0,
-            TensorType::Int8,
-        );
+        let params =
+            PostTrainingQuantizer::compute_quantization_params(-1.0, 1.0, TensorType::Int8);
         assert!(params.is_ok());
 
         let params = params.unwrap();
@@ -474,11 +482,7 @@ mod tests {
 
     #[test]
     fn test_compute_quantization_params_asymmetric() {
-        let params = PostTrainingQuantizer::compute_quantization_params(
-            0.0,
-            2.0,
-            TensorType::Int8,
-        );
+        let params = PostTrainingQuantizer::compute_quantization_params(0.0, 2.0, TensorType::Int8);
         assert!(params.is_ok());
 
         let params = params.unwrap();
@@ -489,19 +493,13 @@ mod tests {
     #[test]
     fn test_compute_quantization_params_invalid() {
         // NaN values
-        let result = PostTrainingQuantizer::compute_quantization_params(
-            f32::NAN,
-            1.0,
-            TensorType::Int8,
-        );
+        let result =
+            PostTrainingQuantizer::compute_quantization_params(f32::NAN, 1.0, TensorType::Int8);
         assert!(result.is_err());
 
         // Min > max
-        let result = PostTrainingQuantizer::compute_quantization_params(
-            1.0,
-            -1.0,
-            TensorType::Int8,
-        );
+        let result =
+            PostTrainingQuantizer::compute_quantization_params(1.0, -1.0, TensorType::Int8);
         assert!(result.is_err());
     }
 

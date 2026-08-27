@@ -15,7 +15,6 @@
 //! - p, q: exponents
 //! - E: reversal potential
 
-
 /// Ion channel trait
 pub trait IonChannel: Send + Sync {
     /// Get channel current (nA/cm²) at given voltage.
@@ -111,7 +110,7 @@ impl HodgkinHuxleyChannel {
         Self {
             channel_type: ChannelType::Na,
             g_max,
-            e_rev: 50.0, // Na reversal ~+50 mV
+            e_rev: 50.0,                     // Na reversal ~+50 mV
             m: GatingVariable::new(0.05, 3), // m^3
             h: GatingVariable::new(0.6, 1),  // h^1
         }
@@ -122,7 +121,7 @@ impl HodgkinHuxleyChannel {
         Self {
             channel_type: ChannelType::K,
             g_max,
-            e_rev: -77.0, // K reversal ~-77 mV
+            e_rev: -77.0,                    // K reversal ~-77 mV
             m: GatingVariable::new(0.32, 4), // n^4 (using m for n)
             h: GatingVariable::new(1.0, 0),  // no inactivation
         }
@@ -428,7 +427,7 @@ impl NmdaReceptor {
             g_max,
             e_rev: 0.0, // Non-selective cation channel
             s: 0.0,
-            tau_decay: 100.0, // 100 ms decay
+            tau_decay: 100.0,      // 100 ms decay
             mg_concentration: 1.0, // 1 mM
         }
     }
@@ -789,9 +788,18 @@ mod tests {
         let i_a = gaba_a.current(-60.0);
         let i_b = gaba_b.current(-60.0);
 
-        assert!(i_a < 0.0, "GABA_A pulls toward -70 mV from -60 mV: got {i_a}");
-        assert!(i_b < 0.0, "GABA_B pulls toward -90 mV from -60 mV: got {i_b}");
-        assert!(i_b < i_a, "GABA_B (E=-90) hyperpolarises harder than GABA_A (E=-70)");
+        assert!(
+            i_a < 0.0,
+            "GABA_A pulls toward -70 mV from -60 mV: got {i_a}"
+        );
+        assert!(
+            i_b < 0.0,
+            "GABA_B pulls toward -90 mV from -60 mV: got {i_b}"
+        );
+        assert!(
+            i_b < i_a,
+            "GABA_B (E=-90) hyperpolarises harder than GABA_A (E=-70)"
+        );
     }
 
     #[test]

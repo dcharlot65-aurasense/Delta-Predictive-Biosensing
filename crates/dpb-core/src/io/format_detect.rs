@@ -123,9 +123,10 @@ impl FormatType {
 pub fn detect_format(path: &Path) -> Result<FormatType> {
     // First, try magic byte detection
     if let Ok(format) = detect_by_magic_bytes(path)
-        && format != FormatType::Unknown {
-            return Ok(format);
-        }
+        && format != FormatType::Unknown
+    {
+        return Ok(format);
+    }
 
     // Fall back to extension-based detection
     detect_by_extension(path)
@@ -163,10 +164,12 @@ fn detect_by_magic_bytes(path: &Path) -> Result<FormatType> {
     }
 
     // Check EDF (version string should be "0       " - 8 spaces with leading 0)
-    if header[0] == b'0' && header[1..8].iter().all(|&b| b == b' ' || b == 0)
-        && is_valid_edf_like_header(&header) {
-            return Ok(FormatType::EDF);
-        }
+    if header[0] == b'0'
+        && header[1..8].iter().all(|&b| b == b' ' || b == 0)
+        && is_valid_edf_like_header(&header)
+    {
+        return Ok(FormatType::EDF);
+    }
 
     // Check WFDB header file (text-based)
     if is_text_based(&header[0..bytes_read.min(128)]) {
@@ -207,28 +210,38 @@ fn is_valid_edf_like_header(header: &[u8]) -> bool {
 
     // Check if date field looks valid (dd.mm.yy at offset 168)
     let date_field = &header[168..176];
-    if !date_field.iter().all(|&b| b.is_ascii_digit() || b == b'.' || b == b' ') {
+    if !date_field
+        .iter()
+        .all(|&b| b.is_ascii_digit() || b == b'.' || b == b' ')
+    {
         return false;
     }
 
     // Check if time field looks valid (hh.mm.ss at offset 176)
     let time_field = &header[176..184];
-    if !time_field.iter().all(|&b| b.is_ascii_digit() || b == b'.' || b == b' ') {
+    if !time_field
+        .iter()
+        .all(|&b| b.is_ascii_digit() || b == b'.' || b == b' ')
+    {
         return false;
     }
 
     // Check if number of signals is reasonable (< 1000)
     if let Ok(n_signals_str) = std::str::from_utf8(&header[252..256])
-        && let Ok(n_signals) = n_signals_str.trim().parse::<usize>() {
-            return n_signals > 0 && n_signals < 1000;
-        }
+        && let Ok(n_signals) = n_signals_str.trim().parse::<usize>()
+    {
+        return n_signals > 0 && n_signals < 1000;
+    }
 
     false
 }
 
 /// Check if buffer contains mostly text (ASCII printable)
 fn is_text_based(buffer: &[u8]) -> bool {
-    let printable_count = buffer.iter().filter(|&&b| b.is_ascii_graphic() || b.is_ascii_whitespace()).count();
+    let printable_count = buffer
+        .iter()
+        .filter(|&&b| b.is_ascii_graphic() || b.is_ascii_whitespace())
+        .count();
     let ratio = printable_count as f64 / buffer.len() as f64;
     ratio > 0.9
 }
@@ -361,24 +374,21 @@ impl UnifiedBiosignalReader for UnifiedReader {
     fn sample_rate(&self, signal_index: usize) -> Result<f64> {
         match self {
             Self::EDF(reader) => {
-                let signal = reader
-                    .signals()
-                    .get(signal_index)
-                    .ok_or_else(|| DpbError::InvalidParameter("Signal index out of range".to_string()))?;
+                let signal = reader.signals().get(signal_index).ok_or_else(|| {
+                    DpbError::InvalidParameter("Signal index out of range".to_string())
+                })?;
                 Ok(signal.sample_rate(reader.header().record_duration))
             }
             Self::BDF(reader) => {
-                let signal = reader
-                    .signals()
-                    .get(signal_index)
-                    .ok_or_else(|| DpbError::InvalidParameter("Signal index out of range".to_string()))?;
+                let signal = reader.signals().get(signal_index).ok_or_else(|| {
+                    DpbError::InvalidParameter("Signal index out of range".to_string())
+                })?;
                 Ok(signal.sample_rate(reader.header().record_duration))
             }
             Self::GDF(reader) => {
-                let signal = reader
-                    .signals()
-                    .get(signal_index)
-                    .ok_or_else(|| DpbError::InvalidParameter("Signal index out of range".to_string()))?;
+                let signal = reader.signals().get(signal_index).ok_or_else(|| {
+                    DpbError::InvalidParameter("Signal index out of range".to_string())
+                })?;
                 Ok(signal.sample_rate(reader.header().record_duration))
             }
             Self::WFDB(reader) => Ok(reader.header().sample_rate),
@@ -388,31 +398,27 @@ impl UnifiedBiosignalReader for UnifiedReader {
     fn signal_label(&self, signal_index: usize) -> Result<String> {
         match self {
             Self::EDF(reader) => {
-                let signal = reader
-                    .signals()
-                    .get(signal_index)
-                    .ok_or_else(|| DpbError::InvalidParameter("Signal index out of range".to_string()))?;
+                let signal = reader.signals().get(signal_index).ok_or_else(|| {
+                    DpbError::InvalidParameter("Signal index out of range".to_string())
+                })?;
                 Ok(signal.label.clone())
             }
             Self::BDF(reader) => {
-                let signal = reader
-                    .signals()
-                    .get(signal_index)
-                    .ok_or_else(|| DpbError::InvalidParameter("Signal index out of range".to_string()))?;
+                let signal = reader.signals().get(signal_index).ok_or_else(|| {
+                    DpbError::InvalidParameter("Signal index out of range".to_string())
+                })?;
                 Ok(signal.label.clone())
             }
             Self::GDF(reader) => {
-                let signal = reader
-                    .signals()
-                    .get(signal_index)
-                    .ok_or_else(|| DpbError::InvalidParameter("Signal index out of range".to_string()))?;
+                let signal = reader.signals().get(signal_index).ok_or_else(|| {
+                    DpbError::InvalidParameter("Signal index out of range".to_string())
+                })?;
                 Ok(signal.label.clone())
             }
             Self::WFDB(reader) => {
-                let signal = reader
-                    .signals()
-                    .get(signal_index)
-                    .ok_or_else(|| DpbError::InvalidParameter("Signal index out of range".to_string()))?;
+                let signal = reader.signals().get(signal_index).ok_or_else(|| {
+                    DpbError::InvalidParameter("Signal index out of range".to_string())
+                })?;
                 Ok(signal.name.clone())
             }
         }
@@ -430,31 +436,27 @@ impl UnifiedBiosignalReader for UnifiedReader {
     fn n_samples(&self, signal_index: usize) -> Result<usize> {
         match self {
             Self::EDF(reader) => {
-                let signal = reader
-                    .signals()
-                    .get(signal_index)
-                    .ok_or_else(|| DpbError::InvalidParameter("Signal index out of range".to_string()))?;
+                let signal = reader.signals().get(signal_index).ok_or_else(|| {
+                    DpbError::InvalidParameter("Signal index out of range".to_string())
+                })?;
                 Ok(signal.samples_per_record * reader.header().n_records.max(0) as usize)
             }
             Self::BDF(reader) => {
-                let signal = reader
-                    .signals()
-                    .get(signal_index)
-                    .ok_or_else(|| DpbError::InvalidParameter("Signal index out of range".to_string()))?;
+                let signal = reader.signals().get(signal_index).ok_or_else(|| {
+                    DpbError::InvalidParameter("Signal index out of range".to_string())
+                })?;
                 Ok(signal.samples_per_record * reader.header().n_records.max(0) as usize)
             }
             Self::GDF(reader) => {
-                let signal = reader
-                    .signals()
-                    .get(signal_index)
-                    .ok_or_else(|| DpbError::InvalidParameter("Signal index out of range".to_string()))?;
+                let signal = reader.signals().get(signal_index).ok_or_else(|| {
+                    DpbError::InvalidParameter("Signal index out of range".to_string())
+                })?;
                 Ok(signal.samples_per_record * reader.header().n_records.max(0) as usize)
             }
-            Self::WFDB(reader) => {
-                reader.header().n_samples.ok_or_else(|| {
-                    DpbError::Other("Number of samples not specified".to_string())
-                })
-            }
+            Self::WFDB(reader) => reader
+                .header()
+                .n_samples
+                .ok_or_else(|| DpbError::Other("Number of samples not specified".to_string())),
         }
     }
 }

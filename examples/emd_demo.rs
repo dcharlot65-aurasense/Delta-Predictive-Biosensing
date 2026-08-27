@@ -3,11 +3,11 @@
 //! This example demonstrates the use of EMD, EEMD, CEEMDAN, and Hilbert-Huang Transform
 //! for analyzing biosignals.
 
+use dpb_core::Result;
 use dpb_core::signal::emd::{
     Ceemdan, CeemdanConfig, Eemd, EemdConfig, Emd, EmdConfig, HilbertHuangTransform,
     StoppingCriterion,
 };
-use dpb_core::Result;
 use ndarray::Array1;
 use std::f64::consts::PI;
 

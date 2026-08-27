@@ -10,7 +10,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
-
 /// Reward signal
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RewardSignal {
@@ -70,11 +69,7 @@ impl RewardSignal {
         }
 
         let mean = self.mean();
-        let variance: f64 = self
-            .history
-            .iter()
-            .map(|r| (r - mean).powi(2))
-            .sum::<f64>()
+        let variance: f64 = self.history.iter().map(|r| (r - mean).powi(2)).sum::<f64>()
             / (self.history.len() - 1) as f64;
 
         variance
@@ -164,12 +159,7 @@ impl ThreeFactorRule {
     }
 
     /// Compute weight update
-    pub fn compute_update(
-        &self,
-        pre_activity: f64,
-        post_activity: f64,
-        modulator: f64,
-    ) -> f64 {
+    pub fn compute_update(&self, pre_activity: f64, post_activity: f64, modulator: f64) -> f64 {
         self.learning_rate * pre_activity * post_activity * modulator
     }
 

@@ -6,9 +6,9 @@
 //! - Respiratory gas exchange analysis
 //! - Exercise capacity assessment
 
-pub mod vo2;
-pub mod ventilatory;
 pub mod gas_exchange;
+pub mod ventilatory;
+pub mod vo2;
 
 pub use gas_exchange::{GasExchange, GasExchangeMetrics, RespiratoryQuotient};
 pub use ventilatory::{VentilatoryThreshold, VtMethod, VtResult};

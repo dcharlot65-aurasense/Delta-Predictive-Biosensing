@@ -7,19 +7,17 @@
 //! 4. Data formats are compatible
 
 use dpb_core::{
-    SignalBuffer, SpikeEvent, SpikeTrain, Context,
-    EventEncoder, Signal, PopulationTemplate,
+    Context, EventEncoder, PopulationTemplate, Signal, SignalBuffer, SpikeEvent, SpikeTrain,
 };
 use dpb_encoders::prelude::*;
 use dpb_snn::{
-    FeedforwardSNN, SpikeTensor, SpikeRateDecoder,
-    NeuronModel, NeuronParams, SNNConfig,
+    FeedforwardSNN, NeuronModel, NeuronParams, SNNConfig, SpikeRateDecoder, SpikeTensor,
 };
 // `forward` and `decode` are trait methods.
 use dpb_snn::architectures::SNNArchitecture;
 use dpb_snn::decoders::Decoder;
 use dpb_synth::contact::ecg::{EcgMorphologyGenerator, EcgMorphologyParams, WaveParams};
-use dpb_synth::traits::{SyntheticGenerator};
+use dpb_synth::traits::SyntheticGenerator;
 
 use super::utils::*;
 use std::f64::consts::PI;
@@ -38,9 +36,7 @@ fn test_spike_event_compatibility() {
 
     println!(
         "SpikeEvent compatibility: timestamp={:.3}, channel={}, polarity={}",
-        event.timestamp,
-        event.channel,
-        event.polarity
+        event.timestamp, event.channel, event.polarity
     );
 }
 
@@ -97,14 +93,27 @@ fn test_synth_to_encoder_pipeline() {
         duration: 5.0,
         sampling_rate: 250.0,
         heart_rate: 72.0,
-        p_wave: WaveParams { amplitude: 0.25, width: 0.1, time_offset: -PI / 3.0 },
-        qrs_complex: WaveParams { amplitude: 1.0, width: 0.1, time_offset: 0.0 },
-        t_wave: WaveParams { amplitude: 0.35, width: 0.25, time_offset: PI / 2.0 },
+        p_wave: WaveParams {
+            amplitude: 0.25,
+            width: 0.1,
+            time_offset: -PI / 3.0,
+        },
+        qrs_complex: WaveParams {
+            amplitude: 1.0,
+            width: 0.1,
+            time_offset: 0.0,
+        },
+        t_wave: WaveParams {
+            amplitude: 0.35,
+            width: 0.25,
+            time_offset: PI / 2.0,
+        },
     };
 
     // Generate with dpb-synth
     let generator = EcgMorphologyGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate");
 
     // Convert to dpb-core SignalBuffer
@@ -123,8 +132,7 @@ fn test_synth_to_encoder_pipeline() {
         mode: LevelCrossingMode::FixedLevel,
     };
 
-    let spike_train = encoder.encode(&signal, &config)
-        .expect("Failed to encode");
+    let spike_train = encoder.encode(&signal, &config).expect("Failed to encode");
 
     assert!(!spike_train.is_empty(), "Should produce spikes");
 
@@ -153,8 +161,7 @@ fn test_encoder_to_snn_pipeline() {
         mode: LevelCrossingMode::FixedLevel,
     };
 
-    let spike_train = encoder.encode(&signal, &config)
-        .expect("Failed to encode");
+    let spike_train = encoder.encode(&signal, &config).expect("Failed to encode");
 
     // Convert to SpikeTensor (dpb-snn)
     let num_timesteps = 100;
@@ -164,7 +171,9 @@ fn test_encoder_to_snn_pipeline() {
     for event in &spike_train {
         let timestep = ((event.timestamp * 100.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = (event.channel as usize) % num_channels;
-        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
+        spike_tensor
+            .set_spike(0, timestep, channel, event.magnitude)
+            .ok();
     }
 
     // Run through SNN
@@ -176,8 +185,7 @@ fn test_encoder_to_snn_pipeline() {
     };
 
     let mut snn = FeedforwardSNN::new(vec![num_channels, 8, 4], snn_config, true).expect("SNN");
-    let output = snn.forward(&spike_tensor)
-        .expect("Failed to run SNN");
+    let output = snn.forward(&spike_tensor).expect("Failed to run SNN");
 
     assert!(output.shape().0 == 1, "Batch size should match");
 
@@ -198,9 +206,21 @@ fn test_full_pipeline_integration() {
         duration,
         sampling_rate: 250.0,
         heart_rate: 72.0,
-        p_wave: WaveParams { amplitude: 0.25, width: 0.1, time_offset: -PI / 3.0 },
-        qrs_complex: WaveParams { amplitude: 1.0, width: 0.1, time_offset: 0.0 },
-        t_wave: WaveParams { amplitude: 0.35, width: 0.25, time_offset: PI / 2.0 },
+        p_wave: WaveParams {
+            amplitude: 0.25,
+            width: 0.1,
+            time_offset: -PI / 3.0,
+        },
+        qrs_complex: WaveParams {
+            amplitude: 1.0,
+            width: 0.1,
+            time_offset: 0.0,
+        },
+        t_wave: WaveParams {
+            amplitude: 0.35,
+            width: 0.25,
+            time_offset: PI / 2.0,
+        },
     };
 
     let generator = EcgMorphologyGenerator;
@@ -231,7 +251,9 @@ fn test_full_pipeline_integration() {
     for event in &spike_train {
         let timestep = ((event.timestamp * 1000.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = (event.channel as usize) % num_channels;
-        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
+        spike_tensor
+            .set_spike(0, timestep, channel, event.magnitude)
+            .ok();
     }
 
     // 5. SNN inference (dpb-snn)
@@ -315,9 +337,7 @@ fn test_data_format_consistency() {
     assert_eq!(train.events[0].polarity, 1);
     assert_eq!(train.events[0].magnitude, 0.5);
 
-    println!(
-        "Data format consistency verified: SpikeEvent → SpikeTrain"
-    );
+    println!("Data format consistency verified: SpikeEvent → SpikeTrain");
 }
 
 #[test]
@@ -343,10 +363,15 @@ fn test_neuron_model_compatibility() {
         let mut snn = FeedforwardSNN::new(vec![num_channels, 8, 4], snn_config, true).expect("SNN");
         let spike_tensor = SpikeTensor::zeros(1, num_timesteps, num_channels, false);
 
-        let output = snn.forward(&spike_tensor)
+        let output = snn
+            .forward(&spike_tensor)
             .unwrap_or_else(|_| panic!("Failed with neuron model {:?}", model));
 
-        println!("Neuron model {:?}: output shape {:?}", model, output.shape());
+        println!(
+            "Neuron model {:?}: output shape {:?}",
+            model,
+            output.shape()
+        );
     }
 }
 
@@ -367,10 +392,7 @@ fn test_template_registry_integration() {
 
     assert!(!results.is_empty(), "Should have template results");
 
-    println!(
-        "Template registry: {} templates evaluated",
-        results.len()
-    );
+    println!("Template registry: {} templates evaluated", results.len());
 }
 
 #[test]
@@ -379,11 +401,10 @@ fn test_serialization_compatibility() {
     let event = SpikeEvent::new(1.5, 3, 1, 0.8);
 
     // SpikeEvent implements Serialize/Deserialize
-    let serialized = serde_json::to_string(&event)
-        .expect("Failed to serialize");
+    let serialized = serde_json::to_string(&event).expect("Failed to serialize");
 
-    let deserialized: SpikeEvent = serde_json::from_str(&serialized)
-        .expect("Failed to deserialize");
+    let deserialized: SpikeEvent =
+        serde_json::from_str(&serialized).expect("Failed to deserialize");
 
     assert_eq!(event.timestamp, deserialized.timestamp);
     assert_eq!(event.channel, deserialized.channel);

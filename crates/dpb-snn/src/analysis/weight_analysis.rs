@@ -106,7 +106,9 @@ impl ConvergenceAnalyzer for WeightDistributionTracker {
                 report.add_metric("weight_mean_change", mean_change);
 
                 if mean_change < 1e-6 {
-                    report.add_recommendation("Weight distribution is not changing. Training may have stalled.");
+                    report.add_recommendation(
+                        "Weight distribution is not changing. Training may have stalled.",
+                    );
                 }
             }
         }
@@ -139,10 +141,7 @@ impl WeightMagnitudeTracker {
     }
 
     pub fn update_layer_norm(&mut self, layer_name: String, norm: f64) {
-        self.layer_norms
-            .entry(layer_name)
-            .or_default()
-            .push(norm);
+        self.layer_norms.entry(layer_name).or_default().push(norm);
     }
 }
 
@@ -175,10 +174,12 @@ impl ConvergenceAnalyzer for WeightMagnitudeTracker {
         if !self.weight_norm_history.is_empty() {
             let mean_norm = self.weight_norm_history.iter().sum::<f64>()
                 / self.weight_norm_history.len() as f64;
-            let max_norm = self.weight_norm_history
+            let max_norm = self
+                .weight_norm_history
                 .iter()
                 .fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-            let min_norm = self.weight_norm_history
+            let min_norm = self
+                .weight_norm_history
                 .iter()
                 .fold(f64::INFINITY, |a, &b| a.min(b));
 
@@ -190,9 +191,13 @@ impl ConvergenceAnalyzer for WeightMagnitudeTracker {
                 report.add_metric("current_weight_norm", current_norm);
 
                 if current_norm > 10.0 {
-                    report.add_recommendation("Weight norms are very large. Consider weight regularization or clipping.");
+                    report.add_recommendation(
+                        "Weight norms are very large. Consider weight regularization or clipping.",
+                    );
                 } else if current_norm < 0.01 {
-                    report.add_recommendation("Weight norms are very small. Weights may be decaying too much.");
+                    report.add_recommendation(
+                        "Weight norms are very small. Weights may be decaying too much.",
+                    );
                 }
             }
 
@@ -205,7 +210,9 @@ impl ConvergenceAnalyzer for WeightMagnitudeTracker {
                 report.add_metric("weight_norm_growth_ratio", growth_ratio);
 
                 if growth_ratio > 2.0 {
-                    report.add_recommendation("Weight norms are growing significantly. May lead to instability.");
+                    report.add_recommendation(
+                        "Weight norms are growing significantly. May lead to instability.",
+                    );
                 } else if growth_ratio < 0.5 {
                     report.add_recommendation("Weight norms are shrinking significantly. May indicate over-regularization.");
                 }
@@ -286,8 +293,8 @@ impl ConvergenceAnalyzer for WeightSparsityTracker {
         report.add_metric("target_sparsity", self.target_sparsity);
 
         if !self.sparsity_history.is_empty() {
-            let mean_sparsity = self.sparsity_history.iter().sum::<f64>()
-                / self.sparsity_history.len() as f64;
+            let mean_sparsity =
+                self.sparsity_history.iter().sum::<f64>() / self.sparsity_history.len() as f64;
             report.add_metric("mean_sparsity", mean_sparsity);
 
             if let Some(&current_sparsity) = self.sparsity_history.last() {
@@ -302,9 +309,13 @@ impl ConvergenceAnalyzer for WeightSparsityTracker {
                 }
 
                 if current_sparsity > 0.9 {
-                    report.add_recommendation("Very high weight sparsity. Network capacity may be limited.");
+                    report.add_recommendation(
+                        "Very high weight sparsity. Network capacity may be limited.",
+                    );
                 } else if current_sparsity < 0.1 {
-                    report.add_recommendation("Low weight sparsity. Network is dense, may benefit from pruning.");
+                    report.add_recommendation(
+                        "Low weight sparsity. Network is dense, may benefit from pruning.",
+                    );
                 }
             }
 
@@ -391,7 +402,8 @@ impl ConvergenceAnalyzer for WeightUpdateTracker {
         if !self.update_magnitude_history.is_empty() {
             let mean_magnitude = self.update_magnitude_history.iter().sum::<f64>()
                 / self.update_magnitude_history.len() as f64;
-            let max_magnitude = self.update_magnitude_history
+            let max_magnitude = self
+                .update_magnitude_history
                 .iter()
                 .fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
@@ -402,24 +414,34 @@ impl ConvergenceAnalyzer for WeightUpdateTracker {
                 report.add_metric("current_update_magnitude", current_magnitude);
 
                 if current_magnitude < 1e-8 {
-                    report.add_recommendation("Weight updates are very small. Learning may have stopped.");
+                    report.add_recommendation(
+                        "Weight updates are very small. Learning may have stopped.",
+                    );
                 } else if current_magnitude > 1.0 {
-                    report.add_recommendation("Weight updates are very large. May cause instability.");
+                    report.add_recommendation(
+                        "Weight updates are very large. May cause instability.",
+                    );
                 }
             }
 
             // Check if updates are decreasing (normal in convergence)
             if self.update_magnitude_history.len() >= 10 {
-                let recent_mean = self.update_magnitude_history[self.update_magnitude_history.len() - 5..]
+                let recent_mean = self.update_magnitude_history
+                    [self.update_magnitude_history.len() - 5..]
                     .iter()
                     .sum::<f64>()
                     / 5.0;
                 let early_mean = self.update_magnitude_history[..5].iter().sum::<f64>() / 5.0;
 
-                report.add_metric("update_magnitude_ratio", recent_mean / early_mean.max(1e-10));
+                report.add_metric(
+                    "update_magnitude_ratio",
+                    recent_mean / early_mean.max(1e-10),
+                );
 
                 if recent_mean < early_mean * 0.1 {
-                    report.add_recommendation("Weight updates have decreased significantly. Nearing convergence.");
+                    report.add_recommendation(
+                        "Weight updates have decreased significantly. Nearing convergence.",
+                    );
                 }
             }
         }

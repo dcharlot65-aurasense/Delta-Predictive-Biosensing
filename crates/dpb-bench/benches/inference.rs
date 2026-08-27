@@ -3,12 +3,12 @@
 //! This benchmark suite measures the performance of full SNN inference
 //! pipelines, including feedforward, recurrent, and convolutional architectures.
 
-use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
-use std::hint::black_box;
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use dpb_snn::*;
+use std::hint::black_box;
 // `forward` is a trait method.
-use dpb_snn::architectures::SNNArchitecture;
 use dpb_snn::SpikeTensor;
+use dpb_snn::architectures::SNNArchitecture;
 
 fn benchmark_feedforward_snn(c: &mut Criterion) {
     let mut group = c.benchmark_group("feedforward_snn");
@@ -20,11 +20,7 @@ fn benchmark_feedforward_snn(c: &mut Criterion) {
         neuron_params: NeuronParams::default(),
     };
 
-    for layer_sizes in [
-        vec![10, 20, 10],
-        vec![50, 100, 50],
-        vec![100, 200, 100],
-    ].iter() {
+    for layer_sizes in [vec![10, 20, 10], vec![50, 100, 50], vec![100, 200, 100]].iter() {
         let mut snn = FeedforwardSNN::new(layer_sizes.clone(), config.clone(), true).expect("SNN");
 
         // `forward` takes a SpikeTensor of (batch, steps, neurons).
@@ -35,7 +31,9 @@ fn benchmark_feedforward_snn(c: &mut Criterion) {
             layer_sizes,
             |b, _| {
                 b.iter(|| {
-                    let output = snn.forward(black_box(&input)).expect("benchmarked call failed");
+                    let output = snn
+                        .forward(black_box(&input))
+                        .expect("benchmarked call failed");
                     black_box(output);
                 });
             },
@@ -62,16 +60,14 @@ fn benchmark_snn_timesteps(c: &mut Criterion) {
         // `forward` takes a SpikeTensor of (batch, steps, neurons).
         let input = SpikeTensor::zeros(1, config.num_steps, layer_sizes[0], false);
 
-        group.bench_with_input(
-            BenchmarkId::from_parameter(num_steps),
-            num_steps,
-            |b, _| {
-                b.iter(|| {
-                    let output = snn.forward(black_box(&input)).expect("benchmarked call failed");
-                    black_box(output);
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(num_steps), num_steps, |b, _| {
+            b.iter(|| {
+                let output = snn
+                    .forward(black_box(&input))
+                    .expect("benchmarked call failed");
+                black_box(output);
+            });
+        });
     }
 
     group.finish();
@@ -88,7 +84,13 @@ fn benchmark_recurrent_snn(c: &mut Criterion) {
     };
 
     for num_neurons in [50, 100, 200].iter() {
-        let mut snn = RecurrentSNN::new(*num_neurons, vec![*num_neurons], *num_neurons, config.clone()).expect("SNN");
+        let mut snn = RecurrentSNN::new(
+            *num_neurons,
+            vec![*num_neurons],
+            *num_neurons,
+            config.clone(),
+        )
+        .expect("SNN");
         let input = SpikeTensor::zeros(1, config.num_steps, *num_neurons, false);
 
         group.bench_with_input(
@@ -96,7 +98,9 @@ fn benchmark_recurrent_snn(c: &mut Criterion) {
             num_neurons,
             |b, _| {
                 b.iter(|| {
-                    let output = snn.forward(black_box(&input)).expect("benchmarked call failed");
+                    let output = snn
+                        .forward(black_box(&input))
+                        .expect("benchmarked call failed");
                     black_box(output);
                 });
             },
@@ -120,15 +124,24 @@ fn benchmark_convolutional_snn(c: &mut Criterion) {
         let mut snn = ConvolutionalSNN::new(*channels, 10, config.clone());
 
         // Input: (timesteps, channels, height, width)
-        let input =
-            SpikeTensor::zeros(1, config.num_steps, *channels * spatial_size * spatial_size, false);
+        let input = SpikeTensor::zeros(
+            1,
+            config.num_steps,
+            *channels * spatial_size * spatial_size,
+            false,
+        );
 
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}ch_{}x{}", channels, spatial_size, spatial_size)),
+            BenchmarkId::from_parameter(format!(
+                "{}ch_{}x{}",
+                channels, spatial_size, spatial_size
+            )),
             &(*channels, *spatial_size),
             |b, _| {
                 b.iter(|| {
-                    let output = snn.forward(black_box(&input)).expect("benchmarked call failed");
+                    let output = snn
+                        .forward(black_box(&input))
+                        .expect("benchmarked call failed");
                     black_box(output);
                 });
             },
@@ -157,7 +170,9 @@ fn benchmark_spike_rate_decoder(c: &mut Criterion) {
             num_neurons,
             |b, _| {
                 b.iter(|| {
-                    let output = decoder.decode(black_box(&spike_tensor)).expect("benchmarked call failed");
+                    let output = decoder
+                        .decode(black_box(&spike_tensor))
+                        .expect("benchmarked call failed");
                     black_box(output);
                 });
             },
@@ -186,7 +201,9 @@ fn benchmark_population_decoder(c: &mut Criterion) {
 
     group.bench_function("decode", |b| {
         b.iter(|| {
-            let output = decoder.decode(black_box(&spike_tensor)).expect("benchmarked call failed");
+            let output = decoder
+                .decode(black_box(&spike_tensor))
+                .expect("benchmarked call failed");
             black_box(output);
         });
     });
@@ -207,7 +224,9 @@ fn benchmark_latency_decoder(c: &mut Criterion) {
 
     group.bench_function("decode", |b| {
         b.iter(|| {
-            let output = decoder.decode(black_box(&spike_tensor)).expect("benchmarked call failed");
+            let output = decoder
+                .decode(black_box(&spike_tensor))
+                .expect("benchmarked call failed");
             black_box(output);
         });
     });
@@ -225,7 +244,9 @@ fn benchmark_snn_neuron_types(c: &mut Criterion) {
         NeuronModel::LIF,
         NeuronModel::AdaptiveLIF,
         NeuronModel::Izhikevich,
-    ].iter() {
+    ]
+    .iter()
+    {
         let config = SNNConfig {
             dt: 1.0,
             num_steps,
@@ -241,7 +262,9 @@ fn benchmark_snn_neuron_types(c: &mut Criterion) {
             neuron_type,
             |b, _| {
                 b.iter(|| {
-                    let output = snn.forward(black_box(&input)).expect("benchmarked call failed");
+                    let output = snn
+                        .forward(black_box(&input))
+                        .expect("benchmarked call failed");
                     black_box(output);
                 });
             },
@@ -286,7 +309,9 @@ fn benchmark_end_to_end_pipeline(c: &mut Criterion) {
             let spike_output = snn.forward(black_box(&encoded)).expect("forward");
 
             // Decode
-            let output = decoder.decode(black_box(&spike_output)).expect("benchmarked call failed");
+            let output = decoder
+                .decode(black_box(&spike_output))
+                .expect("benchmarked call failed");
 
             black_box(output);
         });

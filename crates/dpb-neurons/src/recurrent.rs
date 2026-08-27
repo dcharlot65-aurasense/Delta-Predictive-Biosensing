@@ -227,7 +227,7 @@ impl NeuronModel for RecurrentNeuron {
         // Membrane dynamics with external + recurrent input
         let total_current = input_current + self.state.i_rec;
         let dv = (-(self.state.v - self.config.v_rest) + self.config.r_m * total_current)
-                 / self.config.tau_mem;
+            / self.config.tau_mem;
         self.state.v += dv * dt;
 
         // Check for spike

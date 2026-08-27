@@ -77,7 +77,9 @@ impl MetricTrait for IntraclassCorrelation {
 
     fn compute(&self, x: &[f32], y: &[f32]) -> Result<f64> {
         if x.len() != y.len() {
-            return Err(DpbError::Other("Arrays must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Arrays must have the same length".to_string(),
+            ));
         }
         Ok(Self::compute_icc(x, y))
     }
@@ -157,7 +159,9 @@ impl MetricTrait for BlandAltmanBias {
 
     fn compute(&self, method1: &[f32], method2: &[f32]) -> Result<f64> {
         if method1.len() != method2.len() {
-            return Err(DpbError::Other("Methods must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Methods must have the same length".to_string(),
+            ));
         }
         if method1.is_empty() {
             return Ok(0.0);
@@ -225,7 +229,9 @@ impl MetricTrait for BlandAltmanLimits {
 
     fn compute(&self, method1: &[f32], method2: &[f32]) -> Result<f64> {
         if method1.len() != method2.len() {
-            return Err(DpbError::Other("Methods must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Methods must have the same length".to_string(),
+            ));
         }
         if method1.is_empty() {
             return Ok(0.0);
@@ -267,7 +273,8 @@ impl MetricTrait for BlandAltmanLimits {
 
         let mean_diff = self.differences.iter().sum::<f64>() / self.differences.len() as f64;
 
-        let variance = self.differences
+        let variance = self
+            .differences
             .iter()
             .map(|&d| {
                 let diff = d - mean_diff;
@@ -317,7 +324,9 @@ impl MetricTrait for ClinicalSensitivity {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
 
         let mut tp = 0.0;
@@ -398,7 +407,9 @@ impl MetricTrait for ClinicalSpecificity {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
 
         let mut tn = 0.0;
@@ -500,7 +511,9 @@ impl MetricTrait for PredictiveValue {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
 
         let mut tp = 0.0;
@@ -576,7 +589,7 @@ mod tests {
         let y = vec![1.1, 2.1, 3.1, 4.1];
 
         let result = icc.compute(&x, &y).unwrap();
-        assert!(result > 0.9);  // High agreement
+        assert!(result > 0.9); // High agreement
     }
 
     #[test]
@@ -586,7 +599,7 @@ mod tests {
         let method2 = vec![11.0, 21.0, 31.0, 41.0];
 
         let result = bias.compute(&method1, &method2).unwrap();
-        assert_eq!(result, -1.0);  // Consistent bias of -1
+        assert_eq!(result, -1.0); // Consistent bias of -1
 
         bias.update(&method1, &method2);
         assert_eq!(bias.result(), -1.0);
@@ -599,7 +612,7 @@ mod tests {
         let method2 = vec![10.0, 20.0, 30.0, 40.0];
 
         let result = limits.compute(&method1, &method2).unwrap();
-        assert_eq!(result, 0.0);  // Identical methods
+        assert_eq!(result, 0.0); // Identical methods
     }
 
     #[test]
@@ -609,7 +622,7 @@ mod tests {
         let targets = vec![1.0, 1.0, 0.0, 1.0];
 
         let result = sens.compute(&preds, &targets).unwrap();
-        assert_eq!(result, 1.0);  // Perfect sensitivity
+        assert_eq!(result, 1.0); // Perfect sensitivity
     }
 
     #[test]
@@ -619,7 +632,7 @@ mod tests {
         let targets = vec![0.0, 0.0, 1.0, 0.0];
 
         let result = spec.compute(&preds, &targets).unwrap();
-        assert_eq!(result, 1.0);  // Perfect specificity
+        assert_eq!(result, 1.0); // Perfect specificity
     }
 
     #[test]
@@ -631,7 +644,7 @@ mod tests {
         pv.update(&preds, &targets);
         let (ppv, npv) = pv.ppv_npv();
 
-        assert_eq!(ppv, 0.5);  // 1 TP out of 2 positive predictions
-        assert_eq!(npv, 0.5);  // 1 TN out of 2 negative predictions
+        assert_eq!(ppv, 0.5); // 1 TP out of 2 positive predictions
+        assert_eq!(npv, 0.5); // 1 TN out of 2 negative predictions
     }
 }

@@ -121,22 +121,12 @@ impl EventEncoder for LevelCrossingEncoder {
 
             // Upward crossing
             if prev < threshold && curr >= threshold {
-                events.push(SpikeEvent::new(
-                    time,
-                    0,
-                    1,
-                    (curr - threshold).abs(),
-                ));
+                events.push(SpikeEvent::new(time, 0, 1, (curr - threshold).abs()));
                 last_event_time = time;
             }
             // Downward crossing
             else if prev >= threshold && curr < threshold {
-                events.push(SpikeEvent::new(
-                    time,
-                    0,
-                    -1,
-                    (threshold - curr).abs(),
-                ));
+                events.push(SpikeEvent::new(time, 0, -1, (threshold - curr).abs()));
                 last_event_time = time;
             }
         }
@@ -182,9 +172,7 @@ pub struct TemplateDeviationEncoder {
 impl TemplateDeviationEncoder {
     /// Creates a new [`TemplateDeviationEncoder`].
     pub fn new(name: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-        }
+        Self { name: name.into() }
     }
 
     /// Calculate correlation between signal and template
@@ -337,15 +325,13 @@ impl EventEncoder for DerivativeEncoder {
 // ============================================================================
 
 /// Configuration for discrete event encoder
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DiscreteEventConfig {
     /// Event timestamps (in seconds)
     pub event_times: Vec<f64>,
     /// Event magnitudes
     pub magnitudes: Vec<f32>,
 }
-
 
 /// Discrete event encoder - converts pre-detected events to spikes
 pub struct DiscreteEventEncoder {
@@ -413,7 +399,6 @@ mod tests {
         assert!(!events.is_empty());
     }
 }
-
 
 /// Reconstructs a signal from level-crossing events.
 ///
@@ -508,26 +493,41 @@ mod reconstruction_tests {
     #[test]
     fn delta_mode_reconstruction_error_is_bounded_by_one_quantum() {
         let sig = sine(1000, 256.0, 3.0);
-        let cfg = LevelCrossingConfig { threshold: 0.05, mode: LevelCrossingMode::Delta, ..Default::default() };
+        let cfg = LevelCrossingConfig {
+            threshold: 0.05,
+            mode: LevelCrossingMode::Delta,
+            ..Default::default()
+        };
 
         let enc = LevelCrossingEncoder::new("t");
         let events = enc.encode(&sig, &cfg).unwrap();
         assert!(!events.is_empty(), "a 3 Hz sine must produce events");
 
         let dec = LevelCrossingDecoder::default();
-        let recon = dec.reconstruct(&events, sig.sample_rate(), sig.samples().len(), &cfg).unwrap();
+        let recon = dec
+            .reconstruct(&events, sig.sample_rate(), sig.samples().len(), &cfg)
+            .unwrap();
 
         let q = ReconstructionQuality::compare(sig.samples(), &recon, events.len());
-        let bound = dec.error_bound(&cfg).expect("Delta mode must state a bound");
+        let bound = dec
+            .error_bound(&cfg)
+            .expect("Delta mode must state a bound");
 
         // Allow one extra quantum: the reconstruction starts at 0 and the encoder
         // references the first sample, so the very first samples can lag by one step.
         assert!(
             q.max_abs_error <= bound * 2.0,
             "max error {} exceeded 2x the {} quantum (rmse {}, snr {} dB, {} events)",
-            q.max_abs_error, bound, q.rmse, q.snr_db, events.len()
+            q.max_abs_error,
+            bound,
+            q.rmse,
+            q.snr_db,
+            events.len()
         );
-        assert!(q.compression_ratio > 1.0, "encoding should emit fewer events than samples");
+        assert!(
+            q.compression_ratio > 1.0,
+            "encoding should emit fewer events than samples"
+        );
     }
 
     /// A slow ramp is the case the old single-threshold behaviour could not
@@ -536,7 +536,11 @@ mod reconstruction_tests {
     fn delta_mode_tracks_a_monotonic_ramp() {
         let n = 500;
         let sig = SignalBuffer::single_channel((0..n).map(|i| i as f32 * 0.01).collect(), 100.0);
-        let cfg = LevelCrossingConfig { threshold: 0.1, mode: LevelCrossingMode::Delta, ..Default::default() };
+        let cfg = LevelCrossingConfig {
+            threshold: 0.1,
+            mode: LevelCrossingMode::Delta,
+            ..Default::default()
+        };
 
         let events = LevelCrossingEncoder::new("t").encode(&sig, &cfg).unwrap();
         // Ramp spans 5.0; at a 0.1 quantum that is ~50 events.
@@ -545,13 +549,20 @@ mod reconstruction_tests {
             "expected ~50 events across a 5.0 ramp at 0.1 quantum, got {}",
             events.len()
         );
-        assert!(events.iter().all(|e| e.polarity == 1), "a rising ramp emits only positive events");
+        assert!(
+            events.iter().all(|e| e.polarity == 1),
+            "a rising ramp emits only positive events"
+        );
     }
 
     /// FixedLevel is retained but must not claim a bound it cannot honour.
     #[test]
     fn fixed_level_mode_claims_no_error_bound() {
-        let cfg = LevelCrossingConfig { threshold: 0.5, mode: LevelCrossingMode::FixedLevel, ..Default::default() };
+        let cfg = LevelCrossingConfig {
+            threshold: 0.5,
+            mode: LevelCrossingMode::FixedLevel,
+            ..Default::default()
+        };
         assert!(
             LevelCrossingDecoder::default().error_bound(&cfg).is_none(),
             "a threshold detector says nothing about values between crossings"
@@ -564,7 +575,10 @@ mod reconstruction_tests {
         let exact = vec![1.0f32; 100];
         let q = ReconstructionQuality::compare(&orig, &exact, 10);
         assert_eq!(q.rmse, 0.0);
-        assert!(q.snr_db.is_infinite(), "an exact reconstruction has infinite SNR");
+        assert!(
+            q.snr_db.is_infinite(),
+            "an exact reconstruction has infinite SNR"
+        );
         assert_eq!(q.compression_ratio, 10.0);
     }
 }

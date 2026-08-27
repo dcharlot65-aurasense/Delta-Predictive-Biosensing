@@ -157,7 +157,6 @@ pub struct Patient {
     pub address: Vec<Address>,
 }
 
-
 impl Default for Patient {
     fn default() -> Self {
         Self {
@@ -231,7 +230,6 @@ impl Default for Device {
         }
     }
 }
-
 
 /// Device version information
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -395,7 +393,6 @@ impl Default for Observation {
     }
 }
 
-
 /// Observation component (for multi-value observations)
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct ObservationComponent {
@@ -490,7 +487,6 @@ impl Default for DiagnosticReport {
     }
 }
 
-
 /// Encounter - healthcare session or visit
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Encounter {
@@ -530,7 +526,6 @@ impl Default for Encounter {
         }
     }
 }
-
 
 /// Period of time
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -582,7 +577,6 @@ impl Default for Procedure {
     }
 }
 
-
 /// Condition - clinical diagnosis or problem
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Condition {
@@ -631,7 +625,6 @@ impl Default for Condition {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -654,7 +647,10 @@ mod tests {
     fn test_codeable_concept_loinc() {
         let concept = CodeableConcept::loinc("8867-4", "Heart rate");
         assert_eq!(concept.coding.len(), 1);
-        assert_eq!(concept.coding[0].system, Some("http://loinc.org".to_string()));
+        assert_eq!(
+            concept.coding[0].system,
+            Some("http://loinc.org".to_string())
+        );
         assert_eq!(concept.coding[0].code, Some("8867-4".to_string()));
     }
 

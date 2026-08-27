@@ -1,10 +1,10 @@
 //! Federated learning client for local training.
 
 use crate::{
+    FederatedError, Result,
     config::FedConfig,
     model::{ModelUpdate, ModelWeights, ParameterDelta},
     privacy::DifferentialPrivacy,
-    FederatedError, Result,
 };
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
@@ -45,7 +45,10 @@ impl FederatedClient {
 
     /// Create with configuration.
     pub fn with_config(id: &str, model: ModelWeights, config: FedConfig) -> Self {
-        let privacy = config.privacy.as_ref().map(|p| DifferentialPrivacy::new(p.clone()));
+        let privacy = config
+            .privacy
+            .as_ref()
+            .map(|p| DifferentialPrivacy::new(p.clone()));
 
         Self {
             id: id.to_string(),
@@ -85,17 +88,21 @@ impl FederatedClient {
 
     /// Synchronize with global model from server.
     pub fn sync_model(&mut self, global_model: &ModelWeights) -> Result<()> {
-        info!("Client {} syncing model (version {})", self.id, global_model.version);
+        info!(
+            "Client {} syncing model (version {})",
+            self.id, global_model.version
+        );
 
         // Verify dimensions match
         for (name, tensor) in &global_model.parameters {
             if let Some(local_tensor) = self.model.parameters.get(name)
-                && local_tensor.data.len() != tensor.data.len() {
-                    return Err(FederatedError::DimensionMismatch {
-                        expected: local_tensor.data.len(),
-                        actual: tensor.data.len(),
-                    });
-                }
+                && local_tensor.data.len() != tensor.data.len()
+            {
+                return Err(FederatedError::DimensionMismatch {
+                    expected: local_tensor.data.len(),
+                    actual: tensor.data.len(),
+                });
+            }
         }
 
         self.model = global_model.clone();
@@ -150,7 +157,8 @@ impl FederatedClient {
             .with_metric("epochs", self.config.local_epochs as f32);
 
         // Record in history
-        self.history.record_round(self.current_round, avg_loss, data.num_samples);
+        self.history
+            .record_round(self.current_round, avg_loss, data.num_samples);
 
         self.state = ClientState::WaitingForServer;
         Ok(update)

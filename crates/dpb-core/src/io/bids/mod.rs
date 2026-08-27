@@ -149,8 +149,7 @@ pub mod validation;
 pub use dataset::{BidsDataset, DatasetDescription, Participant};
 pub use derivatives::{DerivativesDataset, PipelineDescription};
 pub use eeg::{
-    ChannelInfo, CoordinateSystem, EegBids, EegMetadata, ElectrodeInfo, EventInfo,
-    TaskMetadata,
+    ChannelInfo, CoordinateSystem, EegBids, EegMetadata, ElectrodeInfo, EventInfo, TaskMetadata,
 };
 pub use session::{BidsSession, SessionMetadata};
 pub use subject::{BidsSubject, SubjectMetadata};

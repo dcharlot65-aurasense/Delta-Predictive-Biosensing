@@ -5,13 +5,13 @@
 //! - ADHD-specific eye tracking patterns
 //! - Activity monitoring during testing
 
-pub mod paradigms;
 pub mod eye_tracking;
+pub mod paradigms;
 
+pub use eye_tracking::{
+    AdhdEyeTracking, AdhdGazeMetrics, FixationStability, ReadingSaccadeMetrics,
+};
 pub use paradigms::{
     ActivityMetrics, AdhdPattern, AttentionMetrics, ImpulsivityMetrics, QbTest, QbTestMetrics,
     QbTestStimulus,
-};
-pub use eye_tracking::{
-    AdhdEyeTracking, AdhdGazeMetrics, FixationStability, ReadingSaccadeMetrics,
 };

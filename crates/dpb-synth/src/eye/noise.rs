@@ -1,6 +1,8 @@
 //! Eye tracking noise and artifact generators
 
-use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth, TimeSeriesGroundTruth, Event};
+use crate::traits::{
+    Event, GeneratedData, SpatialGroundTruth, SyntheticGenerator, TimeSeriesGroundTruth,
+};
 use ndarray::Array1;
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
@@ -13,10 +15,10 @@ pub struct GazeEstimationNoiseGenerator;
 pub struct GazeEstimationNoiseParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub base_trajectory: Vec<[f64; 2]>,  // clean gaze trajectory
-    pub angular_error_std: f64,           // degrees (typically 0.5-2.0)
-    pub systematic_offset: [f64; 2],      // degrees (calibration error)
-    pub temporal_drift: f64,              // degrees/second (drift over time)
+    pub base_trajectory: Vec<[f64; 2]>, // clean gaze trajectory
+    pub angular_error_std: f64,         // degrees (typically 0.5-2.0)
+    pub systematic_offset: [f64; 2],    // degrees (calibration error)
+    pub temporal_drift: f64,            // degrees/second (drift over time)
 }
 
 impl SyntheticGenerator for GazeEstimationNoiseGenerator {
@@ -24,14 +26,19 @@ impl SyntheticGenerator for GazeEstimationNoiseGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = GazeEstimationNoiseParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let noise = Normal::new(0.0, params.angular_error_std).unwrap();
         let dt = 1.0 / params.sampling_rate;
 
-        let noisy_gaze: Vec<[f64; 2]> = params.base_trajectory
+        let noisy_gaze: Vec<[f64; 2]> = params
+            .base_trajectory
             .iter()
             .enumerate()
             .map(|(i, &[x, y])| {
@@ -62,7 +69,11 @@ impl SyntheticGenerator for GazeEstimationNoiseGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(noisy_gaze, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            noisy_gaze,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -89,10 +100,14 @@ impl SyntheticGenerator for GazeEstimationNoiseGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.base_trajectory.is_empty() {
-            return Err(crate::GeneratorError::InvalidParameter("base_trajectory cannot be empty".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "base_trajectory cannot be empty".to_string(),
+            ));
         }
         Ok(())
     }
@@ -106,17 +121,17 @@ pub struct BlinkArtifactParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub base_trajectory: Vec<[f64; 2]>,
-    pub blink_rate: f64,              // blinks per minute (typically 15-20)
-    pub blink_duration_mean: f64,     // seconds (typically 0.1-0.4)
-    pub blink_duration_std: f64,      // seconds
+    pub blink_rate: f64,          // blinks per minute (typically 15-20)
+    pub blink_duration_mean: f64, // seconds (typically 0.1-0.4)
+    pub blink_duration_std: f64,  // seconds
     pub artifact_type: BlinkArtifactType,
 }
 
 #[derive(Debug, Clone)]
 pub enum BlinkArtifactType {
-    DataLoss,        // NaN or zero values during blink
-    LastValue,       // hold last valid value
-    LinearDrift,     // linear interpolation with drift
+    DataLoss,    // NaN or zero values during blink
+    LastValue,   // hold last valid value
+    LinearDrift, // linear interpolation with drift
 }
 
 impl SyntheticGenerator for BlinkArtifactGenerator {
@@ -124,11 +139,16 @@ impl SyntheticGenerator for BlinkArtifactGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = BlinkArtifactParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let duration_dist = Normal::new(params.blink_duration_mean, params.blink_duration_std).unwrap();
+        let duration_dist =
+            Normal::new(params.blink_duration_mean, params.blink_duration_std).unwrap();
 
         let mut gaze_with_blinks = params.base_trajectory.clone();
         let mut events = Vec::new();
@@ -189,7 +209,11 @@ impl SyntheticGenerator for BlinkArtifactGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_with_blinks, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_with_blinks,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -217,10 +241,14 @@ impl SyntheticGenerator for BlinkArtifactGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.base_trajectory.is_empty() {
-            return Err(crate::GeneratorError::InvalidParameter("base_trajectory cannot be empty".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "base_trajectory cannot be empty".to_string(),
+            ));
         }
         Ok(())
     }
@@ -234,9 +262,9 @@ pub struct PupilDetectionFailureParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub base_pupil_diameter: Array1<f64>,
-    pub dropout_rate: f64,            // 0-1 (fraction of samples lost)
-    pub burst_failures: bool,         // clustered failures vs random
-    pub burst_duration_mean: f64,     // seconds (if burst_failures)
+    pub dropout_rate: f64,        // 0-1 (fraction of samples lost)
+    pub burst_failures: bool,     // clustered failures vs random
+    pub burst_duration_mean: f64, // seconds (if burst_failures)
 }
 
 impl SyntheticGenerator for PupilDetectionFailureGenerator {
@@ -244,7 +272,11 @@ impl SyntheticGenerator for PupilDetectionFailureGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = PupilDetectionFailureParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -253,7 +285,9 @@ impl SyntheticGenerator for PupilDetectionFailureGenerator {
 
         if params.burst_failures {
             // Generate bursts of failures
-            let num_bursts = (n_samples as f64 * params.dropout_rate / (params.burst_duration_mean * params.sampling_rate)) as usize;
+            let num_bursts = (n_samples as f64 * params.dropout_rate
+                / (params.burst_duration_mean * params.sampling_rate))
+                as usize;
 
             for _ in 0..num_bursts {
                 let burst_start = rng.random_range(0..n_samples);
@@ -274,7 +308,10 @@ impl SyntheticGenerator for PupilDetectionFailureGenerator {
 
         let mut gt_params = HashMap::new();
         gt_params.insert("dropout_rate".to_string(), params.dropout_rate);
-        gt_params.insert("burst_failures".to_string(), if params.burst_failures { 1.0 } else { 0.0 });
+        gt_params.insert(
+            "burst_failures".to_string(),
+            if params.burst_failures { 1.0 } else { 0.0 },
+        );
 
         let ground_truth = TimeSeriesGroundTruth {
             parameters: gt_params,
@@ -282,7 +319,11 @@ impl SyntheticGenerator for PupilDetectionFailureGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(pupil_with_failures, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            pupil_with_failures,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -296,7 +337,7 @@ impl SyntheticGenerator for PupilDetectionFailureGenerator {
                     let t = i as f64 / sampling_rate;
                     4.0 + 0.5 * (0.1 * t).sin()
                 })
-                .collect()
+                .collect(),
         );
 
         PupilDetectionFailureParams {
@@ -311,10 +352,14 @@ impl SyntheticGenerator for PupilDetectionFailureGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.dropout_rate < 0.0 || params.dropout_rate > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("dropout_rate must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "dropout_rate must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -328,15 +373,15 @@ pub struct CalibrationDriftParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub base_trajectory: Vec<[f64; 2]>,
-    pub drift_rate: f64,              // degrees per minute
+    pub drift_rate: f64, // degrees per minute
     pub drift_pattern: DriftPattern,
 }
 
 #[derive(Debug, Clone)]
 pub enum DriftPattern {
-    Linear,          // constant drift direction
-    Radial,          // drift toward/away from center
-    Random,          // random walk drift
+    Linear, // constant drift direction
+    Radial, // drift toward/away from center
+    Random, // random walk drift
 }
 
 impl SyntheticGenerator for CalibrationDriftGenerator {
@@ -344,7 +389,11 @@ impl SyntheticGenerator for CalibrationDriftGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = CalibrationDriftParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -353,7 +402,8 @@ impl SyntheticGenerator for CalibrationDriftGenerator {
         // Random drift direction for linear pattern
         let drift_angle = rng.random_range(0.0..2.0 * std::f64::consts::PI);
 
-        let drifted_gaze: Vec<[f64; 2]> = params.base_trajectory
+        let drifted_gaze: Vec<[f64; 2]> = params
+            .base_trajectory
             .iter()
             .enumerate()
             .map(|(i, &[x, y])| {
@@ -393,7 +443,11 @@ impl SyntheticGenerator for CalibrationDriftGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(drifted_gaze, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            drifted_gaze,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -419,10 +473,14 @@ impl SyntheticGenerator for CalibrationDriftGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.base_trajectory.is_empty() {
-            return Err(crate::GeneratorError::InvalidParameter("base_trajectory cannot be empty".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "base_trajectory cannot be empty".to_string(),
+            ));
         }
         Ok(())
     }
@@ -436,9 +494,9 @@ pub struct HeadMovementArtifactParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub base_trajectory: Vec<[f64; 2]>,
-    pub head_movement_frequency: f64,  // Hz (typical head movements)
-    pub head_movement_amplitude: f64,  // degrees (gaze shift due to head)
-    pub coupling_factor: f64,          // 0-1 (how much head movement affects gaze)
+    pub head_movement_frequency: f64, // Hz (typical head movements)
+    pub head_movement_amplitude: f64, // degrees (gaze shift due to head)
+    pub coupling_factor: f64,         // 0-1 (how much head movement affects gaze)
 }
 
 impl SyntheticGenerator for HeadMovementArtifactGenerator {
@@ -446,7 +504,11 @@ impl SyntheticGenerator for HeadMovementArtifactGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = HeadMovementArtifactParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -455,16 +517,22 @@ impl SyntheticGenerator for HeadMovementArtifactGenerator {
         // Generate head movement
         let phase_offset = rng.random_range(0.0..2.0 * std::f64::consts::PI);
 
-        let gaze_with_head: Vec<[f64; 2]> = params.base_trajectory
+        let gaze_with_head: Vec<[f64; 2]> = params
+            .base_trajectory
             .iter()
             .enumerate()
             .map(|(i, &[x, y])| {
                 let t = i as f64 * dt;
 
                 // Sinusoidal head movement
-                let head_phase = 2.0 * std::f64::consts::PI * params.head_movement_frequency * t + phase_offset;
-                let head_x = params.head_movement_amplitude * head_phase.sin() * params.coupling_factor;
-                let head_y = params.head_movement_amplitude * head_phase.cos() * params.coupling_factor * 0.5;
+                let head_phase =
+                    2.0 * std::f64::consts::PI * params.head_movement_frequency * t + phase_offset;
+                let head_x =
+                    params.head_movement_amplitude * head_phase.sin() * params.coupling_factor;
+                let head_y = params.head_movement_amplitude
+                    * head_phase.cos()
+                    * params.coupling_factor
+                    * 0.5;
 
                 [x + head_x, y + head_y]
             })
@@ -476,7 +544,11 @@ impl SyntheticGenerator for HeadMovementArtifactGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_with_head, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_with_head,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -503,10 +575,14 @@ impl SyntheticGenerator for HeadMovementArtifactGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.coupling_factor < 0.0 || params.coupling_factor > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("coupling_factor must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "coupling_factor must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -520,9 +596,9 @@ pub struct GlassesContactsArtifactParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub base_trajectory: Vec<[f64; 2]>,
-    pub artifact_severity: f64,        // 0-1 (strength of distortion)
-    pub reflection_probability: f64,   // 0-1 (probability of reflection artifacts)
-    pub edge_distortion: bool,         // more distortion at screen edges
+    pub artifact_severity: f64,      // 0-1 (strength of distortion)
+    pub reflection_probability: f64, // 0-1 (probability of reflection artifacts)
+    pub edge_distortion: bool,       // more distortion at screen edges
 }
 
 impl SyntheticGenerator for GlassesContactsArtifactGenerator {
@@ -530,13 +606,18 @@ impl SyntheticGenerator for GlassesContactsArtifactGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = GlassesContactsArtifactParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let noise = Normal::new(0.0, params.artifact_severity).unwrap();
 
-        let distorted_gaze: Vec<[f64; 2]> = params.base_trajectory
+        let distorted_gaze: Vec<[f64; 2]> = params
+            .base_trajectory
             .iter()
             .map(|&[x, y]| {
                 // Random reflection artifacts
@@ -572,7 +653,11 @@ impl SyntheticGenerator for GlassesContactsArtifactGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(distorted_gaze, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            distorted_gaze,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -599,13 +684,19 @@ impl SyntheticGenerator for GlassesContactsArtifactGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.artifact_severity < 0.0 || params.artifact_severity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("artifact_severity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "artifact_severity must be 0-1".to_string(),
+            ));
         }
         if params.reflection_probability < 0.0 || params.reflection_probability > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("reflection_probability must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "reflection_probability must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }

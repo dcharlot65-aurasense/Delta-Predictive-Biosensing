@@ -4,9 +4,9 @@
 //! buffer management, and multi-stage processing.
 
 pub mod buffer;
-pub mod stage;
 pub mod executor;
+pub mod stage;
 
-pub use buffer::{RingBuffer, SlidingWindow, OverlapBuffer};
+pub use buffer::{OverlapBuffer, RingBuffer, SlidingWindow};
+pub use executor::{ExecutionMode, LatencyStats, PipelineConfig, PipelineExecutor};
 pub use stage::{PipelineStage, StageConfig, StageMetrics};
-pub use executor::{PipelineExecutor, PipelineConfig, LatencyStats, ExecutionMode};

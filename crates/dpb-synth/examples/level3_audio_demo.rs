@@ -11,8 +11,8 @@
 //! - Python 3 with pyworld installed
 //! - See tools/level3_audio/README.md for setup
 
-use dpb_synth::level3::*;
 use dpb_synth::SyntheticGenerator;
+use dpb_synth::level3::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Level 3 Audio Generation Demo ===\n");
@@ -60,11 +60,18 @@ fn demo_sustained_vowel_tremor() -> Result<(), Box<dyn std::error::Error>> {
     println!("Generating normal /a/ vowel...");
     let normal_result = generator.generate(&normal_params, 42)?;
     println!("  Samples: {}", normal_result.signal.len());
-    println!("  Duration: {:.2} sec", normal_result.signal.len() as f64 / normal_result.sampling_rate);
+    println!(
+        "  Duration: {:.2} sec",
+        normal_result.signal.len() as f64 / normal_result.sampling_rate
+    );
 
-    let f0_mean = normal_result.ground_truth.f0_contour.iter()
+    let f0_mean = normal_result
+        .ground_truth
+        .f0_contour
+        .iter()
         .filter(|&&f| f > 0.0)
-        .sum::<f64>() / normal_result.ground_truth.f0_contour.len() as f64;
+        .sum::<f64>()
+        / normal_result.ground_truth.f0_contour.len() as f64;
     println!("  Mean F0: {:.1} Hz", f0_mean);
 
     // Pathological vowel with tremor (Parkinson's Disease)
@@ -79,19 +86,30 @@ fn demo_sustained_vowel_tremor() -> Result<(), Box<dyn std::error::Error>> {
     let tremor_result = generator.generate(&tremor_params, 42)?;
     println!("  Samples: {}", tremor_result.signal.len());
 
-    let tremor_f0_mean = tremor_result.ground_truth.f0_contour.iter()
+    let tremor_f0_mean = tremor_result
+        .ground_truth
+        .f0_contour
+        .iter()
         .filter(|&&f| f > 0.0)
-        .sum::<f64>() / tremor_result.ground_truth.f0_contour.len() as f64;
+        .sum::<f64>()
+        / tremor_result.ground_truth.f0_contour.len() as f64;
     let tremor_f0_std = {
-        let f0_voiced: Vec<f64> = tremor_result.ground_truth.f0_contour.iter()
+        let f0_voiced: Vec<f64> = tremor_result
+            .ground_truth
+            .f0_contour
+            .iter()
             .copied()
             .filter(|&f| f > 0.0)
             .collect();
         let mean = tremor_f0_mean;
-        let variance = f0_voiced.iter().map(|&f| (f - mean).powi(2)).sum::<f64>() / f0_voiced.len() as f64;
+        let variance =
+            f0_voiced.iter().map(|&f| (f - mean).powi(2)).sum::<f64>() / f0_voiced.len() as f64;
         variance.sqrt()
     };
-    println!("  Mean F0: {:.1} Hz (std: {:.1} Hz)", tremor_f0_mean, tremor_f0_std);
+    println!(
+        "  Mean F0: {:.1} Hz (std: {:.1} Hz)",
+        tremor_f0_mean, tremor_f0_std
+    );
     println!("  Tremor visible in F0 variation!");
 
     println!();
@@ -122,28 +140,28 @@ fn demo_connected_speech_monotone() -> Result<(), Box<dyn std::error::Error>> {
     println!("Generating normal connected speech...");
     let normal_result = generator.generate(&normal_params, 42)?;
     let events = normal_result.ground_truth.events.as_ref().unwrap();
-    let syllables: Vec<_> = events.iter()
+    let syllables: Vec<_> = events
+        .iter()
         .filter(|e| e.event_type == "syllable")
         .collect();
-    let pauses: Vec<_> = events.iter()
-        .filter(|e| e.event_type == "pause")
-        .collect();
+    let pauses: Vec<_> = events.iter().filter(|e| e.event_type == "pause").collect();
 
     println!("  Samples: {}", normal_result.signal.len());
     println!("  Syllables: {}, Pauses: {}", syllables.len(), pauses.len());
 
     // Pathological speech (monotone + hypophonia)
     let pd_params = ConnectedSpeechParams {
-        monotone_factor: 0.8,  // Reduced prosodic variation
-        hypophonia_db: 6.0,    // 6 dB reduction
-        speech_rate: 0.8,      // Slower
+        monotone_factor: 0.8, // Reduced prosodic variation
+        hypophonia_db: 6.0,   // 6 dB reduction
+        speech_rate: 0.8,     // Slower
         ..normal_params
     };
 
     println!("\nGenerating PD-like speech (monotone + hypophonia)...");
     let pd_result = generator.generate(&pd_params, 42)?;
     let pd_events = pd_result.ground_truth.events.as_ref().unwrap();
-    let pd_syllables: Vec<_> = pd_events.iter()
+    let pd_syllables: Vec<_> = pd_events
+        .iter()
         .filter(|e| e.event_type == "syllable")
         .collect();
 
@@ -165,7 +183,7 @@ fn demo_diadochokinesis() -> Result<(), Box<dyn std::error::Error>> {
     let amr_params = DiadochokinesisParams {
         syllables: "pa".to_string(),
         repetitions: 10,
-        target_rate: 6.0,  // 6 syllables/second
+        target_rate: 6.0, // 6 syllables/second
         rate_variability: 0.1,
         amplitude_variability: 0.05,
         f0_mean: 120.0,
@@ -188,7 +206,7 @@ fn demo_diadochokinesis() -> Result<(), Box<dyn std::error::Error>> {
     // SMR (Sequential Motion Rate) - syllable sequence
     let smr_params = DiadochokinesisParams {
         syllables: "pa-ta-ka".to_string(),
-        repetitions: 5,  // 5 sequences = 15 syllables
+        repetitions: 5, // 5 sequences = 15 syllables
         ..amr_params
     };
 
@@ -234,11 +252,17 @@ fn demo_reading_passage() -> Result<(), Box<dyn std::error::Error>> {
     let result = generator.generate(&params, 42)?;
 
     println!("  Samples: {}", result.signal.len());
-    println!("  Duration: {:.2} sec", result.signal.len() as f64 / result.sampling_rate);
+    println!(
+        "  Duration: {:.2} sec",
+        result.signal.len() as f64 / result.sampling_rate
+    );
     println!("  F0 frames: {}", result.ground_truth.f0_contour.len());
 
     // Calculate F0 statistics
-    let f0_voiced: Vec<f64> = result.ground_truth.f0_contour.iter()
+    let f0_voiced: Vec<f64> = result
+        .ground_truth
+        .f0_contour
+        .iter()
         .copied()
         .filter(|&f| f > 0.0)
         .collect();
@@ -248,7 +272,10 @@ fn demo_reading_passage() -> Result<(), Box<dyn std::error::Error>> {
         let f0_min = f0_voiced.iter().copied().fold(f64::INFINITY, f64::min);
         let f0_max = f0_voiced.iter().copied().fold(f64::NEG_INFINITY, f64::max);
 
-        println!("  F0 range: {:.1} - {:.1} Hz (mean: {:.1} Hz)", f0_min, f0_max, f0_mean);
+        println!(
+            "  F0 range: {:.1} - {:.1} Hz (mean: {:.1} Hz)",
+            f0_min, f0_max, f0_mean
+        );
     }
 
     println!();

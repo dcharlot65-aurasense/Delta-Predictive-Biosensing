@@ -21,7 +21,11 @@ fn main() {
     println!("     FLOPs: {}\n", mlp2.flops_per_inference());
 
     let mlp_deep = MLPDeep::new(100, 32, 10, 10, 42);
-    println!("  {} - {}", mlp_deep.name(), mlp_deep.architecture_summary());
+    println!(
+        "  {} - {}",
+        mlp_deep.name(),
+        mlp_deep.architecture_summary()
+    );
     println!("     Parameters: {}", mlp_deep.num_parameters());
     println!("     FLOPs: {}\n", mlp_deep.flops_per_inference());
 
@@ -52,12 +56,20 @@ fn main() {
     // Example 4: Transformer Architectures
     println!("4. Transformer Architectures:");
     let transformer_small = TransformerSmall::new(128, 10, 42);
-    println!("  {} - {}", transformer_small.name(), transformer_small.architecture_summary());
+    println!(
+        "  {} - {}",
+        transformer_small.name(),
+        transformer_small.architecture_summary()
+    );
     println!("     Parameters: {}", transformer_small.num_parameters());
     println!("     FLOPs: {}\n", transformer_small.flops_per_inference());
 
     let informer = Informer::new(128, 4, 10, 42);
-    println!("  {} - {}", informer.name(), informer.architecture_summary());
+    println!(
+        "  {} - {}",
+        informer.name(),
+        informer.architecture_summary()
+    );
     println!("     Parameters: {}", informer.num_parameters());
     println!("     FLOPs: {}\n", informer.flops_per_inference());
 
@@ -69,12 +81,20 @@ fn main() {
     println!("     FLOPs: {}\n", ecgnet.flops_per_inference());
 
     let deepgait = DeepGait::new(6, 1000, 10, 42);
-    println!("  {} - {}", deepgait.name(), deepgait.architecture_summary());
+    println!(
+        "  {} - {}",
+        deepgait.name(),
+        deepgait.architecture_summary()
+    );
     println!("     Parameters: {}", deepgait.num_parameters());
     println!("     FLOPs: {}\n", deepgait.flops_per_inference());
 
     let multimodal = MultimodalFusion::new(&[100, 200, 150], 128, 10, 42);
-    println!("  {} - {}", multimodal.name(), multimodal.architecture_summary());
+    println!(
+        "  {} - {}",
+        multimodal.name(),
+        multimodal.architecture_summary()
+    );
     println!("     Parameters: {}", multimodal.num_parameters());
     println!("     FLOPs: {}\n", multimodal.flops_per_inference());
 
@@ -96,11 +116,8 @@ fn main() {
         Tensor::randn(vec![10, 20], 42),
         Tensor::randn(vec![20, 10], 43),
     ];
-    let _biases = [Tensor::zeros(vec![20]),
-        Tensor::zeros(vec![10])];
-    let sample_data = vec![
-        Tensor::randn(vec![10], 123),
-    ];
+    let _biases = [Tensor::zeros(vec![20]), Tensor::zeros(vec![10])];
+    let sample_data = vec![Tensor::randn(vec![10], 123)];
 
     // Calibrate and convert
     converter.calibrate(&weights, &sample_data);
@@ -120,10 +137,12 @@ fn main() {
     println!("  {:<25} {:<15} {:<15}", "Name", "Parameters", "FLOPs");
     println!("  {}", "-".repeat(55));
     for arch in &architectures {
-        println!("  {:<25} {:<15} {:<15}",
-                 arch.name(),
-                 arch.num_parameters(),
-                 arch.flops_per_inference());
+        println!(
+            "  {:<25} {:<15} {:<15}",
+            arch.name(),
+            arch.num_parameters(),
+            arch.flops_per_inference()
+        );
     }
     println!();
 

@@ -1,8 +1,8 @@
 //! Privacy-preserving mechanisms for federated learning.
 
+use crate::{FederatedError, Result, model::ModelWeights};
 use rand::{Rng, RngExt};
 use serde::{Deserialize, Serialize};
-use crate::{FederatedError, Result, model::ModelWeights};
 
 /// Configuration for differential privacy.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -380,7 +380,11 @@ mod tests {
         dp.privatize_vector(&mut data).unwrap();
 
         // Data should be different after noise
-        assert!(data.iter().zip(&original).any(|(a, b)| (a - b).abs() > 1e-6));
+        assert!(
+            data.iter()
+                .zip(&original)
+                .any(|(a, b)| (a - b).abs() > 1e-6)
+        );
     }
 
     #[test]

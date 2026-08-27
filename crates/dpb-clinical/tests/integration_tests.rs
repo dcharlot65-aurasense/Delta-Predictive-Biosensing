@@ -137,12 +137,21 @@ fn test_percentile_tracks_the_normal_curve() {
     let db = db_for(&demo, "alpha_power", 10.0, 2.0);
 
     // The mean sits at the 50th percentile by construction.
-    let p = db.percentile("alpha_power", 10.0, &demo).expect("percentile");
-    assert!((p - 50.0).abs() < 1.0, "mean should be ~50th percentile, got {p}");
+    let p = db
+        .percentile("alpha_power", 10.0, &demo)
+        .expect("percentile");
+    assert!(
+        (p - 50.0).abs() < 1.0,
+        "mean should be ~50th percentile, got {p}"
+    );
 
     // +1 SD is ~84th, -1 SD ~16th.
-    let high = db.percentile("alpha_power", 12.0, &demo).expect("percentile");
-    let low = db.percentile("alpha_power", 8.0, &demo).expect("percentile");
+    let high = db
+        .percentile("alpha_power", 12.0, &demo)
+        .expect("percentile");
+    let low = db
+        .percentile("alpha_power", 8.0, &demo)
+        .expect("percentile");
     assert!((high - 84.13).abs() < 1.0, "got {high}");
     assert!((low - 15.87).abs() < 1.0, "got {low}");
 
@@ -158,11 +167,19 @@ fn test_percentile_tracks_the_normal_curve() {
 fn test_cohens_d_matches_its_definition() {
     // Means one pooled SD apart => d = 1.0.
     let d = EffectSize::cohens_d(12.0, 10.0, 2.0, 2.0, 30, 30).expect("effect size");
-    assert!((d.value - 1.0).abs() < 1e-6, "expected d = 1.0, got {}", d.value);
+    assert!(
+        (d.value - 1.0).abs() < 1e-6,
+        "expected d = 1.0, got {}",
+        d.value
+    );
 
     // A confidence interval must bracket the estimate.
     if let (Some(lo), Some(hi)) = (d.ci_lower, d.ci_upper) {
-        assert!(lo < d.value && d.value < hi, "CI [{lo}, {hi}] excludes {}", d.value);
+        assert!(
+            lo < d.value && d.value < hi,
+            "CI [{lo}, {hi}] excludes {}",
+            d.value
+        );
     }
 
     // No difference => no effect.
@@ -171,7 +188,11 @@ fn test_cohens_d_matches_its_definition() {
 
     // The sign follows the direction of the difference.
     let negative = EffectSize::cohens_d(8.0, 10.0, 2.0, 2.0, 30, 30).expect("effect size");
-    assert!(negative.value < 0.0, "expected a negative effect, got {}", negative.value);
+    assert!(
+        negative.value < 0.0,
+        "expected a negative effect, got {}",
+        negative.value
+    );
 
     // A zero pooled SD leaves the effect undefined rather than infinite.
     assert!(EffectSize::cohens_d(12.0, 10.0, 0.0, 0.0, 30, 30).is_err());
@@ -237,8 +258,7 @@ fn test_comorbidity_index_grows_with_burden() {
         Condition::new("E11", "Type 2 diabetes", ConditionCategory::Metabolic).with_severity(0.5),
     );
     model.add_condition(
-        Condition::new("I10", "Hypertension", ConditionCategory::Cardiovascular)
-            .with_severity(0.3),
+        Condition::new("I10", "Hypertension", ConditionCategory::Cardiovascular).with_severity(0.3),
     );
 
     assert_eq!(model.conditions().len(), 2);
@@ -257,7 +277,11 @@ fn test_comorbidity_index_grows_with_burden() {
 #[test]
 fn test_condition_interactions_are_symmetric_lookups() {
     let mut model = ComorbidityModel::new("test");
-    model.add_condition(Condition::new("E11", "Diabetes", ConditionCategory::Metabolic));
+    model.add_condition(Condition::new(
+        "E11",
+        "Diabetes",
+        ConditionCategory::Metabolic,
+    ));
     model.add_condition(Condition::new(
         "I10",
         "Hypertension",
@@ -281,8 +305,7 @@ fn test_condition_interactions_are_symmetric_lookups() {
 
 #[test]
 fn test_practice_effect_correction_reduces_a_repeat_score() {
-    let mut corrector =
-        PracticeEffectCorrector::new("test", CorrectionMethod::SimpleSubtraction);
+    let mut corrector = PracticeEffectCorrector::new("test", CorrectionMethod::SimpleSubtraction);
     corrector.add_effect("trails_b", PracticeEffect::new("trails_b", 5.0));
 
     assert!(corrector.get_effect("trails_b").is_some());
@@ -324,7 +347,10 @@ fn test_practice_effect_expected_score_rises_then_settles() {
     let second = effect.expected_score(50.0, 2);
     let tenth = effect.expected_score(50.0, 10);
 
-    assert!(second > first, "the second exposure should gain: {first} -> {second}");
+    assert!(
+        second > first,
+        "the second exposure should gain: {first} -> {second}"
+    );
     assert!(
         tenth <= 50.0 + 8.0 + 1e-6,
         "gains must respect the asymptote, got {tenth}"
@@ -577,8 +603,7 @@ fn test_age_over_89_generalization() {
     let deidentifier = DeIdentifier::safe_harbor();
 
     // 95-year-old patient
-    let record = PatientRecord::new()
-        .with_dob(1930, 1, 1);
+    let record = PatientRecord::new().with_dob(1930, 1, 1);
 
     let result = deidentifier.deidentify(&record).unwrap();
 
@@ -608,7 +633,10 @@ fn test_deidentification_config_builder() {
 fn test_clinical_error_variants() {
     let err1 = ClinicalError::MissingNormativeData("alpha_power".to_string());
     let err2 = ClinicalError::InvalidConfiguration("bad config".to_string());
-    let err3 = ClinicalError::InsufficientData { required: 10, available: 5 };
+    let err3 = ClinicalError::InsufficientData {
+        required: 10,
+        available: 5,
+    };
 
     assert!(format!("{:?}", err1).contains("alpha_power"));
     assert!(format!("{:?}", err2).contains("bad config"));

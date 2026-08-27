@@ -156,7 +156,9 @@ impl EmgAnalyzer {
         // Zero Crossings
         let mut zero_crossings = 0;
         for i in 1..signal.len() {
-            if (signal[i - 1] < 0.0 && signal[i] >= 0.0) || (signal[i - 1] >= 0.0 && signal[i] < 0.0) {
+            if (signal[i - 1] < 0.0 && signal[i] >= 0.0)
+                || (signal[i - 1] >= 0.0 && signal[i] < 0.0)
+            {
                 zero_crossings += 1;
             }
         }
@@ -341,9 +343,10 @@ impl EmgAnalyzer {
                 if burst_end - burst_start >= min_samples {
                     let burst_signal = signal.slice(ndarray::s![burst_start..burst_end]);
 
-                    let peak_amplitude = burst_signal.iter().map(|x| x.abs()).fold(0.0f64, f64::max);
-                    let mean_amplitude =
-                        burst_signal.iter().map(|x| x.abs()).sum::<f64>() / burst_signal.len() as f64;
+                    let peak_amplitude =
+                        burst_signal.iter().map(|x| x.abs()).fold(0.0f64, f64::max);
+                    let mean_amplitude = burst_signal.iter().map(|x| x.abs()).sum::<f64>()
+                        / burst_signal.len() as f64;
                     let rms_amplitude = (burst_signal.iter().map(|x| x * x).sum::<f64>()
                         / burst_signal.len() as f64)
                         .sqrt();
@@ -390,7 +393,11 @@ impl EmgAnalyzer {
     }
 
     /// Analyze fatigue from sustained contraction
-    pub fn analyze_fatigue(&self, signal: ArrayView1<f64>, window_seconds: f64) -> Result<FatigueMetrics> {
+    pub fn analyze_fatigue(
+        &self,
+        signal: ArrayView1<f64>,
+        window_seconds: f64,
+    ) -> Result<FatigueMetrics> {
         let window_size = (window_seconds * self.sample_rate) as usize;
         let num_windows = signal.len() / window_size;
 
@@ -452,9 +459,9 @@ impl EmgAnalyzer {
 
     /// Normalize signal to MVC percentage
     pub fn normalize_to_mvc(&self, signal: ArrayView1<f64>) -> Result<Array1<f64>> {
-        let mvc = self.mvc_amplitude.ok_or_else(|| {
-            DpbError::Config("MVC amplitude not set".to_string())
-        })?;
+        let mvc = self
+            .mvc_amplitude
+            .ok_or_else(|| DpbError::Config("MVC amplitude not set".to_string()))?;
 
         if mvc <= 0.0 {
             return Err(DpbError::InvalidParameter(
@@ -549,9 +556,8 @@ mod tests {
             for i in 0..burst_samples.min(n_samples - start) {
                 let t = i as f64 / sample_rate;
                 // Simulated EMG during contraction
-                signal[start + i] += (100.0 * t).sin() * 0.5
-                    + (150.0 * t).cos() * 0.3
-                    + (200.0 * t).sin() * 0.2;
+                signal[start + i] +=
+                    (100.0 * t).sin() * 0.5 + (150.0 * t).cos() * 0.3 + (200.0 * t).sin() * 0.2;
             }
         }
 
@@ -648,7 +654,9 @@ mod tests {
         let antagonist = Array1::from_vec(vec![0.1, 0.2, 0.1, 0.2, 0.1]);
         let analyzer = EmgAnalyzer::new(sample_rate);
 
-        let cci = analyzer.cocontraction_index(agonist.view(), antagonist.view()).unwrap();
+        let cci = analyzer
+            .cocontraction_index(agonist.view(), antagonist.view())
+            .unwrap();
 
         assert!((0.0..=1.0).contains(&cci));
     }

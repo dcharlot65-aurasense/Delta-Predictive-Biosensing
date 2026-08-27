@@ -1,6 +1,6 @@
 //! Pupil response generators
 
-use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth};
+use crate::traits::{GeneratedData, SyntheticGenerator, TimeSeriesGroundTruth};
 use ndarray::Array1;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
@@ -13,12 +13,12 @@ pub struct PupilLightReflexGenerator;
 pub struct PupilLightReflexParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub baseline_diameter: f64,     // mm (typically 3-5)
-    pub light_onset_time: f64,      // seconds
-    pub light_intensity: f64,       // 0-1 (fraction of maximum constriction)
-    pub constriction_latency: f64,  // seconds (typically 0.2-0.3)
-    pub constriction_time: f64,     // seconds (typically 0.5-1.0)
-    pub redilation_time: f64,       // seconds (typically 2-4)
+    pub baseline_diameter: f64,    // mm (typically 3-5)
+    pub light_onset_time: f64,     // seconds
+    pub light_intensity: f64,      // 0-1 (fraction of maximum constriction)
+    pub constriction_latency: f64, // seconds (typically 0.2-0.3)
+    pub constriction_time: f64,    // seconds (typically 0.5-1.0)
+    pub redilation_time: f64,      // seconds (typically 2-4)
 }
 
 impl SyntheticGenerator for PupilLightReflexGenerator {
@@ -26,7 +26,11 @@ impl SyntheticGenerator for PupilLightReflexGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = PupilLightReflexParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -48,14 +52,20 @@ impl SyntheticGenerator for PupilLightReflexGenerator {
                 } else if t < params.light_onset_time + params.constriction_latency {
                     // Latency period
                     params.baseline_diameter
-                } else if t < params.light_onset_time + params.constriction_latency + params.constriction_time {
+                } else if t < params.light_onset_time
+                    + params.constriction_latency
+                    + params.constriction_time
+                {
                     // Constriction phase
                     let t_constrict = t - params.light_onset_time - params.constriction_latency;
                     let progress = t_constrict / params.constriction_time;
                     params.baseline_diameter - max_constriction * progress
                 } else {
                     // Redilation phase
-                    let t_redilate = t - params.light_onset_time - params.constriction_latency - params.constriction_time;
+                    let t_redilate = t
+                        - params.light_onset_time
+                        - params.constriction_latency
+                        - params.constriction_time;
                     let progress = (t_redilate / params.redilation_time).min(1.0);
                     let current_diameter = params.baseline_diameter - max_constriction;
                     current_diameter + max_constriction * progress
@@ -78,7 +88,11 @@ impl SyntheticGenerator for PupilLightReflexGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(diameter, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            diameter,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -96,13 +110,19 @@ impl SyntheticGenerator for PupilLightReflexGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.baseline_diameter <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("baseline_diameter must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "baseline_diameter must be positive".to_string(),
+            ));
         }
         if params.light_intensity < 0.0 || params.light_intensity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("light_intensity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "light_intensity must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -126,7 +146,11 @@ impl SyntheticGenerator for CognitivePupilDilationGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = CognitivePupilDilationParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -152,7 +176,8 @@ impl SyntheticGenerator for CognitivePupilDilationGenerator {
                 }
 
                 // Calculate target diameter
-                target_diameter = params.baseline_diameter + params.dilation_per_workload * workload;
+                target_diameter =
+                    params.baseline_diameter + params.dilation_per_workload * workload;
 
                 // Exponential approach to target
                 let alpha = 1.0 - (-dt / params.response_time).exp();
@@ -166,9 +191,13 @@ impl SyntheticGenerator for CognitivePupilDilationGenerator {
 
         let mut gt_params = HashMap::new();
         gt_params.insert("baseline_diameter".to_string(), params.baseline_diameter);
-        gt_params.insert("dilation_per_workload".to_string(), params.dilation_per_workload);
+        gt_params.insert(
+            "dilation_per_workload".to_string(),
+            params.dilation_per_workload,
+        );
 
-        let segments = params.task_segments
+        let segments = params
+            .task_segments
             .iter()
             .map(|(start, end, workload)| crate::traits::Segment {
                 start: *start,
@@ -183,7 +212,11 @@ impl SyntheticGenerator for CognitivePupilDilationGenerator {
             segments,
         };
 
-        Ok(GeneratedData::new(diameter, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            diameter,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -191,10 +224,7 @@ impl SyntheticGenerator for CognitivePupilDilationGenerator {
             duration: 60.0,
             sampling_rate: 60.0,
             baseline_diameter: 4.0,
-            task_segments: vec![
-                (10.0, 20.0, 0.5),
-                (30.0, 45.0, 0.8),
-            ],
+            task_segments: vec![(10.0, 20.0, 0.5), (30.0, 45.0, 0.8)],
             dilation_per_workload: 0.5,
             response_time: 1.0,
         }
@@ -202,10 +232,14 @@ impl SyntheticGenerator for CognitivePupilDilationGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.baseline_diameter <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("baseline_diameter must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "baseline_diameter must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -218,10 +252,10 @@ pub struct HippusGenerator;
 pub struct HippusParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub baseline_diameter: f64,       // mm
-    pub oscillation_frequency: f64,    // Hz (typically 0.05-0.3 Hz)
-    pub oscillation_amplitude: f64,    // mm (typically 0.1-0.5 mm)
-    pub noise_level: f64,              // mm (physiological noise)
+    pub baseline_diameter: f64,     // mm
+    pub oscillation_frequency: f64, // Hz (typically 0.05-0.3 Hz)
+    pub oscillation_amplitude: f64, // mm (typically 0.1-0.5 mm)
+    pub noise_level: f64,           // mm (physiological noise)
 }
 
 impl SyntheticGenerator for HippusGenerator {
@@ -229,7 +263,11 @@ impl SyntheticGenerator for HippusGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = HippusParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -252,8 +290,14 @@ impl SyntheticGenerator for HippusGenerator {
 
         let mut gt_params = HashMap::new();
         gt_params.insert("baseline_diameter".to_string(), params.baseline_diameter);
-        gt_params.insert("oscillation_frequency".to_string(), params.oscillation_frequency);
-        gt_params.insert("oscillation_amplitude".to_string(), params.oscillation_amplitude);
+        gt_params.insert(
+            "oscillation_frequency".to_string(),
+            params.oscillation_frequency,
+        );
+        gt_params.insert(
+            "oscillation_amplitude".to_string(),
+            params.oscillation_amplitude,
+        );
 
         let ground_truth = TimeSeriesGroundTruth {
             parameters: gt_params,
@@ -261,7 +305,11 @@ impl SyntheticGenerator for HippusGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(diameter, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            diameter,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -277,10 +325,14 @@ impl SyntheticGenerator for HippusGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.baseline_diameter <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("baseline_diameter must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "baseline_diameter must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -294,10 +346,10 @@ pub struct PupilFatigueResponseParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub baseline_diameter: f64,
-    pub task_periods: Vec<(f64, f64)>,  // (start, end) times of task periods
-    pub fatigue_rate: f64,               // diameter decrease per minute
-    pub recovery_rate: f64,              // diameter increase per minute during rest
-    pub minimum_diameter: f64,           // mm (fatigue limit)
+    pub task_periods: Vec<(f64, f64)>, // (start, end) times of task periods
+    pub fatigue_rate: f64,             // diameter decrease per minute
+    pub recovery_rate: f64,            // diameter increase per minute during rest
+    pub minimum_diameter: f64,         // mm (fatigue limit)
 }
 
 impl SyntheticGenerator for PupilFatigueResponseGenerator {
@@ -305,7 +357,11 @@ impl SyntheticGenerator for PupilFatigueResponseGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = PupilFatigueResponseParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -322,7 +378,10 @@ impl SyntheticGenerator for PupilFatigueResponseGenerator {
                 let t = i as f64 * dt;
 
                 // Check if in task period
-                let in_task = params.task_periods.iter().any(|(start, end)| t >= *start && t <= *end);
+                let in_task = params
+                    .task_periods
+                    .iter()
+                    .any(|(start, end)| t >= *start && t <= *end);
 
                 if in_task {
                     // Accumulate fatigue
@@ -333,7 +392,8 @@ impl SyntheticGenerator for PupilFatigueResponseGenerator {
                     cumulative_fatigue = cumulative_fatigue.max(0.0);
                 }
 
-                current_diameter = (params.baseline_diameter - cumulative_fatigue).max(params.minimum_diameter);
+                current_diameter =
+                    (params.baseline_diameter - cumulative_fatigue).max(params.minimum_diameter);
 
                 current_diameter + noise.sample(&mut rng)
             })
@@ -346,7 +406,8 @@ impl SyntheticGenerator for PupilFatigueResponseGenerator {
         gt_params.insert("fatigue_rate".to_string(), params.fatigue_rate);
         gt_params.insert("recovery_rate".to_string(), params.recovery_rate);
 
-        let segments = params.task_periods
+        let segments = params
+            .task_periods
             .iter()
             .enumerate()
             .map(|(idx, (start, end))| crate::traits::Segment {
@@ -362,7 +423,11 @@ impl SyntheticGenerator for PupilFatigueResponseGenerator {
             segments,
         };
 
-        Ok(GeneratedData::new(diameter, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            diameter,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -371,21 +436,25 @@ impl SyntheticGenerator for PupilFatigueResponseGenerator {
             sampling_rate: 60.0,
             baseline_diameter: 4.5,
             task_periods: vec![
-                (60.0, 180.0),   // 1-3 min
-                (240.0, 420.0),  // 4-7 min
+                (60.0, 180.0),  // 1-3 min
+                (240.0, 420.0), // 4-7 min
             ],
-            fatigue_rate: 0.5,    // 0.5mm per minute
-            recovery_rate: 0.3,   // 0.3mm per minute
+            fatigue_rate: 0.5,  // 0.5mm per minute
+            recovery_rate: 0.3, // 0.3mm per minute
             minimum_diameter: 2.5,
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.baseline_diameter <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("baseline_diameter must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "baseline_diameter must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -400,10 +469,10 @@ pub struct AfferentPupilDefectParams {
     pub sampling_rate: f64,
     pub baseline_diameter: f64,
     pub light_onset_times: Vec<f64>,
-    pub affected_eye: bool,              // true = affected, false = normal
-    pub defect_severity: f64,            // 0-1 (0 = no defect, 1 = complete)
-    pub light_intensity: f64,            // 0-1
-    pub swinging_flashlight: bool,       // alternating between eyes
+    pub affected_eye: bool,        // true = affected, false = normal
+    pub defect_severity: f64,      // 0-1 (0 = no defect, 1 = complete)
+    pub light_intensity: f64,      // 0-1
+    pub swinging_flashlight: bool, // alternating between eyes
 }
 
 impl SyntheticGenerator for AfferentPupilDefectGenerator {
@@ -411,7 +480,11 @@ impl SyntheticGenerator for AfferentPupilDefectGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = AfferentPupilDefectParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -480,7 +553,10 @@ impl SyntheticGenerator for AfferentPupilDefectGenerator {
         let mut gt_params = HashMap::new();
         gt_params.insert("baseline_diameter".to_string(), params.baseline_diameter);
         gt_params.insert("defect_severity".to_string(), params.defect_severity);
-        gt_params.insert("affected_eye".to_string(), if params.affected_eye { 1.0 } else { 0.0 });
+        gt_params.insert(
+            "affected_eye".to_string(),
+            if params.affected_eye { 1.0 } else { 0.0 },
+        );
 
         for (idx, &onset) in params.light_onset_times.iter().enumerate() {
             events.push(crate::traits::Event {
@@ -489,8 +565,14 @@ impl SyntheticGenerator for AfferentPupilDefectGenerator {
                 amplitude: Some(params.light_intensity),
                 attributes: {
                     let mut attrs = HashMap::new();
-                    attrs.insert("eye_tested".to_string(),
-                        if params.swinging_flashlight { (idx % 2) as f64 } else { 0.0 });
+                    attrs.insert(
+                        "eye_tested".to_string(),
+                        if params.swinging_flashlight {
+                            (idx % 2) as f64
+                        } else {
+                            0.0
+                        },
+                    );
                     attrs
                 },
             });
@@ -502,7 +584,11 @@ impl SyntheticGenerator for AfferentPupilDefectGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(diameter, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            diameter,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -520,10 +606,14 @@ impl SyntheticGenerator for AfferentPupilDefectGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.defect_severity < 0.0 || params.defect_severity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("defect_severity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "defect_severity must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -538,7 +628,10 @@ mod tests {
         let generator = PupilLightReflexGenerator;
         let params = PupilLightReflexGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -546,7 +639,10 @@ mod tests {
         let generator = CognitivePupilDilationGenerator;
         let params = CognitivePupilDilationGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
         assert!(!result.ground_truth.segments.is_empty());
     }
 
@@ -555,7 +651,10 @@ mod tests {
         let generator = HippusGenerator;
         let params = HippusGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -563,7 +662,10 @@ mod tests {
         let generator = PupilFatigueResponseGenerator;
         let params = PupilFatigueResponseGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -571,6 +673,9 @@ mod tests {
         let generator = AfferentPupilDefectGenerator;
         let params = AfferentPupilDefectGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 }

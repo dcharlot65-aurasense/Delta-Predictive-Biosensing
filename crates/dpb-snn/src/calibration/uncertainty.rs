@@ -568,20 +568,12 @@ mod tests {
         let mc = MCDropout::new(5, 0.5);
 
         // High confidence predictions (low aleatoric uncertainty)
-        let samples_confident = vec![
-            vec![0.95, 0.05],
-            vec![0.96, 0.04],
-            vec![0.94, 0.06],
-        ];
+        let samples_confident = vec![vec![0.95, 0.05], vec![0.96, 0.04], vec![0.94, 0.06]];
 
         let aleatoric_confident = mc.aleatoric_uncertainty(&samples_confident);
 
         // Low confidence predictions (high aleatoric uncertainty)
-        let samples_uncertain = vec![
-            vec![0.5, 0.5],
-            vec![0.51, 0.49],
-            vec![0.49, 0.51],
-        ];
+        let samples_uncertain = vec![vec![0.5, 0.5], vec![0.51, 0.49], vec![0.49, 0.51]];
 
         let aleatoric_uncertain = mc.aleatoric_uncertainty(&samples_uncertain);
 
@@ -594,11 +586,7 @@ mod tests {
         let ensemble = EnsembleUncertainty::new(3);
 
         // Models with high disagreement
-        let predictions = vec![
-            vec![0.9, 0.1],
-            vec![0.1, 0.9],
-            vec![0.5, 0.5],
-        ];
+        let predictions = vec![vec![0.9, 0.1], vec![0.1, 0.9], vec![0.5, 0.5]];
 
         let (_, variances) = ensemble.compute_statistics(&predictions);
 
@@ -611,11 +599,7 @@ mod tests {
         let ensemble = EnsembleUncertainty::new(3);
 
         // Models with low disagreement
-        let predictions = vec![
-            vec![0.9, 0.1],
-            vec![0.91, 0.09],
-            vec![0.89, 0.11],
-        ];
+        let predictions = vec![vec![0.9, 0.1], vec![0.91, 0.09], vec![0.89, 0.11]];
 
         let (_, variances) = ensemble.compute_statistics(&predictions);
 

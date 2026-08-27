@@ -28,26 +28,24 @@ impl WaveletFamily {
     /// Generates wavelet function at given scale and time points.
     fn generate(&self, t: &[f64], scale: f64) -> Vec<f64> {
         match self {
-            WaveletFamily::Morlet { omega0 } => {
-                t.iter()
-                    .map(|&time| {
-                        let scaled_t = time / scale;
-                        let envelope = (-scaled_t * scaled_t / 2.0).exp();
-                        let wave = (omega0 * scaled_t).cos();
-                        envelope * wave / scale.sqrt()
-                    })
-                    .collect()
-            }
-            WaveletFamily::MexicanHat => {
-                t.iter()
-                    .map(|&time| {
-                        let scaled_t = time / scale;
-                        let t2 = scaled_t * scaled_t;
-                        let norm = 2.0 / (3.0_f64.sqrt() * PI.powf(0.25));
-                        norm * (1.0 - t2) * (-t2 / 2.0).exp() / scale.sqrt()
-                    })
-                    .collect()
-            }
+            WaveletFamily::Morlet { omega0 } => t
+                .iter()
+                .map(|&time| {
+                    let scaled_t = time / scale;
+                    let envelope = (-scaled_t * scaled_t / 2.0).exp();
+                    let wave = (omega0 * scaled_t).cos();
+                    envelope * wave / scale.sqrt()
+                })
+                .collect(),
+            WaveletFamily::MexicanHat => t
+                .iter()
+                .map(|&time| {
+                    let scaled_t = time / scale;
+                    let t2 = scaled_t * scaled_t;
+                    let norm = 2.0 / (3.0_f64.sqrt() * PI.powf(0.25));
+                    norm * (1.0 - t2) * (-t2 / 2.0).exp() / scale.sqrt()
+                })
+                .collect(),
             WaveletFamily::Daubechies(order) => {
                 // Simplified Daubechies approximation (real implementation would use filter coefficients)
                 self.daubechies_approx(t, scale, *order)
@@ -236,7 +234,9 @@ impl DiscreteWaveletTransform {
     }
 
     /// Gets filter coefficients for the wavelet family.
-    fn get_filter_coefficients(wavelet: &WaveletFamily) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
+    fn get_filter_coefficients(
+        wavelet: &WaveletFamily,
+    ) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
         match wavelet {
             WaveletFamily::Daubechies(2) => {
                 // Daubechies-4 (db2) coefficients
@@ -409,7 +409,9 @@ mod tests {
 
     #[test]
     fn test_cwt_transform() {
-        let signal: Vec<f64> = (0..128).map(|i| (2.0 * PI * 5.0 * i as f64 / 128.0).sin()).collect();
+        let signal: Vec<f64> = (0..128)
+            .map(|i| (2.0 * PI * 5.0 * i as f64 / 128.0).sin())
+            .collect();
 
         let wavelet = WaveletFamily::Morlet { omega0: 6.0 };
         let scales: Vec<f64> = (1..=10).map(|i| i as f64).collect();
@@ -423,7 +425,9 @@ mod tests {
 
     #[test]
     fn test_cwt_power() {
-        let signal: Vec<f64> = (0..64).map(|i| (2.0 * PI * 5.0 * i as f64 / 64.0).sin()).collect();
+        let signal: Vec<f64> = (0..64)
+            .map(|i| (2.0 * PI * 5.0 * i as f64 / 64.0).sin())
+            .collect();
 
         let wavelet = WaveletFamily::Morlet { omega0: 6.0 };
         let scales: Vec<f64> = vec![1.0, 2.0, 3.0];
@@ -439,7 +443,9 @@ mod tests {
 
     #[test]
     fn test_dwt_decompose() {
-        let signal: Vec<f64> = (0..128).map(|i| (2.0 * PI * i as f64 / 128.0).sin()).collect();
+        let signal: Vec<f64> = (0..128)
+            .map(|i| (2.0 * PI * i as f64 / 128.0).sin())
+            .collect();
 
         let wavelet = WaveletFamily::Daubechies(2);
         let dwt = DiscreteWaveletTransform::new(wavelet, 3);
@@ -454,7 +460,9 @@ mod tests {
 
     #[test]
     fn test_dwt_reconstruction() {
-        let signal: Vec<f64> = (0..64).map(|i| (2.0 * PI * i as f64 / 64.0).sin()).collect();
+        let signal: Vec<f64> = (0..64)
+            .map(|i| (2.0 * PI * i as f64 / 64.0).sin())
+            .collect();
 
         let wavelet = WaveletFamily::Daubechies(2);
         let dwt = DiscreteWaveletTransform::new(wavelet, 2);
@@ -530,5 +538,4 @@ mod tests {
             }
         }
     }
-
 }

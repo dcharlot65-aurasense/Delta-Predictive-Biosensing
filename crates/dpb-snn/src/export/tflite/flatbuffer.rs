@@ -5,7 +5,7 @@
 
 use super::operators::TFLiteOperator;
 use super::tensors::TFLiteTensor;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// FlatBuffer builder for TFLite models
@@ -81,7 +81,9 @@ impl FlatBufferBuilder {
             .map_err(|e| format!("Failed to serialize model: {}", e))?;
 
         // Write length of JSON data (with overflow check)
-        let json_len: u32 = json.len().try_into()
+        let json_len: u32 = json
+            .len()
+            .try_into()
             .map_err(|_| "JSON data too large for u32 length")?;
         buffer.extend_from_slice(&json_len.to_le_bytes());
 
@@ -89,16 +91,23 @@ impl FlatBufferBuilder {
         buffer.extend_from_slice(&json);
 
         // Write metadata count (with overflow check)
-        let metadata_len: u32 = self.metadata.len().try_into()
+        let metadata_len: u32 = self
+            .metadata
+            .len()
+            .try_into()
             .map_err(|_| "Too many metadata entries for u32")?;
         buffer.extend_from_slice(&metadata_len.to_le_bytes());
         for (name, data) in &self.metadata {
             let name_bytes = name.as_bytes();
-            let name_len: u32 = name_bytes.len().try_into()
+            let name_len: u32 = name_bytes
+                .len()
+                .try_into()
                 .map_err(|_| format!("Metadata name '{}' too long", name))?;
             buffer.extend_from_slice(&name_len.to_le_bytes());
             buffer.extend_from_slice(name_bytes);
-            let data_len: u32 = data.len().try_into()
+            let data_len: u32 = data
+                .len()
+                .try_into()
                 .map_err(|_| format!("Metadata data for '{}' too large", name))?;
             buffer.extend_from_slice(&data_len.to_le_bytes());
             buffer.extend_from_slice(data);
@@ -345,10 +354,7 @@ impl BufferManager {
 
     /// Add a buffer from f32 slice
     pub fn add_f32_buffer(&mut self, data: &[f32]) -> usize {
-        let bytes: Vec<u8> = data
-            .iter()
-            .flat_map(|&f| f.to_le_bytes())
-            .collect();
+        let bytes: Vec<u8> = data.iter().flat_map(|&f| f.to_le_bytes()).collect();
         self.add_buffer(bytes)
     }
 
@@ -414,8 +420,8 @@ struct ModelData {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::TensorType;
+    use super::*;
     use crate::export::tflite::tensors::TensorShape;
 
     #[test]
@@ -427,8 +433,7 @@ mod tests {
 
     #[test]
     fn test_flatbuffer_builder_with_description() {
-        let builder = FlatBufferBuilder::new()
-            .with_description("Test model".to_string());
+        let builder = FlatBufferBuilder::new().with_description("Test model".to_string());
         assert_eq!(builder.description, "Test model");
     }
 

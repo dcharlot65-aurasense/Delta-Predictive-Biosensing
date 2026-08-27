@@ -304,10 +304,7 @@ mod npu_tests {
                 Self {
                     input_format: "TFLite".to_string(),
                     output_format: "Vela".to_string(), // ARM Vela compiler output
-                    optimizations: vec![
-                        "quantize_int8".to_string(),
-                        "optimize_memory".to_string(),
-                    ],
+                    optimizations: vec!["quantize_int8".to_string(), "optimize_memory".to_string()],
                 }
             }
 
@@ -315,17 +312,18 @@ mod npu_tests {
                 Self {
                     input_format: "ONNX".to_string(),
                     output_format: "CoreML".to_string(),
-                    optimizations: vec![
-                        "convert_fp16".to_string(),
-                        "optimize_ane".to_string(),
-                    ],
+                    optimizations: vec!["convert_fp16".to_string(), "optimize_ane".to_string()],
                 }
             }
         }
 
         let hexagon_converter = ModelConverter::for_hexagon();
         assert_eq!(hexagon_converter.output_format, "DLC");
-        assert!(hexagon_converter.optimizations.contains(&"quantize_int8".to_string()));
+        assert!(
+            hexagon_converter
+                .optimizations
+                .contains(&"quantize_int8".to_string())
+        );
 
         let ane_converter = ModelConverter::for_apple_ane();
         assert_eq!(ane_converter.output_format, "CoreML");
@@ -482,7 +480,9 @@ mod npu_tests {
 
         impl LatencyStats {
             fn new() -> Self {
-                Self { samples: Vec::new() }
+                Self {
+                    samples: Vec::new(),
+                }
             }
 
             fn record(&mut self, duration: Duration) {

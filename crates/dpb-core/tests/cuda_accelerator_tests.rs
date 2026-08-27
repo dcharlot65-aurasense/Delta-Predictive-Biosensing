@@ -3,7 +3,6 @@
 //! These tests verify the CUDA accelerator implementation without requiring
 //! actual CUDA hardware (simulation mode).
 
-
 // Test module for CUDA accelerator
 #[cfg(test)]
 mod cuda_tests {
@@ -88,10 +87,7 @@ mod cuda_tests {
             block_width: u32,
             block_height: u32,
         ) -> (u32, u32) {
-            (
-                width.div_ceil(block_width),
-                height.div_ceil(block_height),
-            )
+            (width.div_ceil(block_width), height.div_ceil(block_height))
         }
 
         // Test common image sizes
@@ -153,19 +149,15 @@ mod cuda_tests {
     /// Test TFLOPS estimation.
     #[test]
     fn test_tflops_estimation() {
-        fn estimate_tflops(
-            sm_count: u32,
-            compute_major: u32,
-            clock_rate_khz: u32,
-        ) -> f32 {
+        fn estimate_tflops(sm_count: u32, compute_major: u32, clock_rate_khz: u32) -> f32 {
             let cores_per_sm = match compute_major {
                 8 => 128, // Ampere
                 7 => 64,  // Volta/Turing
                 6 => 128, // Pascal
                 _ => 64,
             };
-            let flops = (sm_count as f64) * (cores_per_sm as f64) * 2.0
-                * (clock_rate_khz as f64 * 1000.0);
+            let flops =
+                (sm_count as f64) * (cores_per_sm as f64) * 2.0 * (clock_rate_khz as f64 * 1000.0);
             (flops / 1e12) as f32
         }
 
@@ -260,8 +252,8 @@ mod cuda_tests {
     /// Test stream synchronization logic.
     #[test]
     fn test_stream_synchronization() {
-        use std::sync::atomic::{AtomicBool, Ordering};
         use std::sync::Arc;
+        use std::sync::atomic::{AtomicBool, Ordering};
 
         #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
         struct MockStream {
@@ -431,10 +423,7 @@ mod cuda_tests {
             polarity: i8, // +1 up-crossing, -1 down-crossing
         }
 
-        fn simulate_level_crossing(
-            signal: &[f32],
-            threshold: f32,
-        ) -> Vec<SpikeEvent> {
+        fn simulate_level_crossing(signal: &[f32], threshold: f32) -> Vec<SpikeEvent> {
             let mut spikes = Vec::new();
             let mut prev = signal[0];
 
@@ -467,9 +456,9 @@ mod cuda_tests {
         // down at i=4, up again at i=7. The excursion to -0.5 stays below the
         // threshold throughout and produces nothing.
         assert_eq!(spikes.len(), 3);
-        assert_eq!(spikes[0].polarity, 1);  // Up-crossing
+        assert_eq!(spikes[0].polarity, 1); // Up-crossing
         assert_eq!(spikes[1].polarity, -1); // Down-crossing
-        assert_eq!(spikes[2].polarity, 1);  // Up-crossing again
+        assert_eq!(spikes[2].polarity, 1); // Up-crossing again
         assert_eq!(spikes[0].sample_index, 1);
         assert_eq!(spikes[1].sample_index, 4);
         assert_eq!(spikes[2].sample_index, 7);
@@ -518,7 +507,9 @@ mod cuda_tests {
             }
 
             fn all_completed(&self) -> bool {
-                self.operations.iter().all(|(_, s)| matches!(s, OperationStatus::Completed))
+                self.operations
+                    .iter()
+                    .all(|(_, s)| matches!(s, OperationStatus::Completed))
             }
         }
 
@@ -578,9 +569,7 @@ fn test_cuda_encoding_pipeline_simulation() {
     let pipeline = SimulatedCudaPipeline::new(0.0);
 
     // Generate test signal (sine wave)
-    let signal: Vec<f32> = (0..1000)
-        .map(|i| (i as f32 * 0.1).sin())
-        .collect();
+    let signal: Vec<f32> = (0..1000).map(|i| (i as f32 * 0.1).sin()).collect();
 
     let spikes = pipeline.encode(&signal);
 

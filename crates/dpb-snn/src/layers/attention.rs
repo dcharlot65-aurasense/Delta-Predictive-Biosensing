@@ -55,7 +55,11 @@ impl SpikingAttention {
         dt: f32,
         adaptive: bool,
     ) -> Self {
-        assert_eq!(d_model % num_heads, 0, "d_model must be divisible by num_heads");
+        assert_eq!(
+            d_model % num_heads,
+            0,
+            "d_model must be divisible by num_heads"
+        );
         let d_head = d_model / num_heads;
         let scale = 1.0 / (d_head as f32).sqrt();
 
@@ -63,9 +67,8 @@ impl SpikingAttention {
         let normal = Normal::new(0.0, std).unwrap();
         let mut rng = rng();
 
-        let mut init_weights = |shape: (usize, usize)| {
-            Array2::from_shape_fn(shape, |_| normal.sample(&mut rng))
-        };
+        let mut init_weights =
+            |shape: (usize, usize)| Array2::from_shape_fn(shape, |_| normal.sample(&mut rng));
 
         Self {
             w_query: init_weights((d_model, d_model)),
@@ -283,9 +286,10 @@ impl SpikingLayer for MultiHeadSpikingAttention {
 
         // Concatenate head outputs (simplified)
         // In practice, we'd need proper concatenation and reshaping
-        head_outputs.into_iter().next().ok_or_else(|| {
-            SNNError::InvalidConfig("No attention heads found".to_string())
-        })
+        head_outputs
+            .into_iter()
+            .next()
+            .ok_or_else(|| SNNError::InvalidConfig("No attention heads found".to_string()))
     }
 
     fn reset_state(&mut self) {

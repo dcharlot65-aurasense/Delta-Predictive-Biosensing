@@ -84,10 +84,10 @@ impl PopulationTemplate for RespiratoryRateTemplate {
     fn expected_value(&self, context: &Context) -> f64 {
         // Normal adult respiratory rate is 12-20 breaths/min
         match context.age {
-            Some(age) if age < 1.0 => 40.0,   // Infants
-            Some(age) if age < 5.0 => 28.0,   // Toddlers
-            Some(age) if age < 12.0 => 22.0,  // Children
-            Some(_) => 15.0,                   // Adults
+            Some(age) if age < 1.0 => 40.0,  // Infants
+            Some(age) if age < 5.0 => 28.0,  // Toddlers
+            Some(age) if age < 12.0 => 22.0, // Children
+            Some(_) => 15.0,                 // Adults
             None => 15.0,
         }
     }
@@ -147,10 +147,10 @@ pub struct HrvConfig {
 impl Default for HrvConfig {
     fn default() -> Self {
         Self {
-            window_size: 30,             // 30 beats (~30s at 60 bpm)
-            low_rmssd_threshold: 15.0,   // Below 15ms is concerning
-            high_rmssd_threshold: 80.0,  // Above 80ms is unusual
-            min_interval: 5.0,           // 5 second minimum between events
+            window_size: 30,            // 30 beats (~30s at 60 bpm)
+            low_rmssd_threshold: 15.0,  // Below 15ms is concerning
+            high_rmssd_threshold: 80.0, // Above 80ms is unusual
+            min_interval: 5.0,          // 5 second minimum between events
             input_is_intervals: true,
         }
     }
@@ -206,7 +206,8 @@ impl HrvEncoder {
         }
 
         let mean = intervals.iter().sum::<f32>() / intervals.len() as f32;
-        let variance = intervals.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / intervals.len() as f32;
+        let variance =
+            intervals.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / intervals.len() as f32;
         variance.sqrt()
     }
 }
@@ -300,10 +301,10 @@ pub struct RespiratoryPhaseConfig {
 impl Default for RespiratoryPhaseConfig {
     fn default() -> Self {
         Self {
-            breath_threshold: 0.3,        // 30% of range
-            min_breath_duration: 1.5,     // Min 1.5s (40 breaths/min)
-            max_breath_duration: 10.0,    // Max 10s (6 breaths/min)
-            rate_change_threshold: 3.0,   // 3 breaths/min change
+            breath_threshold: 0.3,      // 30% of range
+            min_breath_duration: 1.5,   // Min 1.5s (40 breaths/min)
+            max_breath_duration: 10.0,  // Max 10s (6 breaths/min)
+            rate_change_threshold: 3.0, // 3 breaths/min change
         }
     }
 }
@@ -443,9 +444,9 @@ pub struct RsaConfig {
 impl Default for RsaConfig {
     fn default() -> Self {
         Self {
-            min_amplitude: 10.0,      // 10ms minimum
-            window_breaths: 5,        // 5 breath window
-            low_rsa_threshold: 20.0,  // Below 20ms is reduced
+            min_amplitude: 10.0,     // 10ms minimum
+            window_breaths: 5,       // 5 breath window
+            low_rsa_threshold: 20.0, // Below 20ms is reduced
         }
     }
 }
@@ -555,8 +556,14 @@ mod tests {
     #[test]
     fn test_rmssd_template() {
         let template = RmssdTemplate;
-        let young = Context { age: Some(25.0), ..Default::default() };
-        let old = Context { age: Some(65.0), ..Default::default() };
+        let young = Context {
+            age: Some(25.0),
+            ..Default::default()
+        };
+        let old = Context {
+            age: Some(65.0),
+            ..Default::default()
+        };
 
         assert!(template.expected_value(&young) > template.expected_value(&old));
     }

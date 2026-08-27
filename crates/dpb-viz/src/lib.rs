@@ -46,19 +46,19 @@
 //! - [`export`]: Multi-format export utilities
 
 pub mod dashboard;
-pub mod raster;
-pub mod network;
-pub mod heatmap;
-pub mod timeline;
 pub mod export;
+pub mod heatmap;
+pub mod network;
+pub mod raster;
+pub mod timeline;
 
 // Re-export commonly used types
 pub use dashboard::{DashboardConfig, DashboardServer, MetricPanel};
-pub use raster::{RasterPlot, RasterConfig, ColorScheme as RasterColorScheme};
-pub use network::{NetworkGraph, NodePositioning, EdgeStyle};
-pub use heatmap::{WeightHeatmap, ActivationHeatmap, ColorScale};
+pub use export::{CsvExporter, ExportFormat, JsonExporter, SvgExporter};
+pub use heatmap::{ActivationHeatmap, ColorScale, WeightHeatmap};
+pub use network::{EdgeStyle, NetworkGraph, NodePositioning};
+pub use raster::{ColorScheme as RasterColorScheme, RasterConfig, RasterPlot};
 pub use timeline::{EventTimeline, TimelineEvent, ZoomLevel};
-pub use export::{SvgExporter, JsonExporter, CsvExporter, ExportFormat};
 
 use thiserror::Error;
 

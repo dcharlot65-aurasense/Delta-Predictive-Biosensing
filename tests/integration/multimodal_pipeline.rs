@@ -10,16 +10,15 @@
 use dpb_core::SignalBuffer;
 use dpb_encoders::prelude::*;
 use dpb_snn::{
-    FeedforwardSNN, SpikeTensor, SpikeRateDecoder,
-    NeuronModel, NeuronParams, SNNConfig,
+    FeedforwardSNN, NeuronModel, NeuronParams, SNNConfig, SpikeRateDecoder, SpikeTensor,
 };
 // `forward` and `decode` are trait methods.
 use dpb_snn::architectures::SNNArchitecture;
 use dpb_snn::decoders::Decoder;
 use dpb_synth::contact::ecg::{EcgMorphologyGenerator, EcgMorphologyParams, WaveParams};
 use dpb_synth::contact::tremor::{PhysiologicalTremorGenerator, PhysiologicalTremorParams};
-use dpb_synth::voice::phonation::{SustainedVowelGenerator, SustainedVowelParams};
 use dpb_synth::traits::SyntheticGenerator;
+use dpb_synth::voice::phonation::{SustainedVowelGenerator, SustainedVowelParams};
 
 use super::utils::*;
 use std::f64::consts::PI;
@@ -31,13 +30,26 @@ fn test_multimodal_ecg_tremor_fusion() {
         duration: 10.0,
         sampling_rate: 250.0,
         heart_rate: 72.0,
-        p_wave: WaveParams { amplitude: 0.25, width: 0.1, time_offset: -PI / 3.0 },
-        qrs_complex: WaveParams { amplitude: 1.0, width: 0.1, time_offset: 0.0 },
-        t_wave: WaveParams { amplitude: 0.35, width: 0.25, time_offset: PI / 2.0 },
+        p_wave: WaveParams {
+            amplitude: 0.25,
+            width: 0.1,
+            time_offset: -PI / 3.0,
+        },
+        qrs_complex: WaveParams {
+            amplitude: 1.0,
+            width: 0.1,
+            time_offset: 0.0,
+        },
+        t_wave: WaveParams {
+            amplitude: 0.35,
+            width: 0.25,
+            time_offset: PI / 2.0,
+        },
     };
 
     let ecg_gen = EcgMorphologyGenerator;
-    let ecg_data = ecg_gen.generate(&ecg_params, TEST_SEED)
+    let ecg_data = ecg_gen
+        .generate(&ecg_params, TEST_SEED)
         .expect("Failed to generate ECG");
 
     // Step 2: Generate tremor data
@@ -50,7 +62,8 @@ fn test_multimodal_ecg_tremor_fusion() {
     };
 
     let tremor_gen = PhysiologicalTremorGenerator;
-    let tremor_data = tremor_gen.generate(&tremor_params, TEST_SEED)
+    let tremor_data = tremor_gen
+        .generate(&tremor_params, TEST_SEED)
         .expect("Failed to generate tremor");
 
     // Step 3: Encode ECG
@@ -68,7 +81,8 @@ fn test_multimodal_ecg_tremor_fusion() {
         mode: LevelCrossingMode::FixedLevel,
     };
 
-    let ecg_spikes = ecg_encoder.encode(&ecg_buffer, &ecg_config)
+    let ecg_spikes = ecg_encoder
+        .encode(&ecg_buffer, &ecg_config)
         .expect("Failed to encode ECG");
 
     // Step 4: Encode tremor
@@ -81,7 +95,8 @@ fn test_multimodal_ecg_tremor_fusion() {
         ..DerivativeConfig::default()
     };
 
-    let tremor_spikes = tremor_encoder.encode(&tremor_buffer, &tremor_config)
+    let tremor_spikes = tremor_encoder
+        .encode(&tremor_buffer, &tremor_config)
         .expect("Failed to encode tremor");
 
     // Step 5: Create fused spike tensor
@@ -96,14 +111,18 @@ fn test_multimodal_ecg_tremor_fusion() {
     for event in &ecg_spikes {
         let timestep = ((event.timestamp * 1000.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = (event.channel as usize) % ecg_channels;
-        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
+        spike_tensor
+            .set_spike(0, timestep, channel, event.magnitude)
+            .ok();
     }
 
     // Map tremor spikes to next 64 channels
     for event in &tremor_spikes {
         let timestep = ((event.timestamp * 1000.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = ecg_channels + ((event.channel as usize) % tremor_channels);
-        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
+        spike_tensor
+            .set_spike(0, timestep, channel, event.magnitude)
+            .ok();
     }
 
     // Step 6: Create fusion SNN
@@ -114,14 +133,15 @@ fn test_multimodal_ecg_tremor_fusion() {
         neuron_params: NeuronParams::default(),
     };
 
-    let mut snn = FeedforwardSNN::new(vec![total_channels, 64, 32, 8], snn_config.clone(), true).expect("SNN");
-    let output_spikes = snn.forward(&spike_tensor)
+    let mut snn = FeedforwardSNN::new(vec![total_channels, 64, 32, 8], snn_config.clone(), true)
+        .expect("SNN");
+    let output_spikes = snn
+        .forward(&spike_tensor)
         .expect("Failed to run fusion SNN");
 
     // Step 7: Decode output
     let decoder = SpikeRateDecoder::new(8, None, false);
-    let decoded = decoder.decode(&output_spikes)
-        .expect("Failed to decode");
+    let decoded = decoder.decode(&output_spikes).expect("Failed to decode");
 
     // Step 8: Validate
     assert_eq!(decoded.shape()[1], 8, "Should have 8 output features");
@@ -151,9 +171,21 @@ fn test_multimodal_three_way_fusion() {
         duration,
         sampling_rate: 250.0,
         heart_rate: 75.0,
-        p_wave: WaveParams { amplitude: 0.25, width: 0.1, time_offset: -PI / 3.0 },
-        qrs_complex: WaveParams { amplitude: 1.0, width: 0.1, time_offset: 0.0 },
-        t_wave: WaveParams { amplitude: 0.35, width: 0.25, time_offset: PI / 2.0 },
+        p_wave: WaveParams {
+            amplitude: 0.25,
+            width: 0.1,
+            time_offset: -PI / 3.0,
+        },
+        qrs_complex: WaveParams {
+            amplitude: 1.0,
+            width: 0.1,
+            time_offset: 0.0,
+        },
+        t_wave: WaveParams {
+            amplitude: 0.35,
+            width: 0.25,
+            time_offset: PI / 2.0,
+        },
     };
     let ecg_gen = EcgMorphologyGenerator;
     let ecg_data = ecg_gen.generate(&ecg_params, TEST_SEED).unwrap();
@@ -182,17 +214,26 @@ fn test_multimodal_three_way_fusion() {
 
     // Verify all data generated successfully
     assert!(!ecg_data.signal.is_empty(), "ECG data should not be empty");
-    assert!(!tremor_data.signal.is_empty(), "Tremor data should not be empty");
-    assert!(!voice_data.signal.is_empty(), "Voice data should not be empty");
+    assert!(
+        !tremor_data.signal.is_empty(),
+        "Tremor data should not be empty"
+    );
+    assert!(
+        !voice_data.signal.is_empty(),
+        "Voice data should not be empty"
+    );
 
     println!(
         "Three-way Multimodal Data:\n\
          - ECG: {} samples @ {:.0} Hz\n\
          - Tremor: {} samples @ {:.0} Hz\n\
          - Voice: {} samples @ {:.0} Hz",
-        ecg_data.signal.len(), ecg_params.sampling_rate,
-        tremor_data.signal.len(), tremor_params.sampling_rate,
-        voice_data.signal.len(), voice_params.sampling_rate
+        ecg_data.signal.len(),
+        ecg_params.sampling_rate,
+        tremor_data.signal.len(),
+        tremor_params.sampling_rate,
+        voice_data.signal.len(),
+        voice_params.sampling_rate
     );
 }
 
@@ -253,9 +294,12 @@ fn test_multimodal_channel_allocation() {
          - Tremor: channels {}-{}\n\
          - Voice: channels {}-{}\n\
          - Total: {} channels",
-        ecg_range.start, ecg_range.end - 1,
-        tremor_range.start, tremor_range.end - 1,
-        voice_range.start, voice_range.end - 1,
+        ecg_range.start,
+        ecg_range.end - 1,
+        tremor_range.start,
+        tremor_range.end - 1,
+        voice_range.start,
+        voice_range.end - 1,
         total
     );
 }
@@ -270,9 +314,21 @@ fn test_multimodal_reproducibility() {
         duration,
         sampling_rate: 250.0,
         heart_rate: 72.0,
-        p_wave: WaveParams { amplitude: 0.25, width: 0.1, time_offset: -PI / 3.0 },
-        qrs_complex: WaveParams { amplitude: 1.0, width: 0.1, time_offset: 0.0 },
-        t_wave: WaveParams { amplitude: 0.35, width: 0.25, time_offset: PI / 2.0 },
+        p_wave: WaveParams {
+            amplitude: 0.25,
+            width: 0.1,
+            time_offset: -PI / 3.0,
+        },
+        qrs_complex: WaveParams {
+            amplitude: 1.0,
+            width: 0.1,
+            time_offset: 0.0,
+        },
+        t_wave: WaveParams {
+            amplitude: 0.35,
+            width: 0.25,
+            time_offset: PI / 2.0,
+        },
     };
     let ecg_gen = EcgMorphologyGenerator;
     let ecg1 = ecg_gen.generate(&ecg_params, TEST_SEED).unwrap();
@@ -296,7 +352,11 @@ fn test_multimodal_reproducibility() {
 
     assert_eq!(tremor1.signal.len(), tremor2.signal.len());
     for i in 0..100 {
-        assert_approx_eq(tremor1.signal[i], tremor2.signal[i], &format!("Tremor sample {}", i));
+        assert_approx_eq(
+            tremor1.signal[i],
+            tremor2.signal[i],
+            &format!("Tremor sample {}", i),
+        );
     }
 
     println!("Multimodal reproducibility verified");

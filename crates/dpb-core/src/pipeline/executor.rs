@@ -70,10 +70,14 @@ impl PipelineConfig {
     /// Returns an error if any configuration parameter is invalid.
     pub fn validate(&self) -> Result<()> {
         if self.window_size == 0 {
-            return Err(DpbError::Config("Window size must be greater than 0".to_string()));
+            return Err(DpbError::Config(
+                "Window size must be greater than 0".to_string(),
+            ));
         }
         if self.hop_size == 0 {
-            return Err(DpbError::Config("Hop size must be greater than 0".to_string()));
+            return Err(DpbError::Config(
+                "Hop size must be greater than 0".to_string(),
+            ));
         }
         if self.sample_rate <= 0.0 {
             return Err(DpbError::Config("Sample rate must be positive".to_string()));
@@ -237,10 +241,11 @@ impl PipelineExecutor {
 
             // Check if we should drop this window in RealTime mode due to deadline miss
             if self.config.execution_mode == ExecutionMode::RealTime
-                && latency_ms > self.config.max_latency_ms {
-                    self.dropped_samples += window.len() as u64;
-                    return None;
-                }
+                && latency_ms > self.config.max_latency_ms
+            {
+                self.dropped_samples += window.len() as u64;
+                return None;
+            }
 
             self.latencies.push(latency_ms);
             self.last_window_time = Some(Instant::now());
@@ -379,7 +384,9 @@ impl PipelineBuilder {
         self.config.validate()?;
 
         if self.stages.is_empty() {
-            return Err(DpbError::Config("Pipeline must have at least one stage".to_string()));
+            return Err(DpbError::Config(
+                "Pipeline must have at least one stage".to_string(),
+            ));
         }
 
         Ok(Pipeline {
@@ -599,8 +606,7 @@ mod tests {
         ];
 
         for mode in modes {
-            let config = PipelineConfig::new(3, 3, 1000.0)
-                .with_execution_mode(mode);
+            let config = PipelineConfig::new(3, 3, 1000.0).with_execution_mode(mode);
             let executor = PipelineExecutor::new(config).unwrap();
             assert_eq!(executor.config().execution_mode, mode);
         }
@@ -608,8 +614,7 @@ mod tests {
 
     #[test]
     fn test_latency_tracking() {
-        let config = PipelineConfig::new(3, 3, 1000.0)
-            .with_max_latency(10.0);
+        let config = PipelineConfig::new(3, 3, 1000.0).with_max_latency(10.0);
         let mut executor = PipelineExecutor::new(config).unwrap();
 
         // Process several windows

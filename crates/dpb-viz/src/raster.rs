@@ -24,9 +24,9 @@
 //! let svg = raster.to_svg();
 //! ```
 
+use crate::{Result, VizError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::{Result, VizError};
 
 /// Configuration for raster plots
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -122,9 +122,7 @@ impl RasterConfig {
             ));
         }
         if self.duration_ms <= 0.0 {
-            return Err(VizError::InvalidConfig(
-                "Duration must be > 0".to_string(),
-            ));
+            return Err(VizError::InvalidConfig("Duration must be > 0".to_string()));
         }
         if self.width == 0 || self.height == 0 {
             return Err(VizError::InvalidConfig(
@@ -363,10 +361,11 @@ impl RasterPlot {
             let x = (spike.time_ms / self.config.duration_ms) * self.config.width as f32;
             let y = (spike.neuron_id as f32 / self.config.num_neurons as f32)
                 * self.config.height as f32;
-            let color = self
-                .config
-                .color_scheme
-                .get_color(spike.neuron_id, spike.time_ms, self.config.duration_ms);
+            let color = self.config.color_scheme.get_color(
+                spike.neuron_id,
+                spike.time_ms,
+                self.config.duration_ms,
+            );
 
             svg.push_str(&format!(
                 r#"    <circle cx="{}" cy="{}" r="{}" fill="{}"/>"#,

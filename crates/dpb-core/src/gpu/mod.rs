@@ -31,17 +31,26 @@ pub mod context;
 
 // Re-export backend types
 pub use backend::{
-    available_backends, create_backend, create_default_backend, BackendType, BufferHandle,
-    ComputeBackend, DeviceProperties, KernelHandle, WebGPUBackend,
+    BackendType,
+    BufferHandle,
+    ComputeBackend,
+    DeviceProperties,
+    KernelHandle,
+    WebGPUBackend,
+    available_backends,
+    create_backend,
     // Helper functions for typed buffer operations
-    create_buffer_from_slice, upload_buffer, download_buffer,
+    create_buffer_from_slice,
+    create_default_backend,
+    download_buffer,
+    upload_buffer,
 };
 
 #[cfg(feature = "cuda")]
 pub use backend::cuda::CUDABackend;
 
 // Re-export existing types
-pub use buffer::{create_storage_buffer, create_uniform_buffer, BufferPool, GpuBuffer, GpuVec4};
+pub use buffer::{BufferPool, GpuBuffer, GpuVec4, create_storage_buffer, create_uniform_buffer};
 pub use context::GpuContext;
 
 use crate::error::{DpbError, Result};
@@ -71,7 +80,10 @@ impl ShaderCompiler {
         }
 
         // Check for required entry point patterns
-        if !source.contains("@compute") && !source.contains("@vertex") && !source.contains("@fragment") {
+        if !source.contains("@compute")
+            && !source.contains("@vertex")
+            && !source.contains("@fragment")
+        {
             return Err(DpbError::Gpu(
                 "Shader must contain at least one entry point".to_string(),
             ));
@@ -120,7 +132,8 @@ impl ComputePipelineBuilder {
     pub fn build(self, device: &wgpu::Device) -> Result<wgpu::ComputePipeline> {
         ShaderCompiler::validate_shader(&self.shader_source)?;
 
-        let shader = ShaderCompiler::compile_wgsl(device, &self.shader_source, Some("Compute Shader"));
+        let shader =
+            ShaderCompiler::compile_wgsl(device, &self.shader_source, Some("Compute Shader"));
 
         let layout_refs: Vec<_> = self.bind_group_layouts.iter().map(Some).collect();
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {

@@ -1,6 +1,9 @@
 //! Network architecture visualization utilities.
 
-use super::{colors, export::{JsonBuilder, SvgBuilder}, PlotConfig, Visualization};
+use super::{
+    PlotConfig, Visualization, colors,
+    export::{JsonBuilder, SvgBuilder},
+};
 
 /// Network layer connectivity diagram.
 pub struct NetworkGraph {
@@ -238,7 +241,11 @@ impl Visualization for WeightHeatmap {
             .add_int("num_inputs", self.weights.len() as i64)
             .add_int(
                 "num_outputs",
-                if self.weights.is_empty() { 0 } else { self.weights[0].len() as i64 },
+                if self.weights.is_empty() {
+                    0
+                } else {
+                    self.weights[0].len() as i64
+                },
             );
         json.build()
     }
@@ -266,7 +273,11 @@ impl ActivationMap {
     }
 
     /// Creates a new activation map with custom configuration.
-    pub fn with_config(activations: Vec<Vec<f32>>, timesteps: Vec<f64>, config: PlotConfig) -> Self {
+    pub fn with_config(
+        activations: Vec<Vec<f32>>,
+        timesteps: Vec<f64>,
+        config: PlotConfig,
+    ) -> Self {
         Self {
             activations,
             timesteps,
@@ -349,7 +360,11 @@ impl Visualization for ActivationMap {
             .add_int("num_timesteps", self.activations.len() as i64)
             .add_int(
                 "num_neurons",
-                if self.activations.is_empty() { 0 } else { self.activations[0].len() as i64 },
+                if self.activations.is_empty() {
+                    0
+                } else {
+                    self.activations[0].len() as i64
+                },
             );
         json.build()
     }

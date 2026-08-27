@@ -1,7 +1,7 @@
-use criterion::{criterion_group, criterion_main, Criterion};
-use std::hint::black_box;
-use dpb_core::signal::{FirFilter, FftProcessor};
+use criterion::{Criterion, criterion_group, criterion_main};
+use dpb_core::signal::{FftProcessor, FirFilter};
 use ndarray::Array1;
+use std::hint::black_box;
 
 fn bench_fir_filter(c: &mut Criterion) {
     let mut filter = FirFilter::moving_average(10).unwrap();

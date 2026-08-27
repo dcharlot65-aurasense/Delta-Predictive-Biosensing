@@ -1,8 +1,10 @@
 use dpb_mobile::{
     MobileModel, MobileRuntime,
-    model::{LayerInfo, LayerType, QuantizationType, ModelVersion, ModelFormat},
-    optimization::{WeightPruner, PruningStrategy, OperatorFusion, QuantizationOptimizer, MemoryPlanner},
-    benchmark::{BenchmarkRunner, BenchmarkConfig, LatencyMetrics, MemoryMetrics},
+    benchmark::{BenchmarkConfig, BenchmarkRunner, LatencyMetrics, MemoryMetrics},
+    model::{LayerInfo, LayerType, ModelFormat, ModelVersion, QuantizationType},
+    optimization::{
+        MemoryPlanner, OperatorFusion, PruningStrategy, QuantizationOptimizer, WeightPruner,
+    },
 };
 
 fn create_simple_model() -> MobileModel {
@@ -421,7 +423,7 @@ fn test_ios_runtime() {
 #[cfg(target_os = "android")]
 #[test]
 fn test_android_runtime() {
-    use dpb_mobile::android::{AndroidRuntime, AndroidPowerState};
+    use dpb_mobile::android::{AndroidPowerState, AndroidRuntime};
 
     let mut runtime = AndroidRuntime::new();
     assert_eq!(runtime.power_state(), AndroidPowerState::Active);
@@ -430,7 +432,7 @@ fn test_android_runtime() {
 
 #[test]
 fn test_ffi_config() {
-    use dpb_mobile::ffi::{DpbRuntimeConfig, DpbErrorCode};
+    use dpb_mobile::ffi::{DpbErrorCode, DpbRuntimeConfig};
 
     let config = DpbRuntimeConfig::default();
     assert_eq!(config.batch_size, 1);

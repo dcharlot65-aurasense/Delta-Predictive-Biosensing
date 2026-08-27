@@ -159,8 +159,8 @@ impl<T: Clone + Default> SlidingWindow<T> {
         self.samples_since_last_window += 1;
 
         // Check if we have enough samples for the first window
-        if self.buffer.len() >= self.window_size &&
-           self.samples_since_last_window >= self.hop_size {
+        if self.buffer.len() >= self.window_size && self.samples_since_last_window >= self.hop_size
+        {
             self.samples_since_last_window = 0;
             return Some(self.get_current_window());
         }
@@ -185,10 +185,7 @@ impl<T: Clone + Default> SlidingWindow<T> {
 
     /// Get the current window without advancing
     fn get_current_window(&mut self) -> Vec<T> {
-        let window: Vec<T> = self.buffer.iter()
-            .take(self.window_size)
-            .cloned()
-            .collect();
+        let window: Vec<T> = self.buffer.iter().take(self.window_size).cloned().collect();
 
         // Remove samples according to hop size to maintain overlap
         for _ in 0..self.hop_size {
@@ -304,7 +301,8 @@ impl OverlapBuffer {
             }
             // Append remaining new samples
             if samples.len() > self.overlap {
-                self.output_buffer.extend_from_slice(&samples[self.overlap..]);
+                self.output_buffer
+                    .extend_from_slice(&samples[self.overlap..]);
             }
         } else {
             // First frame or not enough samples to overlap

@@ -124,27 +124,27 @@ pub struct ErpComponentInfo {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum ErpComponentType {
     // Early sensory
-    P1,   // ~50ms, occipital
-    N1,   // ~100ms, fronto-central
-    P2,   // ~200ms, fronto-central
-    N2,   // ~200-350ms, fronto-central
+    P1, // ~50ms, occipital
+    N1, // ~100ms, fronto-central
+    P2, // ~200ms, fronto-central
+    N2, // ~200-350ms, fronto-central
 
     // Cognitive
-    P300,  // ~300-600ms, parietal (P3a anterior, P3b posterior)
-    N400,  // ~400ms, centro-parietal (semantic)
-    P600,  // ~600ms, centro-parietal (syntactic)
+    P300, // ~300-600ms, parietal (P3a anterior, P3b posterior)
+    N400, // ~400ms, centro-parietal (semantic)
+    P600, // ~600ms, centro-parietal (syntactic)
 
     // Attention
-    MMN,   // ~150-250ms, frontal (mismatch negativity)
-    Nd,    // Processing negativity
+    MMN, // ~150-250ms, frontal (mismatch negativity)
+    Nd,  // Processing negativity
 
     // Motor
-    BP,    // Bereitschaftspotential (readiness)
-    LRP,   // Lateralized readiness potential
+    BP,  // Bereitschaftspotential (readiness)
+    LRP, // Lateralized readiness potential
 
     // Error
-    ERN,   // Error-related negativity
-    Pe,    // Error positivity
+    ERN, // Error-related negativity
+    Pe,  // Error positivity
 }
 
 /// ERP paradigm types
@@ -170,7 +170,10 @@ pub enum ErpParadigm {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum ErpPathology {
     /// Reduced P300 (schizophrenia, dementia)
-    ReducedP300 { amplitude_reduction: f64, latency_delay: f64 },
+    ReducedP300 {
+        amplitude_reduction: f64,
+        latency_delay: f64,
+    },
     /// Reduced MMN (schizophrenia)
     ReducedMMN { amplitude_reduction: f64 },
     /// Increased N400 (semantic processing deficit)
@@ -271,7 +274,11 @@ impl ErpGenerator {
             ]
         };
 
-        self.generate_erp(&components, epoch_duration, ErpParadigm::GoNoGo { go_trial })
+        self.generate_erp(
+            &components,
+            epoch_duration,
+            ErpParadigm::GoNoGo { go_trial },
+        )
     }
 
     /// Generate error-related ERP
@@ -284,9 +291,7 @@ impl ErpGenerator {
             ]
         } else {
             // Correct trial: CRN (smaller than ERN)
-            vec![
-                self.create_component(ErpComponentType::ERN, -3.0, 80.0, 60.0),
-            ]
+            vec![self.create_component(ErpComponentType::ERN, -3.0, 80.0, 60.0)]
         };
 
         self.generate_erp(
@@ -411,7 +416,8 @@ impl ErpGenerator {
         }
 
         // Add background EEG noise
-        let noise_dist = Normal::new(0.0, self.config.background_amplitude / self.config.snr).unwrap();
+        let noise_dist =
+            Normal::new(0.0, self.config.background_amplitude / self.config.snr).unwrap();
 
         for ch in 0..self.config.channels {
             // Generate pink noise background
@@ -491,7 +497,8 @@ impl ErpGenerator {
             let pink = pink_state * self.config.background_amplitude * 0.3;
 
             // White noise
-            let white_component: f64 = self.rng.sample(noise_dist) * self.config.background_amplitude * 0.2;
+            let white_component: f64 =
+                self.rng.sample(noise_dist) * self.config.background_amplitude * 0.2;
 
             *i_slot = alpha + pink + white_component;
         }
@@ -558,13 +565,15 @@ impl ErpGenerator {
     /// Find peak in waveform
     fn find_peak(&self, signal: &[f64], positive: bool) -> usize {
         if positive {
-            signal.iter()
+            signal
+                .iter()
                 .enumerate()
                 .max_by(|(_, a), (_, b)| a.total_cmp(b))
                 .map(|(i, _)| i)
                 .unwrap_or(0)
         } else {
-            signal.iter()
+            signal
+                .iter()
                 .enumerate()
                 .min_by(|(_, a), (_, b)| a.total_cmp(b))
                 .map(|(i, _)| i)
@@ -575,19 +584,42 @@ impl ErpGenerator {
     /// Apply pathology modifications
     fn apply_pathology(&mut self, output: &mut ErpOutput, pathology: ErpPathology) {
         match pathology {
-            ErpPathology::ReducedP300 { amplitude_reduction, latency_delay } => {
+            ErpPathology::ReducedP300 {
+                amplitude_reduction,
+                latency_delay,
+            } => {
                 // Reduce P300 amplitude and increase latency
-                self.modify_component_amplitude(output, ErpComponentType::P300, 1.0 - amplitude_reduction);
+                self.modify_component_amplitude(
+                    output,
+                    ErpComponentType::P300,
+                    1.0 - amplitude_reduction,
+                );
                 self.shift_component_latency(output, ErpComponentType::P300, latency_delay);
             }
-            ErpPathology::ReducedMMN { amplitude_reduction } => {
-                self.modify_component_amplitude(output, ErpComponentType::MMN, 1.0 - amplitude_reduction);
+            ErpPathology::ReducedMMN {
+                amplitude_reduction,
+            } => {
+                self.modify_component_amplitude(
+                    output,
+                    ErpComponentType::MMN,
+                    1.0 - amplitude_reduction,
+                );
             }
             ErpPathology::AbnormalN400 { amplitude_change } => {
-                self.modify_component_amplitude(output, ErpComponentType::N400, 1.0 + amplitude_change);
+                self.modify_component_amplitude(
+                    output,
+                    ErpComponentType::N400,
+                    1.0 + amplitude_change,
+                );
             }
-            ErpPathology::ReducedERN { amplitude_reduction } => {
-                self.modify_component_amplitude(output, ErpComponentType::ERN, 1.0 - amplitude_reduction);
+            ErpPathology::ReducedERN {
+                amplitude_reduction,
+            } => {
+                self.modify_component_amplitude(
+                    output,
+                    ErpComponentType::ERN,
+                    1.0 - amplitude_reduction,
+                );
             }
             ErpPathology::GlobalReduction { factor } => {
                 for ch in 0..output.signal.len() {
@@ -651,7 +683,13 @@ mod tests {
 
         assert!(!output.signal[0].is_empty());
         // Target should have P300
-        assert!(output.ground_truth.components.iter().any(|c| c.component == ErpComponentType::P300));
+        assert!(
+            output
+                .ground_truth
+                .components
+                .iter()
+                .any(|c| c.component == ErpComponentType::P300)
+        );
     }
 
     #[test]
@@ -664,7 +702,13 @@ mod tests {
         let output = generator.generate_visual_oddball(false, 1.0);
 
         // Standard should NOT have P300
-        assert!(!output.ground_truth.components.iter().any(|c| c.component == ErpComponentType::P300));
+        assert!(
+            !output
+                .ground_truth
+                .components
+                .iter()
+                .any(|c| c.component == ErpComponentType::P300)
+        );
     }
 
     #[test]
@@ -677,7 +721,13 @@ mod tests {
         let output = generator.generate_auditory_oddball(false, true, 1.0);
 
         // Deviant should have MMN
-        assert!(output.ground_truth.components.iter().any(|c| c.component == ErpComponentType::MMN));
+        assert!(
+            output
+                .ground_truth
+                .components
+                .iter()
+                .any(|c| c.component == ErpComponentType::MMN)
+        );
     }
 
     #[test]
@@ -692,12 +742,18 @@ mod tests {
         let correct = generator.generate_error_monitoring(false, 1.0);
 
         // Error trial should have larger ERN
-        let error_ern = error.ground_truth.components.iter()
+        let error_ern = error
+            .ground_truth
+            .components
+            .iter()
             .find(|c| c.component == ErpComponentType::ERN)
             .map(|c| c.peak_amplitude.abs())
             .unwrap_or(0.0);
 
-        let correct_ern = correct.ground_truth.components.iter()
+        let correct_ern = correct
+            .ground_truth
+            .components
+            .iter()
             .find(|c| c.component == ErpComponentType::ERN)
             .map(|c| c.peak_amplitude.abs())
             .unwrap_or(0.0);
@@ -717,12 +773,18 @@ mod tests {
         let unrelated = generator.generate_semantic_priming(false, 1.0);
 
         // Unrelated should have larger N400
-        let related_n400 = related.ground_truth.components.iter()
+        let related_n400 = related
+            .ground_truth
+            .components
+            .iter()
             .find(|c| c.component == ErpComponentType::N400)
             .map(|c| c.peak_amplitude.abs())
             .unwrap_or(0.0);
 
-        let unrelated_n400 = unrelated.ground_truth.components.iter()
+        let unrelated_n400 = unrelated
+            .ground_truth
+            .components
+            .iter()
             .find(|c| c.component == ErpComponentType::N400)
             .map(|c| c.peak_amplitude.abs())
             .unwrap_or(0.0);

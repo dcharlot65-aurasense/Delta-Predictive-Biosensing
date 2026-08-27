@@ -1,8 +1,8 @@
 //! LSL inlet for receiving biosignal data.
 
 use crate::{LslError, Result, StreamInfo};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tracing::{debug, info, warn};
 
 /// Configuration for LSL inlet behavior.
@@ -89,19 +89,13 @@ impl LslInlet {
             return Ok(());
         }
 
-        debug!(
-            "Opening inlet connection (timeout: {}s)",
-            timeout_sec
-        );
+        debug!("Opening inlet connection (timeout: {}s)", timeout_sec);
 
         // In real implementation, this would call liblsl to open the inlet
         // For now, we simulate successful connection
         self.is_open.store(true, Ordering::SeqCst);
 
-        info!(
-            "Inlet opened for stream '{}'",
-            self.info.name()
-        );
+        info!("Inlet opened for stream '{}'", self.info.name());
 
         Ok(())
     }
@@ -184,9 +178,7 @@ impl LslInlet {
         }
 
         let samples = self.sample_buffer[..samples_pulled * channels].to_vec();
-        let timestamps: Vec<f64> = (0..samples_pulled)
-            .map(|_| self.time_correction)
-            .collect();
+        let timestamps: Vec<f64> = (0..samples_pulled).map(|_| self.time_correction).collect();
 
         Ok((samples, timestamps))
     }

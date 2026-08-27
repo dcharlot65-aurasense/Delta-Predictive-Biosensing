@@ -46,8 +46,9 @@ impl PracticeEffectCorrector {
         assessment_number: usize,
         test_retest_interval: Option<f64>,
     ) -> Result<CorrectedScore> {
-        let effect = self.effects.get(measure)
-            .ok_or_else(|| ClinicalError::MissingNormativeData(format!("No practice effect data for {}", measure)))?;
+        let effect = self.effects.get(measure).ok_or_else(|| {
+            ClinicalError::MissingNormativeData(format!("No practice effect data for {}", measure))
+        })?;
 
         let correction = effect.calculate_correction(assessment_number, test_retest_interval);
         let corrected_score = raw_score - correction;
@@ -69,7 +70,8 @@ impl PracticeEffectCorrector {
         assessment_number: usize,
         test_retest_interval: Option<f64>,
     ) -> Vec<Result<CorrectedScore>> {
-        scores.iter()
+        scores
+            .iter()
             .map(|(measure, score)| {
                 self.correct_score(measure, *score, assessment_number, test_retest_interval)
             })
@@ -146,7 +148,11 @@ impl PracticeEffect {
     }
 
     /// Calculate correction for a given assessment number.
-    pub fn calculate_correction(&self, assessment_number: usize, interval_days: Option<f64>) -> f64 {
+    pub fn calculate_correction(
+        &self,
+        assessment_number: usize,
+        interval_days: Option<f64>,
+    ) -> f64 {
         if assessment_number <= 1 {
             return 0.0; // No correction for first assessment
         }
@@ -289,10 +295,9 @@ impl SerialAssessment {
 
     /// Get trajectory for a measure.
     pub fn trajectory(&self, measure: &str) -> Vec<(usize, f64)> {
-        self.sessions.iter()
-            .filter_map(|s| {
-                s.get_score(measure).map(|score| (s.session_number, score))
-            })
+        self.sessions
+            .iter()
+            .filter_map(|s| s.get_score(measure).map(|score| (s.session_number, score)))
             .collect()
     }
 
@@ -302,11 +307,14 @@ impl SerialAssessment {
         corrector: &PracticeEffectCorrector,
         measure: &str,
     ) -> Vec<CorrectedScore> {
-        self.sessions.iter()
+        self.sessions
+            .iter()
             .filter_map(|session| {
                 let raw = session.get_score(measure)?;
                 let interval = self.days_since_baseline(session.session_number);
-                corrector.correct_score(measure, raw, session.session_number, interval).ok()
+                corrector
+                    .correct_score(measure, raw, session.session_number, interval)
+                    .ok()
             })
             .collect()
     }
@@ -318,7 +326,10 @@ impl SerialAssessment {
         }
 
         let baseline = self.baseline()?;
-        let session = self.sessions.iter().find(|s| s.session_number == session_number)?;
+        let session = self
+            .sessions
+            .iter()
+            .find(|s| s.session_number == session_number)?;
 
         // Parsing the recorded dates would give the real interval, but that is
         // not implemented. Returning None when both dates are present -- which
@@ -408,7 +419,8 @@ impl SRBCalculator {
 
     /// Add regression parameters for a measure.
     pub fn add_measure(&mut self, measure: &str, intercept: f64, slope: f64, see: f64) {
-        self.coefficients.insert(measure.to_string(), (intercept, slope));
+        self.coefficients
+            .insert(measure.to_string(), (intercept, slope));
         self.see.insert(measure.to_string(), see);
     }
 
@@ -538,8 +550,7 @@ mod tests {
 
     #[test]
     fn test_decay_effect() {
-        let effect = PracticeEffect::new("attention", 5.0)
-            .with_decay(0.5);
+        let effect = PracticeEffect::new("attention", 5.0).with_decay(0.5);
 
         let short_interval = effect.calculate_correction(2, Some(30.0));
         let long_interval = effect.calculate_correction(2, Some(365.0));
@@ -550,7 +561,8 @@ mod tests {
 
     #[test]
     fn test_corrector() {
-        let mut corrector = PracticeEffectCorrector::new("Test", CorrectionMethod::SimpleSubtraction);
+        let mut corrector =
+            PracticeEffectCorrector::new("Test", CorrectionMethod::SimpleSubtraction);
         corrector.add_effect("memory", PracticeEffect::new("memory", 5.0));
 
         let result = corrector.correct_score("memory", 100.0, 2, None).unwrap();
@@ -602,8 +614,7 @@ mod tests {
 
     #[test]
     fn test_expected_score() {
-        let effect = PracticeEffect::new("memory", 5.0)
-            .with_asymptote(8.0);
+        let effect = PracticeEffect::new("memory", 5.0).with_asymptote(8.0);
 
         let baseline = 50.0;
         let expected2 = effect.expected_score(baseline, 2);
@@ -625,8 +636,8 @@ mod tests {
 
     #[test]
     fn test_multiplicative_effect() {
-        let effect = PracticeEffect::new("reaction_time", 5.0)
-            .with_type(EffectType::Multiplicative);
+        let effect =
+            PracticeEffect::new("reaction_time", 5.0).with_type(EffectType::Multiplicative);
 
         let baseline = 500.0; // ms
         let expected = effect.expected_score(baseline, 2);
@@ -637,7 +648,8 @@ mod tests {
 
     #[test]
     fn test_correction_with_multiple_measures() {
-        let mut corrector = PracticeEffectCorrector::new("Multi", CorrectionMethod::SimpleSubtraction);
+        let mut corrector =
+            PracticeEffectCorrector::new("Multi", CorrectionMethod::SimpleSubtraction);
         corrector.add_effect("memory", PracticeEffect::new("memory", 5.0));
         corrector.add_effect("attention", PracticeEffect::new("attention", 3.0));
 

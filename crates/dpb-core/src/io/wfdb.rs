@@ -476,10 +476,7 @@ impl WfdbReader {
 
             // Extract sample for requested channel
             let sample_offset = channel * bytes_per_sample;
-            let adc_value = i16::from_le_bytes([
-                buffer[sample_offset],
-                buffer[sample_offset + 1],
-            ]);
+            let adc_value = i16::from_le_bytes([buffer[sample_offset], buffer[sample_offset + 1]]);
 
             let physical_value = self.signals[channel].adc_to_physical(adc_value);
             samples.push(physical_value);
@@ -510,9 +507,7 @@ impl WfdbReader {
 
         // For now, return empty vector
         // A full implementation would parse the binary .atr format
-        tracing::warn!(
-            "Annotation reading not fully implemented, returning empty vector"
-        );
+        tracing::warn!("Annotation reading not fully implemented, returning empty vector");
 
         Ok(annotations)
     }
@@ -582,11 +577,7 @@ impl WfdbWriter {
         for signal in self.signals.iter() {
             let signal_line = format!(
                 "{}.dat {} {}({})/{}",
-                self.header.record_name,
-                signal.format,
-                signal.gain,
-                signal.baseline,
-                signal.units
+                self.header.record_name, signal.format, signal.gain, signal.baseline, signal.units
             );
             writeln!(file, "{}", signal_line)?;
         }

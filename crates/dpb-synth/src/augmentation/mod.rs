@@ -4,11 +4,11 @@
 //! including noise injection, temporal transformations, and spectral modifications.
 
 pub mod noise;
-pub mod temporal;
-pub mod spectral;
 pub mod rand_helpers;
+pub mod spectral;
+pub mod temporal;
 
-pub use rand_helpers::{random_f64, random_f64_range, random_usize_range, random_i32_range};
+pub use rand_helpers::{random_f64, random_f64_range, random_i32_range, random_usize_range};
 
 // Re-export the augmentations themselves.
 //
@@ -35,7 +35,7 @@ pub trait SignalAugmentation: Send + Sync {
 
 /// Pipeline for applying multiple augmentations with configurable probabilities
 pub struct AugmentationPipeline {
-    augmentations: Vec<(Box<dyn SignalAugmentation>, f64)>,  // (augmentation, probability)
+    augmentations: Vec<(Box<dyn SignalAugmentation>, f64)>, // (augmentation, probability)
 }
 
 impl AugmentationPipeline {
@@ -55,7 +55,10 @@ impl AugmentationPipeline {
     /// # Returns
     /// Self for method chaining
     pub fn add(mut self, aug: impl SignalAugmentation + 'static, probability: f64) -> Self {
-        assert!((0.0..=1.0).contains(&probability), "Probability must be in [0, 1]");
+        assert!(
+            (0.0..=1.0).contains(&probability),
+            "Probability must be in [0, 1]"
+        );
         self.augmentations.push((Box::new(aug), probability));
         self
     }
@@ -128,8 +131,7 @@ mod tests {
 
     #[test]
     fn test_pipeline_add() {
-        let pipeline = AugmentationPipeline::new()
-            .add(DummyAugmentation, 1.0);
+        let pipeline = AugmentationPipeline::new().add(DummyAugmentation, 1.0);
         assert_eq!(pipeline.len(), 1);
         assert!(!pipeline.is_empty());
     }
@@ -139,8 +141,7 @@ mod tests {
         let mut rng = ChaCha8Rng::seed_from_u64(42);
         let signal = vec![1.0, 2.0, 3.0];
 
-        let pipeline = AugmentationPipeline::new()
-            .add(DummyAugmentation, 1.0);  // Always apply
+        let pipeline = AugmentationPipeline::new().add(DummyAugmentation, 1.0); // Always apply
 
         let result = pipeline.apply(&signal, &mut rng);
         assert_eq!(result, vec![2.0, 4.0, 6.0]);
@@ -151,11 +152,10 @@ mod tests {
         let mut rng = ChaCha8Rng::seed_from_u64(42);
         let signal = vec![1.0, 2.0, 3.0];
 
-        let pipeline = AugmentationPipeline::new()
-            .add(DummyAugmentation, 0.0);  // Never apply
+        let pipeline = AugmentationPipeline::new().add(DummyAugmentation, 0.0); // Never apply
 
         let result = pipeline.apply(&signal, &mut rng);
-        assert_eq!(result, signal);  // Should be unchanged
+        assert_eq!(result, signal); // Should be unchanged
     }
 
     #[test]

@@ -223,7 +223,10 @@ impl ChangeStatus {
 /// # Returns
 ///
 /// MDC structure with SEM, ICC, and MDC values
-pub fn calculate_mdc(test_retest: &[(f64, f64)], _confidence: f64) -> Option<MinimalDetectableChange> {
+pub fn calculate_mdc(
+    test_retest: &[(f64, f64)],
+    _confidence: f64,
+) -> Option<MinimalDetectableChange> {
     MinimalDetectableChange::from_test_retest(test_retest)
 }
 
@@ -392,8 +395,7 @@ impl ChangeAnalysis {
         // reaching MDC95 counted as clinically significant no matter how small,
         // while declines were held to the threshold. Both conditions must apply
         // in both directions, per this method's own documentation.
-        (self.status == ChangeStatus::ImprovedMdc95
-            || self.status == ChangeStatus::DeclinedMdc95)
+        (self.status == ChangeStatus::ImprovedMdc95 || self.status == ChangeStatus::DeclinedMdc95)
             && self.percent_change.abs() >= min_percent_change
     }
 }

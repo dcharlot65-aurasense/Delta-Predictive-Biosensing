@@ -224,7 +224,13 @@ impl EdaAnalyzer {
     }
 
     /// Calculate area under curve for SCR
-    fn calculate_auc(&self, signal: &ArrayView1<f64>, start: usize, end: usize, baseline: f64) -> f64 {
+    fn calculate_auc(
+        &self,
+        signal: &ArrayView1<f64>,
+        start: usize,
+        end: usize,
+        baseline: f64,
+    ) -> f64 {
         let mut auc = 0.0;
         for i in start..end {
             auc += (signal[i] - baseline).max(0.0) / self.sample_rate;
@@ -254,13 +260,23 @@ impl EdaAnalyzer {
         };
 
         let mean_rise_time = if scr_count > 0 {
-            decomposition.scr_events.iter().map(|e| e.rise_time).sum::<f64>() / scr_count as f64
+            decomposition
+                .scr_events
+                .iter()
+                .map(|e| e.rise_time)
+                .sum::<f64>()
+                / scr_count as f64
         } else {
             0.0
         };
 
         let mean_recovery_time = if scr_count > 0 {
-            decomposition.scr_events.iter().map(|e| e.recovery_time).sum::<f64>() / scr_count as f64
+            decomposition
+                .scr_events
+                .iter()
+                .map(|e| e.recovery_time)
+                .sum::<f64>()
+                / scr_count as f64
         } else {
             0.0
         };
@@ -286,9 +302,14 @@ impl EdaAnalyzer {
         let decomposition = self.decompose(signal)?;
 
         // SNS activity index based on SCR frequency and amplitude
-        let scr_rate = decomposition.scr_events.len() as f64 / (signal.len() as f64 / self.sample_rate / 60.0);
+        let scr_rate =
+            decomposition.scr_events.len() as f64 / (signal.len() as f64 / self.sample_rate / 60.0);
         let mean_amplitude = if !decomposition.scr_events.is_empty() {
-            decomposition.scr_events.iter().map(|e| e.amplitude).sum::<f64>()
+            decomposition
+                .scr_events
+                .iter()
+                .map(|e| e.amplitude)
+                .sum::<f64>()
                 / decomposition.scr_events.len() as f64
         } else {
             0.0

@@ -9,8 +9,8 @@
 use dpb_synth::contact::ecg::{EcgMorphologyGenerator, EcgMorphologyParams, WaveParams};
 use dpb_synth::contact::tremor::{PhysiologicalTremorGenerator, PhysiologicalTremorParams};
 use dpb_synth::pose::gait::{GaitCycleGenerator, GaitCycleParams};
-use dpb_synth::voice::phonation::{SustainedVowelGenerator, SustainedVowelParams};
 use dpb_synth::traits::SyntheticGenerator;
+use dpb_synth::voice::phonation::{SustainedVowelGenerator, SustainedVowelParams};
 
 use super::utils::*;
 use std::f64::consts::PI;
@@ -25,13 +25,26 @@ fn test_ecg_r_peak_locations() {
         duration,
         sampling_rate: 1000.0,
         heart_rate,
-        p_wave: WaveParams { amplitude: 0.25, width: 0.1, time_offset: -PI / 3.0 },
-        qrs_complex: WaveParams { amplitude: 1.0, width: 0.1, time_offset: 0.0 },
-        t_wave: WaveParams { amplitude: 0.35, width: 0.25, time_offset: PI / 2.0 },
+        p_wave: WaveParams {
+            amplitude: 0.25,
+            width: 0.1,
+            time_offset: -PI / 3.0,
+        },
+        qrs_complex: WaveParams {
+            amplitude: 1.0,
+            width: 0.1,
+            time_offset: 0.0,
+        },
+        t_wave: WaveParams {
+            amplitude: 0.35,
+            width: 0.25,
+            time_offset: PI / 2.0,
+        },
     };
 
     let generator = EcgMorphologyGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate ECG");
 
     let r_peaks = &generated.ground_truth.events;
@@ -46,7 +59,7 @@ fn test_ecg_r_peak_locations() {
             interval,
             expected_interval * 0.9,
             expected_interval * 1.1,
-            &format!("R-R interval {}", i)
+            &format!("R-R interval {}", i),
         );
     }
 
@@ -54,7 +67,8 @@ fn test_ecg_r_peak_locations() {
         "ECG R-peak validation: {} peaks, avg interval {:.3}s (expected {:.3}s)",
         r_peaks.len(),
         if r_peaks.len() > 1 {
-            (r_peaks.last().unwrap().time - r_peaks.first().unwrap().time) / (r_peaks.len() - 1) as f64
+            (r_peaks.last().unwrap().time - r_peaks.first().unwrap().time)
+                / (r_peaks.len() - 1) as f64
         } else {
             0.0
         },
@@ -78,7 +92,8 @@ fn test_gait_heel_strike_timing() {
     };
 
     let generator = GaitCycleGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate gait");
 
     let gait_phases = &generated.ground_truth.gait_phases;
@@ -96,13 +111,12 @@ fn test_gait_heel_strike_timing() {
         heel_strikes as f64,
         (expected_steps - 3) as f64,
         (expected_steps + 3) as f64,
-        "Heel strike count"
+        "Heel strike count",
     );
 
     println!(
         "Gait heel strike validation: {} heel strikes (expected ~{})",
-        heel_strikes,
-        expected_steps
+        heel_strikes, expected_steps
     );
 }
 
@@ -122,7 +136,8 @@ fn test_tremor_frequency_content() {
     };
 
     let generator = PhysiologicalTremorGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate tremor");
 
     // Count zero crossings to estimate frequency
@@ -142,14 +157,12 @@ fn test_tremor_frequency_content() {
         estimated_freq,
         target_freq * 0.8,
         target_freq * 1.2,
-        "Tremor frequency from zero crossings"
+        "Tremor frequency from zero crossings",
     );
 
     println!(
         "Tremor frequency validation: {:.1} Hz (expected {:.1} Hz, {} zero crossings)",
-        estimated_freq,
-        target_freq,
-        zero_crossings
+        estimated_freq, target_freq, zero_crossings
     );
 }
 
@@ -163,16 +176,13 @@ fn test_voice_f0_periodicity() {
         duration,
         sampling_rate: 16000.0,
         fundamental_frequency: f0,
-        vowel_formants: vec![
-            (730.0, 100.0),
-            (1090.0, 150.0),
-            (2440.0, 200.0),
-        ],
+        vowel_formants: vec![(730.0, 100.0), (1090.0, 150.0), (2440.0, 200.0)],
         amplitude: 1.0,
     };
 
     let generator = SustainedVowelGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate voice");
 
     // Count zero crossings
@@ -198,9 +208,7 @@ fn test_voice_f0_periodicity() {
 
     println!(
         "Voice F0 validation: {} zero crossings (f0={:.1} Hz suggests ~{})",
-        zero_crossings,
-        f0,
-        expected_crossings
+        zero_crossings, f0, expected_crossings
     );
 }
 
@@ -211,25 +219,45 @@ fn test_ground_truth_parameter_accuracy() {
         duration: 5.0,
         sampling_rate: 250.0,
         heart_rate: 75.0,
-        p_wave: WaveParams { amplitude: 0.25, width: 0.1, time_offset: -PI / 3.0 },
-        qrs_complex: WaveParams { amplitude: 1.0, width: 0.1, time_offset: 0.0 },
-        t_wave: WaveParams { amplitude: 0.35, width: 0.25, time_offset: PI / 2.0 },
+        p_wave: WaveParams {
+            amplitude: 0.25,
+            width: 0.1,
+            time_offset: -PI / 3.0,
+        },
+        qrs_complex: WaveParams {
+            amplitude: 1.0,
+            width: 0.1,
+            time_offset: 0.0,
+        },
+        t_wave: WaveParams {
+            amplitude: 0.35,
+            width: 0.25,
+            time_offset: PI / 2.0,
+        },
     };
 
     let generator = EcgMorphologyGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate ECG");
 
     let gt_hr = generated.ground_truth.parameters.get("heart_rate").unwrap();
     assert_approx_eq(*gt_hr, params.heart_rate, "Ground truth heart rate");
 
-    let gt_p_amp = generated.ground_truth.parameters.get("p_amplitude").unwrap();
-    assert_approx_eq(*gt_p_amp, params.p_wave.amplitude, "Ground truth P amplitude");
+    let gt_p_amp = generated
+        .ground_truth
+        .parameters
+        .get("p_amplitude")
+        .unwrap();
+    assert_approx_eq(
+        *gt_p_amp,
+        params.p_wave.amplitude,
+        "Ground truth P amplitude",
+    );
 
     println!(
         "Ground truth accuracy verified: HR={:.1}, P-amp={:.2}",
-        gt_hr,
-        gt_p_amp
+        gt_hr, gt_p_amp
     );
 }
 
@@ -243,9 +271,21 @@ fn test_signal_duration_accuracy() {
         duration,
         sampling_rate: 250.0,
         heart_rate: 72.0,
-        p_wave: WaveParams { amplitude: 0.25, width: 0.1, time_offset: -PI / 3.0 },
-        qrs_complex: WaveParams { amplitude: 1.0, width: 0.1, time_offset: 0.0 },
-        t_wave: WaveParams { amplitude: 0.35, width: 0.25, time_offset: PI / 2.0 },
+        p_wave: WaveParams {
+            amplitude: 0.25,
+            width: 0.1,
+            time_offset: -PI / 3.0,
+        },
+        qrs_complex: WaveParams {
+            amplitude: 1.0,
+            width: 0.1,
+            time_offset: 0.0,
+        },
+        t_wave: WaveParams {
+            amplitude: 0.35,
+            width: 0.25,
+            time_offset: PI / 2.0,
+        },
     };
     let ecg_gen = EcgMorphologyGenerator;
     let ecg = ecg_gen.generate(&ecg_params, TEST_SEED).unwrap();
@@ -302,19 +342,46 @@ fn test_physiological_range_validation() {
         duration: 5.0,
         sampling_rate: 250.0,
         heart_rate: 72.0,
-        p_wave: WaveParams { amplitude: 0.25, width: 0.1, time_offset: -PI / 3.0 },
-        qrs_complex: WaveParams { amplitude: 1.0, width: 0.1, time_offset: 0.0 },
-        t_wave: WaveParams { amplitude: 0.35, width: 0.25, time_offset: PI / 2.0 },
+        p_wave: WaveParams {
+            amplitude: 0.25,
+            width: 0.1,
+            time_offset: -PI / 3.0,
+        },
+        qrs_complex: WaveParams {
+            amplitude: 1.0,
+            width: 0.1,
+            time_offset: 0.0,
+        },
+        t_wave: WaveParams {
+            amplitude: 0.35,
+            width: 0.25,
+            time_offset: PI / 2.0,
+        },
     };
 
     // Heart rate should be 40-200 bpm
-    assert_in_range(params.heart_rate, 40.0, 200.0, "Heart rate physiological range");
+    assert_in_range(
+        params.heart_rate,
+        40.0,
+        200.0,
+        "Heart rate physiological range",
+    );
 
     // P wave amplitude should be 0.05-0.30 mV
-    assert_in_range(params.p_wave.amplitude, 0.05, 0.30, "P wave amplitude range");
+    assert_in_range(
+        params.p_wave.amplitude,
+        0.05,
+        0.30,
+        "P wave amplitude range",
+    );
 
     // QRS amplitude should be 0.5-2.0 mV
-    assert_in_range(params.qrs_complex.amplitude, 0.5, 2.0, "QRS amplitude range");
+    assert_in_range(
+        params.qrs_complex.amplitude,
+        0.5,
+        2.0,
+        "QRS amplitude range",
+    );
 
     // T wave amplitude should be 0.1-0.5 mV
     assert_in_range(params.t_wave.amplitude, 0.1, 0.5, "T wave amplitude range");
@@ -335,7 +402,8 @@ fn test_gait_joint_angle_validity() {
     };
 
     let generator = GaitCycleGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate gait");
 
     let joint_angles = &generated.ground_truth.joint_angles;
@@ -364,13 +432,26 @@ fn test_event_timing_tolerance() {
         duration: 5.0,
         sampling_rate: 1000.0, // 1ms resolution
         heart_rate: 60.0,
-        p_wave: WaveParams { amplitude: 0.25, width: 0.1, time_offset: -PI / 3.0 },
-        qrs_complex: WaveParams { amplitude: 1.0, width: 0.1, time_offset: 0.0 },
-        t_wave: WaveParams { amplitude: 0.35, width: 0.25, time_offset: PI / 2.0 },
+        p_wave: WaveParams {
+            amplitude: 0.25,
+            width: 0.1,
+            time_offset: -PI / 3.0,
+        },
+        qrs_complex: WaveParams {
+            amplitude: 1.0,
+            width: 0.1,
+            time_offset: 0.0,
+        },
+        t_wave: WaveParams {
+            amplitude: 0.35,
+            width: 0.25,
+            time_offset: PI / 2.0,
+        },
     };
 
     let generator = EcgMorphologyGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate ECG");
 
     let r_peaks = &generated.ground_truth.events;
@@ -385,6 +466,8 @@ fn test_event_timing_tolerance() {
         );
     }
 
-    println!("Event timing validation: all {} events within bounds", r_peaks.len());
+    println!(
+        "Event timing validation: all {} events within bounds",
+        r_peaks.len()
+    );
 }
-

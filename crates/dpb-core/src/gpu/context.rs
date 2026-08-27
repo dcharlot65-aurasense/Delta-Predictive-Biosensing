@@ -45,16 +45,14 @@ impl GpuContext {
         );
 
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some("DPB GPU Device"),
-                    required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
-                    memory_hints: Default::default(),
-                    experimental_features: Default::default(),
-                    trace: wgpu::Trace::Off,
-                },
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("DPB GPU Device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::default(),
+                memory_hints: Default::default(),
+                experimental_features: Default::default(),
+                trace: wgpu::Trace::Off,
+            })
             .await
             .map_err(|e| DpbError::Gpu(format!("Failed to create device: {}", e)))?;
 
@@ -92,25 +90,31 @@ impl GpuContext {
         entry_point: &str,
         bind_group_layout: &wgpu::BindGroupLayout,
     ) -> Result<wgpu::ComputePipeline> {
-        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Compute Shader"),
-            source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-        });
+        let shader = self
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Compute Shader"),
+                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
+            });
 
-        let pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Compute Pipeline Layout"),
-            bind_group_layouts: &[Some(bind_group_layout)],
-            immediate_size: 0,
-        });
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Compute Pipeline Layout"),
+                bind_group_layouts: &[Some(bind_group_layout)],
+                immediate_size: 0,
+            });
 
-        let pipeline = self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Compute Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: Some(entry_point),
-            compilation_options: Default::default(),
-            cache: None,
-        });
+        let pipeline = self
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Compute Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: Some(entry_point),
+                compilation_options: Default::default(),
+                cache: None,
+            });
 
         Ok(pipeline)
     }
@@ -120,10 +124,11 @@ impl GpuContext {
         &self,
         entries: &[wgpu::BindGroupLayoutEntry],
     ) -> wgpu::BindGroupLayout {
-        self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Bind Group Layout"),
-            entries,
-        })
+        self.device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Bind Group Layout"),
+                entries,
+            })
     }
 
     /// Creates a bind group.
@@ -193,8 +198,9 @@ mod tests {
     /// device is a bug in this file.
     #[tokio::test]
     async fn test_gpu_context_creation() {
-        let adapters =
-            wgpu::Instance::default().enumerate_adapters(wgpu::Backends::all()).await;
+        let adapters = wgpu::Instance::default()
+            .enumerate_adapters(wgpu::Backends::all())
+            .await;
         if adapters.is_empty() {
             eprintln!("no GPU adapter present; skipping device bring-up");
             return;
@@ -203,7 +209,10 @@ mod tests {
         let ctx = GpuContext::new_default()
             .await
             .expect("an adapter is present, so device creation must succeed");
-        assert!(!ctx.device_name().is_empty(), "adapter reported an empty name");
+        assert!(
+            !ctx.device_name().is_empty(),
+            "adapter reported an empty name"
+        );
         println!("GPU: {} ({:?})", ctx.device_name(), ctx.backend());
     }
 
@@ -212,8 +221,9 @@ mod tests {
     /// the now-fallible get_mapped_range, and map_async completion.
     #[tokio::test]
     async fn test_gpu_roundtrip_preserves_data() {
-        let adapters =
-            wgpu::Instance::default().enumerate_adapters(wgpu::Backends::all()).await;
+        let adapters = wgpu::Instance::default()
+            .enumerate_adapters(wgpu::Backends::all())
+            .await;
         if adapters.is_empty() {
             eprintln!("no GPU adapter present; skipping buffer round-trip");
             return;

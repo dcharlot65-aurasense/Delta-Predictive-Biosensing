@@ -4,9 +4,9 @@
 //! initialized recurrent network (the "reservoir") transforms input into a high-
 //! dimensional space, and only the output layer is trained.
 
-use crate::lif::{LifNeuron, LifConfig};
+use crate::lif::{LifConfig, LifNeuron};
 use crate::traits::{MembraneDynamics, NeuronModel};
-use ndarray::{s, Array1, Array2};
+use ndarray::{Array1, Array2, s};
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal, Uniform};
 use serde::{Deserialize, Serialize};
@@ -125,7 +125,8 @@ impl EchoStateNetwork {
     pub fn initialize(&mut self, seed: u64) {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let input_dist = Uniform::new(-1.0, 1.0).expect("uniform bounds are ordered and finite");
-        let reservoir_dist = Uniform::new(-1.0, 1.0).expect("uniform bounds are ordered and finite");
+        let reservoir_dist =
+            Uniform::new(-1.0, 1.0).expect("uniform bounds are ordered and finite");
 
         // Initialize input weights
         for i in 0..self.reservoir_size {
@@ -403,12 +404,7 @@ impl LiquidStateMachine {
         }
 
         // Initialize sparse recurrent connectivity
-        self.connectivity = SparsityPattern::random(
-            reservoir_size,
-            reservoir_size,
-            sparsity,
-            seed,
-        );
+        self.connectivity = SparsityPattern::random(reservoir_size, reservoir_size, sparsity, seed);
     }
 
     /// Forward pass for one time step
@@ -495,7 +491,13 @@ impl LiquidStateMachine {
         Array1::from_vec(
             self.neurons
                 .iter()
-                .map(|n| if n.membrane_potential() > 0.0 { 1.0 } else { 0.0 })
+                .map(|n| {
+                    if n.membrane_potential() > 0.0 {
+                        1.0
+                    } else {
+                        0.0
+                    }
+                })
                 .collect(),
         )
     }
@@ -629,7 +631,9 @@ mod tests {
         esn.reset();
         let test_input = Array1::from_vec(vec![0.5_f64.sin(), 0.5_f64.cos()]);
         let _ = esn.forward(&test_input);
-        let prediction = esn.predict(&test_input).expect("predict should succeed after training");
+        let prediction = esn
+            .predict(&test_input)
+            .expect("predict should succeed after training");
 
         assert_eq!(prediction.len(), 1);
     }

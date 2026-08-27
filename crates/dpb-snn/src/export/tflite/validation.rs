@@ -2,10 +2,10 @@
 //!
 //! Validates TFLite models for correctness, compatibility, and optimization.
 
-use super::operators::{TFLiteOperator, OperatorType, BuiltinOperator};
-use super::tensors::{TFLiteTensor, TensorType};
 use super::flatbuffer::Subgraph;
-use serde::{Serialize, Deserialize};
+use super::operators::{BuiltinOperator, OperatorType, TFLiteOperator};
+use super::tensors::{TFLiteTensor, TensorType};
+use serde::{Deserialize, Serialize};
 
 /// TFLite model validator
 pub struct TFLiteValidator {
@@ -113,17 +113,11 @@ impl TFLiteValidator {
         result: &mut ValidationResult,
     ) {
         // Get input/output tensors
-        let input_tensors: Vec<&TFLiteTensor> = op
-            .inputs
-            .iter()
-            .filter_map(|&i| tensors.get(i))
-            .collect();
+        let input_tensors: Vec<&TFLiteTensor> =
+            op.inputs.iter().filter_map(|&i| tensors.get(i)).collect();
 
-        let output_tensors: Vec<&TFLiteTensor> = op
-            .outputs
-            .iter()
-            .filter_map(|&i| tensors.get(i))
-            .collect();
+        let output_tensors: Vec<&TFLiteTensor> =
+            op.outputs.iter().filter_map(|&i| tensors.get(i)).collect();
 
         // Basic shape validation based on operator type
         match &op.op_type {
@@ -146,13 +140,12 @@ impl TFLiteValidator {
                     ));
                 }
             }
-            OperatorType::Builtin(BuiltinOperator::FullyConnected)
-                if input_tensors.is_empty() => {
-                    result.add_error(format!(
-                        "Operator {} (FullyConnected) requires inputs",
-                        index
-                    ));
-                }
+            OperatorType::Builtin(BuiltinOperator::FullyConnected) if input_tensors.is_empty() => {
+                result.add_error(format!(
+                    "Operator {} (FullyConnected) requires inputs",
+                    index
+                ));
+            }
             _ => {
                 // Generic validation for other operators
             }
@@ -188,21 +181,17 @@ impl TFLiteValidator {
         // Check if operator supports quantization
         if has_quantized
             && let OperatorType::Builtin(builtin_op) = &op.op_type
-                && !builtin_op.supports_quantization() {
-                    result.add_warning(CompatibilityWarning::QuantizationNotSupported {
-                        operator: format!("{:?}", builtin_op),
-                        index,
-                    });
-                }
+            && !builtin_op.supports_quantization()
+        {
+            result.add_warning(CompatibilityWarning::QuantizationNotSupported {
+                operator: format!("{:?}", builtin_op),
+                index,
+            });
+        }
     }
 
     /// Validate a tensor
-    fn validate_tensor(
-        &self,
-        tensor: &TFLiteTensor,
-        index: usize,
-        result: &mut ValidationResult,
-    ) {
+    fn validate_tensor(&self, tensor: &TFLiteTensor, index: usize, result: &mut ValidationResult) {
         // Basic validation
         if let Err(e) = tensor.validate() {
             result.add_error(format!("Tensor {}: {}", index, e));
@@ -229,9 +218,10 @@ impl TFLiteValidator {
 
         // Validate quantization if present
         if let Some(ref quant) = tensor.quantization
-            && let Err(e) = quant.validate() {
-                result.add_error(format!("Tensor {} quantization: {}", index, e));
-            }
+            && let Err(e) = quant.validate()
+        {
+            result.add_error(format!("Tensor {} quantization: {}", index, e));
+        }
     }
 
     /// Check for optimization opportunities
@@ -408,7 +398,10 @@ impl ValidationResult {
         if self.is_valid() {
             report.push_str("✓ Validation passed\n");
         } else {
-            report.push_str(&format!("✗ Validation failed with {} errors\n", self.errors.len()));
+            report.push_str(&format!(
+                "✗ Validation failed with {} errors\n",
+                self.errors.len()
+            ));
         }
 
         if !self.errors.is_empty() {
@@ -466,7 +459,10 @@ impl CompatibilityWarning {
     pub fn description(&self) -> String {
         match self {
             CompatibilityWarning::UnsupportedOperator { operator, index } => {
-                format!("Operator {} at index {} may not be supported", operator, index)
+                format!(
+                    "Operator {} at index {} may not be supported",
+                    operator, index
+                )
             }
             CompatibilityWarning::CustomOperator { operator, index } => {
                 format!(
@@ -475,7 +471,10 @@ impl CompatibilityWarning {
                 )
             }
             CompatibilityWarning::MixedPrecision { index } => {
-                format!("Operator {} has mixed precision inputs (quantized + float)", index)
+                format!(
+                    "Operator {} has mixed precision inputs (quantized + float)",
+                    index
+                )
             }
             CompatibilityWarning::QuantizationNotSupported { operator, index } => {
                 format!(
@@ -529,7 +528,7 @@ pub enum WarningSeverity {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::export::tflite::tensors::{TensorShape, QuantizationParams};
+    use crate::export::tflite::tensors::{QuantizationParams, TensorShape};
 
     #[test]
     fn test_validator_creation() {
@@ -540,9 +539,7 @@ mod tests {
 
     #[test]
     fn test_validator_with_options() {
-        let validator = TFLiteValidator::new()
-            .with_target_version(2)
-            .strict();
+        let validator = TFLiteValidator::new().with_target_version(2).strict();
 
         assert_eq!(validator.target_version, 2);
         assert!(validator.strict_mode);

@@ -470,8 +470,7 @@ impl GdfReader {
             0
         };
 
-        let header_bytes =
-            u64::from_le_bytes(buffer[184..192].try_into().unwrap()) as usize;
+        let header_bytes = u64::from_le_bytes(buffer[184..192].try_into().unwrap()) as usize;
 
         // Equipment provider (GDF 2.x)
         let equipment_id = Self::read_ascii(&buffer[192..200]);
@@ -649,8 +648,8 @@ impl GdfReader {
             self.file.read_exact(&mut record_buffer)?;
 
             // Extract this signal's samples
-            let signal_bytes = &record_buffer
-                [signal_offset..signal_offset + signal.samples_per_record * signal.data_type.size_bytes()];
+            let signal_bytes = &record_buffer[signal_offset
+                ..signal_offset + signal.samples_per_record * signal.data_type.size_bytes()];
 
             for i in 0..signal.samples_per_record {
                 let offset = i * signal.data_type.size_bytes();
@@ -722,8 +721,8 @@ impl GdfReader {
 
         for signal in &self.signals {
             let mut signal_samples = Vec::with_capacity(signal.samples_per_record);
-            let signal_bytes =
-                &record_buffer[offset..offset + signal.samples_per_record * signal.data_type.size_bytes()];
+            let signal_bytes = &record_buffer
+                [offset..offset + signal.samples_per_record * signal.data_type.size_bytes()];
 
             for i in 0..signal.samples_per_record {
                 let byte_offset = i * signal.data_type.size_bytes();
@@ -816,12 +815,7 @@ impl GdfWriter {
 
             Self::write_field(&mut sig_buffer, 0, 16, signal.label.as_bytes());
             Self::write_field(&mut sig_buffer, 16, 80, signal.transducer_type.as_bytes());
-            Self::write_field(
-                &mut sig_buffer,
-                96,
-                8,
-                signal.physical_dimension.as_bytes(),
-            );
+            Self::write_field(&mut sig_buffer, 96, 8, signal.physical_dimension.as_bytes());
 
             sig_buffer[104..112].copy_from_slice(&signal.physical_min.to_le_bytes());
             sig_buffer[112..120].copy_from_slice(&signal.physical_max.to_le_bytes());
@@ -830,8 +824,7 @@ impl GdfWriter {
 
             Self::write_field(&mut sig_buffer, 136, 68, signal.prefiltering.as_bytes());
 
-            sig_buffer[204..208]
-                .copy_from_slice(&(signal.samples_per_record as u32).to_le_bytes());
+            sig_buffer[204..208].copy_from_slice(&(signal.samples_per_record as u32).to_le_bytes());
             sig_buffer[208..210].copy_from_slice(&signal.data_type.to_code().to_le_bytes());
 
             // Sensor position (GDF 2.x)
@@ -857,11 +850,7 @@ impl GdfWriter {
     }
 
     /// Write digital value based on data type
-    fn write_digital_value(
-        file: &mut File,
-        value: f64,
-        data_type: GdfDataType,
-    ) -> Result<()> {
+    fn write_digital_value(file: &mut File, value: f64, data_type: GdfDataType) -> Result<()> {
         match data_type {
             GdfDataType::Int8 => file.write_all(&(value as i8).to_le_bytes())?,
             GdfDataType::UInt8 => file.write_all(&[value as u8])?,
@@ -952,14 +941,9 @@ mod tests {
 
     #[test]
     fn test_signal_conversion() {
-        let signal = GdfSignal::new(
-            "EEG".to_string(),
-            "uV".to_string(),
-            100,
-            GdfDataType::Int16,
-        )
-        .with_physical_range(-500.0, 500.0)
-        .with_digital_range(-32768.0, 32767.0);
+        let signal = GdfSignal::new("EEG".to_string(), "uV".to_string(), 100, GdfDataType::Int16)
+            .with_physical_range(-500.0, 500.0)
+            .with_digital_range(-32768.0, 32767.0);
 
         // Note: digital range -32768 to 32767 is not symmetric, so 0 doesn't map exactly to 0.0
         let physical = signal.digital_to_physical(0.0);

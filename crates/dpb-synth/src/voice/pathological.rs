@@ -1,6 +1,6 @@
 //! Pathological voice generators (dysarthria types, hypophonia)
 
-use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
+use crate::traits::{Event, GeneratedData, SyntheticGenerator, TimeSeriesGroundTruth};
 use ndarray::Array1;
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
@@ -14,7 +14,7 @@ pub struct HypokineticDysarthriaGenerator;
 pub struct HypokineticDysarthriaParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub severity: f64,           // 0-1 (0 = mild, 1 = severe)
+    pub severity: f64, // 0-1 (0 = mild, 1 = severe)
     pub baseline_f0: f64,
     pub baseline_intensity: f64,
 }
@@ -24,7 +24,11 @@ impl SyntheticGenerator for HypokineticDysarthriaGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = HypokineticDysarthriaParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -82,7 +86,11 @@ impl SyntheticGenerator for HypokineticDysarthriaGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(features, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            features,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -97,10 +105,14 @@ impl SyntheticGenerator for HypokineticDysarthriaGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.severity < 0.0 || params.severity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("severity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "severity must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -133,7 +145,11 @@ impl SyntheticGenerator for SpasticDysarthriaGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = SpasticDysarthriaParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -201,7 +217,11 @@ impl SyntheticGenerator for SpasticDysarthriaGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(features, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            features,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -215,10 +235,14 @@ impl SyntheticGenerator for SpasticDysarthriaGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.severity < 0.0 || params.severity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("severity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "severity must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -252,7 +276,11 @@ impl SyntheticGenerator for AtaxicDysarthriaGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = AtaxicDysarthriaParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -315,7 +343,11 @@ impl SyntheticGenerator for AtaxicDysarthriaGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(features, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            features,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -330,10 +362,14 @@ impl SyntheticGenerator for AtaxicDysarthriaGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.severity < 0.0 || params.severity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("severity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "severity must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -342,7 +378,8 @@ impl SyntheticGenerator for AtaxicDysarthriaGenerator {
 impl AtaxicDysarthriaGenerator {
     fn std_dev(values: &[f64]) -> f64 {
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance = values.iter().map(|&v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
+        let variance =
+            values.iter().map(|&v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
         variance.sqrt()
     }
 }
@@ -366,8 +403,8 @@ pub struct HypophoniaGenerator;
 pub struct HypophoniaParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub initial_intensity: f64,  // dB
-    pub final_intensity: f64,     // dB
+    pub initial_intensity: f64, // dB
+    pub final_intensity: f64,   // dB
     pub progression_type: ProgressionType,
 }
 
@@ -383,7 +420,11 @@ impl SyntheticGenerator for HypophoniaGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = HypophoniaParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -396,7 +437,8 @@ impl SyntheticGenerator for HypophoniaGenerator {
 
                 let base_intensity = match params.progression_type {
                     ProgressionType::Linear => {
-                        params.initial_intensity + progress * (params.final_intensity - params.initial_intensity)
+                        params.initial_intensity
+                            + progress * (params.final_intensity - params.initial_intensity)
                     }
                     ProgressionType::Exponential => {
                         // Use exponential decay
@@ -419,7 +461,8 @@ impl SyntheticGenerator for HypophoniaGenerator {
         let intensity_array = Array1::from_vec(intensity_trajectory.clone());
 
         let total_reduction = params.initial_intensity - params.final_intensity;
-        let mean_intensity = intensity_trajectory.iter().sum::<f64>() / intensity_trajectory.len() as f64;
+        let mean_intensity =
+            intensity_trajectory.iter().sum::<f64>() / intensity_trajectory.len() as f64;
 
         let mut gt_params = HashMap::new();
         gt_params.insert("initial_intensity".to_string(), params.initial_intensity);
@@ -433,7 +476,11 @@ impl SyntheticGenerator for HypophoniaGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(intensity_array, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            intensity_array,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -448,10 +495,14 @@ impl SyntheticGenerator for HypophoniaGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.initial_intensity <= params.final_intensity {
-            return Err(crate::GeneratorError::InvalidParameter("initial_intensity must be greater than final_intensity".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "initial_intensity must be greater than final_intensity".to_string(),
+            ));
         }
         Ok(())
     }
@@ -466,7 +517,10 @@ mod tests {
         let generator = HypokineticDysarthriaGenerator;
         let params = HypokineticDysarthriaGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.f0_contour.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.f0_contour.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -474,7 +528,10 @@ mod tests {
         let generator = SpasticDysarthriaGenerator;
         let params = SpasticDysarthriaGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.f0_contour.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.f0_contour.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -482,7 +539,10 @@ mod tests {
         let generator = AtaxicDysarthriaGenerator;
         let params = AtaxicDysarthriaGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.f0_contour.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.f0_contour.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -490,6 +550,9 @@ mod tests {
         let generator = HypophoniaGenerator;
         let params = HypophoniaGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 }

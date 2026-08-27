@@ -21,9 +21,9 @@
 //! - DeepMind open-sourced MuJoCo in 2022
 
 use super::{MediaError, Result, TremorType};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::collections::HashMap;
 
 /// MuJoCo simulator wrapper
 #[derive(Debug)]
@@ -211,11 +211,10 @@ impl MuJoCoSimulator {
         }
 
         // Find Python path
-        let python_path = which::which("python3")
-            .map_err(|_| MediaError::ToolNotFound {
-                tool: "python3".to_string(),
-                install_url: "https://www.python.org/downloads/".to_string(),
-            })?;
+        let python_path = which::which("python3").map_err(|_| MediaError::ToolNotFound {
+            tool: "python3".to_string(),
+            install_url: "https://www.python.org/downloads/".to_string(),
+        })?;
 
         Ok(Self {
             config,
@@ -234,19 +233,31 @@ impl MuJoCoSimulator {
     }
 
     /// Simulate gait motion
-    pub fn simulate_gait(&self, params: &GaitSimParams, model: MusculoskeletalModel) -> Result<MotionTrajectory> {
+    pub fn simulate_gait(
+        &self,
+        params: &GaitSimParams,
+        model: MusculoskeletalModel,
+    ) -> Result<MotionTrajectory> {
         let script = self.generate_gait_script(params, model)?;
         self.run_simulation_script(&script)
     }
 
     /// Simulate tremor motion
-    pub fn simulate_tremor(&self, params: &TremorSimParams, model: MusculoskeletalModel) -> Result<MotionTrajectory> {
+    pub fn simulate_tremor(
+        &self,
+        params: &TremorSimParams,
+        model: MusculoskeletalModel,
+    ) -> Result<MotionTrajectory> {
         let script = self.generate_tremor_script(params, model)?;
         self.run_simulation_script(&script)
     }
 
     /// Generate Python script for gait simulation
-    fn generate_gait_script(&self, params: &GaitSimParams, model: MusculoskeletalModel) -> Result<String> {
+    fn generate_gait_script(
+        &self,
+        params: &GaitSimParams,
+        model: MusculoskeletalModel,
+    ) -> Result<String> {
         let model_name = match model {
             MusculoskeletalModel::SimpleHumanoid => "humanoid",
             MusculoskeletalModel::FullBody => "fullbody",
@@ -254,7 +265,8 @@ impl MuJoCoSimulator {
             _ => "humanoid",
         };
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import mujoco
 import numpy as np
 import json
@@ -376,14 +388,20 @@ print(json.dumps(result))
     }
 
     /// Generate Python script for tremor simulation
-    fn generate_tremor_script(&self, params: &TremorSimParams, _model: MusculoskeletalModel) -> Result<String> {
-        let affected_joints_str = params.affected_joints
+    fn generate_tremor_script(
+        &self,
+        params: &TremorSimParams,
+        _model: MusculoskeletalModel,
+    ) -> Result<String> {
+        let affected_joints_str = params
+            .affected_joints
             .iter()
             .map(|j| format!("'{}'", j))
             .collect::<Vec<_>>()
             .join(", ");
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import mujoco
 import numpy as np
 import json
@@ -484,28 +502,40 @@ print(json.dumps(result))
 
         // Parse JSON output
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let data: serde_json::Value = serde_json::from_str(&stdout)
-            .map_err(|e| MediaError::SerializationError(format!("Failed to parse output: {}", e)))?;
+        let data: serde_json::Value = serde_json::from_str(&stdout).map_err(|e| {
+            MediaError::SerializationError(format!("Failed to parse output: {}", e))
+        })?;
 
         // Convert to MotionTrajectory
         Ok(MotionTrajectory {
-            times: data["times"].as_array()
+            times: data["times"]
+                .as_array()
                 .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
                 .unwrap_or_default(),
-            joint_angles: data["joint_angles"].as_array()
-                .map(|a| a.iter()
-                    .filter_map(|row| row.as_array()
-                        .map(|r| r.iter().filter_map(|v| v.as_f64()).collect()))
-                    .collect())
+            joint_angles: data["joint_angles"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|row| {
+                            row.as_array()
+                                .map(|r| r.iter().filter_map(|v| v.as_f64()).collect())
+                        })
+                        .collect()
+                })
                 .unwrap_or_default(),
-            joint_velocities: data["joint_velocities"].as_array()
-                .map(|a| a.iter()
-                    .filter_map(|row| row.as_array()
-                        .map(|r| r.iter().filter_map(|v| v.as_f64()).collect()))
-                    .collect())
+            joint_velocities: data["joint_velocities"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|row| {
+                            row.as_array()
+                                .map(|r| r.iter().filter_map(|v| v.as_f64()).collect())
+                        })
+                        .collect()
+                })
                 .unwrap_or_default(),
             end_effector_positions: Vec::new(), // Parse if present
-            ground_forces: Vec::new(), // Parse if present
+            ground_forces: Vec::new(),          // Parse if present
             muscle_activations: None,
         })
     }
@@ -535,7 +565,10 @@ print(json.dumps(result))
 
         // Write frame data
         for angles in &trajectory.joint_angles {
-            let line: Vec<String> = angles.iter().map(|a| format!("{:.4}", a.to_degrees())).collect();
+            let line: Vec<String> = angles
+                .iter()
+                .map(|a| format!("{:.4}", a.to_degrees()))
+                .collect();
             bvh.push_str(&line.join(" "));
             bvh.push('\n');
         }

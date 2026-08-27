@@ -2,8 +2,8 @@
 
 use super::SNNArchitecture;
 use crate::{
-    layers::{SpikingLayer, SpikingLinear},
     SNNConfig, SNNError, SNNResult, SpikeTensor,
+    layers::{SpikingLayer, SpikingLinear},
 };
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
@@ -103,9 +103,9 @@ impl SNNArchitecture for FeedforwardSNN {
 
         // Forward through all layers
         for (i, layer) in self.layers.iter_mut().enumerate() {
-            current = layer.forward(&current).map_err(|e| {
-                SNNError::Layer(format!("Error in layer {}: {}", i, e))
-            })?;
+            current = layer
+                .forward(&current)
+                .map_err(|e| SNNError::Layer(format!("Error in layer {}: {}", i, e)))?;
         }
 
         Ok(current)
@@ -185,11 +185,7 @@ impl FeedforwardSNNBuilder {
             ));
         }
 
-        FeedforwardSNN::new(
-            self.layer_sizes,
-            self.config,
-            self.use_bias,
-        )
+        FeedforwardSNN::new(self.layer_sizes, self.config, self.use_bias)
     }
 }
 
@@ -250,6 +246,9 @@ mod tests {
 
         // Reset should clear all states
         snn.reset();
-        assert!(snn.layers[0].state.is_empty() || snn.layers[0].state[0].v_mem.iter().all(|&v| v == 0.0));
+        assert!(
+            snn.layers[0].state.is_empty()
+                || snn.layers[0].state[0].v_mem.iter().all(|&v| v == 0.0)
+        );
     }
 }

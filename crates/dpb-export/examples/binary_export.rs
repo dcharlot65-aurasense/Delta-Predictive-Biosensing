@@ -6,10 +6,10 @@
 //! Run with: cargo run --example binary_export -p dpb-export
 
 use dpb_export::{
+    ModelExporter,
     binary::{BinaryExporter, BinaryImporter},
     encoder_export::MockEncoder,
     metadata::ModelMetadata,
-    ModelExporter,
 };
 use std::path::PathBuf;
 

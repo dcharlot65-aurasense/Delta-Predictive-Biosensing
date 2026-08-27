@@ -87,12 +87,14 @@ impl LatencyMetrics {
             sorted[sorted.len() / 2]
         };
 
-        let variance = sorted.iter()
+        let variance = sorted
+            .iter()
             .map(|x| {
                 let diff = x - mean_ms;
                 diff * diff
             })
-            .sum::<f32>() / sorted.len() as f32;
+            .sum::<f32>()
+            / sorted.len() as f32;
         let std_dev_ms = variance.sqrt();
 
         let p95_index = (sorted.len() as f32 * 0.95) as usize;
@@ -510,7 +512,12 @@ mod tests {
 
     #[test]
     fn test_memory_metrics() {
-        let metrics = MemoryMetrics::new(1024 * 1024 * 10, 1024 * 1024 * 5, 1024 * 1024 * 2, 1024 * 1024);
+        let metrics = MemoryMetrics::new(
+            1024 * 1024 * 10,
+            1024 * 1024 * 5,
+            1024 * 1024 * 2,
+            1024 * 1024,
+        );
         assert_eq!(metrics.peak_mb, 10.0);
         assert_eq!(metrics.average_mb, 5.0);
     }

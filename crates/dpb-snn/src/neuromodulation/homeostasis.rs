@@ -10,7 +10,6 @@
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 
-
 /// Homeostatic plasticity configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HomeostaticConfig {
@@ -171,7 +170,12 @@ impl SynapticScaling {
     }
 
     /// Apply per-neuron scaling
-    pub fn apply_per_neuron(&self, weights: &mut Array2<f64>, firing_rates: &Array1<f64>, target_rate: f64) {
+    pub fn apply_per_neuron(
+        &self,
+        weights: &mut Array2<f64>,
+        firing_rates: &Array1<f64>,
+        target_rate: f64,
+    ) {
         let (num_post, _num_pre) = weights.dim();
 
         for i in 0..num_post {
@@ -220,9 +224,8 @@ impl IntrinsicPlasticity {
         self.threshold_adjustments = &self.threshold_adjustments + &threshold_updates;
 
         // Apply bounds
-        self.threshold_adjustments.mapv_inplace(|adj| {
-            adj.max(-self.max_adjustment).min(self.max_adjustment)
-        });
+        self.threshold_adjustments
+            .mapv_inplace(|adj| adj.max(-self.max_adjustment).min(self.max_adjustment));
     }
 
     /// Get adjusted threshold for neuron
@@ -286,14 +289,15 @@ impl Metaplasticity {
         // Sliding threshold: high recent activity → lower learning rate
         let modulation = 1.0 / (1.0 + relative_activity);
 
-        modulation.max(1.0 / self.max_modulation).min(self.max_modulation)
+        modulation
+            .max(1.0 / self.max_modulation)
+            .min(self.max_modulation)
     }
 
     /// Get modulation for all synapses
     pub fn get_modulation_matrix(&self) -> Array2<f64> {
-        self.activity_history.mapv(|activity| {
-            self.get_learning_rate_modulation(activity)
-        })
+        self.activity_history
+            .mapv(|activity| self.get_learning_rate_modulation(activity))
     }
 
     /// Apply modulation to learning rates
@@ -425,7 +429,10 @@ impl HomeostaticPlasticity {
 
     /// Initialize intrinsic plasticity
     pub fn with_intrinsic_plasticity(mut self, num_neurons: usize) -> Self {
-        self.intrinsic_plasticity = Some(IntrinsicPlasticity::new(num_neurons, self.config.intrinsic_rate));
+        self.intrinsic_plasticity = Some(IntrinsicPlasticity::new(
+            num_neurons,
+            self.config.intrinsic_rate,
+        ));
         self
     }
 

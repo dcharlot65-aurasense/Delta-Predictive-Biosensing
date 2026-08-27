@@ -1,6 +1,6 @@
 //! Finger tapping generators
 
-use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth, Event};
+use crate::traits::{Event, GeneratedData, SpatialGroundTruth, SyntheticGenerator};
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
@@ -13,9 +13,9 @@ pub struct NormalTappingGenerator;
 pub struct NormalTappingParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub frequency: f64,        // Hz (typically 3-5 Hz)
-    pub amplitude: f64,        // cm
-    pub regularity: f64,       // 0-1 (1 = perfect regularity)
+    pub frequency: f64,  // Hz (typically 3-5 Hz)
+    pub amplitude: f64,  // cm
+    pub regularity: f64, // 0-1 (1 = perfect regularity)
 }
 
 impl SyntheticGenerator for NormalTappingGenerator {
@@ -23,7 +23,11 @@ impl SyntheticGenerator for NormalTappingGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = NormalTappingParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -41,7 +45,8 @@ impl SyntheticGenerator for NormalTappingGenerator {
             let t = i as f64 * dt;
 
             // Generate tapping motion (open/close cycle)
-            let phase = (2.0 * PI * params.frequency * t + timing_noise.sample(&mut rng)).rem_euclid(2.0 * PI);
+            let phase = (2.0 * PI * params.frequency * t + timing_noise.sample(&mut rng))
+                .rem_euclid(2.0 * PI);
             let amp_mod = amplitude_noise.sample(&mut rng).max(0.1);
 
             // Distance: max amplitude when open, 0 when closed
@@ -75,8 +80,10 @@ impl SyntheticGenerator for NormalTappingGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(separation, ground_truth, params.frame_rate)
-            .with_metadata("tap_count".to_string(), events.len().to_string()))
+        Ok(
+            GeneratedData::new(separation, ground_truth, params.frame_rate)
+                .with_metadata("tap_count".to_string(), events.len().to_string()),
+        )
     }
 
     fn default_params() -> Self::Parameters {
@@ -84,17 +91,21 @@ impl SyntheticGenerator for NormalTappingGenerator {
             duration: 10.0,
             frame_rate: 60.0,
             frequency: 4.0,
-            amplitude: 5.0,  // cm
+            amplitude: 5.0, // cm
             regularity: 0.9,
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.regularity < 0.0 || params.regularity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("regularity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "regularity must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -108,9 +119,9 @@ pub struct BradykineticTappingParams {
     pub duration: f64,
     pub frame_rate: f64,
     pub initial_frequency: f64,
-    pub frequency_decay: f64,  // Hz per second
+    pub frequency_decay: f64, // Hz per second
     pub initial_amplitude: f64,
-    pub amplitude_decay: f64,  // cm per second
+    pub amplitude_decay: f64, // cm per second
 }
 
 impl SyntheticGenerator for BradykineticTappingGenerator {
@@ -118,7 +129,11 @@ impl SyntheticGenerator for BradykineticTappingGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = BradykineticTappingParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -155,7 +170,11 @@ impl SyntheticGenerator for BradykineticTappingGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(separation, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            separation,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -171,7 +190,9 @@ impl SyntheticGenerator for BradykineticTappingGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -202,7 +223,11 @@ impl SyntheticGenerator for AmplitudeDecrementGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = AmplitudeDecrementParams;
 
-    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        _seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -217,8 +242,8 @@ impl SyntheticGenerator for AmplitudeDecrementGenerator {
             // Calculate amplitude based on decrement profile
             let amplitude = match &params.decrement_profile {
                 DecrementProfile::Linear => {
-                    params.initial_amplitude *
-                        (1.0 - progress * (1.0 - params.final_amplitude_ratio))
+                    params.initial_amplitude
+                        * (1.0 - progress * (1.0 - params.final_amplitude_ratio))
                 }
                 DecrementProfile::Exponential { tau } => {
                     let final_amp = params.initial_amplitude * params.final_amplitude_ratio;
@@ -227,8 +252,8 @@ impl SyntheticGenerator for AmplitudeDecrementGenerator {
                 DecrementProfile::Stepwise { steps } => {
                     let step_idx = (progress * (*steps as f64)).floor() as usize;
                     let step_fraction = step_idx as f64 / *steps as f64;
-                    params.initial_amplitude *
-                        (1.0 - step_fraction * (1.0 - params.final_amplitude_ratio))
+                    params.initial_amplitude
+                        * (1.0 - step_fraction * (1.0 - params.final_amplitude_ratio))
                 }
             };
 
@@ -252,7 +277,11 @@ impl SyntheticGenerator for AmplitudeDecrementGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(separation, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            separation,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -268,10 +297,14 @@ impl SyntheticGenerator for AmplitudeDecrementGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.final_amplitude_ratio < 0.0 || params.final_amplitude_ratio > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("final_amplitude_ratio must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "final_amplitude_ratio must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -294,7 +327,11 @@ impl SyntheticGenerator for FrequencyDecrementGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = FrequencyDecrementParams;
 
-    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        _seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -308,8 +345,8 @@ impl SyntheticGenerator for FrequencyDecrementGenerator {
             let progress = t / params.duration;
 
             // Linearly decreasing frequency
-            let freq = params.initial_frequency *
-                (1.0 - progress * (1.0 - params.final_frequency_ratio));
+            let freq =
+                params.initial_frequency * (1.0 - progress * (1.0 - params.final_frequency_ratio));
 
             phase += 2.0 * PI * freq * dt;
 
@@ -331,7 +368,11 @@ impl SyntheticGenerator for FrequencyDecrementGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(separation, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            separation,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -346,10 +387,14 @@ impl SyntheticGenerator for FrequencyDecrementGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.final_frequency_ratio < 0.0 || params.final_frequency_ratio > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("final_frequency_ratio must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "final_frequency_ratio must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -364,7 +409,7 @@ pub struct HesitationArrestParams {
     pub frame_rate: f64,
     pub frequency: f64,
     pub amplitude: f64,
-    pub arrest_probability: f64,  // Probability per tap of arrest
+    pub arrest_probability: f64,   // Probability per tap of arrest
     pub arrest_duration_mean: f64, // Mean duration of arrest (seconds)
     pub arrest_duration_std: f64,  // Std deviation of arrest duration
 }
@@ -374,7 +419,11 @@ impl SyntheticGenerator for HesitationArrestGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = HesitationArrestParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -411,18 +460,23 @@ impl SyntheticGenerator for HesitationArrestGenerator {
                 separation.push(distance);
 
                 // Check for arrest at tap completion
-                if distance < 0.1 && i > 0 && separation[i - 1] >= 0.1
-                    && rng.random::<f64>() < params.arrest_probability {
-                        let duration_dist = Normal::new(params.arrest_duration_mean, params.arrest_duration_std).unwrap();
-                        arrest_remaining = duration_dist.sample(&mut rng).max(0.1);
+                if distance < 0.1
+                    && i > 0
+                    && separation[i - 1] >= 0.1
+                    && rng.random::<f64>() < params.arrest_probability
+                {
+                    let duration_dist =
+                        Normal::new(params.arrest_duration_mean, params.arrest_duration_std)
+                            .unwrap();
+                    arrest_remaining = duration_dist.sample(&mut rng).max(0.1);
 
-                        events.push(Event {
-                            time: t,
-                            event_type: "arrest".to_string(),
-                            amplitude: Some(arrest_remaining),
-                            attributes: HashMap::new(),
-                        });
-                    }
+                    events.push(Event {
+                        time: t,
+                        event_type: "arrest".to_string(),
+                        amplitude: Some(arrest_remaining),
+                        attributes: HashMap::new(),
+                    });
+                }
             }
         }
 
@@ -435,8 +489,10 @@ impl SyntheticGenerator for HesitationArrestGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(separation, ground_truth, params.frame_rate)
-            .with_metadata("arrest_count".to_string(), events.len().to_string()))
+        Ok(
+            GeneratedData::new(separation, ground_truth, params.frame_rate)
+                .with_metadata("arrest_count".to_string(), events.len().to_string()),
+        )
     }
 
     fn default_params() -> Self::Parameters {
@@ -453,13 +509,19 @@ impl SyntheticGenerator for HesitationArrestGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.arrest_probability < 0.0 || params.arrest_probability > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("arrest_probability must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "arrest_probability must be 0-1".to_string(),
+            ));
         }
         if params.arrest_duration_std < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("arrest_duration_std must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "arrest_duration_std must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -474,9 +536,9 @@ pub struct TappingFatigueParams {
     pub frame_rate: f64,
     pub initial_frequency: f64,
     pub initial_amplitude: f64,
-    pub fatigue_time_constant: f64,  // Time constant for exponential fatigue
+    pub fatigue_time_constant: f64, // Time constant for exponential fatigue
     pub rest_periods: Vec<(f64, f64)>, // Optional rest periods (start, duration)
-    pub recovery_rate: f64,            // Recovery during rest (0-1)
+    pub recovery_rate: f64,         // Recovery during rest (0-1)
 }
 
 impl SyntheticGenerator for TappingFatigueGenerator {
@@ -484,7 +546,11 @@ impl SyntheticGenerator for TappingFatigueGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = TappingFatigueParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -499,9 +565,10 @@ impl SyntheticGenerator for TappingFatigueGenerator {
             let t = i as f64 * dt;
 
             // Check if in rest period
-            let in_rest = params.rest_periods.iter().any(|(start, duration)| {
-                t >= *start && t < *start + *duration
-            });
+            let in_rest = params
+                .rest_periods
+                .iter()
+                .any(|(start, duration)| t >= *start && t < *start + *duration);
 
             if in_rest {
                 // Recovery during rest
@@ -542,8 +609,10 @@ impl SyntheticGenerator for TappingFatigueGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(separation, ground_truth, params.frame_rate)
-            .with_metadata("final_fatigue".to_string(), fatigue_level.to_string()))
+        Ok(
+            GeneratedData::new(separation, ground_truth, params.frame_rate)
+                .with_metadata("final_fatigue".to_string(), fatigue_level.to_string()),
+        )
     }
 
     fn default_params() -> Self::Parameters {
@@ -560,13 +629,19 @@ impl SyntheticGenerator for TappingFatigueGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.fatigue_time_constant <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("fatigue_time_constant must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "fatigue_time_constant must be positive".to_string(),
+            ));
         }
         if params.recovery_rate < 0.0 || params.recovery_rate > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("recovery_rate must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "recovery_rate must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -581,7 +656,10 @@ mod tests {
         let generator = NormalTappingGenerator;
         let params = NormalTappingGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -589,7 +667,10 @@ mod tests {
         let generator = BradykineticTappingGenerator;
         let params = BradykineticTappingGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -602,8 +683,14 @@ mod tests {
         let first_quarter = &result.signal[0..result.signal.len() / 4];
         let last_quarter = &result.signal[3 * result.signal.len() / 4..];
 
-        let first_max = first_quarter.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        let last_max = last_quarter.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let first_max = first_quarter
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
+        let last_max = last_quarter
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
 
         assert!(first_max > last_max, "Amplitude should decrease over time");
     }
@@ -613,7 +700,10 @@ mod tests {
         let generator = HesitationArrestGenerator;
         let params = HesitationArrestGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -621,11 +711,21 @@ mod tests {
         let generator = TappingFatigueGenerator;
         let params = TappingFatigueGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
 
         // Check that fatigue increases over time
-        let first_half_avg: f64 = result.signal[0..result.signal.len()/2].iter().sum::<f64>() / (result.signal.len()/2) as f64;
-        let second_half_avg: f64 = result.signal[result.signal.len()/2..].iter().sum::<f64>() / (result.signal.len()/2) as f64;
-        assert!(first_half_avg > second_half_avg, "Tapping should show fatigue over time");
+        let first_half_avg: f64 = result.signal[0..result.signal.len() / 2]
+            .iter()
+            .sum::<f64>()
+            / (result.signal.len() / 2) as f64;
+        let second_half_avg: f64 = result.signal[result.signal.len() / 2..].iter().sum::<f64>()
+            / (result.signal.len() / 2) as f64;
+        assert!(
+            first_half_avg > second_half_avg,
+            "Tapping should show fatigue over time"
+        );
     }
 }

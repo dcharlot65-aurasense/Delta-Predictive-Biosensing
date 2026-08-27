@@ -429,7 +429,12 @@ impl SleepMicrostructureGenerator {
         }
     }
 
-    fn add_spindles(&mut self, signal: &mut [Vec<f64>], duration: f64, density: f64) -> Vec<SpindleInfo> {
+    fn add_spindles(
+        &mut self,
+        signal: &mut [Vec<f64>],
+        duration: f64,
+        density: f64,
+    ) -> Vec<SpindleInfo> {
         let n_spindles = (duration / 60.0 * density) as usize;
         let mut spindles = Vec::new();
 
@@ -455,8 +460,14 @@ impl SleepMicrostructureGenerator {
         spindle_type: SpindleType,
     ) -> SpindleInfo {
         let (freq, duration) = match spindle_type {
-            SpindleType::Slow => (12.0 + self.rng.random::<f64>(), 0.5 + self.rng.random::<f64>() * 0.5),
-            SpindleType::Fast => (14.0 + self.rng.random::<f64>() * 2.0, 0.5 + self.rng.random::<f64>() * 1.0),
+            SpindleType::Slow => (
+                12.0 + self.rng.random::<f64>(),
+                0.5 + self.rng.random::<f64>() * 0.5,
+            ),
+            SpindleType::Fast => (
+                14.0 + self.rng.random::<f64>() * 2.0,
+                0.5 + self.rng.random::<f64>() * 1.0,
+            ),
         };
 
         let amplitude = 30.0 + self.rng.random::<f64>() * 30.0;
@@ -492,7 +503,12 @@ impl SleepMicrostructureGenerator {
         }
     }
 
-    fn add_k_complexes(&mut self, signal: &mut [Vec<f64>], duration: f64, density: f64) -> Vec<KComplexInfo> {
+    fn add_k_complexes(
+        &mut self,
+        signal: &mut [Vec<f64>],
+        duration: f64,
+        density: f64,
+    ) -> Vec<KComplexInfo> {
         let n_kcomplexes = (duration / 60.0 * density) as usize;
         let mut kcomplexes = Vec::new();
 
@@ -561,7 +577,11 @@ impl SleepMicrostructureGenerator {
         }
     }
 
-    fn add_slow_oscillations(&mut self, signal: &mut [Vec<f64>], duration: f64) -> Vec<SlowOscillationInfo> {
+    fn add_slow_oscillations(
+        &mut self,
+        signal: &mut [Vec<f64>],
+        duration: f64,
+    ) -> Vec<SlowOscillationInfo> {
         let so_freq = 0.8; // ~0.8 Hz
         let so_period = 1.0 / so_freq;
         let n_oscillations = (duration * so_freq) as usize;
@@ -632,7 +652,8 @@ impl SleepMicrostructureGenerator {
         let mut swa = 0.0;
         for window in signal.windows(256) {
             let mean = window.iter().sum::<f64>() / window.len() as f64;
-            let variance = window.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / window.len() as f64;
+            let variance =
+                window.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / window.len() as f64;
             swa += variance;
         }
         swa / (signal.len() / 256) as f64
@@ -712,10 +733,16 @@ mod tests {
         let mut generator = SleepMicrostructureGenerator::new(config);
         let output = generator.generate_n2(120.0);
 
-        let slow_count = output.ground_truth.spindles.iter()
+        let slow_count = output
+            .ground_truth
+            .spindles
+            .iter()
             .filter(|s| s.spindle_type == SpindleType::Slow)
             .count();
-        let fast_count = output.ground_truth.spindles.iter()
+        let fast_count = output
+            .ground_truth
+            .spindles
+            .iter()
             .filter(|s| s.spindle_type == SpindleType::Fast)
             .count();
 

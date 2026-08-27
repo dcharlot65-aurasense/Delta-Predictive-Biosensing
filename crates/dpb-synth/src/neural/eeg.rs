@@ -15,19 +15,19 @@ pub enum SleepStage {
 /// Seizure types for pathological EEG
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SeizureType {
-    Absence,      // 3 Hz spike-wave
-    TonicClonic,  // Generalized
-    Focal,        // Localized
+    Absence,     // 3 Hz spike-wave
+    TonicClonic, // Generalized
+    Focal,       // Localized
 }
 
 /// Band power configuration for EEG generation
 #[derive(Debug, Clone)]
 pub struct BandPowerConfig {
-    pub delta: f64,   // 0.5-4 Hz - Relative power 0-1
-    pub theta: f64,   // 4-8 Hz
-    pub alpha: f64,   // 8-13 Hz
-    pub beta: f64,    // 13-30 Hz
-    pub gamma: f64,   // 30-100 Hz
+    pub delta: f64, // 0.5-4 Hz - Relative power 0-1
+    pub theta: f64, // 4-8 Hz
+    pub alpha: f64, // 8-13 Hz
+    pub beta: f64,  // 13-30 Hz
+    pub gamma: f64, // 30-100 Hz
 }
 
 impl Default for BandPowerConfig {
@@ -36,7 +36,7 @@ impl Default for BandPowerConfig {
         Self {
             delta: 0.1,
             theta: 0.15,
-            alpha: 0.45,  // Dominant alpha
+            alpha: 0.45, // Dominant alpha
             beta: 0.2,
             gamma: 0.1,
         }
@@ -115,7 +115,12 @@ impl EegGenerator {
         // Alpha: 8-13 Hz (dominant oscillation in awake, relaxed state)
         if norm_alpha > 0.01 {
             let alpha_freq = 10.0; // Center at 10 Hz
-            let alpha = generate_oscillation(duration_sec, self.sample_rate, alpha_freq, norm_alpha.sqrt() * 40.0);
+            let alpha = generate_oscillation(
+                duration_sec,
+                self.sample_rate,
+                alpha_freq,
+                norm_alpha.sqrt() * 40.0,
+            );
             for (s, a) in signal.iter_mut().zip(alpha.iter()) {
                 *s += a;
             }
@@ -173,11 +178,7 @@ impl EegGenerator {
     }
 
     /// Generate EEG with embedded artifacts
-    pub fn generate_with_artifacts(
-        &self,
-        duration_sec: f64,
-        artifact_rate: f64,
-    ) -> Vec<Vec<f64>> {
+    pub fn generate_with_artifacts(&self, duration_sec: f64, artifact_rate: f64) -> Vec<Vec<f64>> {
         let mut signal = self.generate_resting_state(duration_sec, &BandPowerConfig::default());
         let n_samples = (duration_sec * self.sample_rate) as usize;
         let mut rng = rand::rng();
@@ -310,14 +311,14 @@ impl EegGenerator {
             SleepStage::Wake => BandPowerConfig {
                 delta: 0.1,
                 theta: 0.15,
-                alpha: 0.45,  // High alpha
+                alpha: 0.45, // High alpha
                 beta: 0.2,
                 gamma: 0.1,
             },
             SleepStage::N1 => BandPowerConfig {
                 delta: 0.15,
-                theta: 0.35,  // Increased theta
-                alpha: 0.25,  // Reduced alpha
+                theta: 0.35, // Increased theta
+                alpha: 0.25, // Reduced alpha
                 beta: 0.15,
                 gamma: 0.1,
             },
@@ -325,11 +326,11 @@ impl EegGenerator {
                 delta: 0.25,
                 theta: 0.3,
                 alpha: 0.15,
-                beta: 0.2,   // Spindles in beta range
+                beta: 0.2, // Spindles in beta range
                 gamma: 0.1,
             },
             SleepStage::N3 => BandPowerConfig {
-                delta: 0.6,   // Dominant slow waves
+                delta: 0.6, // Dominant slow waves
                 theta: 0.2,
                 alpha: 0.05,
                 beta: 0.1,
@@ -337,7 +338,7 @@ impl EegGenerator {
             },
             SleepStage::Rem => BandPowerConfig {
                 delta: 0.1,
-                theta: 0.3,   // Prominent theta
+                theta: 0.3, // Prominent theta
                 alpha: 0.25,
                 beta: 0.25,
                 gamma: 0.1,
@@ -542,9 +543,7 @@ fn generate_band_noise(
     let normal = Normal::new(0.0, 1.0).unwrap();
 
     // Generate white noise
-    let white: Vec<f64> = (0..n_samples)
-        .map(|_| normal.sample(&mut rng))
-        .collect();
+    let white: Vec<f64> = (0..n_samples).map(|_| normal.sample(&mut rng)).collect();
 
     // Apply simple bandpass filtering using oscillation envelope
     // (Simplified approach - in production would use proper FFT filtering)

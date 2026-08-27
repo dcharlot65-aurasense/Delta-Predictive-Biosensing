@@ -2,8 +2,8 @@
 
 use super::SNNArchitecture;
 use crate::{
-    layers::{SpikingAttention, SpikingLayer, SpikingLinear},
     SNNConfig, SNNError, SNNResult, SpikeTensor,
+    layers::{SpikingAttention, SpikingLayer, SpikingLinear},
 };
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
@@ -187,7 +187,14 @@ impl SpikingTransformerBlock {
 
         // Feed-forward network: d_model -> ffn_hidden -> d_model
         let ffn = vec![
-            SpikingLinear::new(d_model, ffn_hidden_size, true, neuron_params.clone(), dt, false),
+            SpikingLinear::new(
+                d_model,
+                ffn_hidden_size,
+                true,
+                neuron_params.clone(),
+                dt,
+                false,
+            ),
             SpikingLinear::new(ffn_hidden_size, d_model, true, neuron_params, dt, false),
         ];
 
@@ -226,7 +233,10 @@ impl SpikingTransformerBlock {
         }
 
         let combined = res_dense + main_dense;
-        Ok(SpikeTensor::from_dense(combined, residual.requires_grad || main.requires_grad))
+        Ok(SpikeTensor::from_dense(
+            combined,
+            residual.requires_grad || main.requires_grad,
+        ))
     }
 
     pub fn reset(&mut self) {
@@ -357,13 +367,8 @@ mod tests {
 
     #[test]
     fn test_transformer_block() {
-        let mut block = SpikingTransformerBlock::new(
-            128,
-            4,
-            512,
-            crate::NeuronParams::default(),
-            1.0,
-        );
+        let mut block =
+            SpikingTransformerBlock::new(128, 4, 512, crate::NeuronParams::default(), 1.0);
         let input = SpikeTensor::zeros(1, 10, 128, false);
 
         let output = block.forward(&input).unwrap();

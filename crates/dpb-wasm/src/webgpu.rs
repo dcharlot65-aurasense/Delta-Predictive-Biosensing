@@ -18,9 +18,9 @@
 //! const spikes = await gpu.encode_batch(signals, thresholds);
 //! ```
 
-use wasm_bindgen::prelude::*;
 use js_sys::{Float32Array, Promise, Uint32Array};
 use serde::{Deserialize, Serialize};
+use wasm_bindgen::prelude::*;
 use web_sys::console;
 
 /// WebGPU encoder configuration.
@@ -118,7 +118,9 @@ impl GpuEncoder {
             let _window = web_sys::window().ok_or_else(|| JsValue::from_str("No window"))?;
 
             // Log initialization
-            console::log_1(&format!("Initializing GPU encoder for {} channels", num_channels).into());
+            console::log_1(
+                &format!("Initializing GPU encoder for {} channels", num_channels).into(),
+            );
 
             // Note: Actual WebGPU initialization would go here
             // This is a placeholder that shows the structure

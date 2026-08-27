@@ -21,9 +21,9 @@
 //! let svg = heatmap.to_svg();
 //! ```
 
+use crate::{Result, VizError};
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
-use crate::{Result, VizError};
 
 /// Color scales for heatmap visualization
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -249,7 +249,11 @@ impl WeightHeatmap {
     /// Export to SVG format
     pub fn to_svg(&self) -> String {
         let (rows, cols) = self.dimensions();
-        let title_height = if self.config.title.is_some() { 40.0 } else { 0.0 };
+        let title_height = if self.config.title.is_some() {
+            40.0
+        } else {
+            0.0
+        };
         let label_margin = if self.config.show_labels { 30.0 } else { 0.0 };
 
         let width = cols as f32 * self.config.cell_width + label_margin * 2.0;
@@ -348,7 +352,14 @@ impl WeightHeatmap {
         svg
     }
 
-    fn add_color_legend(&self, svg: &mut String, width: f32, _height: f32, title_height: f32, label_margin: f32) {
+    fn add_color_legend(
+        &self,
+        svg: &mut String,
+        width: f32,
+        _height: f32,
+        title_height: f32,
+        label_margin: f32,
+    ) {
         let legend_width = 200.0;
         let legend_height = 20.0;
         let legend_x = width - legend_width - label_margin;
@@ -364,7 +375,11 @@ impl WeightHeatmap {
 
             svg.push_str(&format!(
                 r#"    <rect x="{}" y="{}" width="{}" height="{}" fill="{}"/>"#,
-                x, legend_y, legend_width / 100.0, legend_height, color
+                x,
+                legend_y,
+                legend_width / 100.0,
+                legend_height,
+                color
             ));
             svg.push('\n');
         }
@@ -372,13 +387,17 @@ impl WeightHeatmap {
         // Legend labels
         svg.push_str(&format!(
             r#"    <text x="{}" y="{}" font-size="10">{:.2}</text>"#,
-            legend_x, legend_y + legend_height + 15.0, self.min_value
+            legend_x,
+            legend_y + legend_height + 15.0,
+            self.min_value
         ));
         svg.push('\n');
 
         svg.push_str(&format!(
             r#"    <text x="{}" y="{}" text-anchor="end" font-size="10">{:.2}</text>"#,
-            legend_x + legend_width, legend_y + legend_height + 15.0, self.max_value
+            legend_x + legend_width,
+            legend_y + legend_height + 15.0,
+            self.max_value
         ));
         svg.push('\n');
 
@@ -561,8 +580,9 @@ mod tests {
 
     #[test]
     fn test_weight_heatmap() {
-        let data = Array2::from_shape_vec((3, 3), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])
-            .unwrap();
+        let data =
+            Array2::from_shape_vec((3, 3), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])
+                .unwrap();
 
         let heatmap = WeightHeatmap::new(data)
             .with_color_scale(ColorScale::Viridis)
@@ -643,8 +663,11 @@ mod tests {
 
     #[test]
     fn test_correlation_with_labels() {
-        let data = Array2::from_shape_vec((5, 2), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
-            .unwrap();
+        let data = Array2::from_shape_vec(
+            (5, 2),
+            vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+        )
+        .unwrap();
 
         let labels = vec!["A".to_string(), "B".to_string()];
         let corr = CorrelationMatrix::from_data(&data)
@@ -659,8 +682,11 @@ mod tests {
 
     #[test]
     fn test_correlation_wrong_labels() {
-        let data = Array2::from_shape_vec((5, 2), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
-            .unwrap();
+        let data = Array2::from_shape_vec(
+            (5, 2),
+            vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+        )
+        .unwrap();
 
         let labels = vec!["A".to_string()]; // Wrong number of labels
         let corr = CorrelationMatrix::from_data(&data).unwrap();

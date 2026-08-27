@@ -8,15 +8,9 @@
 //! - ROC analysis
 
 pub mod reliability;
-pub mod validity;
 pub mod roc;
+pub mod validity;
 
-pub use reliability::{
-    IccModel, IccType, ReliabilityMetrics, TestRetestReliability,
-};
-pub use validity::{
-    BlandAltmanResult, ChangeMetrics, CriterionValidity, ValidityMetrics,
-};
-pub use roc::{
-    RocAnalyzer, RocCurve, RocPoint, OptimalCutoff,
-};
+pub use reliability::{IccModel, IccType, ReliabilityMetrics, TestRetestReliability};
+pub use roc::{OptimalCutoff, RocAnalyzer, RocCurve, RocPoint};
+pub use validity::{BlandAltmanResult, ChangeMetrics, CriterionValidity, ValidityMetrics};

@@ -45,7 +45,8 @@ impl ComparisonMetrics {
             accuracy_delta: snn_result.accuracy - baseline_result.accuracy,
             speedup: baseline_result.latency_ms / snn_result.latency_ms.max(0.001),
             energy_efficiency: baseline_result.energy_mj / snn_result.energy_mj.max(0.001),
-            memory_ratio: baseline_result.memory_bytes as f64 / snn_result.memory_bytes.max(1) as f64,
+            memory_ratio: baseline_result.memory_bytes as f64
+                / snn_result.memory_bytes.max(1) as f64,
             sparsity: 0.0, // To be filled by caller
         }
     }

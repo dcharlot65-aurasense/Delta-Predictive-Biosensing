@@ -137,7 +137,9 @@ impl ConvergenceAnalyzer for MethodComparisonAnalyzer {
 
         // Provide comparative recommendations
         if self.method_histories.len() >= 2 {
-            report.add_recommendation("Multiple methods compared. Review final losses and convergence speeds above.");
+            report.add_recommendation(
+                "Multiple methods compared. Review final losses and convergence speeds above.",
+            );
 
             // Find fastest converging method
             let mut fastest_method = None;
@@ -145,10 +147,11 @@ impl ConvergenceAnalyzer for MethodComparisonAnalyzer {
 
             for (method, epoch_opt) in &convergence_speeds {
                 if let Some(epoch) = epoch_opt
-                    && *epoch < fastest_epoch {
-                        fastest_epoch = *epoch;
-                        fastest_method = Some(method.clone());
-                    }
+                    && *epoch < fastest_epoch
+                {
+                    fastest_epoch = *epoch;
+                    fastest_method = Some(method.clone());
+                }
             }
 
             if let Some(fastest) = fastest_method {
@@ -207,10 +210,11 @@ impl HyperparameterSensitivityAnalyzer {
 
         for (hps, history) in self.hp_configurations.values() {
             if let Some(&hp_value) = hps.get(hp_name)
-                && let Some(last_metrics) = history.last() {
-                    hp_values.push(hp_value);
-                    final_losses.push(last_metrics.train_loss);
-                }
+                && let Some(last_metrics) = history.last()
+            {
+                hp_values.push(hp_value);
+                final_losses.push(last_metrics.train_loss);
+            }
         }
 
         if hp_values.len() >= 2 {

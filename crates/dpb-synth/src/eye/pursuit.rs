@@ -1,6 +1,6 @@
 //! Smooth pursuit eye movement generators
 
-use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
+use crate::traits::{GeneratedData, SpatialGroundTruth, SyntheticGenerator};
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
@@ -12,11 +12,11 @@ pub struct NormalPursuitGenerator;
 pub struct NormalPursuitParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub target_frequency: f64,      // Hz (typically 0.2-0.8 Hz)
-    pub target_amplitude: f64,      // degrees
-    pub pursuit_gain: f64,          // ~0.9-1.0 for normal pursuit
-    pub phase_lag: f64,             // radians (typically 0.1-0.3 rad)
-    pub catch_up_saccades: bool,    // add corrective saccades
+    pub target_frequency: f64,   // Hz (typically 0.2-0.8 Hz)
+    pub target_amplitude: f64,   // degrees
+    pub pursuit_gain: f64,       // ~0.9-1.0 for normal pursuit
+    pub phase_lag: f64,          // radians (typically 0.1-0.3 rad)
+    pub catch_up_saccades: bool, // add corrective saccades
 }
 
 impl SyntheticGenerator for NormalPursuitGenerator {
@@ -24,7 +24,11 @@ impl SyntheticGenerator for NormalPursuitGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = NormalPursuitParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -74,7 +78,11 @@ impl SyntheticGenerator for NormalPursuitGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -91,10 +99,14 @@ impl SyntheticGenerator for NormalPursuitGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.pursuit_gain < 0.0 || params.pursuit_gain > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("pursuit_gain should be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "pursuit_gain should be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -109,10 +121,10 @@ pub struct ImpairedPursuitParams {
     pub sampling_rate: f64,
     pub target_frequency: f64,
     pub target_amplitude: f64,
-    pub pursuit_gain: f64,          // 0.3-0.7 for impaired pursuit
-    pub phase_lag: f64,             // increased (0.4-0.8 rad)
-    pub saccadic_pursuit: bool,     // broken/saccadic pursuit pattern
-    pub saccade_frequency: f64,     // catch-up saccades per second
+    pub pursuit_gain: f64,      // 0.3-0.7 for impaired pursuit
+    pub phase_lag: f64,         // increased (0.4-0.8 rad)
+    pub saccadic_pursuit: bool, // broken/saccadic pursuit pattern
+    pub saccade_frequency: f64, // catch-up saccades per second
 }
 
 impl SyntheticGenerator for ImpairedPursuitGenerator {
@@ -120,7 +132,11 @@ impl SyntheticGenerator for ImpairedPursuitGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = ImpairedPursuitParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -180,7 +196,11 @@ impl SyntheticGenerator for ImpairedPursuitGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -198,10 +218,14 @@ impl SyntheticGenerator for ImpairedPursuitGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.pursuit_gain < 0.0 || params.pursuit_gain > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("pursuit_gain must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "pursuit_gain must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -216,10 +240,10 @@ pub struct PredictivePursuitParams {
     pub sampling_rate: f64,
     pub target_frequency: f64,
     pub target_amplitude: f64,
-    pub pursuit_gain: f64,          // can be >1.0 with prediction
-    pub phase_lead: f64,            // negative lag (anticipation, -0.1 to -0.3 rad)
-    pub predictability: f64,        // 0-1 (how predictable the motion is)
-    pub learning_period: f64,       // seconds (time to learn the pattern)
+    pub pursuit_gain: f64,    // can be >1.0 with prediction
+    pub phase_lead: f64,      // negative lag (anticipation, -0.1 to -0.3 rad)
+    pub predictability: f64,  // 0-1 (how predictable the motion is)
+    pub learning_period: f64, // seconds (time to learn the pattern)
 }
 
 impl SyntheticGenerator for PredictivePursuitGenerator {
@@ -227,7 +251,11 @@ impl SyntheticGenerator for PredictivePursuitGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = PredictivePursuitParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -249,7 +277,8 @@ impl SyntheticGenerator for PredictivePursuitGenerator {
             let learning_progress = (t / params.learning_period).min(1.0);
 
             // Interpolate between normal lag and predictive lead
-            let current_phase_offset = params.phase_lead * learning_progress * params.predictability;
+            let current_phase_offset =
+                params.phase_lead * learning_progress * params.predictability;
 
             // Eye position (with phase lead after learning)
             let eye_phase = target_phase - current_phase_offset;
@@ -268,7 +297,11 @@ impl SyntheticGenerator for PredictivePursuitGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -286,10 +319,14 @@ impl SyntheticGenerator for PredictivePursuitGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.predictability < 0.0 || params.predictability > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("predictability must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "predictability must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -304,7 +341,10 @@ mod tests {
         let generator = NormalPursuitGenerator;
         let params = NormalPursuitGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -312,7 +352,10 @@ mod tests {
         let generator = ImpairedPursuitGenerator;
         let params = ImpairedPursuitGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -320,6 +363,9 @@ mod tests {
         let generator = PredictivePursuitGenerator;
         let params = PredictivePursuitGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 }

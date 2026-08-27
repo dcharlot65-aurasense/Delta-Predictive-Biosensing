@@ -12,7 +12,7 @@ pub mod training;
 
 // Re-export visualization types
 pub use analysis::{ConfusionMatrix, ROCCurve};
-pub use export::{SvgBuilder, JsonBuilder};
+pub use export::{JsonBuilder, SvgBuilder};
 pub use networks::{ActivationMap, NetworkGraph, WeightHeatmap};
 pub use signals::{AnnotatedSignalPlot, MultiChannelPlot, SignalPlot, SpectrogramPlot};
 pub use spikes::{FiringRateHeatmap, ISIHistogram, RasterPlot, SpikeHistogram};

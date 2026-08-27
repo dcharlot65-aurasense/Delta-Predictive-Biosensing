@@ -1,6 +1,9 @@
 //! Analysis visualization utilities for classification results.
 
-use super::{colors, export::{JsonBuilder, SvgBuilder}, PlotConfig, Visualization};
+use super::{
+    PlotConfig, Visualization, colors,
+    export::{JsonBuilder, SvgBuilder},
+};
 
 /// Confusion matrix visualization.
 pub struct ConfusionMatrix {
@@ -13,9 +16,7 @@ impl ConfusionMatrix {
     /// Creates a new confusion matrix.
     pub fn new(matrix: Vec<Vec<usize>>) -> Self {
         let num_classes = matrix.len();
-        let class_names = (0..num_classes)
-            .map(|i| format!("Class {}", i))
-            .collect();
+        let class_names = (0..num_classes).map(|i| format!("Class {}", i)).collect();
         Self {
             matrix,
             class_names,
@@ -52,7 +53,13 @@ impl ConfusionMatrix {
             return 0.0;
         }
         let correct: usize = (0..self.matrix.len())
-            .map(|i| self.matrix.get(i).and_then(|row| row.get(i)).copied().unwrap_or(0))
+            .map(|i| {
+                self.matrix
+                    .get(i)
+                    .and_then(|row| row.get(i))
+                    .copied()
+                    .unwrap_or(0)
+            })
             .sum();
         correct as f64 / total as f64
     }
@@ -73,7 +80,10 @@ impl Visualization for ConfusionMatrix {
         if let Some(ref title) = self.config.title {
             svg.title(title, self.config.width);
         } else {
-            svg.title(&format!("Confusion Matrix (Acc: {:.2}%)", self.accuracy() * 100.0), self.config.width);
+            svg.title(
+                &format!("Confusion Matrix (Acc: {:.2}%)", self.accuracy() * 100.0),
+                self.config.width,
+            );
         }
 
         // Plot confusion matrix
@@ -283,7 +293,10 @@ impl Visualization for ROCCurve {
         if let Some(ref title) = self.config.title {
             svg.title(title, self.config.width);
         } else {
-            svg.title(&format!("ROC Curve (AUC = {:.3})", self.auc), self.config.width);
+            svg.title(
+                &format!("ROC Curve (AUC = {:.3})", self.auc),
+                self.config.width,
+            );
         }
 
         // Add grid if enabled
@@ -337,7 +350,15 @@ impl Visualization for ROCCurve {
         // Add AUC text box
         let text_x = width - margin - 120.0;
         let text_y = height - margin - 30.0;
-        svg.rect_stroke(text_x, text_y - 20.0, 110.0, 30.0, "#f0f0f0", "#999999", 1.0);
+        svg.rect_stroke(
+            text_x,
+            text_y - 20.0,
+            110.0,
+            30.0,
+            "#f0f0f0",
+            "#999999",
+            1.0,
+        );
         svg.text(
             text_x + 5.0,
             text_y - 5.0,
@@ -370,11 +391,7 @@ mod tests {
 
     #[test]
     fn test_confusion_matrix() {
-        let matrix = vec![
-            vec![50, 2, 3],
-            vec![1, 48, 4],
-            vec![2, 3, 47],
-        ];
+        let matrix = vec![vec![50, 2, 3], vec![1, 48, 4], vec![2, 3, 47]];
         let class_names = vec!["Cat".to_string(), "Dog".to_string(), "Bird".to_string()];
         let cm = ConfusionMatrix::with_names(matrix, class_names);
 

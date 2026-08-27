@@ -76,7 +76,10 @@ impl GainModulation {
     /// Set gain from modulator concentration
     pub fn set_gain_from_modulator(&mut self, concentration: f64) {
         self.gain = self.config.baseline_gain + self.config.gain_scale * concentration;
-        self.gain = self.gain.max(self.config.min_gain).min(self.config.max_gain);
+        self.gain = self
+            .gain
+            .max(self.config.min_gain)
+            .min(self.config.max_gain);
     }
 
     /// Apply multiplicative gain modulation
@@ -173,9 +176,7 @@ impl InputGating {
     ///
     /// gate = 1 / (1 + exp(-slope * (modulation - threshold)))
     pub fn compute_gates(&mut self, modulation: &Array1<f64>) {
-        self.gates = modulation.mapv(|m| {
-            1.0 / (1.0 + (-self.slope * (m - self.threshold)).exp())
-        });
+        self.gates = modulation.mapv(|m| 1.0 / (1.0 + (-self.slope * (m - self.threshold)).exp()));
     }
 
     /// Apply gating to input
@@ -248,17 +249,13 @@ impl OutputGating {
 
             // Blend with soft gating
             if self.wta_strength < 1.0 {
-                let soft_gates = modulation.mapv(|m| {
-                    if m > self.threshold { 1.0 } else { 0.0 }
-                });
-                self.gates = &self.gates * self.wta_strength
-                    + &soft_gates * (1.0 - self.wta_strength);
+                let soft_gates = modulation.mapv(|m| if m > self.threshold { 1.0 } else { 0.0 });
+                self.gates =
+                    &self.gates * self.wta_strength + &soft_gates * (1.0 - self.wta_strength);
             }
         } else {
             // Soft gating
-            self.gates = modulation.mapv(|m| {
-                if m > self.threshold { 1.0 } else { 0.0 }
-            });
+            self.gates = modulation.mapv(|m| if m > self.threshold { 1.0 } else { 0.0 });
         }
     }
 
@@ -275,7 +272,11 @@ impl OutputGating {
     }
 
     /// Apply soft gating (continuous)
-    pub fn apply_soft(&self, output: &Array1<f64>, modulation: &Array1<f64>) -> NeuromodResult<Array1<f64>> {
+    pub fn apply_soft(
+        &self,
+        output: &Array1<f64>,
+        modulation: &Array1<f64>,
+    ) -> NeuromodResult<Array1<f64>> {
         if output.len() != modulation.len() {
             return Err(NeuromodError::DimensionMismatch {
                 expected: output.len(),
@@ -345,7 +346,11 @@ impl ThresholdModulation {
     }
 
     /// Apply threshold to spike generation
-    pub fn apply_threshold(&self, membrane_potentials: &Array1<f64>, modulation: &Array1<f64>) -> NeuromodResult<Array1<bool>> {
+    pub fn apply_threshold(
+        &self,
+        membrane_potentials: &Array1<f64>,
+        modulation: &Array1<f64>,
+    ) -> NeuromodResult<Array1<bool>> {
         if membrane_potentials.len() != modulation.len() {
             return Err(NeuromodError::DimensionMismatch {
                 expected: membrane_potentials.len(),

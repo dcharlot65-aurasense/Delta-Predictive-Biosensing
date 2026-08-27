@@ -16,7 +16,7 @@
 //! - `pip install smplx torch`
 //! - SMPL-X model files (registration required)
 
-use super::{MediaError, Result, JointAngles, JointPositions3D};
+use super::{JointAngles, JointPositions3D, MediaError, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -331,11 +331,10 @@ impl SMPLXModel {
             }
         }
 
-        let python_path = which::which("python3")
-            .map_err(|_| MediaError::ToolNotFound {
-                tool: "python3".to_string(),
-                install_url: "https://www.python.org/downloads/".to_string(),
-            })?;
+        let python_path = which::which("python3").map_err(|_| MediaError::ToolNotFound {
+            tool: "python3".to_string(),
+            install_url: "https://www.python.org/downloads/".to_string(),
+        })?;
 
         std::fs::create_dir_all(&config.output_dir)?;
 
@@ -387,7 +386,8 @@ impl SMPLXModel {
         let expression_json = serde_json::to_string(&shape.expression)
             .map_err(|e| MediaError::SerializationError(e.to_string()))?;
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import torch
 import smplx
 import json
@@ -482,13 +482,19 @@ print('RESULT_JSON:' + json.dumps(result))
         ))
     }
 
-    fn generate_export_script(&self, pose: &BodyPose, shape: &BodyShape, output_path: &Path) -> Result<String> {
+    fn generate_export_script(
+        &self,
+        pose: &BodyPose,
+        shape: &BodyShape,
+        output_path: &Path,
+    ) -> Result<String> {
         let body_pose_json = serde_json::to_string(&pose.body_pose)
             .map_err(|e| MediaError::SerializationError(e.to_string()))?;
         let betas_json = serde_json::to_string(&shape.betas)
             .map_err(|e| MediaError::SerializationError(e.to_string()))?;
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import torch
 import smplx
 import trimesh
@@ -538,7 +544,8 @@ print('RESULT_JSON:{{"status": "ok"}}')
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result_line = stdout.lines()
+        let result_line = stdout
+            .lines()
             .find(|l| l.starts_with("RESULT_JSON:"))
             .ok_or_else(|| MediaError::SerializationError("No result found".to_string()))?;
 
@@ -594,7 +601,9 @@ print('RESULT_JSON:{{"status": "ok"}}')
     /// Convert SMPL-X joints to DPB JointAngles
     pub fn to_joint_angles(&self, output: &SMPLXOutput) -> JointAngles {
         let find_joint = |name: &str| -> Option<[f32; 3]> {
-            output.joints.iter()
+            output
+                .joints
+                .iter()
                 .find(|j| j.joint_name == name)
                 .map(|j| j.position)
         };

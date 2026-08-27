@@ -1,10 +1,10 @@
 //! Real-time encoding pipeline for LSL streams.
 
 use crate::{LslError, LslInlet, Result, StreamInfo, StreamResolver};
-use crossbeam_channel::{bounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, bounded};
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use tracing::{debug, error, info, warn};
@@ -221,7 +221,7 @@ fn run_pipeline_worker(
     running: Arc<AtomicBool>,
     stats_tx: Sender<PipelineStats>,
 ) -> Result<()> {
-    use crate::{outlet::SpikeOutlet};
+    use crate::outlet::SpikeOutlet;
 
     // Create inlet
     let mut inlet = LslInlet::new(&input_info, None)?;
@@ -349,8 +349,7 @@ fn run_pipeline_worker(
                         // Adaptive threshold update
                         if config.adaptive {
                             let alpha = config.encoder_params.adaptation_rate;
-                            thresholds[ch] = thresholds[ch] * (1.0 - alpha)
-                                + value.abs() * alpha;
+                            thresholds[ch] = thresholds[ch] * (1.0 - alpha) + value.abs() * alpha;
                         }
                     }
                 }
@@ -600,25 +599,19 @@ mod tests {
 
     #[test]
     fn test_pipeline_builder_input_stream() {
-        let pipeline = PipelineBuilder::new()
-            .input_stream("MyEEG")
-            .build();
+        let pipeline = PipelineBuilder::new().input_stream("MyEEG").build();
         assert_eq!(pipeline.config().input_stream, "MyEEG");
     }
 
     #[test]
     fn test_pipeline_builder_input_type() {
-        let pipeline = PipelineBuilder::new()
-            .input_type("ECG")
-            .build();
+        let pipeline = PipelineBuilder::new().input_type("ECG").build();
         assert_eq!(pipeline.config().input_type, "ECG");
     }
 
     #[test]
     fn test_pipeline_builder_output_name() {
-        let pipeline = PipelineBuilder::new()
-            .output_name("CustomSpikes")
-            .build();
+        let pipeline = PipelineBuilder::new().output_name("CustomSpikes").build();
         assert_eq!(pipeline.config().output_name, "CustomSpikes");
     }
 
@@ -632,57 +625,43 @@ mod tests {
 
     #[test]
     fn test_pipeline_builder_encoder() {
-        let pipeline = PipelineBuilder::new()
-            .encoder(EncoderType::Delta)
-            .build();
+        let pipeline = PipelineBuilder::new().encoder(EncoderType::Delta).build();
         assert_eq!(pipeline.config().encoder_type, EncoderType::Delta);
     }
 
     #[test]
     fn test_pipeline_builder_threshold() {
-        let pipeline = PipelineBuilder::new()
-            .threshold(0.05)
-            .build();
+        let pipeline = PipelineBuilder::new().threshold(0.05).build();
         assert_eq!(pipeline.config().encoder_params.threshold, 0.05);
     }
 
     #[test]
     fn test_pipeline_builder_num_levels() {
-        let pipeline = PipelineBuilder::new()
-            .num_levels(128)
-            .build();
+        let pipeline = PipelineBuilder::new().num_levels(128).build();
         assert_eq!(pipeline.config().encoder_params.num_levels, 128);
     }
 
     #[test]
     fn test_pipeline_builder_adaptive() {
-        let pipeline = PipelineBuilder::new()
-            .adaptive(false)
-            .build();
+        let pipeline = PipelineBuilder::new().adaptive(false).build();
         assert!(!pipeline.config().adaptive);
     }
 
     #[test]
     fn test_pipeline_builder_adaptation_rate() {
-        let pipeline = PipelineBuilder::new()
-            .adaptation_rate(0.05)
-            .build();
+        let pipeline = PipelineBuilder::new().adaptation_rate(0.05).build();
         assert_eq!(pipeline.config().encoder_params.adaptation_rate, 0.05);
     }
 
     #[test]
     fn test_pipeline_builder_buffer_size() {
-        let pipeline = PipelineBuilder::new()
-            .buffer_size(2048)
-            .build();
+        let pipeline = PipelineBuilder::new().buffer_size(2048).build();
         assert_eq!(pipeline.config().buffer_size, 2048);
     }
 
     #[test]
     fn test_pipeline_builder_stats_interval() {
-        let pipeline = PipelineBuilder::new()
-            .stats_interval(30.0)
-            .build();
+        let pipeline = PipelineBuilder::new().stats_interval(30.0).build();
         assert_eq!(pipeline.config().stats_interval, 30.0);
     }
 

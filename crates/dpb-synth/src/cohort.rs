@@ -7,7 +7,7 @@
 use rand::Rng;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
-use rand_distr::{Distribution, Normal, Bernoulli};
+use rand_distr::{Bernoulli, Distribution, Normal};
 use std::collections::HashMap;
 
 /// Biological sex
@@ -45,7 +45,10 @@ pub struct Demographics {
 impl Demographics {
     /// Create new demographics with validation
     pub fn new(age_years: f64, sex: Sex, bmi: f64, ethnicity: Option<String>) -> Self {
-        assert!((0.0..=120.0).contains(&age_years), "Age must be in [0, 120]");
+        assert!(
+            (0.0..=120.0).contains(&age_years),
+            "Age must be in [0, 120]"
+        );
         assert!(bmi > 0.0 && bmi < 100.0, "BMI must be in (0, 100)");
 
         Self {
@@ -84,7 +87,10 @@ impl VirtualPatient {
         conditions: Vec<String>,
         medications: Vec<String>,
     ) -> Self {
-        assert!(baseline_hr > 0.0 && baseline_hr < 300.0, "HR must be in (0, 300)");
+        assert!(
+            baseline_hr > 0.0 && baseline_hr < 300.0,
+            "HR must be in (0, 300)"
+        );
         assert!(baseline_hrv >= 0.0, "HRV must be non-negative");
 
         Self {
@@ -153,8 +159,8 @@ impl CohortGenerator {
     pub fn new(n_subjects: usize) -> Self {
         Self {
             n_subjects,
-            age_distribution: (45.0, 18.0),  // Mean age 45, std 18
-            sex_ratio: 0.5,  // 50% male
+            age_distribution: (45.0, 18.0), // Mean age 45, std 18
+            sex_ratio: 0.5,                 // 50% male
             disease_prevalence: HashMap::new(),
         }
     }
@@ -176,7 +182,8 @@ impl CohortGenerator {
     /// Add a disease with a given prevalence rate
     pub fn with_disease(mut self, disease: &str, prevalence: f64) -> Self {
         assert!((0.0..=1.0).contains(&prevalence));
-        self.disease_prevalence.insert(disease.to_string(), prevalence);
+        self.disease_prevalence
+            .insert(disease.to_string(), prevalence);
         self
     }
 
@@ -221,7 +228,7 @@ impl CohortGenerator {
 
     fn sample_age(&self, rng: &mut impl Rng) -> f64 {
         let normal = Normal::new(self.age_distribution.0, self.age_distribution.1).unwrap();
-        normal.sample(rng).clamp(18.0, 100.0)  // Clamp to adult range
+        normal.sample(rng).clamp(18.0, 100.0) // Clamp to adult range
     }
 
     fn sample_sex(&self, rng: &mut impl Rng) -> Sex {
@@ -241,11 +248,13 @@ impl CohortGenerator {
 
     fn sample_ethnicity(&self, rng: &mut impl Rng) -> Option<String> {
         // Simplified ethnicity distribution
-        let ethnicities = ["Caucasian",
+        let ethnicities = [
+            "Caucasian",
             "African American",
             "Hispanic",
             "Asian",
-            "Other"];
+            "Other",
+        ];
         let weights = [0.6, 0.13, 0.18, 0.06, 0.03];
 
         let r = (rng.next_u64() as f64) / (u64::MAX as f64);
@@ -322,7 +331,8 @@ impl CohortGenerator {
 
             // Sample 1-2 medications per condition
             for med in meds {
-                if ((rng.next_u64() as f64) / (u64::MAX as f64)) < 0.6 {  // 60% chance of taking each medication
+                if ((rng.next_u64() as f64) / (u64::MAX as f64)) < 0.6 {
+                    // 60% chance of taking each medication
                     if !medications.contains(&med.to_string()) {
                         medications.push(med.to_string());
                     }
@@ -437,11 +447,13 @@ mod tests {
         let cohort = generator.generate(42);
 
         // Count patients with conditions
-        let hypertension_count = cohort.iter()
+        let hypertension_count = cohort
+            .iter()
             .filter(|p| p.has_condition("Hypertension"))
             .count();
 
-        let diabetes_count = cohort.iter()
+        let diabetes_count = cohort
+            .iter()
             .filter(|p| p.has_condition("Diabetes"))
             .count();
 
@@ -452,12 +464,12 @@ mod tests {
 
     #[test]
     fn test_cohort_generator_sex_ratio() {
-        let generator = CohortGenerator::new(100)
-            .with_sex_ratio(0.7);  // 70% male
+        let generator = CohortGenerator::new(100).with_sex_ratio(0.7); // 70% male
 
         let cohort = generator.generate(42);
 
-        let male_count = cohort.iter()
+        let male_count = cohort
+            .iter()
             .filter(|p| p.demographics.sex == Sex::Male)
             .count();
 
@@ -467,14 +479,12 @@ mod tests {
 
     #[test]
     fn test_cohort_generator_age_distribution() {
-        let generator = CohortGenerator::new(100)
-            .with_age_distribution(60.0, 10.0);
+        let generator = CohortGenerator::new(100).with_age_distribution(60.0, 10.0);
 
         let cohort = generator.generate(42);
 
-        let mean_age = cohort.iter()
-            .map(|p| p.demographics.age_years)
-            .sum::<f64>() / cohort.len() as f64;
+        let mean_age =
+            cohort.iter().map(|p| p.demographics.age_years).sum::<f64>() / cohort.len() as f64;
 
         // Mean should be close to 60
         assert!((mean_age - 60.0).abs() < 10.0);

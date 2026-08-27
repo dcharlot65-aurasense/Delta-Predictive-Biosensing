@@ -1,8 +1,8 @@
 //! Hand tracking noise and artifact generators
 
-use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
+use crate::traits::{GeneratedData, SpatialGroundTruth, SyntheticGenerator};
 use rand::{RngExt, SeedableRng};
-use rand_distr::{Distribution, Normal, Bernoulli};
+use rand_distr::{Bernoulli, Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -15,7 +15,7 @@ pub struct LandmarkJitterParams {
     pub frame_rate: f64,
     pub n_landmarks: usize,
     pub jitter_std_per_landmark: Vec<f64>, // Standard deviation per landmark (cm)
-    pub temporal_correlation: f64,          // 0-1 (1 = perfectly correlated across time)
+    pub temporal_correlation: f64,         // 0-1 (1 = perfectly correlated across time)
 }
 
 impl SyntheticGenerator for LandmarkJitterGenerator {
@@ -23,7 +23,11 @@ impl SyntheticGenerator for LandmarkJitterGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = LandmarkJitterParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -55,12 +59,12 @@ impl SyntheticGenerator for LandmarkJitterGenerator {
                 ];
 
                 let jitter = [
-                    params.temporal_correlation * prev_jitter[landmark_idx][0] +
-                        (1.0 - params.temporal_correlation) * new_jitter[0],
-                    params.temporal_correlation * prev_jitter[landmark_idx][1] +
-                        (1.0 - params.temporal_correlation) * new_jitter[1],
-                    params.temporal_correlation * prev_jitter[landmark_idx][2] +
-                        (1.0 - params.temporal_correlation) * new_jitter[2],
+                    params.temporal_correlation * prev_jitter[landmark_idx][0]
+                        + (1.0 - params.temporal_correlation) * new_jitter[0],
+                    params.temporal_correlation * prev_jitter[landmark_idx][1]
+                        + (1.0 - params.temporal_correlation) * new_jitter[1],
+                    params.temporal_correlation * prev_jitter[landmark_idx][2]
+                        + (1.0 - params.temporal_correlation) * new_jitter[2],
                 ];
 
                 frame_landmarks.push(jitter);
@@ -76,7 +80,11 @@ impl SyntheticGenerator for LandmarkJitterGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(positions, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            positions,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -91,10 +99,14 @@ impl SyntheticGenerator for LandmarkJitterGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.temporal_correlation < 0.0 || params.temporal_correlation > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("temporal_correlation must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "temporal_correlation must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -117,7 +129,11 @@ impl SyntheticGenerator for SelfOcclusionGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = SelfOcclusionParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -137,8 +153,8 @@ impl SyntheticGenerator for SelfOcclusionGenerator {
             for landmark_idx in 0..params.n_landmarks {
                 // Simplified occlusion model: back of hand landmarks occluded when hand rotated
                 let is_back_landmark = landmark_idx % 4 == 3; // Simple heuristic
-                let is_occluded = is_back_landmark &&
-                    angle.abs() > params.occlusion_threshold_angle;
+                let is_occluded =
+                    is_back_landmark && angle.abs() > params.occlusion_threshold_angle;
 
                 frame_visibility.push(!is_occluded);
             }
@@ -152,7 +168,11 @@ impl SyntheticGenerator for SelfOcclusionGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(visibility, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            visibility,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -167,7 +187,9 @@ impl SyntheticGenerator for SelfOcclusionGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -180,9 +202,9 @@ pub struct HandTrackingLossGenerator;
 pub struct HandTrackingLossParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub loss_probability: f64,         // Per-frame probability of tracking loss
-    pub min_loss_duration: f64,        // Minimum loss duration (seconds)
-    pub max_loss_duration: f64,        // Maximum loss duration (seconds)
+    pub loss_probability: f64,  // Per-frame probability of tracking loss
+    pub min_loss_duration: f64, // Minimum loss duration (seconds)
+    pub max_loss_duration: f64, // Maximum loss duration (seconds)
 }
 
 impl SyntheticGenerator for HandTrackingLossGenerator {
@@ -190,7 +212,11 @@ impl SyntheticGenerator for HandTrackingLossGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = HandTrackingLossParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -209,7 +235,8 @@ impl SyntheticGenerator for HandTrackingLossGenerator {
             } else {
                 // Check for new loss
                 if loss_dist.sample(&mut rng) {
-                    let loss_duration = rng.random_range(params.min_loss_duration..=params.max_loss_duration);
+                    let loss_duration =
+                        rng.random_range(params.min_loss_duration..=params.max_loss_duration);
                     loss_remaining = loss_duration;
                     tracking_active.push(false);
                 } else {
@@ -224,7 +251,11 @@ impl SyntheticGenerator for HandTrackingLossGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(tracking_active, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            tracking_active,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -239,13 +270,19 @@ impl SyntheticGenerator for HandTrackingLossGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.loss_probability < 0.0 || params.loss_probability > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("loss_probability must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "loss_probability must be 0-1".to_string(),
+            ));
         }
         if params.min_loss_duration > params.max_loss_duration {
-            return Err(crate::GeneratorError::InvalidParameter("min_loss_duration must be <= max_loss_duration".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "min_loss_duration must be <= max_loss_duration".to_string(),
+            ));
         }
         Ok(())
     }
@@ -258,9 +295,9 @@ pub struct HandDepthErrorGenerator;
 pub struct HandDepthErrorParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub depth_noise_std: f64,       // Depth noise standard deviation (cm)
-    pub depth_bias: f64,             // Systematic depth bias (cm)
-    pub distance_dependency: f64,    // Noise increases with distance (0-1)
+    pub depth_noise_std: f64,     // Depth noise standard deviation (cm)
+    pub depth_bias: f64,          // Systematic depth bias (cm)
+    pub distance_dependency: f64, // Noise increases with distance (0-1)
 }
 
 impl SyntheticGenerator for HandDepthErrorGenerator {
@@ -268,7 +305,11 @@ impl SyntheticGenerator for HandDepthErrorGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = HandDepthErrorParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -295,7 +336,11 @@ impl SyntheticGenerator for HandDepthErrorGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(depth_errors, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            depth_errors,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -310,10 +355,14 @@ impl SyntheticGenerator for HandDepthErrorGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.distance_dependency < 0.0 || params.distance_dependency > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("distance_dependency must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "distance_dependency must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -326,9 +375,9 @@ pub struct HandMotionBlurGenerator;
 pub struct HandMotionBlurParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub velocities: Vec<f64>,        // Hand velocities over time (cm/s)
+    pub velocities: Vec<f64>,         // Hand velocities over time (cm/s)
     pub blur_threshold_velocity: f64, // Velocity at which blur starts (cm/s)
-    pub blur_kernel_size_max: f64,   // Maximum blur kernel size
+    pub blur_kernel_size_max: f64,    // Maximum blur kernel size
 }
 
 impl SyntheticGenerator for HandMotionBlurGenerator {
@@ -336,7 +385,11 @@ impl SyntheticGenerator for HandMotionBlurGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = HandMotionBlurParams;
 
-    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        _seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -368,7 +421,11 @@ impl SyntheticGenerator for HandMotionBlurGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(blur_kernels, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            blur_kernels,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -383,10 +440,14 @@ impl SyntheticGenerator for HandMotionBlurGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.blur_threshold_velocity < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("blur_threshold_velocity must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "blur_threshold_velocity must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -399,9 +460,9 @@ pub struct BackgroundClutterGenerator;
 pub struct BackgroundClutterParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub n_distractor_objects: usize,  // Number of hand-like distractors
-    pub false_positive_rate: f64,     // Rate of false hand detections
-    pub clutter_density: f64,          // 0-1 (density of background clutter)
+    pub n_distractor_objects: usize, // Number of hand-like distractors
+    pub false_positive_rate: f64,    // Rate of false hand detections
+    pub clutter_density: f64,        // 0-1 (density of background clutter)
 }
 
 impl SyntheticGenerator for BackgroundClutterGenerator {
@@ -409,7 +470,11 @@ impl SyntheticGenerator for BackgroundClutterGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = BackgroundClutterParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -444,7 +509,11 @@ impl SyntheticGenerator for BackgroundClutterGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(clutter_data, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            clutter_data,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -459,13 +528,19 @@ impl SyntheticGenerator for BackgroundClutterGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.clutter_density < 0.0 || params.clutter_density > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("clutter_density must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "clutter_density must be 0-1".to_string(),
+            ));
         }
         if params.false_positive_rate < 0.0 || params.false_positive_rate > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("false_positive_rate must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "false_positive_rate must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -478,8 +553,8 @@ pub struct SkinToneVariationGenerator;
 pub struct SkinToneVariationParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub lighting_variability: f64,   // 0-1 (lighting changes)
-    pub skin_tone_base: [f64; 3],    // RGB base skin tone (0-1)
+    pub lighting_variability: f64,     // 0-1 (lighting changes)
+    pub skin_tone_base: [f64; 3],      // RGB base skin tone (0-1)
     pub ambient_light_color: [f64; 3], // RGB ambient light (0-1)
 }
 
@@ -488,7 +563,11 @@ impl SyntheticGenerator for SkinToneVariationGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = SkinToneVariationParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -507,12 +586,15 @@ impl SyntheticGenerator for SkinToneVariationGenerator {
             // Ambient light influence
             let ambient_influence = 0.2 * (2.0 * PI * t).sin();
 
-            let r = (params.skin_tone_base[0] * lighting_factor +
-                    params.ambient_light_color[0] * ambient_influence).clamp(0.0, 1.0);
-            let g = (params.skin_tone_base[1] * lighting_factor +
-                    params.ambient_light_color[1] * ambient_influence).clamp(0.0, 1.0);
-            let b = (params.skin_tone_base[2] * lighting_factor +
-                    params.ambient_light_color[2] * ambient_influence).clamp(0.0, 1.0);
+            let r = (params.skin_tone_base[0] * lighting_factor
+                + params.ambient_light_color[0] * ambient_influence)
+                .clamp(0.0, 1.0);
+            let g = (params.skin_tone_base[1] * lighting_factor
+                + params.ambient_light_color[1] * ambient_influence)
+                .clamp(0.0, 1.0);
+            let b = (params.skin_tone_base[2] * lighting_factor
+                + params.ambient_light_color[2] * ambient_influence)
+                .clamp(0.0, 1.0);
 
             skin_tones.push([r, g, b]);
         }
@@ -523,7 +605,11 @@ impl SyntheticGenerator for SkinToneVariationGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(skin_tones, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            skin_tones,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -538,10 +624,14 @@ impl SyntheticGenerator for SkinToneVariationGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.lighting_variability < 0.0 || params.lighting_variability > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("lighting_variability must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "lighting_variability must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -556,7 +646,10 @@ mod tests {
         let generator = LandmarkJitterGenerator;
         let params = LandmarkJitterGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
         assert_eq!(result.signal[0].len(), params.n_landmarks);
     }
 
@@ -565,7 +658,10 @@ mod tests {
         let generator = SelfOcclusionGenerator;
         let params = SelfOcclusionGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -573,7 +669,10 @@ mod tests {
         let generator = HandTrackingLossGenerator;
         let params = HandTrackingLossGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -581,7 +680,10 @@ mod tests {
         let generator = HandDepthErrorGenerator;
         let params = HandDepthErrorGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -589,7 +691,10 @@ mod tests {
         let generator = HandMotionBlurGenerator;
         let params = HandMotionBlurGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -597,7 +702,10 @@ mod tests {
         let generator = BackgroundClutterGenerator;
         let params = BackgroundClutterGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -605,7 +713,10 @@ mod tests {
         let generator = SkinToneVariationGenerator;
         let params = SkinToneVariationGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
 
         // Check RGB values are in valid range
         for &rgb in &result.signal {

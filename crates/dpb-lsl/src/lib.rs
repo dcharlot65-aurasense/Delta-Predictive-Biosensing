@@ -59,22 +59,22 @@
 //! Without the `native` feature, mock implementations are used for testing.
 
 pub mod error;
-pub mod stream_info;
+pub mod ffi;
 pub mod inlet;
 pub mod outlet;
-pub mod resolver;
 pub mod pipeline;
-pub mod ffi;
+pub mod resolver;
+pub mod stream_info;
 
 #[cfg(feature = "native")]
 pub mod native;
 
 pub use error::{LslError, Result};
-pub use stream_info::StreamInfo;
 pub use inlet::LslInlet;
 pub use outlet::LslOutlet;
-pub use resolver::StreamResolver;
 pub use pipeline::{EncodingPipeline, PipelineConfig};
+pub use resolver::StreamResolver;
+pub use stream_info::StreamInfo;
 
 use serde::{Deserialize, Serialize};
 
@@ -198,10 +198,11 @@ mod tests {
     #[test]
     fn test_public_exports() {
         // Verify that public types are accessible
-        let _: fn(String, f64) -> LslError = |name: String, timeout: f64| LslError::StreamNotFound {
-            name,
-            timeout_sec: timeout,
-        };
+        let _: fn(String, f64) -> LslError =
+            |name: String, timeout: f64| LslError::StreamNotFound {
+                name,
+                timeout_sec: timeout,
+            };
 
         // StreamInfo creation should work
         let info_result = StreamInfo::new(

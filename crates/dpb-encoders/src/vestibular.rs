@@ -112,9 +112,9 @@ impl Default for VorGainConfig {
     fn default() -> Self {
         Self {
             normal_range: (0.8, 1.0),
-            min_head_velocity: 50.0,  // Only analyze during significant head movement
+            min_head_velocity: 50.0, // Only analyze during significant head movement
             window_size: 10,
-            min_interval: 0.02,       // 20ms minimum
+            min_interval: 0.02, // 20ms minimum
         }
     }
 }
@@ -233,10 +233,10 @@ pub struct NystagmusConfig {
 impl Default for NystagmusConfig {
     fn default() -> Self {
         Self {
-            min_spv: 3.0,                  // 3 deg/s minimum
-            quick_phase_threshold: 100.0,  // Quick phases are >100 deg/s
-            max_slow_phase_duration: 0.5,  // Max 500ms slow phase
-            min_beat_interval: 0.15,       // Min 150ms between beats
+            min_spv: 3.0,                 // 3 deg/s minimum
+            quick_phase_threshold: 100.0, // Quick phases are >100 deg/s
+            max_slow_phase_duration: 0.5, // Max 500ms slow phase
+            min_beat_interval: 0.15,      // Min 150ms between beats
         }
     }
 }
@@ -312,7 +312,12 @@ impl EventEncoder for NystagmusEncoder {
                     // Emit beat event if significant and not too recent
                     if avg_spv.abs() > config.min_spv && (i - last_beat_idx) >= min_beat_samples {
                         let channel = if slow_phase_direction > 0 { 1 } else { 0 };
-                        events.push(SpikeEvent::new(time, channel as u32, slow_phase_direction, avg_spv.abs()));
+                        events.push(SpikeEvent::new(
+                            time,
+                            channel as u32,
+                            slow_phase_direction,
+                            avg_spv.abs(),
+                        ));
                         last_beat_idx = i;
                     }
                 }
@@ -348,7 +353,12 @@ impl EventEncoder for NystagmusEncoder {
                     let avg_spv = slow_phase_sum / slow_phase_count as f32;
                     if avg_spv.abs() > config.min_spv && (i - last_beat_idx) >= min_beat_samples {
                         let channel = if slow_phase_direction > 0 { 1 } else { 0 };
-                        events.push(SpikeEvent::new(time, channel as u32, slow_phase_direction, avg_spv.abs()));
+                        events.push(SpikeEvent::new(
+                            time,
+                            channel as u32,
+                            slow_phase_direction,
+                            avg_spv.abs(),
+                        ));
                         last_beat_idx = i;
                     }
                 }
@@ -378,9 +388,9 @@ pub struct CaloricConfig {
 impl Default for CaloricConfig {
     fn default() -> Self {
         Self {
-            peak_spv_threshold: 5.0,   // 5 deg/s minimum response
-            response_window: 90.0,     // 90 second response window
-            smoothing_window: 50,      // 0.5s smoothing at 100Hz
+            peak_spv_threshold: 5.0, // 5 deg/s minimum response
+            response_window: 90.0,   // 90 second response window
+            smoothing_window: 50,    // 0.5s smoothing at 100Hz
         }
     }
 }
@@ -480,13 +490,15 @@ impl EventEncoder for CaloricEncoder {
             }
 
             // Detect response end (falls below threshold after peak)
-            if response_started && i > peak_idx + (sample_rate as usize * 5)
-                && abs_spv < config.peak_spv_threshold {
-                    let duration = (i - response_start_idx) as f64 * dt;
-                    let end_time = i as f64 * dt;
-                    events.push(SpikeEvent::new(end_time, 2, -1, duration as f32));
-                    break;
-                }
+            if response_started
+                && i > peak_idx + (sample_rate as usize * 5)
+                && abs_spv < config.peak_spv_threshold
+            {
+                let duration = (i - response_start_idx) as f64 * dt;
+                let end_time = i as f64 * dt;
+                events.push(SpikeEvent::new(end_time, 2, -1, duration as f32));
+                break;
+            }
         }
 
         // Emit peak event if response was detected
@@ -509,8 +521,14 @@ mod tests {
     #[test]
     fn test_vor_gain_template() {
         let template = VorGainTemplate;
-        let young = Context { age: Some(25.0), ..Default::default() };
-        let old = Context { age: Some(75.0), ..Default::default() };
+        let young = Context {
+            age: Some(25.0),
+            ..Default::default()
+        };
+        let old = Context {
+            age: Some(75.0),
+            ..Default::default()
+        };
 
         assert!(template.expected_value(&young) > template.expected_value(&old));
     }
@@ -523,7 +541,7 @@ mod tests {
         for i in 0..200 {
             let t = i as f32 * 0.01;
             let head_vel = 100.0 * (t * 5.0).sin(); // Head velocity
-            let eye_vel = -85.0 * (t * 5.0).sin();  // Eye velocity (gain = 0.85)
+            let eye_vel = -85.0 * (t * 5.0).sin(); // Eye velocity (gain = 0.85)
             data.push(head_vel);
             data.push(eye_vel);
         }
@@ -535,7 +553,10 @@ mod tests {
         let events = encoder.encode(&signal, &config).unwrap();
         // Should detect reduced gain events
         let reduced_gain: Vec<_> = events.iter().filter(|e| e.channel == 0).collect();
-        assert!(!reduced_gain.is_empty() || events.is_empty(), "May detect gain issues");
+        assert!(
+            !reduced_gain.is_empty() || events.is_empty(),
+            "May detect gain issues"
+        );
     }
 
     #[test]

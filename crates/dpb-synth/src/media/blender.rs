@@ -20,7 +20,7 @@
 //!
 //! - Blender Python API: https://docs.blender.org/api/current/
 
-use super::{MediaError, Result, MotionTrajectory};
+use super::{MediaError, MotionTrajectory, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -224,9 +224,7 @@ impl BlenderRenderer {
         };
 
         // Verify Blender works
-        let version_check = Command::new(&blender_path)
-            .args(["--version"])
-            .output();
+        let version_check = Command::new(&blender_path).args(["--version"]).output();
 
         match version_check {
             Ok(output) if output.status.success() => {
@@ -235,7 +233,7 @@ impl BlenderRenderer {
             }
             _ => {
                 return Err(MediaError::ExecutionFailed(
-                    "Failed to run Blender".to_string()
+                    "Failed to run Blender".to_string(),
                 ));
             }
         }
@@ -283,11 +281,7 @@ impl BlenderRenderer {
         // Run Blender in background mode
         let start_time = std::time::Instant::now();
         let output = Command::new(&self.blender_path)
-            .args([
-                "--background",
-                "--python",
-                script_path.to_str().unwrap(),
-            ])
+            .args(["--background", "--python", script_path.to_str().unwrap()])
             .output()
             .map_err(|e| MediaError::ExecutionFailed(e.to_string()))?;
 
@@ -313,7 +307,10 @@ impl BlenderRenderer {
     }
 
     /// Convert motion trajectory to animation script
-    fn convert_trajectory_to_animation(&self, trajectory: &MotionTrajectory) -> Result<AnimationScript> {
+    fn convert_trajectory_to_animation(
+        &self,
+        trajectory: &MotionTrajectory,
+    ) -> Result<AnimationScript> {
         let mut frames = Vec::new();
         let fps = self.config.fps as f64;
 
@@ -366,13 +363,18 @@ impl BlenderRenderer {
         output_path: &Path,
     ) -> Result<String> {
         let background_code = match &self.config.background {
-            Background::SolidColor(rgb) => format!(r#"
+            Background::SolidColor(rgb) => format!(
+                r#"
 world.node_tree.nodes["Background"].inputs[0].default_value = ({}, {}, {}, 1)
-"#, rgb[0], rgb[1], rgb[2]),
+"#,
+                rgb[0], rgb[1], rgb[2]
+            ),
             Background::Transparent => r#"
 bpy.context.scene.render.film_transparent = True
-"#.to_string(),
-            Background::Studio(preset) => format!(r#"
+"#
+            .to_string(),
+            Background::Studio(preset) => format!(
+                r#"
 # Studio lighting: {:?}
 bpy.ops.object.light_add(type='AREA', location=(2, -2, 3))
 key_light = bpy.context.object
@@ -385,14 +387,19 @@ fill_light.data.energy = 200
 bpy.ops.object.light_add(type='AREA', location=(0, 2, 2))
 back_light = bpy.context.object
 back_light.data.energy = 300
-"#, preset),
-            Background::Hdri(path) => format!(r#"
+"#,
+                preset
+            ),
+            Background::Hdri(path) => format!(
+                r#"
 # Load HDRI
 world.use_nodes = True
 env_tex = world.node_tree.nodes.new('ShaderNodeTexEnvironment')
 env_tex.image = bpy.data.images.load('{}')
 world.node_tree.links.new(env_tex.outputs[0], world.node_tree.nodes["Background"].inputs[0])
-"#, path.display()),
+"#,
+                path.display()
+            ),
         };
 
         let model_code = match model {
@@ -411,7 +418,8 @@ world.node_tree.links.new(env_tex.outputs[0], world.node_tree.nodes["Background"
         let frames_json = serde_json::to_string(&animation.frames)
             .map_err(|e| MediaError::SerializationError(e.to_string()))?;
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import bpy
 import json
 import math
@@ -535,7 +543,8 @@ print('Render complete!')
     pub fn import_bvh(&self, bvh_path: &Path, output_name: &str) -> Result<RenderOutput> {
         let output_path = self.config.output_dir.join(format!("{}.mp4", output_name));
 
-        let script = format!(r#"
+        let script = format!(
+            r#"
 import bpy
 
 # Clear scene
@@ -579,7 +588,7 @@ bpy.ops.render.render(animation=True)
 
         if !output.status.success() {
             return Err(MediaError::ExecutionFailed(
-                String::from_utf8_lossy(&output.stderr).to_string()
+                String::from_utf8_lossy(&output.stderr).to_string(),
             ));
         }
 

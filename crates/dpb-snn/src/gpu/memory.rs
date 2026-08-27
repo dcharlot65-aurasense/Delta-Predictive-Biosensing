@@ -39,9 +39,12 @@
 //! # }
 //! ```
 
-use super::{GpuBuffer, GpuDevice, GpuError, GpuResult, Backend};
+use super::{Backend, GpuBuffer, GpuDevice, GpuError, GpuResult};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, Weak, atomic::{AtomicU64, Ordering}};
+use std::sync::{
+    Arc, Mutex, Weak,
+    atomic::{AtomicU64, Ordering},
+};
 use std::time::Instant;
 
 #[cfg(feature = "cuda")]
@@ -87,7 +90,10 @@ impl MemoryPool {
     ///
     /// The device reference must remain valid for the lifetime of the pool.
     /// This method exists for backward compatibility.
-    #[deprecated(since = "0.2.0", note = "Use with_device() with Arc<dyn GpuDevice> instead")]
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use with_device() with Arc<dyn GpuDevice> instead"
+    )]
     pub fn new(device: &dyn GpuDevice, capacity: usize) -> Self {
         // Create a CPU-fallback pool that doesn't actually use the device
         // This is unsafe but maintained for backward compatibility
@@ -123,10 +129,10 @@ impl MemoryPool {
         // Check capacity
         let mut allocated = self.allocated_bytes.lock().expect("GPU mutex poisoned");
         if *allocated + size_class > self.total_capacity {
-            return Err(GpuError::AllocationFailed(
-                format!("Pool capacity exceeded: {} + {} > {}",
-                    *allocated, size_class, self.total_capacity)
-            ));
+            return Err(GpuError::AllocationFailed(format!(
+                "Pool capacity exceeded: {} + {} > {}",
+                *allocated, size_class, self.total_capacity
+            )));
         }
 
         // Allocate new buffer
@@ -180,7 +186,14 @@ impl MemoryPool {
 
         let cached: usize = pools
             .values()
-            .map(|buffers| buffers.len() * if !buffers.is_empty() { buffers[0].buffer.size() } else { 0 })
+            .map(|buffers| {
+                buffers.len()
+                    * if !buffers.is_empty() {
+                        buffers[0].buffer.size()
+                    } else {
+                        0
+                    }
+            })
             .sum();
 
         MemoryUsage {
@@ -196,18 +209,40 @@ impl MemoryPool {
 struct CpuFallbackDevice;
 
 impl GpuDevice for CpuFallbackDevice {
-    fn device_id(&self) -> u32 { 0 }
-    fn backend(&self) -> Backend { Backend::Cpu }
+    fn device_id(&self) -> u32 {
+        0
+    }
+    fn backend(&self) -> Backend {
+        Backend::Cpu
+    }
     fn allocate(&self, size_bytes: usize) -> GpuResult<Arc<dyn GpuBuffer>> {
         Ok(Arc::new(CpuBuffer::new(size_bytes)))
     }
-    fn copy_to_device(&self, _src: &[f32], _dst: &Arc<dyn GpuBuffer>) -> GpuResult<()> { Ok(()) }
-    fn copy_to_host(&self, _src: &Arc<dyn GpuBuffer>, _dst: &mut [f32]) -> GpuResult<()> { Ok(()) }
-    fn copy_device_to_device(&self, _src: &Arc<dyn GpuBuffer>, _dst: &Arc<dyn GpuBuffer>) -> GpuResult<()> { Ok(()) }
-    fn synchronize(&self) -> GpuResult<()> { Ok(()) }
-    fn memory_info(&self) -> GpuResult<(usize, usize)> { Ok((usize::MAX, usize::MAX)) }
-    fn name(&self) -> String { "CPU Fallback".to_string() }
-    fn compute_capability(&self) -> (u32, u32) { (0, 0) }
+    fn copy_to_device(&self, _src: &[f32], _dst: &Arc<dyn GpuBuffer>) -> GpuResult<()> {
+        Ok(())
+    }
+    fn copy_to_host(&self, _src: &Arc<dyn GpuBuffer>, _dst: &mut [f32]) -> GpuResult<()> {
+        Ok(())
+    }
+    fn copy_device_to_device(
+        &self,
+        _src: &Arc<dyn GpuBuffer>,
+        _dst: &Arc<dyn GpuBuffer>,
+    ) -> GpuResult<()> {
+        Ok(())
+    }
+    fn synchronize(&self) -> GpuResult<()> {
+        Ok(())
+    }
+    fn memory_info(&self) -> GpuResult<(usize, usize)> {
+        Ok((usize::MAX, usize::MAX))
+    }
+    fn name(&self) -> String {
+        "CPU Fallback".to_string()
+    }
+    fn compute_capability(&self) -> (u32, u32) {
+        (0, 0)
+    }
 }
 
 /// CPU buffer for fallback
@@ -218,15 +253,25 @@ struct CpuBuffer {
 
 impl CpuBuffer {
     fn new(size: usize) -> Self {
-        CpuBuffer { data: vec![0u8; size] }
+        CpuBuffer {
+            data: vec![0u8; size],
+        }
     }
 }
 
 impl GpuBuffer for CpuBuffer {
-    fn size(&self) -> usize { self.data.len() }
-    fn as_ptr(&self) -> *mut u8 { self.data.as_ptr() as *mut u8 }
-    fn is_valid(&self) -> bool { true }
-    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn size(&self) -> usize {
+        self.data.len()
+    }
+    fn as_ptr(&self) -> *mut u8 {
+        self.data.as_ptr() as *mut u8
+    }
+    fn is_valid(&self) -> bool {
+        true
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 /// Pooled buffer wrapper
@@ -318,7 +363,9 @@ impl<T> PinnedMemory<T> {
     /// * `capacity` - Number of elements to allocate
     pub fn new(capacity: usize) -> GpuResult<Self> {
         if capacity == 0 {
-            return Err(GpuError::AllocationFailed("Cannot allocate zero-sized pinned memory".to_string()));
+            return Err(GpuError::AllocationFailed(
+                "Cannot allocate zero-sized pinned memory".to_string(),
+            ));
         }
 
         #[cfg(feature = "cuda")]
@@ -340,7 +387,9 @@ impl<T> PinnedMemory<T> {
 
         let ptr = unsafe { std::alloc::alloc(layout) as *mut T };
         if ptr.is_null() {
-            return Err(GpuError::AllocationFailed("Failed to allocate memory".to_string()));
+            return Err(GpuError::AllocationFailed(
+                "Failed to allocate memory".to_string(),
+            ));
         }
 
         Ok(PinnedMemory {
@@ -356,7 +405,9 @@ impl<T> PinnedMemory<T> {
     #[cfg(feature = "cuda")]
     pub fn with_cuda_device(device: &CudarDevice, capacity: usize) -> GpuResult<Self> {
         if capacity == 0 {
-            return Err(GpuError::AllocationFailed("Cannot allocate zero-sized pinned memory".to_string()));
+            return Err(GpuError::AllocationFailed(
+                "Cannot allocate zero-sized pinned memory".to_string(),
+            ));
         }
 
         let ptr = Self::cuda_host_alloc(capacity)?;
@@ -377,7 +428,9 @@ impl<T> PinnedMemory<T> {
 
         let ptr = unsafe { std::alloc::alloc(layout) as *mut T };
         if ptr.is_null() {
-            return Err(GpuError::AllocationFailed("Failed to allocate pinned memory".to_string()));
+            return Err(GpuError::AllocationFailed(
+                "Failed to allocate pinned memory".to_string(),
+            ));
         }
 
         // Lock the memory pages (mlock on Linux)
@@ -595,7 +648,10 @@ impl AsyncTransferManager {
 
     /// Get number of pending transfers
     pub fn num_pending(&self) -> usize {
-        self.pending_transfers.lock().expect("GPU mutex poisoned").len()
+        self.pending_transfers
+            .lock()
+            .expect("GPU mutex poisoned")
+            .len()
     }
 
     /// Clean up completed transfers
@@ -709,21 +765,21 @@ impl TrackedAllocator {
         allocations.insert(id, info);
 
         // Update statistics
-        let new_total = self.total_allocated.fetch_add(size as u64, Ordering::SeqCst) + size as u64;
+        let new_total = self
+            .total_allocated
+            .fetch_add(size as u64, Ordering::SeqCst)
+            + size as u64;
         self.peak_allocated.fetch_max(new_total, Ordering::SeqCst);
 
-        Ok(TrackedBuffer {
-            id,
-            buffer,
-            size,
-        })
+        Ok(TrackedBuffer { id, buffer, size })
     }
 
     /// Deallocate a tracked buffer
     pub fn deallocate(&self, id: u64) {
         let mut allocations = self.allocations.lock().expect("GPU mutex poisoned");
         if let Some(info) = allocations.remove(&id) {
-            self.total_allocated.fetch_sub(info.size as u64, Ordering::SeqCst);
+            self.total_allocated
+                .fetch_sub(info.size as u64, Ordering::SeqCst);
         }
     }
 

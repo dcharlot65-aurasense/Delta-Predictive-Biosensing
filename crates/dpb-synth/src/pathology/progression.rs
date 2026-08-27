@@ -131,11 +131,27 @@ impl DiseaseProgression {
 
             let events = if m == 0 {
                 vec!["diagnosis".to_string()]
-            } else if score < 0.75 && m > 0 && trajectory.last().map(|p: &TimePoint| p.functional_score >= 0.75).unwrap_or(false) {
+            } else if score < 0.75
+                && m > 0
+                && trajectory
+                    .last()
+                    .map(|p: &TimePoint| p.functional_score >= 0.75)
+                    .unwrap_or(false)
+            {
                 vec!["second_region".to_string()]
-            } else if score < 0.50 && trajectory.last().map(|p: &TimePoint| p.functional_score >= 0.50).unwrap_or(false) {
+            } else if score < 0.50
+                && trajectory
+                    .last()
+                    .map(|p: &TimePoint| p.functional_score >= 0.50)
+                    .unwrap_or(false)
+            {
                 vec!["third_region".to_string()]
-            } else if score < 0.30 && trajectory.last().map(|p: &TimePoint| p.functional_score >= 0.30).unwrap_or(false) {
+            } else if score < 0.30
+                && trajectory
+                    .last()
+                    .map(|p: &TimePoint| p.functional_score >= 0.30)
+                    .unwrap_or(false)
+            {
                 vec!["niv_required".to_string()]
             } else {
                 vec![]
@@ -206,7 +222,8 @@ impl DiseaseProgression {
                 _ => DiseaseStage::EndStage,
             };
 
-            if m % 12 == 0 { // Record yearly
+            if m % 12 == 0 {
+                // Record yearly
                 trajectory.push(TimePoint {
                     time: (m / 12) as f64,
                     unit: TimeUnit::Years,
@@ -224,9 +241,7 @@ impl DiseaseProgression {
             trajectory,
             initial_score: 1.0,
             final_score: None,
-            milestones: vec![
-                ("diagnosis".to_string(), 0.0),
-            ],
+            milestones: vec![("diagnosis".to_string(), 0.0)],
         }
     }
 
@@ -249,7 +264,8 @@ impl DiseaseProgression {
             // Logarithmic recovery: score = initial + recovery * (1 - exp(-t/tau))
             let tau = 60.0; // time constant in days
             let recovered_fraction = 1.0 - (-t / tau).exp();
-            let score = initial_score + (1.0 - initial_score) * recovery_potential * recovered_fraction;
+            let score =
+                initial_score + (1.0 - initial_score) * recovery_potential * recovered_fraction;
 
             let stage = match score {
                 x if x > 0.85 => DiseaseStage::Early,
@@ -268,7 +284,8 @@ impl DiseaseProgression {
                 vec![]
             };
 
-            if d % 7 == 0 { // Record weekly
+            if d % 7 == 0 {
+                // Record weekly
                 trajectory.push(TimePoint {
                     time: d as f64,
                     unit: TimeUnit::Days,
@@ -310,7 +327,10 @@ impl DiseaseProgression {
                     // Interpolate
                     let prev_days = p.unit.to_days(p.time);
                     let fraction = (target_days - prev_days) / (point_days - prev_days);
-                    return Some(p.functional_score + fraction * (point.functional_score - p.functional_score));
+                    return Some(
+                        p.functional_score
+                            + fraction * (point.functional_score - p.functional_score),
+                    );
                 } else {
                     return Some(point.functional_score);
                 }

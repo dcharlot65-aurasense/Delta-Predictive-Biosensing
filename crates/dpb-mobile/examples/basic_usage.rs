@@ -9,9 +9,9 @@
 
 use dpb_mobile::{
     MobileModel, MobileRuntime,
+    benchmark::{BenchmarkConfig, BenchmarkRunner, MemoryMetrics},
     model::{LayerInfo, LayerType, QuantizationType},
-    optimization::{WeightPruner, PruningStrategy, QuantizationOptimizer},
-    benchmark::{BenchmarkRunner, BenchmarkConfig, MemoryMetrics},
+    optimization::{PruningStrategy, QuantizationOptimizer, WeightPruner},
 };
 
 fn main() {
@@ -72,8 +72,7 @@ fn main() {
     let model_bytes = model.to_bytes().expect("Failed to serialize model");
     println!("   Serialized size: {} KB", model_bytes.len() / 1024);
 
-    let model = MobileModel::from_bytes(&model_bytes)
-        .expect("Failed to deserialize model");
+    let model = MobileModel::from_bytes(&model_bytes).expect("Failed to deserialize model");
     println!("   Model deserialized successfully\n");
 
     // 3. Apply optimizations
@@ -82,25 +81,39 @@ fn main() {
     // Weight pruning
     let mut pruned_model = model.clone();
     let pruner = WeightPruner::new(PruningStrategy::Magnitude, 0.3);
-    let pruning_stats = pruner.prune_model(&mut pruned_model)
+    let pruning_stats = pruner
+        .prune_model(&mut pruned_model)
         .expect("Failed to prune model");
 
     println!("   Pruning statistics:");
     println!("     Original weights: {}", pruning_stats.original_weights);
     println!("     Pruned weights: {}", pruning_stats.pruned_weights);
     println!("     Sparsity: {:.1}%", pruning_stats.sparsity() * 100.0);
-    println!("     Compression ratio: {:.2}x", pruning_stats.compression_ratio());
+    println!(
+        "     Compression ratio: {:.2}x",
+        pruning_stats.compression_ratio()
+    );
 
     // Quantization
     let mut quantized_model = model.clone();
     let quantizer = QuantizationOptimizer::new(QuantizationType::Int8);
-    let quant_stats = quantizer.quantize_model(&mut quantized_model)
+    let quant_stats = quantizer
+        .quantize_model(&mut quantized_model)
         .expect("Failed to quantize model");
 
     println!("   Quantization statistics:");
-    println!("     Original size: {} KB", quant_stats.original_size_bytes / 1024);
-    println!("     Quantized size: {} KB", quant_stats.quantized_size_bytes / 1024);
-    println!("     Compression ratio: {:.2}x\n", quant_stats.compression_ratio());
+    println!(
+        "     Original size: {} KB",
+        quant_stats.original_size_bytes / 1024
+    );
+    println!(
+        "     Quantized size: {} KB",
+        quant_stats.quantized_size_bytes / 1024
+    );
+    println!(
+        "     Compression ratio: {:.2}x\n",
+        quant_stats.compression_ratio()
+    );
 
     // 4. Create runtime
     println!("4. Creating runtime...");
@@ -117,15 +130,17 @@ fn main() {
         .expect("Failed to build runtime");
 
     println!("   Runtime created successfully");
-    println!("   Memory usage: {} KB\n", runtime.memory_usage_bytes() / 1024);
+    println!(
+        "   Memory usage: {} KB\n",
+        runtime.memory_usage_bytes() / 1024
+    );
 
     // 5. Perform inference
     println!("5. Performing inference...");
     let input = vec![0.5f32; 128];
 
     // Single inference
-    let output = runtime.infer(&input)
-        .expect("Inference failed");
+    let output = runtime.infer(&input).expect("Inference failed");
 
     println!("   Output shape: {}", output.len());
     println!("   Inference count: {}\n", runtime.inference_count());
@@ -181,11 +196,20 @@ fn main() {
     println!("     P95: {:.2} ms", result.latency.p95_ms);
     println!("     P99: {:.2} ms", result.latency.p99_ms);
     println!("\n   Throughput:");
-    println!("     Inferences/sec: {:.0}", result.throughput.inferences_per_second);
-    println!("     Samples/sec: {:.0}", result.throughput.samples_per_second);
+    println!(
+        "     Inferences/sec: {:.0}",
+        result.throughput.inferences_per_second
+    );
+    println!(
+        "     Samples/sec: {:.0}",
+        result.throughput.samples_per_second
+    );
     println!("\n   Memory:");
     println!("     Peak: {:.2} MB", result.memory.peak_mb);
-    println!("     Model size: {:.2} MB", result.memory.model_size_bytes as f32 / (1024.0 * 1024.0));
+    println!(
+        "     Model size: {:.2} MB",
+        result.memory.model_size_bytes as f32 / (1024.0 * 1024.0)
+    );
     println!("\n   Device:");
     println!("     Model: {}", result.device_info.model);
     println!("     OS: {}", result.device_info.os);

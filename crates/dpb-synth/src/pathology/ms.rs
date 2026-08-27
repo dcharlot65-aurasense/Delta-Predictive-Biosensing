@@ -43,7 +43,9 @@ impl MsType {
     pub fn has_progression(&self) -> bool {
         matches!(
             self,
-            MsType::SecondaryProgressive | MsType::PrimaryProgressive | MsType::ProgressiveRelapsing
+            MsType::SecondaryProgressive
+                | MsType::PrimaryProgressive
+                | MsType::ProgressiveRelapsing
         )
     }
 }
@@ -373,7 +375,10 @@ impl MsModel {
         };
 
         // Voice: mild dysarthria in some cases
-        let voice_mod = if self.affected_systems.contains(&MsFunctionalSystem::Brainstem) {
+        let voice_mod = if self
+            .affected_systems
+            .contains(&MsFunctionalSystem::Brainstem)
+        {
             SignalModulation {
                 variability_factor: 1.0 + edss_severity * 0.3,
                 frequency_shift: -edss_severity * 10.0,
@@ -393,7 +398,11 @@ impl MsModel {
         DiseaseSignature {
             disease: "ms".to_string(),
             stage: self.edss.to_disease_stage(),
-            affected_regions: self.affected_systems.iter().map(|s| s.to_body_region()).collect(),
+            affected_regions: self
+                .affected_systems
+                .iter()
+                .map(|s| s.to_body_region())
+                .collect(),
             laterality: self.laterality,
             emg_modulation: emg_mod,
             force_modulation: force_mod,
@@ -419,9 +428,18 @@ mod tests {
 
     #[test]
     fn test_edss_stages() {
-        assert_eq!(EdssScore::new(1.0).unwrap().to_disease_stage(), DiseaseStage::Prodromal);
-        assert_eq!(EdssScore::new(5.0).unwrap().to_disease_stage(), DiseaseStage::Moderate);
-        assert_eq!(EdssScore::new(8.0).unwrap().to_disease_stage(), DiseaseStage::EndStage);
+        assert_eq!(
+            EdssScore::new(1.0).unwrap().to_disease_stage(),
+            DiseaseStage::Prodromal
+        );
+        assert_eq!(
+            EdssScore::new(5.0).unwrap().to_disease_stage(),
+            DiseaseStage::Moderate
+        );
+        assert_eq!(
+            EdssScore::new(8.0).unwrap().to_disease_stage(),
+            DiseaseStage::EndStage
+        );
     }
 
     #[test]

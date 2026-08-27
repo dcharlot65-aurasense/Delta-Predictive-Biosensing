@@ -1,6 +1,6 @@
 //! PPG (photoplethysmography) signal generators
 
-use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
+use crate::traits::{Event, GeneratedData, SyntheticGenerator, TimeSeriesGroundTruth};
 use ndarray::Array1;
 use rand::{RngExt, SeedableRng};
 use std::collections::HashMap;
@@ -24,7 +24,11 @@ impl SyntheticGenerator for PpgWaveformGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = PpgWaveformParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -40,16 +44,16 @@ impl SyntheticGenerator for PpgWaveformGenerator {
             let phase = (t % beat_duration) / beat_duration; // 0-1 within beat
 
             // Systolic peak (Gaussian)
-            let systolic = params.systolic_amplitude *
-                (-((phase - 0.2).powi(2)) / (2.0 * 0.05_f64.powi(2))).exp();
+            let systolic = params.systolic_amplitude
+                * (-((phase - 0.2).powi(2)) / (2.0 * 0.05_f64.powi(2))).exp();
 
             // Dicrotic notch (inverted Gaussian)
-            let dicrotic = -params.dicrotic_notch_amplitude *
-                (-((phase - 0.4).powi(2)) / (2.0 * 0.03_f64.powi(2))).exp();
+            let dicrotic = -params.dicrotic_notch_amplitude
+                * (-((phase - 0.4).powi(2)) / (2.0 * 0.03_f64.powi(2))).exp();
 
             // Diastolic wave (Gaussian)
-            let diastolic = params.diastolic_amplitude *
-                (-((phase - 0.5).powi(2)) / (2.0 * 0.1_f64.powi(2))).exp();
+            let diastolic = params.diastolic_amplitude
+                * (-((phase - 0.5).powi(2)) / (2.0 * 0.1_f64.powi(2))).exp();
 
             // Baseline decay
             let baseline = 0.1 * (1.0 - phase);
@@ -80,7 +84,11 @@ impl SyntheticGenerator for PpgWaveformGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -96,13 +104,19 @@ impl SyntheticGenerator for PpgWaveformGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.sampling_rate <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("sampling_rate must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "sampling_rate must be positive".to_string(),
+            ));
         }
         if params.heart_rate <= 0.0 || params.heart_rate > 300.0 {
-            return Err(crate::GeneratorError::InvalidParameter("heart_rate must be 0-300 bpm".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "heart_rate must be 0-300 bpm".to_string(),
+            ));
         }
         Ok(())
     }
@@ -125,7 +139,11 @@ impl SyntheticGenerator for PpgArtifactGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = PpgArtifactParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -175,7 +193,11 @@ impl SyntheticGenerator for PpgArtifactGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -190,10 +212,14 @@ impl SyntheticGenerator for PpgArtifactGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.sampling_rate <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("sampling_rate must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "sampling_rate must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -206,9 +232,9 @@ pub struct PulseRateRecoveryGenerator;
 pub struct PulseRateRecoveryParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub peak_hr: f64,        // bpm at exercise end
-    pub resting_hr: f64,     // bpm at full recovery
-    pub recovery_tau: f64,   // time constant (seconds)
+    pub peak_hr: f64,      // bpm at exercise end
+    pub resting_hr: f64,   // bpm at full recovery
+    pub recovery_tau: f64, // time constant (seconds)
 }
 
 impl SyntheticGenerator for PulseRateRecoveryGenerator {
@@ -216,7 +242,11 @@ impl SyntheticGenerator for PulseRateRecoveryGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = PulseRateRecoveryParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -225,8 +255,8 @@ impl SyntheticGenerator for PulseRateRecoveryGenerator {
 
         while t < params.duration {
             // Exponential recovery: HR(t) = HR_rest + (HR_peak - HR_rest) * exp(-t/tau)
-            let hr = params.resting_hr +
-                (params.peak_hr - params.resting_hr) * (-t / params.recovery_tau).exp();
+            let hr = params.resting_hr
+                + (params.peak_hr - params.resting_hr) * (-t / params.recovery_tau).exp();
 
             let rr = 60.0 / hr + rng.random_range(-0.02..0.02);
             rr_intervals.push(rr.max(0.3));
@@ -239,8 +269,8 @@ impl SyntheticGenerator for PulseRateRecoveryGenerator {
         gt_params.insert("recovery_tau".to_string(), params.recovery_tau);
 
         // Calculate HR at 1 minute (HRR metric)
-        let hr_1min = params.resting_hr +
-            (params.peak_hr - params.resting_hr) * (-60.0 / params.recovery_tau).exp();
+        let hr_1min = params.resting_hr
+            + (params.peak_hr - params.resting_hr) * (-60.0 / params.recovery_tau).exp();
         let hrr_1min = params.peak_hr - hr_1min;
         gt_params.insert("hrr_1min".to_string(), hrr_1min);
 
@@ -250,7 +280,11 @@ impl SyntheticGenerator for PulseRateRecoveryGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(rr_intervals, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            rr_intervals,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -265,13 +299,19 @@ impl SyntheticGenerator for PulseRateRecoveryGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.peak_hr <= params.resting_hr {
-            return Err(crate::GeneratorError::InvalidParameter("peak_hr must be > resting_hr".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "peak_hr must be > resting_hr".to_string(),
+            ));
         }
         if params.recovery_tau <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("recovery_tau must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "recovery_tau must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -286,7 +326,10 @@ mod tests {
         let generator = PpgWaveformGenerator;
         let params = PpgWaveformGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -294,7 +337,10 @@ mod tests {
         let generator = PpgArtifactGenerator;
         let params = PpgArtifactGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -313,6 +359,9 @@ mod tests {
         }
         let hr_mid = 60.0 / result.signal[mid_idx];
 
-        assert!(hr_early > hr_mid, "Heart rate should decrease during recovery");
+        assert!(
+            hr_early > hr_mid,
+            "Heart rate should decrease during recovery"
+        );
     }
 }

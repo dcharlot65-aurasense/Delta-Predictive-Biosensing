@@ -17,9 +17,9 @@ use super::channels::{AmpaReceptor, GabaAReceptor, GabaBReceptor, NmdaReceptor};
 /// Synapse type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SynapseType {
-    Excitatory,  // AMPA/NMDA
-    Inhibitory,  // GABA
-    Modulatory,  // Neuromodulatory
+    Excitatory, // AMPA/NMDA
+    Inhibitory, // GABA
+    Modulatory, // Neuromodulatory
 }
 
 /// Fraction of the still-closed receptors recruited by one release event at
@@ -98,7 +98,11 @@ impl SynapticConductance {
         use std::f64::consts::E as EULER;
 
         match self {
-            Self::Alpha { g_max, tau, time_since_spike } => {
+            Self::Alpha {
+                g_max,
+                tau,
+                time_since_spike,
+            } => {
                 if *time_since_spike < 0.0 {
                     0.0
                 } else {
@@ -116,7 +120,8 @@ impl SynapticConductance {
                     0.0
                 } else {
                     let t = time_since_spike;
-                    let norm = 1.0 / ((-tau_rise / tau_decay).exp() - (-tau_decay / tau_rise).exp());
+                    let norm =
+                        1.0 / ((-tau_rise / tau_decay).exp() - (-tau_decay / tau_rise).exp());
                     g_max * norm * ((-t / tau_decay).exp() - (-t / tau_rise).exp())
                 }
             }
@@ -140,12 +145,16 @@ impl SynapticConductance {
     /// Update conductance dynamics
     pub fn update(&mut self, dt: f64, voltage: f64) {
         match self {
-            Self::Alpha { time_since_spike, .. } => {
+            Self::Alpha {
+                time_since_spike, ..
+            } => {
                 if *time_since_spike >= 0.0 {
                     *time_since_spike += dt;
                 }
             }
-            Self::BiExponential { time_since_spike, .. } => {
+            Self::BiExponential {
+                time_since_spike, ..
+            } => {
                 if *time_since_spike >= 0.0 {
                     *time_since_spike += dt;
                 }
@@ -177,10 +186,14 @@ impl SynapticConductance {
         // output no longer depended on input rate.
         let released = (weight * QUANTAL_RELEASE_FRACTION).clamp(0.0, 1.0);
         match self {
-            Self::Alpha { time_since_spike, .. } => {
+            Self::Alpha {
+                time_since_spike, ..
+            } => {
                 *time_since_spike = 0.0;
             }
-            Self::BiExponential { time_since_spike, .. } => {
+            Self::BiExponential {
+                time_since_spike, ..
+            } => {
                 *time_since_spike = 0.0;
             }
             Self::DualReceptor { ampa, nmda } => {
@@ -199,10 +212,14 @@ impl SynapticConductance {
     /// Reset synapse to baseline
     pub fn reset(&mut self) {
         match self {
-            Self::Alpha { time_since_spike, .. } => {
+            Self::Alpha {
+                time_since_spike, ..
+            } => {
                 *time_since_spike = -1000.0;
             }
-            Self::BiExponential { time_since_spike, .. } => {
+            Self::BiExponential {
+                time_since_spike, ..
+            } => {
                 *time_since_spike = -1000.0;
             }
             Self::DualReceptor { ampa, nmda } => {

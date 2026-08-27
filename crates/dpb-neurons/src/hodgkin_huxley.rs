@@ -196,7 +196,6 @@ impl NeuronModel for HodgkinHuxleyNeuron {
         self.state.v += dv * dt;
 
         // Spike detection: crossing threshold upward
-        
 
         if !self.crossed_threshold && v >= self.config.v_thresh {
             self.crossed_threshold = true;
@@ -342,7 +341,6 @@ impl NeuronModel for FitzHughNagumoNeuron {
         self.state.w += dw * dt;
 
         // Spike detection
-        
 
         if !self.crossed_threshold && self.state.v >= self.config.v_thresh {
             self.crossed_threshold = true;
@@ -540,7 +538,6 @@ impl NeuronModel for MorrisLecarNeuron {
         self.state.n = self.state.n.clamp(0.0, 1.0);
 
         // Spike detection
-        
 
         if !self.crossed_threshold && self.state.v >= self.config.v_thresh {
             self.crossed_threshold = true;

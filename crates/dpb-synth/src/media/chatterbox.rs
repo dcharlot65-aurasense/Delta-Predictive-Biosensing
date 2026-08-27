@@ -241,7 +241,10 @@ impl ChatterboxTTS {
     pub fn new(config: ChatterboxConfig) -> Result<Self> {
         // Check if Chatterbox is available
         let check = Command::new("python3")
-            .args(["-c", "from chatterbox.tts import ChatterboxTTS; print('ok')"])
+            .args([
+                "-c",
+                "from chatterbox.tts import ChatterboxTTS; print('ok')",
+            ])
             .output();
 
         match check {
@@ -254,11 +257,10 @@ impl ChatterboxTTS {
             }
         }
 
-        let python_path = which::which("python3")
-            .map_err(|_| MediaError::ToolNotFound {
-                tool: "python3".to_string(),
-                install_url: "https://www.python.org/downloads/".to_string(),
-            })?;
+        let python_path = which::which("python3").map_err(|_| MediaError::ToolNotFound {
+            tool: "python3".to_string(),
+            install_url: "https://www.python.org/downloads/".to_string(),
+        })?;
 
         // Ensure directories exist
         std::fs::create_dir_all(&config.output_dir)?;
@@ -329,12 +331,8 @@ impl ChatterboxTTS {
                 .as_millis()
         ));
 
-        let script = self.generate_pathological_script(
-            &modified_text,
-            voice,
-            pathology,
-            &output_path,
-        )?;
+        let script =
+            self.generate_pathological_script(&modified_text, voice, pathology, &output_path)?;
 
         let mut result = self.run_synthesis_script(&script, &output_path)?;
 
@@ -346,7 +344,11 @@ impl ChatterboxTTS {
     }
 
     /// Apply pathological modifications to text (add hesitations, etc.)
-    fn apply_pathological_modifications(&self, text: &str, pathology: &PathologicalVoiceParams) -> String {
+    fn apply_pathological_modifications(
+        &self,
+        text: &str,
+        pathology: &PathologicalVoiceParams,
+    ) -> String {
         let mut result = text.to_string();
 
         // Add hesitations based on probability
@@ -382,27 +384,34 @@ impl ChatterboxTTS {
         output_path: &Path,
     ) -> Result<String> {
         let reference_code = if let Some(ref_audio) = &voice.reference_audio {
-            format!(r#"
+            format!(
+                r#"
 # Load reference audio for voice cloning
 import librosa
 ref_audio, _ = librosa.load('{}', sr=model.sample_rate)
 speaker_embedding = model.get_speaker_embedding(ref_audio)
-"#, ref_audio.display())
+"#,
+                ref_audio.display()
+            )
         } else {
             "speaker_embedding = None".to_string()
         };
 
         let emotion_code = if let Some(em) = emotion {
-            format!(r#"
+            format!(
+                r#"
 # Set emotion
 emotion = '{:?}'
 exaggeration = {}
-"#, em.emotion, em.exaggeration)
+"#,
+                em.emotion, em.exaggeration
+            )
         } else {
             "emotion = 'neutral'\nexaggeration = 0.5".to_string()
         };
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import torch
 from chatterbox.tts import ChatterboxTTS
 import soundfile as sf
@@ -461,7 +470,8 @@ print(json.dumps(result))
         pathology: &PathologicalVoiceParams,
         output_path: &Path,
     ) -> Result<String> {
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import torch
 import numpy as np
 from chatterbox.tts import ChatterboxTTS
@@ -656,8 +666,8 @@ voices = getattr(model, 'speaker_ids', ['default'])
 print(json.dumps(voices))
 "#;
         let output = self.run_python_script_simple(script)?;
-        let voices: Vec<String> = serde_json::from_str(&output)
-            .unwrap_or_else(|_| vec!["default".to_string()]);
+        let voices: Vec<String> =
+            serde_json::from_str(&output).unwrap_or_else(|_| vec!["default".to_string()]);
         Ok(voices)
     }
 

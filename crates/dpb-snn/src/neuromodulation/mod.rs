@@ -108,54 +108,48 @@
 //! homeostasis.update_synaptic_scaling(&firing_rates, 1.0);
 //! ```
 
-pub mod modulators;
-pub mod dopamine;
 pub mod acetylcholine;
-pub mod reward;
+pub mod dopamine;
 pub mod gating;
 pub mod homeostasis;
 pub mod integration;
+pub mod modulators;
+pub mod reward;
 
 // Re-export commonly used types
 pub use modulators::{
-    Neuromodulator, NeuromodulatorType, ModulatorySystem,
-    ModulatorConcentration, DiffusionModel, ReceptorBinding,
-    Dopamine, Acetylcholine, Serotonin, Norepinephrine,
+    Acetylcholine, DiffusionModel, Dopamine, ModulatorConcentration, ModulatorySystem,
+    Neuromodulator, NeuromodulatorType, Norepinephrine, ReceptorBinding, Serotonin,
 };
 
 pub use dopamine::{
-    DopamineSystem, DopamineConfig, RewardPredictionError,
-    DopamineMode, ReceptorType as DopamineReceptorType,
-    StrialRegion, VTAResponse, SNcResponse,
+    DopamineConfig, DopamineMode, DopamineSystem, ReceptorType as DopamineReceptorType,
+    RewardPredictionError, SNcResponse, StrialRegion, VTAResponse,
 };
 
 pub use acetylcholine::{
-    AcetylcholineSystem, AcetylcholineConfig,
-    ReceptorType as AChReceptorType, AttentionState,
-    BasalForebrainRegion, ChAT,
+    AcetylcholineConfig, AcetylcholineSystem, AttentionState, BasalForebrainRegion, ChAT,
+    ReceptorType as AChReceptorType,
 };
 
 pub use reward::{
-    RewardModulatedSTDP, RewardSignal, EligibilityTrace,
-    TemporalCreditAssignment, IntrinsicMotivation,
-    RewardShaping, ThreeFactorRule,
+    EligibilityTrace, IntrinsicMotivation, RewardModulatedSTDP, RewardShaping, RewardSignal,
+    TemporalCreditAssignment, ThreeFactorRule,
 };
 
 pub use gating::{
-    GainModulation, GainModulationConfig, ModulationType,
-    InputGating, OutputGating, ThresholdModulation,
+    GainModulation, GainModulationConfig, InputGating, ModulationType, OutputGating,
+    ThresholdModulation,
 };
 
 pub use homeostasis::{
-    HomeostaticPlasticity, HomeostaticConfig, FiringRateHomeostasis,
-    SynapticScaling, IntrinsicPlasticity, Metaplasticity,
-    SleepConsolidation,
+    FiringRateHomeostasis, HomeostaticConfig, HomeostaticPlasticity, IntrinsicPlasticity,
+    Metaplasticity, SleepConsolidation, SynapticScaling,
 };
 
 pub use integration::{
-    ModulatoryNetwork, ModulatoryNetworkConfig,
-    ModulatorInteraction, SpatialScope, TemporalCoordination,
-    StateDependent, BrainState,
+    BrainState, ModulatorInteraction, ModulatoryNetwork, ModulatoryNetworkConfig, SpatialScope,
+    StateDependent, TemporalCoordination,
 };
 
 /// Common result type for neuromodulation operations

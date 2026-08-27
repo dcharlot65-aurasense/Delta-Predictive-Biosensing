@@ -93,7 +93,8 @@ impl LayerImportance {
         let layer_contribution = neuron_importances
             .iter()
             .map(|n| n.mean_importance)
-            .sum::<f64>() / neuron_importances.len().max(1) as f64;
+            .sum::<f64>()
+            / neuron_importances.len().max(1) as f64;
 
         Self {
             layer,
@@ -120,7 +121,7 @@ impl LayerImportance {
 /// * `output_gradients` - Gradients at the output layer
 /// * `layer_weights` - Weights from each neuron to output neurons (neuron x output)
 pub fn compute_spike_importance(
-    spike_times: &[Vec<f64>],  // Per-neuron spike times
+    spike_times: &[Vec<f64>], // Per-neuron spike times
     output_gradients: &[f64],
     layer_weights: &[Vec<f64>],
 ) -> Vec<SpikeImportance> {
@@ -251,7 +252,8 @@ pub fn aggregate_to_neurons(spikes: &[SpikeImportance]) -> Vec<NeuronImportance>
         let mean_importance = neuron_spikes
             .iter()
             .map(|s| s.importance_score)
-            .sum::<f64>() / total_spikes as f64;
+            .sum::<f64>()
+            / total_spikes as f64;
 
         let max_importance = neuron_spikes
             .iter()
@@ -320,15 +322,9 @@ mod tests {
 
     #[test]
     fn test_compute_spike_importance() {
-        let spike_times = vec![
-            vec![10.0, 20.0, 30.0],
-            vec![15.0, 25.0],
-        ];
+        let spike_times = vec![vec![10.0, 20.0, 30.0], vec![15.0, 25.0]];
         let output_gradients = vec![1.0, -0.5];
-        let layer_weights = vec![
-            vec![0.5, 0.3],
-            vec![0.2, 0.4],
-        ];
+        let layer_weights = vec![vec![0.5, 0.3], vec![0.2, 0.4]];
 
         let importances = compute_spike_importance(&spike_times, &output_gradients, &layer_weights);
 
@@ -342,15 +338,10 @@ mod tests {
 
     #[test]
     fn test_compute_importance_by_perturbation() {
-        let spike_trains = vec![
-            vec![10.0, 20.0],
-            vec![15.0],
-        ];
+        let spike_trains = vec![vec![10.0, 20.0], vec![15.0]];
 
         // Simple output function: sum of spike counts
-        let output_fn = |trains: &[Vec<f64>]| {
-            trains.iter().map(|t| t.len() as f64).sum::<f64>()
-        };
+        let output_fn = |trains: &[Vec<f64>]| trains.iter().map(|t| t.len() as f64).sum::<f64>();
 
         let importances = compute_importance_by_perturbation(&spike_trains, output_fn);
 

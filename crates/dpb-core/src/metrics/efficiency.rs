@@ -33,7 +33,9 @@ impl MetricTrait for SpikeRate {
 
     fn compute(&self, spikes: &[f32], time_steps: &[f32]) -> Result<f64> {
         if spikes.len() != time_steps.len() {
-            return Err(DpbError::Other("Spikes and time steps must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Spikes and time steps must have the same length".to_string(),
+            ));
         }
         if time_steps.is_empty() {
             return Ok(0.0);
@@ -154,7 +156,9 @@ impl MetricTrait for SynapticOperations {
 
     fn compute(&self, spike_counts: &[f32], synapse_counts: &[f32]) -> Result<f64> {
         if spike_counts.len() != synapse_counts.len() {
-            return Err(DpbError::Other("Spike counts and synapse counts must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Spike counts and synapse counts must have the same length".to_string(),
+            ));
         }
 
         let synops: f64 = spike_counts
@@ -420,7 +424,9 @@ impl MetricTrait for InformationRate {
 
     fn compute(&self, spikes: &[f32], bits: &[f32]) -> Result<f64> {
         if spikes.len() != bits.len() {
-            return Err(DpbError::Other("Spikes and bits must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Spikes and bits must have the same length".to_string(),
+            ));
         }
 
         let total_spikes: f64 = spikes.iter().map(|&s| s as f64).sum();
@@ -482,7 +488,9 @@ impl MetricTrait for MembraneUtilization {
 
     fn compute(&self, potentials: &[f32], thresholds: &[f32]) -> Result<f64> {
         if potentials.len() != thresholds.len() {
-            return Err(DpbError::Other("Potentials and thresholds must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Potentials and thresholds must have the same length".to_string(),
+            ));
         }
         if potentials.is_empty() {
             return Ok(0.0);
@@ -680,7 +688,7 @@ mod tests {
         let synapses = vec![100.0, 200.0];
 
         let result = synops.compute(&spikes, &synapses).unwrap();
-        assert_eq!(result, 5000.0);  // 10*100 + 20*200
+        assert_eq!(result, 5000.0); // 10*100 + 20*200
     }
 
     #[test]
@@ -726,7 +734,7 @@ mod tests {
         let thresholds = vec![1.0, 1.0, 1.0];
 
         let result = mem_util.compute(&potentials, &thresholds).unwrap();
-        assert_eq!(result, 0.75);  // (0.5 + 0.75 + 1.0) / 3
+        assert_eq!(result, 0.75); // (0.5 + 0.75 + 1.0) / 3
     }
 
     #[test]

@@ -59,7 +59,9 @@ fn main() {
         }
 
         // Provide helpful error message
-        println!("cargo:warning=liblsl not found. Install liblsl or set LSL_LIB environment variable.");
+        println!(
+            "cargo:warning=liblsl not found. Install liblsl or set LSL_LIB environment variable."
+        );
         println!("cargo:warning=On Ubuntu: sudo apt-get install liblsl-dev");
         println!("cargo:warning=On macOS: brew install labstreaminglayer/tap/lsl");
     }

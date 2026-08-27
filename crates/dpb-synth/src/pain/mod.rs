@@ -77,7 +77,10 @@ pub enum PainPathology {
     /// Primary hyperalgesia (increased sensitivity at injury site)
     PrimaryHyperalgesia { threshold_reduction: f64 },
     /// Secondary hyperalgesia (spread of sensitivity)
-    SecondaryHyperalgesia { spread: f64, threshold_reduction: f64 },
+    SecondaryHyperalgesia {
+        spread: f64,
+        threshold_reduction: f64,
+    },
     /// Allodynia (pain from non-painful stimuli)
     Allodynia { threshold: f64 },
     /// Central sensitization
@@ -255,7 +258,8 @@ impl PainGenerator {
             }
 
             let pain = if stim > 0.0 {
-                let base_pain = (stim - self.config.base_threshold).max(0.0) * self.config.sensitivity;
+                let base_pain =
+                    (stim - self.config.base_threshold).max(0.0) * self.config.sensitivity;
                 (base_pain * cumulative_summation).min(10.0)
             } else {
                 // Decay between stimuli
@@ -320,48 +324,49 @@ impl PainGenerator {
     /// Generate QST battery
     pub fn generate_qst_battery(&mut self) -> Vec<QstOutput> {
         let modalities = [
-            (QstModality::ColdDetection, 30.0, 2.0),      // °C, SD
+            (QstModality::ColdDetection, 30.0, 2.0), // °C, SD
             (QstModality::WarmDetection, 34.0, 1.5),
             (QstModality::ColdPain, 10.0, 5.0),
             (QstModality::HeatPain, 45.0, 3.0),
-            (QstModality::PressurePain, 400.0, 100.0),    // kPa
+            (QstModality::PressurePain, 400.0, 100.0), // kPa
             (QstModality::MechanicalDetection, 0.5, 0.3), // mN
-            (QstModality::VibrationDetection, 0.5, 0.2),  // arbitrary
-            (QstModality::PinprickPain, 3.0, 1.0),        // VAS rating
+            (QstModality::VibrationDetection, 0.5, 0.2), // arbitrary
+            (QstModality::PinprickPain, 3.0, 1.0),     // VAS rating
         ];
 
         let noise_dist = Normal::new(0.0, 1.0).unwrap();
 
-        modalities.iter().map(|&(modality, mean, sd)| {
-            let noise: f64 = self.rng.sample(noise_dist);
-            let threshold = mean + noise * sd * 0.5 * self.config.sensitivity;
-            let z_score = (threshold - mean) / sd;
+        modalities
+            .iter()
+            .map(|&(modality, mean, sd)| {
+                let noise: f64 = self.rng.sample(noise_dist);
+                let threshold = mean + noise * sd * 0.5 * self.config.sensitivity;
+                let z_score = (threshold - mean) / sd;
 
-            let classification = if z_score < -1.96 {
-                QstClassification::LossOfFunction
-            } else if z_score > 1.96 {
-                QstClassification::GainOfFunction
-            } else {
-                QstClassification::Normal
-            };
+                let classification = if z_score < -1.96 {
+                    QstClassification::LossOfFunction
+                } else if z_score > 1.96 {
+                    QstClassification::GainOfFunction
+                } else {
+                    QstClassification::Normal
+                };
 
-            QstOutput {
-                modality,
-                threshold,
-                z_score,
-                classification,
-            }
-        }).collect()
+                QstOutput {
+                    modality,
+                    threshold,
+                    z_score,
+                    classification,
+                }
+            })
+            .collect()
     }
 
     /// Generate pathological pain pattern
-    pub fn generate_pathological(
-        &mut self,
-        pathology: PainPathology,
-        duration: f64,
-    ) -> PainOutput {
+    pub fn generate_pathological(&mut self, pathology: PainPathology, duration: f64) -> PainOutput {
         match pathology {
-            PainPathology::PrimaryHyperalgesia { threshold_reduction } => {
+            PainPathology::PrimaryHyperalgesia {
+                threshold_reduction,
+            } => {
                 let original = self.config.base_threshold;
                 self.config.base_threshold = original * (1.0 - threshold_reduction);
                 let mut output = self.generate_pain_ramp(duration, 10.0);
@@ -369,7 +374,10 @@ impl PainGenerator {
                 self.config.base_threshold = original;
                 output
             }
-            PainPathology::CentralSensitization { gain, temporal_summation: ts } => {
+            PainPathology::CentralSensitization {
+                gain,
+                temporal_summation: ts,
+            } => {
                 let original_sens = self.config.sensitivity;
                 self.config.sensitivity = original_sens * (1.0 + gain);
                 let mut output = self.generate_temporal_summation(10, 1.0, 7.0);
@@ -460,7 +468,9 @@ mod tests {
 
         let normal = generator.generate_pain_ramp(30.0, 10.0);
         let hyperalgesia = generator.generate_pathological(
-            PainPathology::PrimaryHyperalgesia { threshold_reduction: 0.3 },
+            PainPathology::PrimaryHyperalgesia {
+                threshold_reduction: 0.3,
+            },
             30.0,
         );
 

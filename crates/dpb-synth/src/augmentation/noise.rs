@@ -36,9 +36,7 @@ impl SignalAugmentation for GaussianNoise {
         // Generate Gaussian noise
         let normal = Normal::new(0.0, noise_std).unwrap();
 
-        signal.iter()
-            .map(|&x| x + normal.sample(rng))
-            .collect()
+        signal.iter().map(|&x| x + normal.sample(rng)).collect()
     }
 
     fn name(&self) -> &str {
@@ -101,7 +99,8 @@ impl SignalAugmentation for PinkNoise {
         pink_noise.iter_mut().for_each(|x| *x *= scale);
 
         // Add noise to signal
-        signal.iter()
+        signal
+            .iter()
             .zip(pink_noise.iter())
             .map(|(s, n)| s + n)
             .collect()
@@ -127,7 +126,10 @@ impl BaselineWander {
     /// * `frequency_hz` - Frequency of the wandering baseline (typically 0.1-1.0 Hz)
     /// * `amplitude` - Amplitude relative to signal range
     pub fn new(frequency_hz: f64, amplitude: f64) -> Self {
-        Self { frequency_hz, amplitude }
+        Self {
+            frequency_hz,
+            amplitude,
+        }
     }
 }
 
@@ -137,7 +139,9 @@ impl SignalAugmentation for BaselineWander {
         let fs = 250.0;
         let phase = ((rng.next_u64() as f64) / (u64::MAX as f64)) * 2.0 * PI;
 
-        signal.iter().enumerate()
+        signal
+            .iter()
+            .enumerate()
             .map(|(i, &x)| {
                 let t = i as f64 / fs;
                 let wander = self.amplitude * (2.0 * PI * self.frequency_hz * t + phase).sin();
@@ -170,7 +174,10 @@ impl PowerlineNoise {
             (frequency_hz - 50.0).abs() < 1.0 || (frequency_hz - 60.0).abs() < 1.0,
             "Powerline frequency should be near 50 or 60 Hz"
         );
-        Self { frequency_hz, amplitude }
+        Self {
+            frequency_hz,
+            amplitude,
+        }
     }
 }
 
@@ -181,12 +188,16 @@ impl SignalAugmentation for PowerlineNoise {
         let phase = ((rng.next_u64() as f64) / (u64::MAX as f64)) * 2.0 * PI;
 
         // Add harmonics for more realistic powerline noise
-        signal.iter().enumerate()
+        signal
+            .iter()
+            .enumerate()
             .map(|(i, &x)| {
                 let t = i as f64 / fs;
                 let fundamental = self.amplitude * (2.0 * PI * self.frequency_hz * t + phase).sin();
-                let harmonic2 = (self.amplitude * 0.3) * (2.0 * PI * 2.0 * self.frequency_hz * t + phase).sin();
-                let harmonic3 = (self.amplitude * 0.1) * (2.0 * PI * 3.0 * self.frequency_hz * t + phase).sin();
+                let harmonic2 =
+                    (self.amplitude * 0.3) * (2.0 * PI * 2.0 * self.frequency_hz * t + phase).sin();
+                let harmonic3 =
+                    (self.amplitude * 0.1) * (2.0 * PI * 3.0 * self.frequency_hz * t + phase).sin();
                 x + fundamental + harmonic2 + harmonic3
             })
             .collect()
@@ -213,14 +224,17 @@ impl MotionArtifact {
     /// * `duration_range` - Min and max duration in seconds
     pub fn new(probability: f64, duration_range: (f64, f64)) -> Self {
         assert!(duration_range.0 > 0.0 && duration_range.1 >= duration_range.0);
-        Self { probability, duration_range }
+        Self {
+            probability,
+            duration_range,
+        }
     }
 
     fn generate_artifact(&self, length: usize, rng: &mut dyn Rng) -> Vec<f64> {
         let mut artifact = vec![0.0; length];
 
         // Create a transient with exponential decay
-        let peak = ((rng.next_u64() as f64) / (u64::MAX as f64)) * 2.0 - 1.0;  // Random peak amplitude
+        let peak = ((rng.next_u64() as f64) / (u64::MAX as f64)) * 2.0 - 1.0; // Random peak amplitude
         let decay_rate = random_f64_range(rng, 5.0, 20.0);
 
         for (i_off, i_slot) in artifact[0..length].iter_mut().enumerate() {
@@ -236,7 +250,7 @@ impl MotionArtifact {
 impl SignalAugmentation for MotionArtifact {
     fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
         let mut result = signal.to_vec();
-        let fs = 250.0;  // Assume 250 Hz sampling rate
+        let fs = 250.0; // Assume 250 Hz sampling rate
         let duration_sec = signal.len() as f64 / fs;
 
         // Determine number of artifacts to add
@@ -283,7 +297,9 @@ mod tests {
     use rand_chacha::ChaCha8Rng;
 
     fn create_test_signal() -> Vec<f64> {
-        (0..1000).map(|i| (2.0 * PI * i as f64 / 50.0).sin()).collect()
+        (0..1000)
+            .map(|i| (2.0 * PI * i as f64 / 50.0).sin())
+            .collect()
     }
 
     #[test]
@@ -295,7 +311,7 @@ mod tests {
         let augmented = aug.augment(&signal, &mut rng);
 
         assert_eq!(augmented.len(), signal.len());
-        assert_ne!(augmented, signal);  // Should be different due to noise
+        assert_ne!(augmented, signal); // Should be different due to noise
     }
 
     #[test]
@@ -320,7 +336,9 @@ mod tests {
 
         assert_eq!(augmented.len(), signal.len());
         // Check that values have changed
-        let changed = signal.iter().zip(augmented.iter())
+        let changed = signal
+            .iter()
+            .zip(augmented.iter())
             .any(|(s, a)| (s - a).abs() > 1e-10);
         assert!(changed);
     }
@@ -359,6 +377,9 @@ mod tests {
         assert_eq!(PinkNoise::new(10.0).name(), "PinkNoise");
         assert_eq!(BaselineWander::new(0.5, 0.1).name(), "BaselineWander");
         assert_eq!(PowerlineNoise::new(60.0, 0.1).name(), "PowerlineNoise");
-        assert_eq!(MotionArtifact::new(0.5, (0.1, 0.3)).name(), "MotionArtifact");
+        assert_eq!(
+            MotionArtifact::new(0.5, (0.1, 0.3)).name(),
+            "MotionArtifact"
+        );
     }
 }

@@ -71,8 +71,7 @@ pub struct FixationStabilityEncoder;
 impl FixationStabilityEncoder {
     /// Creates a new [`FixationStabilityEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn calculate_dispersion(&self, window: &[f32]) -> f32 {
@@ -81,8 +80,8 @@ impl FixationStabilityEncoder {
         }
 
         let mean = window.iter().sum::<f32>() / window.len() as f32;
-        let variance = window.iter().map(|&x| (x - mean).powi(2)).sum::<f32>()
-            / window.len() as f32;
+        let variance =
+            window.iter().map(|&x| (x - mean).powi(2)).sum::<f32>() / window.len() as f32;
 
         variance.sqrt()
     }
@@ -130,9 +129,9 @@ impl EventEncoder for FixationStabilityEncoder {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MicrosaccadeConfig {
     /// Velocity above which an event is emitted, in deg/s.
-    pub velocity_threshold: f32,   // deg/s (lower than regular saccades)
+    pub velocity_threshold: f32, // deg/s (lower than regular saccades)
     /// Amplitude above which an event is emitted, in degrees.
-    pub amplitude_threshold: f32,  // degrees
+    pub amplitude_threshold: f32, // degrees
     /// Shortest event accepted, in ms.
     pub min_duration: f64,
     /// Longest event accepted, in ms.
@@ -142,7 +141,7 @@ pub struct MicrosaccadeConfig {
 impl Default for MicrosaccadeConfig {
     fn default() -> Self {
         Self {
-            velocity_threshold: 8.0, // deg/s
+            velocity_threshold: 8.0,  // deg/s
             amplitude_threshold: 0.5, // degrees (< 2 degrees)
             min_duration: 0.006,      // 6 ms
             max_duration: 0.040,      // 40 ms
@@ -156,8 +155,7 @@ pub struct MicrosaccadeEncoder;
 impl MicrosaccadeEncoder {
     /// Creates a new [`MicrosaccadeEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }
 

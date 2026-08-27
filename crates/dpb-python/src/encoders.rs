@@ -14,9 +14,9 @@ use dpb_encoders::{
     TemplateDeviationEncoder,
 };
 use numpy::PyArrayMethods;
+use pyo3::PyClassInitializer;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::PyClassInitializer;
 use pyo3::types::PyDict;
 use std::collections::HashMap;
 
@@ -126,22 +126,32 @@ pub struct PyLevelCrossingEncoder {
 impl PyLevelCrossingEncoder {
     #[new]
     #[pyo3(signature = (threshold=0.5, positive_polarity=true, negative_polarity=true))]
-    fn new(threshold: f64, positive_polarity: bool, negative_polarity: bool) -> PyClassInitializer<Self> {
+    fn new(
+        threshold: f64,
+        positive_polarity: bool,
+        negative_polarity: bool,
+    ) -> PyClassInitializer<Self> {
         let mut config = HashMap::new();
         config.insert("threshold".to_string(), threshold);
-        config.insert("positive_polarity".to_string(), if positive_polarity { 1.0 } else { 0.0 });
-        config.insert("negative_polarity".to_string(), if negative_polarity { 1.0 } else { 0.0 });
+        config.insert(
+            "positive_polarity".to_string(),
+            if positive_polarity { 1.0 } else { 0.0 },
+        );
+        config.insert(
+            "negative_polarity".to_string(),
+            if negative_polarity { 1.0 } else { 0.0 },
+        );
 
         PyClassInitializer::from(PyEventEncoder {
-                name: "LevelCrossing".to_string(),
-                config,
-            })
-            .add_subclass(Self {
-                threshold,
-                positive_polarity,
-                negative_polarity,
-            })
-}
+            name: "LevelCrossing".to_string(),
+            config,
+        })
+        .add_subclass(Self {
+            threshold,
+            positive_polarity,
+            negative_polarity,
+        })
+    }
 
     /// Encode signal to spike train
     fn encode(&self, signal: &PyTimeSeries, py: Python) -> PyResult<PySpikeTrain> {
@@ -165,7 +175,11 @@ impl PyLevelCrossingEncoder {
             _ => true,
         });
 
-        Ok(PySpikeTrain::new(Some(events), duration, num_channels as u32))
+        Ok(PySpikeTrain::new(
+            Some(events),
+            duration,
+            num_channels as u32,
+        ))
     }
 
     #[getter]
@@ -217,16 +231,16 @@ impl PyTemplateDeviationEncoder {
         config.insert("window_size".to_string(), window_size as f64);
 
         PyClassInitializer::from(PyEventEncoder {
-                name: "TemplateDeviation".to_string(),
-                config,
-            })
-            .add_subclass(Self {
-                template_type: template_type.to_string(),
-                deviation_threshold,
-                window_size,
-                template,
-            })
-}
+            name: "TemplateDeviation".to_string(),
+            config,
+        })
+        .add_subclass(Self {
+            template_type: template_type.to_string(),
+            deviation_threshold,
+            window_size,
+            template,
+        })
+    }
 
     fn encode(&self, signal: &PyTimeSeries, py: Python) -> PyResult<PySpikeTrain> {
         let duration = signal.duration(py);
@@ -267,7 +281,11 @@ impl PyTemplateDeviationEncoder {
         let encoder = TemplateDeviationEncoder::new("template_deviation");
         let events = to_py_events(encoder.encode(&buffer, &config).map_err(encode_err)?);
 
-        Ok(PySpikeTrain::new(Some(events), duration, num_channels as u32))
+        Ok(PySpikeTrain::new(
+            Some(events),
+            duration,
+            num_channels as u32,
+        ))
     }
 
     #[getter]
@@ -303,11 +321,11 @@ impl PyDerivativeEncoder {
         config.insert("order".to_string(), order as f64);
 
         PyClassInitializer::from(PyEventEncoder {
-                name: "Derivative".to_string(),
-                config,
-            })
-            .add_subclass(Self { threshold, order })
-}
+            name: "Derivative".to_string(),
+            config,
+        })
+        .add_subclass(Self { threshold, order })
+    }
 
     fn encode(&self, signal: &PyTimeSeries, py: Python) -> PyResult<PySpikeTrain> {
         let duration = signal.duration(py);
@@ -322,7 +340,11 @@ impl PyDerivativeEncoder {
         let encoder = DerivativeEncoder::new("derivative");
         let events = to_py_events(encoder.encode(&buffer, &config).map_err(encode_err)?);
 
-        Ok(PySpikeTrain::new(Some(events), duration, num_channels as u32))
+        Ok(PySpikeTrain::new(
+            Some(events),
+            duration,
+            num_channels as u32,
+        ))
     }
 }
 
@@ -356,15 +378,15 @@ impl PyEcgRPeakEncoder {
         config.insert("min_rr_interval".to_string(), min_rr_interval);
 
         PyClassInitializer::from(PyEventEncoder {
-                name: "EcgRPeak".to_string(),
-                config,
-            })
-            .add_subclass(Self {
-                threshold,
-                refractory_ms,
-                min_rr_interval,
-            })
-}
+            name: "EcgRPeak".to_string(),
+            config,
+        })
+        .add_subclass(Self {
+            threshold,
+            refractory_ms,
+            min_rr_interval,
+        })
+    }
 
     fn encode(&self, signal: &PyTimeSeries, py: Python) -> PyResult<PySpikeTrain> {
         let duration = signal.duration(py);
@@ -384,7 +406,11 @@ impl PyEcgRPeakEncoder {
         let encoder = EcgRPeakEncoder::new();
         let events = to_py_events(encoder.encode(&buffer, &config).map_err(encode_err)?);
 
-        Ok(PySpikeTrain::new(Some(events), duration, num_channels as u32))
+        Ok(PySpikeTrain::new(
+            Some(events),
+            duration,
+            num_channels as u32,
+        ))
     }
 }
 
@@ -415,14 +441,14 @@ impl PyPpgPeakEncoder {
         config.insert("min_peak_distance".to_string(), min_peak_distance);
 
         PyClassInitializer::from(PyEventEncoder {
-                name: "PpgPeak".to_string(),
-                config,
-            })
-            .add_subclass(Self {
-                threshold,
-                min_peak_distance,
-            })
-}
+            name: "PpgPeak".to_string(),
+            config,
+        })
+        .add_subclass(Self {
+            threshold,
+            min_peak_distance,
+        })
+    }
 
     fn encode(&self, signal: &PyTimeSeries, py: Python) -> PyResult<PySpikeTrain> {
         let duration = signal.duration(py);
@@ -438,7 +464,11 @@ impl PyPpgPeakEncoder {
         let encoder = PpgPulseEncoder::new();
         let events = to_py_events(encoder.encode(&buffer, &config).map_err(encode_err)?);
 
-        Ok(PySpikeTrain::new(Some(events), duration, num_channels as u32))
+        Ok(PySpikeTrain::new(
+            Some(events),
+            duration,
+            num_channels as u32,
+        ))
     }
 }
 
@@ -468,10 +498,17 @@ fn create_encoder(name: &str, config: Option<&Bound<'_, PyDict>>) -> PyResult<Py
             "template_deviation" => {
                 let template_type = config
                     .and_then(|c| c.get_item("template_type").ok().flatten())
-                    .map(|v| v.extract::<String>().unwrap_or_else(|_| "generic".to_string()))
+                    .map(|v| {
+                        v.extract::<String>()
+                            .unwrap_or_else(|_| "generic".to_string())
+                    })
                     .unwrap_or_else(|| "generic".to_string());
 
-                Py::new(py, PyTemplateDeviationEncoder::new(&template_type, 0.1, 100, None))?.into_any()
+                Py::new(
+                    py,
+                    PyTemplateDeviationEncoder::new(&template_type, 0.1, 100, None),
+                )?
+                .into_any()
             }
             "derivative" => {
                 let threshold = config
@@ -481,17 +518,13 @@ fn create_encoder(name: &str, config: Option<&Bound<'_, PyDict>>) -> PyResult<Py
 
                 Py::new(py, PyDerivativeEncoder::new(threshold, 1))?.into_any()
             }
-            "ecg_rpeak" => {
-                Py::new(py, PyEcgRPeakEncoder::new(0.5, 200.0, 0.4))?.into_any()
-            }
-            "ppg_peak" => {
-                Py::new(py, PyPpgPeakEncoder::new(0.3, 0.5))?.into_any()
-            }
+            "ecg_rpeak" => Py::new(py, PyEcgRPeakEncoder::new(0.5, 200.0, 0.4))?.into_any(),
+            "ppg_peak" => Py::new(py, PyPpgPeakEncoder::new(0.3, 0.5))?.into_any(),
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(format!(
                     "Unknown encoder: {}",
                     name
-                )))
+                )));
             }
         };
 

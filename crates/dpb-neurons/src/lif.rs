@@ -216,7 +216,8 @@ impl NeuronModel for LifNeuron {
         }
 
         // LIF dynamics: τ_m * dv/dt = -(v - v_rest) + R_m * I
-        let dv = (-(self.state.v - self.config.v_rest) + self.config.r_m * input_current) / self.config.tau_mem;
+        let dv = (-(self.state.v - self.config.v_rest) + self.config.r_m * input_current)
+            / self.config.tau_mem;
         self.state.v += dv * dt;
 
         // Check for spike
@@ -521,7 +522,8 @@ impl NeuronModel for AlifNeuron {
         self.state.adapt += da * dt;
 
         // Update membrane potential
-        let dv = (-(self.state.v - self.config.v_rest) + self.config.r_m * input_current) / self.config.tau_mem;
+        let dv = (-(self.state.v - self.config.v_rest) + self.config.r_m * input_current)
+            / self.config.tau_mem;
         self.state.v += dv * dt;
 
         // Check for spike with adaptive threshold
@@ -642,8 +644,11 @@ impl NeuronModel for ElifNeuron {
         }
 
         // Exponential spike mechanism
-        let exp_term = self.config.delta_t * ((self.state.v - self.config.v_thresh) / self.config.delta_t).exp();
-        let dv = (-(self.state.v - self.config.v_rest) + exp_term + self.config.r_m * input_current) / self.config.tau_mem;
+        let exp_term = self.config.delta_t
+            * ((self.state.v - self.config.v_thresh) / self.config.delta_t).exp();
+        let dv =
+            (-(self.state.v - self.config.v_rest) + exp_term + self.config.r_m * input_current)
+                / self.config.tau_mem;
         self.state.v += dv * dt;
 
         // Check if spike threshold reached
@@ -763,7 +768,9 @@ impl NeuronModel for QlifNeuron {
         }
 
         // Quadratic nonlinearity
-        let quad_term = self.config.a * (self.state.v - self.config.v_rest) * (self.state.v - self.config.v_crit);
+        let quad_term = self.config.a
+            * (self.state.v - self.config.v_rest)
+            * (self.state.v - self.config.v_crit);
         let dv = (quad_term + self.config.r_m * input_current) / self.config.tau_mem;
         self.state.v += dv * dt;
 
@@ -917,7 +924,8 @@ impl NeuronModel for GlifNeuron {
         self.state.adapt2 += (-self.state.adapt2 / self.config.tau_adapt2) * dt;
 
         // Update membrane potential
-        let dv = (-(self.state.v - self.config.v_rest) + self.config.r_m * input_current) / self.config.tau_mem;
+        let dv = (-(self.state.v - self.config.v_rest) + self.config.r_m * input_current)
+            / self.config.tau_mem;
         self.state.v += dv * dt;
 
         // Check for spike with combined adaptive threshold

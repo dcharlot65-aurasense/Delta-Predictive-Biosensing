@@ -1,62 +1,83 @@
 //! Output decoders for converting spike trains to predictions
 
-pub mod rate;
-pub mod temporal;
-pub mod clinical;
-pub mod regression;
 pub mod classification;
+pub mod clinical;
+pub mod rate;
+pub mod regression;
+pub mod temporal;
 
 // Rate-based decoders (8 total)
 pub use rate::{
-    SpikeRateDecoder, FirstSpikeDecoder, PopulationDecoder, MaxSpikeDecoder,
-    WindowedRateDecoder, ExponentialRateDecoder, AdaptiveRateDecoder,
-    NormalizedRateDecoder, WeightedRateDecoder,
+    AdaptiveRateDecoder, ExponentialRateDecoder, FirstSpikeDecoder, MaxSpikeDecoder,
+    NormalizedRateDecoder, PopulationDecoder, SpikeRateDecoder, WeightedRateDecoder,
+    WindowedRateDecoder,
 };
 
 // Temporal decoders (8 total)
 pub use temporal::{
-    TemporalPatternDecoder, LatencyDecoder, ISIDecoder, BurstDecoder,
-    LastSpikeDecoder, PhaseDecoder, RankOrderDecoder,
+    BurstDecoder, ISIDecoder, LastSpikeDecoder, LatencyDecoder, PhaseDecoder, RankOrderDecoder,
+    TemporalPatternDecoder,
 };
 
 // Clinical score decoders (15 original + 8 phase E + 16 gap fill = 39 total)
 pub use clinical::{
-    // Original clinical decoders
-    UPDRSDecoder, TremorSeverityDecoder, GaitScoreDecoder,
-    UPDRSMotorDecoder, UPDRSTremorDecoder, UPDRSBradykinesiaDecoder,
-    UPDRSRigidityDecoder, UPDRSGaitDecoder, TUGDecoder,
-    BergBalanceDecoder, MoCADecoder, VoiceHDDecoder,
-    PDQ39Decoder, HoehnYahrDecoder, SEADLDecoder,
-    // Phase E: Balance decoders
-    TinettiDecoder, MiniBESTDecoder,
-    // Phase E: Pain decoders
-    VasDecoder, NrsDecoder, QstPhenotypeDecoder,
-    // Phase E: Vestibular decoders
-    VorGainDecoder, CanalParesisDecoder, BppvDecoder,
-    // Force decoders
-    GrfDecoder, GripStrengthDecoder, RfdDecoder,
-    // Cardiopulmonary decoders
-    HrvDecoder, RespiratoryDecoder, Vo2Decoder,
+    AttentionDecoder,
+    BergBalanceDecoder,
+    BppvDecoder,
+    CanalParesisDecoder,
     // Cognitive decoders
-    CognitiveRtDecoder, AttentionDecoder, WorkingMemoryDecoder,
+    CognitiveRtDecoder,
+    GaitScoreDecoder,
+    // Force decoders
+    GrfDecoder,
+    GripStrengthDecoder,
+    HoehnYahrDecoder,
+    // Cardiopulmonary decoders
+    HrvDecoder,
+    MiniBESTDecoder,
+    MoCADecoder,
+    NrsDecoder,
+    PDQ39Decoder,
+    QstPhenotypeDecoder,
+    RespiratoryDecoder,
+    RfdDecoder,
+    SEADLDecoder,
+    SclDecoder,
     // EDA decoders
-    ScrDecoder, SclDecoder, StressIndexDecoder,
+    ScrDecoder,
+    StressIndexDecoder,
+    TUGDecoder,
+    // Phase E: Balance decoders
+    TinettiDecoder,
+    TremorSeverityDecoder,
+    UPDRSBradykinesiaDecoder,
+    // Original clinical decoders
+    UPDRSDecoder,
+    UPDRSGaitDecoder,
+    UPDRSMotorDecoder,
+    UPDRSRigidityDecoder,
+    UPDRSTremorDecoder,
+    // Phase E: Pain decoders
+    VasDecoder,
+    Vo2Decoder,
+    VoiceHDDecoder,
+    // Phase E: Vestibular decoders
+    VorGainDecoder,
+    WorkingMemoryDecoder,
 };
 
 // Regression decoders (10 total)
 pub use regression::{
-    HeartRateDecoder, HRVDecoder, TremorFrequencyDecoder,
-    TremorAmplitudeDecoder, GaitVelocityDecoder, StrideTimeDecoder,
-    TappingFrequencyDecoder, ReactionTimeDecoder, SpeechRateDecoder,
-    PupilDiameterDecoder,
+    GaitVelocityDecoder, HRVDecoder, HeartRateDecoder, PupilDiameterDecoder, ReactionTimeDecoder,
+    SpeechRateDecoder, StrideTimeDecoder, TappingFrequencyDecoder, TremorAmplitudeDecoder,
+    TremorFrequencyDecoder,
 };
 
 // Classification decoders (10 total)
 pub use classification::{
-    BinaryClassDecoder, MultiClassDecoder, TremorTypeDecoder,
-    GaitPhaseDecoder, SleepStageDecoder, ActivityDecoder,
-    EmotionDecoder, FatigueDecoder, MedicationStateDecoder,
-    DyskinesiasDecoder,
+    ActivityDecoder, BinaryClassDecoder, DyskinesiasDecoder, EmotionDecoder, FatigueDecoder,
+    GaitPhaseDecoder, MedicationStateDecoder, MultiClassDecoder, SleepStageDecoder,
+    TremorTypeDecoder,
 };
 
 use crate::{SNNResult, SpikeTensor};

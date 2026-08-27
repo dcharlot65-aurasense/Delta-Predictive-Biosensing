@@ -270,7 +270,10 @@ impl ErpAnalyzer {
         }
 
         let window_data = &erp.waveform[start_idx..end_idx];
-        let max = window_data.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let max = window_data
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
         let min = window_data.iter().cloned().fold(f64::INFINITY, f64::min);
 
         max - min

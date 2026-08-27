@@ -236,11 +236,12 @@ impl EncoderExport {
         self.params.validate()?;
 
         if let Some(state) = &self.state
-            && state.channel_states.len() != self.params.num_channels {
-                return Err(ExportError::validation(
-                    "state channel count doesn't match params",
-                ));
-            }
+            && state.channel_states.len() != self.params.num_channels
+        {
+            return Err(ExportError::validation(
+                "state channel count doesn't match params",
+            ));
+        }
 
         if !self.verify_checksum() {
             return Err(ExportError::validation("checksum mismatch"));
@@ -361,8 +362,7 @@ mod tests {
 
     #[test]
     fn test_encoder_params_with_adaptive() {
-        let params = EncoderParams::level_crossing(8, 256.0, 0.1)
-            .with_adaptive(0.01);
+        let params = EncoderParams::level_crossing(8, 256.0, 0.1).with_adaptive(0.01);
         assert!(params.adaptive);
         assert_eq!(params.adaptation_rate, Some(0.01));
     }
@@ -370,8 +370,8 @@ mod tests {
     #[test]
     fn test_encoder_params_with_thresholds() {
         let custom_thresholds = vec![0.1, 0.2, 0.15, 0.12];
-        let params = EncoderParams::new("custom", 4, 256.0)
-            .with_thresholds(custom_thresholds.clone());
+        let params =
+            EncoderParams::new("custom", 4, 256.0).with_thresholds(custom_thresholds.clone());
         assert_eq!(params.thresholds, custom_thresholds);
     }
 
@@ -380,7 +380,10 @@ mod tests {
         let params = EncoderParams::new("custom", 4, 256.0)
             .with_extra("custom_param", serde_json::json!(42));
         assert!(params.extra.contains_key("custom_param"));
-        assert_eq!(params.extra.get("custom_param").unwrap(), &serde_json::json!(42));
+        assert_eq!(
+            params.extra.get("custom_param").unwrap(),
+            &serde_json::json!(42)
+        );
     }
 
     #[test]
@@ -407,11 +410,15 @@ mod tests {
 
     #[test]
     fn test_encoder_params_validate_threshold_mismatch() {
-        let params = EncoderParams::new("test", 8, 256.0)
-            .with_thresholds(vec![0.1, 0.2, 0.3]); // Only 3 thresholds for 8 channels
+        let params = EncoderParams::new("test", 8, 256.0).with_thresholds(vec![0.1, 0.2, 0.3]); // Only 3 thresholds for 8 channels
         let result = params.validate();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("thresholds length"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("thresholds length")
+        );
     }
 
     #[test]
@@ -427,8 +434,7 @@ mod tests {
 
     #[test]
     fn test_encoder_state_with_global() {
-        let state = EncoderState::new(2)
-            .with_global("iteration", serde_json::json!(100));
+        let state = EncoderState::new(2).with_global("iteration", serde_json::json!(100));
         assert!(state.global.contains_key("iteration"));
     }
 
@@ -489,9 +495,7 @@ mod tests {
     fn test_encoder_export_validate_success() {
         let params = EncoderParams::level_crossing(4, 256.0, 0.1);
         let state = EncoderState::new(4);
-        let export = EncoderExport::new(params)
-            .with_state(state)
-            .with_checksum();
+        let export = EncoderExport::new(params).with_state(state).with_checksum();
         assert!(export.validate().is_ok());
     }
 
@@ -541,8 +545,7 @@ mod tests {
 
     #[test]
     fn test_encoder_params_serialization() {
-        let params = EncoderParams::level_crossing(8, 256.0, 0.1)
-            .with_adaptive(0.01);
+        let params = EncoderParams::level_crossing(8, 256.0, 0.1).with_adaptive(0.01);
 
         let json = serde_json::to_string(&params).unwrap();
         let deserialized: EncoderParams = serde_json::from_str(&json).unwrap();
@@ -555,13 +558,15 @@ mod tests {
 
     #[test]
     fn test_encoder_state_serialization() {
-        let state = EncoderState::new(4)
-            .with_global("test_key", serde_json::json!("test_value"));
+        let state = EncoderState::new(4).with_global("test_key", serde_json::json!("test_value"));
 
         let json = serde_json::to_string(&state).unwrap();
         let deserialized: EncoderState = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(deserialized.channel_states.len(), state.channel_states.len());
+        assert_eq!(
+            deserialized.channel_states.len(),
+            state.channel_states.len()
+        );
         assert!(deserialized.global.contains_key("test_key"));
     }
 

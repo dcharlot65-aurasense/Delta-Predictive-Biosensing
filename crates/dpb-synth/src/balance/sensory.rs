@@ -144,8 +144,14 @@ impl SensoryManipulationGenerator {
         // Frequency components
         let base_freqs = [0.1, 0.2, 0.35, 0.5, 0.8, 1.2];
         let freqs: Vec<f64> = base_freqs.iter().map(|f| f * freq_shift).collect();
-        let phases_ap: Vec<f64> = freqs.iter().map(|_| self.rng.random::<f64>() * 2.0 * PI).collect();
-        let phases_ml: Vec<f64> = freqs.iter().map(|_| self.rng.random::<f64>() * 2.0 * PI).collect();
+        let phases_ap: Vec<f64> = freqs
+            .iter()
+            .map(|_| self.rng.random::<f64>() * 2.0 * PI)
+            .collect();
+        let phases_ml: Vec<f64> = freqs
+            .iter()
+            .map(|_| self.rng.random::<f64>() * 2.0 * PI)
+            .collect();
         let amps = [0.35, 0.25, 0.18, 0.12, 0.07, 0.03];
 
         // Add condition-specific effects
@@ -153,7 +159,10 @@ impl SensoryManipulationGenerator {
             SensoryCondition::GalvanicStimulation { current_ma } => {
                 (0.02 * current_ma, 0.03 * current_ma, Some(0.5))
             }
-            SensoryCondition::VisualFlow { velocity, direction } => {
+            SensoryCondition::VisualFlow {
+                velocity,
+                direction,
+            } => {
                 let drift = 0.01 * velocity;
                 (drift * direction.cos(), drift * direction.sin(), None)
             }
@@ -468,7 +477,8 @@ mod tests {
 
         assert_eq!(outputs.len(), 6);
         // Condition 6 should have highest sway
-        let max_sway = outputs.iter()
+        let max_sway = outputs
+            .iter()
             .map(|o| o.ground_truth.sway_area)
             .fold(f64::NEG_INFINITY, f64::max);
         assert_eq!(outputs[5].ground_truth.sway_area, max_sway);

@@ -52,7 +52,9 @@ impl StreamInfo {
         let source_id = source_id.into();
 
         if name.is_empty() {
-            return Err(LslError::InvalidConfig("Stream name cannot be empty".into()));
+            return Err(LslError::InvalidConfig(
+                "Stream name cannot be empty".into(),
+            ));
         }
 
         if channel_count == 0 {
@@ -261,8 +263,14 @@ impl StreamInfoBuilder {
         let channel_format = self.channel_format.unwrap_or(ChannelFormat::Float32);
         let source_id = self.source_id.unwrap_or_default();
 
-        let mut info =
-            StreamInfo::new(name, stream_type, channel_count, nominal_srate, channel_format, source_id)?;
+        let mut info = StreamInfo::new(
+            name,
+            stream_type,
+            channel_count,
+            nominal_srate,
+            channel_format,
+            source_id,
+        )?;
 
         if let Some(session_id) = self.session_id {
             info = info.with_session_id(session_id);
@@ -289,7 +297,11 @@ pub struct ChannelInfo {
 
 impl ChannelInfo {
     /// Create new channel info.
-    pub fn new(label: impl Into<String>, unit: impl Into<String>, channel_type: impl Into<String>) -> Self {
+    pub fn new(
+        label: impl Into<String>,
+        unit: impl Into<String>,
+        channel_type: impl Into<String>,
+    ) -> Self {
         Self {
             label: label.into(),
             unit: unit.into(),
@@ -360,11 +372,19 @@ mod tests {
 
     #[test]
     fn test_stream_info_irregular_rate() {
-        let info =
-            StreamInfo::new("Markers", "Markers", 1, 0.0, ChannelFormat::String, "source").unwrap();
+        let info = StreamInfo::new(
+            "Markers",
+            "Markers",
+            1,
+            0.0,
+            ChannelFormat::String,
+            "source",
+        )
+        .unwrap();
         assert!(info.is_irregular_rate());
 
-        let info = StreamInfo::new("EEG", "EEG", 8, 256.0, ChannelFormat::Float32, "source").unwrap();
+        let info =
+            StreamInfo::new("EEG", "EEG", 8, 256.0, ChannelFormat::Float32, "source").unwrap();
         assert!(!info.is_irregular_rate());
     }
 
@@ -540,10 +560,16 @@ mod tests {
 
     #[test]
     fn test_stream_info_serialization() {
-        let info =
-            StreamInfo::new("SerialTest", "EEG", 8, 256.0, ChannelFormat::Float32, "source")
-                .unwrap()
-                .with_session_id("session");
+        let info = StreamInfo::new(
+            "SerialTest",
+            "EEG",
+            8,
+            256.0,
+            ChannelFormat::Float32,
+            "source",
+        )
+        .unwrap()
+        .with_session_id("session");
 
         let json = serde_json::to_string(&info).unwrap();
         assert!(json.contains("SerialTest"));
@@ -567,8 +593,15 @@ mod tests {
 
     #[test]
     fn test_stream_info_clone() {
-        let info =
-            StreamInfo::new("Original", "EEG", 8, 256.0, ChannelFormat::Float32, "source").unwrap();
+        let info = StreamInfo::new(
+            "Original",
+            "EEG",
+            8,
+            256.0,
+            ChannelFormat::Float32,
+            "source",
+        )
+        .unwrap();
         let cloned = info.clone();
 
         assert_eq!(info.name(), cloned.name());

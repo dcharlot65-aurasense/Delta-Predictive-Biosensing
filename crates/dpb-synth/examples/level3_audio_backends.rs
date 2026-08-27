@@ -8,9 +8,7 @@
 //! cargo run --example level3_audio_backends
 //! ```
 
-use dpb_synth::level3::audio::{
-    AudioBackend, Level3AudioGenerator, VoiceAudioParams,
-};
+use dpb_synth::level3::audio::{AudioBackend, Level3AudioGenerator, VoiceAudioParams};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Level 3 Audio Generation - Backend Examples\n");
@@ -68,7 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         hypophonia_severity: 0.4,
         monotonicity: 0.6,
         dysarthria_severity: 0.0,
-        tremor_frequency: 5.0,   // 5 Hz tremor (typical for PD)
+        tremor_frequency: 5.0, // 5 Hz tremor (typical for PD)
         tremor_amplitude: 0.4,
         output_path: "/tmp/praat_tremor_example.wav".to_string(),
         ground_truth_path: "/tmp/praat_tremor_ground_truth.json".to_string(),
@@ -93,8 +91,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if let Some(formants) = &gt.formants {
                             println!("    Formant frames: {}", formants.len());
                             if let Some(first) = formants.first() {
-                                println!("    First frame - F1: {:.1} Hz, F2: {:.1} Hz, F3: {:.1} Hz",
-                                    first.f1, first.f2, first.f3);
+                                println!(
+                                    "    First frame - F1: {:.1} Hz, F2: {:.1} Hz, F3: {:.1} Hz",
+                                    first.f1, first.f2, first.f3
+                                );
                             }
                         }
                     }

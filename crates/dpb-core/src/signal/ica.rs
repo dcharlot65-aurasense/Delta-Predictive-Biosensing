@@ -2,7 +2,7 @@
 
 use crate::error::{DpbError, Result};
 use ndarray::{Array1, Array2, Axis};
-use rand::{RngExt};
+use rand::RngExt;
 
 /// Nonlinear function types for FastICA algorithm.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -250,10 +250,7 @@ impl FastICA {
     }
 
     /// Whitens the data using eigenvalue decomposition.
-    fn whiten_data(
-        &self,
-        data: &Array2<f64>,
-    ) -> Result<(Array2<f64>, Array2<f64>, Array2<f64>)> {
+    fn whiten_data(&self, data: &Array2<f64>) -> Result<(Array2<f64>, Array2<f64>, Array2<f64>)> {
         let (n_features, n_samples) = data.dim();
 
         // Compute covariance matrix
@@ -566,7 +563,10 @@ mod tests {
         let t: Vec<f64> = (0..n_samples).map(|i| i as f64 / 100.0).collect();
 
         let s1: Vec<f64> = t.iter().map(|&t| (2.0 * PI * 1.0 * t).sin()).collect();
-        let s2: Vec<f64> = t.iter().map(|&t| if (t * 3.0) as i32 % 2 == 0 { 1.0 } else { -1.0 }).collect();
+        let s2: Vec<f64> = t
+            .iter()
+            .map(|&t| if (t * 3.0) as i32 % 2 == 0 { 1.0 } else { -1.0 })
+            .collect();
 
         // Create mixing matrix
         let mixing = Array2::from_shape_vec((2, 2), vec![0.8, 0.6, 0.4, 0.9]).unwrap();

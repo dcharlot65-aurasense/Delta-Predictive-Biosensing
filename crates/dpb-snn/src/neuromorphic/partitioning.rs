@@ -3,10 +3,10 @@
 //! Implements graph-based partitioning algorithms to distribute networks
 //! across multiple cores while minimizing inter-core communication.
 
+use super::constraints::HardwareConstraints;
+use crate::SNNResult;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use crate::SNNResult;
-use super::constraints::HardwareConstraints;
 
 /// Network partitioner for multi-core systems
 #[derive(Debug)]
@@ -224,9 +224,10 @@ impl NetworkPartitioner {
 
         for &neighbor in &graph.get_neighbors(neuron) {
             if let Some(&neighbor_core) = assignments.get(&neighbor)
-                && neighbor_core != neuron_core {
-                    inter_core_edges += 1;
-                }
+                && neighbor_core != neuron_core
+            {
+                inter_core_edges += 1;
+            }
         }
 
         inter_core_edges
@@ -307,15 +308,9 @@ impl NetworkGraph {
         let mut synapse_counts: HashMap<usize, usize> = HashMap::new();
 
         for edge in &edges {
-            adjacency
-                .entry(edge.source)
-                .or_default()
-                .push(edge.target);
+            adjacency.entry(edge.source).or_default().push(edge.target);
 
-            adjacency
-                .entry(edge.target)
-                .or_default()
-                .push(edge.source);
+            adjacency.entry(edge.target).or_default().push(edge.source);
 
             *synapse_counts.entry(edge.source).or_insert(0) += 1;
             *synapse_counts.entry(edge.target).or_insert(0) += 1;
@@ -587,7 +582,8 @@ mod tests {
 
         let graph = NetworkGraph::new(1000, edges);
         let constraints = HardwareConstraints::loihi_constraints();
-        let partitioner = NetworkPartitioner::new(constraints.clone(), PartitionStrategy::LoadBalanced);
+        let partitioner =
+            NetworkPartitioner::new(constraints.clone(), PartitionStrategy::LoadBalanced);
 
         let result = partitioner.partition(&graph).unwrap();
 

@@ -28,11 +28,11 @@
 //! # }
 //! ```
 
+use crate::{Result, VizError};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use crate::{Result, VizError};
 
 /// Configuration for the dashboard server
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -166,9 +166,7 @@ impl SpikeRatePanel {
         let min = values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
         let max = values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
-        let variance = values.iter()
-            .map(|v| (v - mean).powi(2))
-            .sum::<f64>() / values.len() as f64;
+        let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
         let std_dev = variance.sqrt();
 
         PanelStatistics {

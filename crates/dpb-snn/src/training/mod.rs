@@ -1,16 +1,14 @@
 //! Training algorithms and utilities for SNNs
 
-pub mod surrogate;
 pub mod loss;
 pub mod optimizer;
+pub mod surrogate;
 
-pub use surrogate::{SurrogateGradient, BPTT, OTTT, SLTT, SurrogateType};
 pub use loss::{
-    SpikingCrossEntropy, SpikeCountLoss, SpikeTimingLoss,
-    TemporalCrossEntropy, LossFunction,
+    LossFunction, SpikeCountLoss, SpikeTimingLoss, SpikingCrossEntropy, TemporalCrossEntropy,
 };
-pub use optimizer::{AdamOptimizer, SGDOptimizer, Optimizer};
-
+pub use optimizer::{AdamOptimizer, Optimizer, SGDOptimizer};
+pub use surrogate::{BPTT, OTTT, SLTT, SurrogateGradient, SurrogateType};
 
 /// Training configuration
 #[derive(Debug, Clone)]

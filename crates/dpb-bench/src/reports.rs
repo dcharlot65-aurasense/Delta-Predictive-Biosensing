@@ -154,7 +154,9 @@ impl BenchmarkReport {
         } else {
             0.0
         };
-        self.summary.peak_memory_mb = self.results.iter()
+        self.summary.peak_memory_mb = self
+            .results
+            .iter()
             .map(|r| r.profile.memory_bytes as f64 / 1_048_576.0)
             .fold(0.0f64, f64::max);
     }
@@ -181,7 +183,10 @@ impl BenchmarkReport {
         let mut file = File::create(path)?;
 
         // Write header
-        writeln!(file, "Name,Category,Elapsed(ms),Memory(bytes),Spikes,Sparsity,Energy(mJ)")?;
+        writeln!(
+            file,
+            "Name,Category,Elapsed(ms),Memory(bytes),Spikes,Sparsity,Energy(mJ)"
+        )?;
 
         // Write results
         for result in &self.results {
@@ -216,27 +221,69 @@ impl BenchmarkReport {
         writeln!(file, "## System Information")?;
         writeln!(file)?;
         writeln!(file, "- **OS:** {}", self.metadata.system_info.os)?;
-        writeln!(file, "- **Architecture:** {}", self.metadata.system_info.arch)?;
-        writeln!(file, "- **CPU Cores:** {}", self.metadata.system_info.num_cores)?;
-        writeln!(file, "- **Rust Version:** {}", self.metadata.system_info.rust_version)?;
+        writeln!(
+            file,
+            "- **Architecture:** {}",
+            self.metadata.system_info.arch
+        )?;
+        writeln!(
+            file,
+            "- **CPU Cores:** {}",
+            self.metadata.system_info.num_cores
+        )?;
+        writeln!(
+            file,
+            "- **Rust Version:** {}",
+            self.metadata.system_info.rust_version
+        )?;
         writeln!(file)?;
 
         // Write summary
         writeln!(file, "## Summary")?;
         writeln!(file)?;
-        writeln!(file, "- **Total Benchmarks:** {}", self.summary.total_benchmarks)?;
-        writeln!(file, "- **Total Time:** {:.2} ms", self.summary.total_time_ms)?;
-        writeln!(file, "- **Average Latency:** {:.2} ms", self.summary.avg_latency_ms)?;
-        writeln!(file, "- **Total Energy:** {:.3} mJ", self.summary.total_energy_mj)?;
-        writeln!(file, "- **Average Sparsity:** {:.2}%", self.summary.avg_sparsity * 100.0)?;
-        writeln!(file, "- **Peak Memory:** {:.2} MB", self.summary.peak_memory_mb)?;
+        writeln!(
+            file,
+            "- **Total Benchmarks:** {}",
+            self.summary.total_benchmarks
+        )?;
+        writeln!(
+            file,
+            "- **Total Time:** {:.2} ms",
+            self.summary.total_time_ms
+        )?;
+        writeln!(
+            file,
+            "- **Average Latency:** {:.2} ms",
+            self.summary.avg_latency_ms
+        )?;
+        writeln!(
+            file,
+            "- **Total Energy:** {:.3} mJ",
+            self.summary.total_energy_mj
+        )?;
+        writeln!(
+            file,
+            "- **Average Sparsity:** {:.2}%",
+            self.summary.avg_sparsity * 100.0
+        )?;
+        writeln!(
+            file,
+            "- **Peak Memory:** {:.2} MB",
+            self.summary.peak_memory_mb
+        )?;
         writeln!(file)?;
 
         // Write detailed results
         writeln!(file, "## Detailed Results")?;
         writeln!(file)?;
-        writeln!(file, "| Name | Category | Time (ms) | Memory (KB) | Spikes | Sparsity | Energy (mJ) |")?;
-        writeln!(file, "|------|----------|-----------|-------------|--------|----------|-------------|")?;
+        writeln!(
+            file,
+            "| Name | Category | Time (ms) | Memory (KB) | Spikes | Sparsity | Energy (mJ) |"
+        )?;
+        writeln!(
+            file,
+            "|------|----------|-----------|-------------|--------|----------|-------------|"
+        )?;
 
         for result in &self.results {
             writeln!(
@@ -336,7 +383,9 @@ impl ComparisonReport {
         match format {
             ReportFormat::JSON => self.export_json(path),
             ReportFormat::Markdown => self.export_markdown(path),
-            _ => Err(anyhow::anyhow!("Format not supported for comparison report")),
+            _ => Err(anyhow::anyhow!(
+                "Format not supported for comparison report"
+            )),
         }
     }
 
@@ -357,8 +406,14 @@ impl ComparisonReport {
 
         writeln!(file, "## SNN vs ANN Comparison")?;
         writeln!(file)?;
-        writeln!(file, "| Benchmark | Accuracy Δ | Speedup | Energy Efficiency |")?;
-        writeln!(file, "|-----------|------------|---------|-------------------|")?;
+        writeln!(
+            file,
+            "| Benchmark | Accuracy Δ | Speedup | Energy Efficiency |"
+        )?;
+        writeln!(
+            file,
+            "|-----------|------------|---------|-------------------|"
+        )?;
 
         for comp in &self.comparisons {
             if let Some(ref metrics) = comp.snn_vs_ann {

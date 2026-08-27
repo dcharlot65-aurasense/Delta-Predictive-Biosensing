@@ -34,7 +34,10 @@ pub enum FederatedError {
 
     /// Round number out of sync.
     #[error("Round mismatch: server at {server_round}, client sent {client_round}")]
-    RoundMismatch { server_round: u64, client_round: u64 },
+    RoundMismatch {
+        server_round: u64,
+        client_round: u64,
+    },
 
     /// Privacy budget exhausted.
     #[error("Privacy budget exhausted: epsilon={epsilon}, delta={delta}")]

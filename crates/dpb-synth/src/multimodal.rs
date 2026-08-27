@@ -1,9 +1,9 @@
 //! Multi-modal synchronized generators
 
-use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, SpatialGroundTruth};
 use crate::contact::{ecg, eda, tremor as contact_tremor};
-use crate::pose::gait;
 use crate::hand::tapping;
+use crate::pose::gait;
+use crate::traits::{GeneratedData, SpatialGroundTruth, SyntheticGenerator, TimeSeriesGroundTruth};
 use crate::voice::phonation;
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
@@ -44,10 +44,10 @@ pub struct FullPDSimulator;
 #[derive(Debug, Clone)]
 pub struct FullPDParams {
     pub duration: f64,
-    pub sampling_rate: f64,      // for biosignals
-    pub video_frame_rate: f64,   // for pose/gait
-    pub severity: f64,           // 0-1 (UPDRS-based)
-    pub height: f64,             // meters
+    pub sampling_rate: f64,    // for biosignals
+    pub video_frame_rate: f64, // for pose/gait
+    pub severity: f64,         // 0-1 (UPDRS-based)
+    pub height: f64,           // meters
 }
 
 impl SyntheticGenerator for FullPDSimulator {
@@ -55,7 +55,11 @@ impl SyntheticGenerator for FullPDSimulator {
     type GroundTruth = MultiModalGroundTruth;
     type Parameters = FullPDParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut modalities = Vec::new();
@@ -139,7 +143,7 @@ impl SyntheticGenerator for FullPDSimulator {
         // 6. Generate voice with reduced prosody
         let voice_params = phonation::VoiceTremorParams {
             duration: params.duration.min(5.0),
-            sampling_rate: 100.0, // f0 sampling
+            sampling_rate: 100.0,                        // f0 sampling
             baseline_f0: 120.0 - params.severity * 10.0, // monotone in PD
             tremor_frequency: 5.0,
             tremor_extent: 5.0 * params.severity,
@@ -176,7 +180,11 @@ impl SyntheticGenerator for FullPDSimulator {
             severity: params.severity,
         };
 
-        Ok(GeneratedData::new(output, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            output,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -191,10 +199,14 @@ impl SyntheticGenerator for FullPDSimulator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.severity < 0.0 || params.severity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("severity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "severity must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -208,7 +220,7 @@ pub struct HealthyAgingParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub video_frame_rate: f64,
-    pub age: f64,              // years
+    pub age: f64, // years
     pub height: f64,
 }
 
@@ -217,7 +229,11 @@ impl SyntheticGenerator for HealthyAgingSimulator {
     type GroundTruth = MultiModalGroundTruth;
     type Parameters = HealthyAgingParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut modalities = Vec::new();
@@ -314,7 +330,11 @@ impl SyntheticGenerator for HealthyAgingSimulator {
             severity: 0.0,
         };
 
-        Ok(GeneratedData::new(output, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            output,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -329,10 +349,14 @@ impl SyntheticGenerator for HealthyAgingSimulator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.age < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("age must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "age must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -365,10 +389,10 @@ impl crate::traits::GroundTruth for HandVoiceTremorGroundTruth {}
 pub struct HandVoiceTremorParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub severity: f64,              // 0-1
-    pub coupling_strength: f64,     // 0-1 (correlation coefficient)
-    pub hand_tremor_freq: f64,      // Hz (typically 4-6 for PD)
-    pub voice_tremor_freq: f64,     // Hz (typically 4-6 for PD)
+    pub severity: f64,          // 0-1
+    pub coupling_strength: f64, // 0-1 (correlation coefficient)
+    pub hand_tremor_freq: f64,  // Hz (typically 4-6 for PD)
+    pub voice_tremor_freq: f64, // Hz (typically 4-6 for PD)
 }
 
 pub struct HandVoiceTremorCouplingGenerator;
@@ -378,7 +402,11 @@ impl SyntheticGenerator for HandVoiceTremorCouplingGenerator {
     type GroundTruth = HandVoiceTremorGroundTruth;
     type Parameters = HandVoiceTremorParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         use rand::SeedableRng;
         Self::validate_params(params)?;
 
@@ -414,10 +442,12 @@ impl SyntheticGenerator for HandVoiceTremorCouplingGenerator {
                 let phase_noise = 0.1 * shared_noise[i];
 
                 // Coupled component
-                let coupled = params.coupling_strength * (2.0 * PI * params.hand_tremor_freq * t + phase_noise).sin();
+                let coupled = params.coupling_strength
+                    * (2.0 * PI * params.hand_tremor_freq * t + phase_noise).sin();
 
                 // Independent component
-                let independent = (1.0 - params.coupling_strength) * (2.0 * PI * params.hand_tremor_freq * t).sin();
+                let independent = (1.0 - params.coupling_strength)
+                    * (2.0 * PI * params.hand_tremor_freq * t).sin();
 
                 hand_amplitude * (coupled + independent) + 0.1 * hand_noise[i]
             })
@@ -429,10 +459,12 @@ impl SyntheticGenerator for HandVoiceTremorCouplingGenerator {
                 let phase_noise = 0.1 * shared_noise[i];
 
                 // Coupled component
-                let coupled = params.coupling_strength * (2.0 * PI * params.voice_tremor_freq * t + phase_noise).sin();
+                let coupled = params.coupling_strength
+                    * (2.0 * PI * params.voice_tremor_freq * t + phase_noise).sin();
 
                 // Independent component
-                let independent = (1.0 - params.coupling_strength) * (2.0 * PI * params.voice_tremor_freq * t).sin();
+                let independent = (1.0 - params.coupling_strength)
+                    * (2.0 * PI * params.voice_tremor_freq * t).sin();
 
                 voice_amplitude * (coupled + independent) + 0.2 * voice_noise[i]
             })
@@ -454,7 +486,11 @@ impl SyntheticGenerator for HandVoiceTremorCouplingGenerator {
             severity: params.severity,
         };
 
-        Ok(GeneratedData::new(output, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            output,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -470,13 +506,19 @@ impl SyntheticGenerator for HandVoiceTremorCouplingGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.severity < 0.0 || params.severity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("severity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "severity must be 0-1".to_string(),
+            ));
         }
         if params.coupling_strength < 0.0 || params.coupling_strength > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("coupling_strength must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "coupling_strength must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -488,8 +530,8 @@ impl SyntheticGenerator for HandVoiceTremorCouplingGenerator {
 pub struct GaitSpeechRateOutput {
     pub gait_keypoints: Vec<Vec<[f64; 3]>>,
     pub syllable_times: Vec<f64>,
-    pub gait_cadence: f64,  // steps/min
-    pub speech_rate: f64,   // syllables/sec
+    pub gait_cadence: f64, // steps/min
+    pub speech_rate: f64,  // syllables/sec
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -506,10 +548,10 @@ impl crate::traits::GroundTruth for GaitSpeechRateGroundTruth {}
 pub struct GaitSpeechRateParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub severity: f64,              // 0-1 (bradykinesia severity)
-    pub coupling_strength: f64,     // 0-1
-    pub baseline_cadence: f64,      // steps/min
-    pub baseline_speech_rate: f64,  // syllables/sec
+    pub severity: f64,             // 0-1 (bradykinesia severity)
+    pub coupling_strength: f64,    // 0-1
+    pub baseline_cadence: f64,     // steps/min
+    pub baseline_speech_rate: f64, // syllables/sec
     pub height: f64,
 }
 
@@ -520,7 +562,11 @@ impl SyntheticGenerator for GaitSpeechRateCouplingGenerator {
     type GroundTruth = GaitSpeechRateGroundTruth;
     type Parameters = GaitSpeechRateParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         use rand::{RngExt, SeedableRng};
@@ -559,7 +605,9 @@ impl SyntheticGenerator for GaitSpeechRateCouplingGenerator {
             let gait_phase = (t / step_duration).fract();
             let gait_modulation = if params.coupling_strength > 0.0 {
                 // Speech is slightly faster during stance phase
-                1.0 + 0.2 * params.coupling_strength * (2.0 * std::f64::consts::PI * gait_phase).cos()
+                1.0 + 0.2
+                    * params.coupling_strength
+                    * (2.0 * std::f64::consts::PI * gait_phase).cos()
             } else {
                 1.0
             };
@@ -600,13 +648,19 @@ impl SyntheticGenerator for GaitSpeechRateCouplingGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.severity < 0.0 || params.severity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("severity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "severity must be 0-1".to_string(),
+            ));
         }
         if params.coupling_strength < 0.0 || params.coupling_strength > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("coupling_strength must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "coupling_strength must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -617,7 +671,7 @@ impl SyntheticGenerator for GaitSpeechRateCouplingGenerator {
 #[derive(Debug, Clone)]
 pub struct SaccadeReactionTimeOutput {
     pub saccade_positions: Vec<[f64; 2]>,
-    pub reaction_times: Vec<f64>,  // ms
+    pub reaction_times: Vec<f64>, // ms
     pub stimulus_times: Vec<f64>,
 }
 
@@ -635,8 +689,8 @@ impl crate::traits::GroundTruth for SaccadeReactionTimeGroundTruth {}
 pub struct SaccadeReactionTimeParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub severity: f64,              // 0-1 (cognitive slowing)
-    pub coupling_strength: f64,     // 0-1
+    pub severity: f64,          // 0-1 (cognitive slowing)
+    pub coupling_strength: f64, // 0-1
     pub stimulus_times: Vec<f64>,
     pub saccade_amplitude: f64,
 }
@@ -648,7 +702,11 @@ impl SyntheticGenerator for SaccadeReactionTimeCouplingGenerator {
     type GroundTruth = SaccadeReactionTimeGroundTruth;
     type Parameters = SaccadeReactionTimeParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         use rand::SeedableRng;
         Self::validate_params(params)?;
 
@@ -699,21 +757,26 @@ impl SyntheticGenerator for SaccadeReactionTimeCouplingGenerator {
 
             let target_position = [params.saccade_amplitude, 0.0];
 
-            for (i_off, i_slot) in saccade_positions[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in saccade_positions[start_idx..end_idx.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let i = start_idx + i_off;
                 let progress = (i - start_idx) as f64 / (end_idx - start_idx) as f64;
                 let s = 10.0 * (progress - 0.5);
                 let position_progress = 1.0 / (1.0 + (-s).exp());
 
                 *i_slot = [
-                    current_position[0] + (target_position[0] - current_position[0]) * position_progress,
+                    current_position[0]
+                        + (target_position[0] - current_position[0]) * position_progress,
                     0.0,
                 ];
             }
 
             if end_idx < n_samples {
                 current_position = target_position;
-                for (i_off, i_slot) in saccade_positions[end_idx..n_samples].iter_mut().enumerate() {
+                for (i_off, i_slot) in saccade_positions[end_idx..n_samples].iter_mut().enumerate()
+                {
                     let _i = end_idx + i_off;
                     *i_slot = current_position;
                 }
@@ -733,7 +796,11 @@ impl SyntheticGenerator for SaccadeReactionTimeCouplingGenerator {
             severity: params.severity,
         };
 
-        Ok(GeneratedData::new(output, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            output,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -749,13 +816,19 @@ impl SyntheticGenerator for SaccadeReactionTimeCouplingGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.severity < 0.0 || params.severity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("severity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "severity must be 0-1".to_string(),
+            ));
         }
         if params.coupling_strength < 0.0 || params.coupling_strength > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("coupling_strength must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "coupling_strength must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -784,10 +857,10 @@ pub struct PupilVoiceAffectParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub arousal_segments: Vec<(f64, f64, f64)>, // (start, end, arousal 0-1)
-    pub baseline_pupil: f64,    // mm
-    pub baseline_f0: f64,       // Hz
-    pub pupil_dilation_per_arousal: f64,  // mm
-    pub f0_increase_per_arousal: f64,     // Hz
+    pub baseline_pupil: f64,                    // mm
+    pub baseline_f0: f64,                       // Hz
+    pub pupil_dilation_per_arousal: f64,        // mm
+    pub f0_increase_per_arousal: f64,           // Hz
 }
 
 pub struct PupilVoiceAffectGenerator;
@@ -797,7 +870,11 @@ impl SyntheticGenerator for PupilVoiceAffectGenerator {
     type GroundTruth = PupilVoiceAffectGroundTruth;
     type Parameters = PupilVoiceAffectParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         use rand::SeedableRng;
         Self::validate_params(params)?;
 
@@ -864,18 +941,18 @@ impl SyntheticGenerator for PupilVoiceAffectGenerator {
             arousal_segments: params.arousal_segments.clone(),
         };
 
-        Ok(GeneratedData::new(output, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            output,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
         PupilVoiceAffectParams {
             duration: 60.0,
             sampling_rate: 60.0,
-            arousal_segments: vec![
-                (10.0, 20.0, 0.5),
-                (30.0, 45.0, 0.8),
-                (50.0, 55.0, 0.3),
-            ],
+            arousal_segments: vec![(10.0, 20.0, 0.5), (30.0, 45.0, 0.8), (50.0, 55.0, 0.3)],
             baseline_pupil: 4.0,
             baseline_f0: 120.0,
             pupil_dilation_per_arousal: 0.8,
@@ -885,13 +962,19 @@ impl SyntheticGenerator for PupilVoiceAffectGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.baseline_pupil <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("baseline_pupil must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "baseline_pupil must be positive".to_string(),
+            ));
         }
         if params.baseline_f0 <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("baseline_f0 must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "baseline_f0 must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -920,7 +1003,7 @@ impl crate::traits::GroundTruth for BradykinesiaHypomimiaGroundTruth {}
 pub struct BradykinesiaHypomimiaParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub motor_severity: f64,    // 0-1 (unified severity across systems)
+    pub motor_severity: f64, // 0-1 (unified severity across systems)
     pub height: f64,
 }
 
@@ -931,7 +1014,11 @@ impl SyntheticGenerator for BradykinesiaHypomimiaGenerator {
     type GroundTruth = BradykinesiaHypomimiaGroundTruth;
     type Parameters = BradykinesiaHypomimiaParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         // All systems affected proportionally by motor severity
@@ -994,10 +1081,14 @@ impl SyntheticGenerator for BradykinesiaHypomimiaGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.motor_severity < 0.0 || params.motor_severity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("motor_severity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "motor_severity must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -1025,11 +1116,11 @@ impl crate::traits::GroundTruth for GaitPosturalTremorGroundTruth {}
 #[derive(Debug, Clone)]
 pub struct GaitPosturalTremorParams {
     pub duration: f64,
-    pub sampling_rate: f64,     // for tremor signal
-    pub frame_rate: f64,        // for gait
-    pub severity: f64,          // 0-1
+    pub sampling_rate: f64, // for tremor signal
+    pub frame_rate: f64,    // for gait
+    pub severity: f64,      // 0-1
     pub baseline_cadence: f64,
-    pub tremor_frequency: f64,  // Hz
+    pub tremor_frequency: f64, // Hz
     pub tremor_amplitude: f64,
     pub height: f64,
 }
@@ -1041,7 +1132,11 @@ impl SyntheticGenerator for GaitPosturalTremorGenerator {
     type GroundTruth = GaitPosturalTremorGroundTruth;
     type Parameters = GaitPosturalTremorParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         use rand::{RngExt, SeedableRng};
@@ -1083,7 +1178,8 @@ impl SyntheticGenerator for GaitPosturalTremorGenerator {
 
                 // Generate tremor signal
                 let phase_noise = rng.random_range(-0.1..0.1);
-                params.tremor_amplitude * phase_modulation
+                params.tremor_amplitude
+                    * phase_modulation
                     * (2.0 * PI * params.tremor_frequency * t + phase_noise).sin()
             })
             .collect();
@@ -1095,7 +1191,7 @@ impl SyntheticGenerator for GaitPosturalTremorGenerator {
                 let start_idx = (i as f64 * step_duration * params.sampling_rate) as usize;
                 let end_idx = std::cmp::min(
                     ((i + 1) as f64 * step_duration * params.sampling_rate) as usize,
-                    tremor.len()
+                    tremor.len(),
                 );
 
                 if start_idx < end_idx {
@@ -1120,7 +1216,11 @@ impl SyntheticGenerator for GaitPosturalTremorGenerator {
             severity: params.severity,
         };
 
-        Ok(GeneratedData::new(output, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            output,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -1138,10 +1238,14 @@ impl SyntheticGenerator for GaitPosturalTremorGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.severity < 0.0 || params.severity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("severity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "severity must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -1219,8 +1323,14 @@ mod tests {
         let params = HandVoiceTremorCouplingGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
 
-        assert_eq!(result.signal.hand_tremor.len(), (params.duration * params.sampling_rate) as usize);
-        assert_eq!(result.signal.voice_tremor.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.hand_tremor.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
+        assert_eq!(
+            result.signal.voice_tremor.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
         assert!(result.signal.correlation >= -1.0 && result.signal.correlation <= 1.0);
     }
 
@@ -1240,7 +1350,10 @@ mod tests {
         let params = SaccadeReactionTimeCouplingGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
 
-        assert_eq!(result.signal.saccade_positions.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.saccade_positions.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
         assert!(!result.signal.reaction_times.is_empty());
     }
 
@@ -1250,8 +1363,14 @@ mod tests {
         let params = PupilVoiceAffectGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
 
-        assert_eq!(result.signal.pupil_diameter.len(), (params.duration * params.sampling_rate) as usize);
-        assert_eq!(result.signal.voice_f0.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.pupil_diameter.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
+        assert_eq!(
+            result.signal.voice_f0.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -1271,6 +1390,9 @@ mod tests {
         let result = generator.generate(&params, 42).unwrap();
 
         assert!(!result.signal.gait_keypoints.is_empty());
-        assert_eq!(result.signal.tremor.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.tremor.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 }

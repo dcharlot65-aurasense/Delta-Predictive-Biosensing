@@ -238,7 +238,11 @@ impl CardiopulmonaryGenerator {
     }
 
     /// Generate exercise response
-    pub fn generate_exercise(&mut self, duration: f64, peak_hr_percent: f64) -> CardiopulmonaryOutput {
+    pub fn generate_exercise(
+        &mut self,
+        duration: f64,
+        peak_hr_percent: f64,
+    ) -> CardiopulmonaryOutput {
         let dt = 1.0 / self.config.sample_rate;
         let n_samples = (duration * self.config.sample_rate) as usize;
 
@@ -271,8 +275,11 @@ impl CardiopulmonaryGenerator {
             };
 
             // Reduced HRV during exercise
-            let hrv_reduction = 1.0 - (target_hr - self.config.resting_hr) / (peak_hr - self.config.resting_hr) * 0.7;
-            let noise: f64 = self.rng.sample(Normal::new(0.0, self.config.hrv_level * hrv_reduction * 0.2).unwrap());
+            let hrv_reduction = 1.0
+                - (target_hr - self.config.resting_hr) / (peak_hr - self.config.resting_hr) * 0.7;
+            let noise: f64 = self
+                .rng
+                .sample(Normal::new(0.0, self.config.hrv_level * hrv_reduction * 0.2).unwrap());
 
             let hr = target_hr + noise;
             heart_rate.push(hr);
@@ -323,7 +330,8 @@ impl CardiopulmonaryGenerator {
         match pathology {
             CardiopulmonaryPathology::ReducedHrv { reduction } => {
                 // Reduce variability
-                let mean = output.rr_intervals.iter().sum::<f64>() / output.rr_intervals.len() as f64;
+                let mean =
+                    output.rr_intervals.iter().sum::<f64>() / output.rr_intervals.len() as f64;
                 for rr in &mut output.rr_intervals {
                     *rr = mean + (*rr - mean) * (1.0 - reduction);
                 }
@@ -389,16 +397,16 @@ impl CardiopulmonaryGenerator {
         let mean_rr = rr_intervals.iter().sum::<f64>() / n;
 
         // SDNN
-        let variance = rr_intervals.iter()
+        let variance = rr_intervals
+            .iter()
             .map(|rr| (rr - mean_rr).powi(2))
-            .sum::<f64>() / n;
+            .sum::<f64>()
+            / n;
         let sdnn = variance.sqrt();
 
         // RMSSD
         let rmssd = if rr_intervals.len() > 1 {
-            let sum_sq_diff: f64 = rr_intervals.windows(2)
-                .map(|w| (w[1] - w[0]).powi(2))
-                .sum();
+            let sum_sq_diff: f64 = rr_intervals.windows(2).map(|w| (w[1] - w[0]).powi(2)).sum();
             (sum_sq_diff / (n - 1.0)).sqrt()
         } else {
             0.0
@@ -406,7 +414,8 @@ impl CardiopulmonaryGenerator {
 
         // pNN50
         let nn50_count = if rr_intervals.len() > 1 {
-            rr_intervals.windows(2)
+            rr_intervals
+                .windows(2)
                 .filter(|w| (w[1] - w[0]).abs() > 50.0)
                 .count()
         } else {
@@ -418,7 +427,11 @@ impl CardiopulmonaryGenerator {
         let lf_power = sdnn.powi(2) * 0.3;
         let hf_power = rmssd.powi(2) * 0.5;
         let total_power = sdnn.powi(2);
-        let lf_hf_ratio = if hf_power > 0.0 { lf_power / hf_power } else { 0.0 };
+        let lf_hf_ratio = if hf_power > 0.0 {
+            lf_power / hf_power
+        } else {
+            0.0
+        };
 
         HrvMetrics {
             mean_rr,
@@ -432,7 +445,11 @@ impl CardiopulmonaryGenerator {
         }
     }
 
-    fn calculate_respiratory_metrics(&self, respiratory: &[f64], duration: f64) -> RespiratoryMetrics {
+    fn calculate_respiratory_metrics(
+        &self,
+        respiratory: &[f64],
+        duration: f64,
+    ) -> RespiratoryMetrics {
         // Count zero crossings to estimate rate
         let mut crossings = 0;
         for window in respiratory.windows(2) {
@@ -453,9 +470,7 @@ impl CardiopulmonaryGenerator {
     fn calculate_bp_metrics(&self, sbp: &[f64], rr_intervals: &[f64]) -> BpMetrics {
         let n = sbp.len() as f64;
         let mean_sbp = sbp.iter().sum::<f64>() / n;
-        let sbp_variance = sbp.iter()
-            .map(|bp| (bp - mean_sbp).powi(2))
-            .sum::<f64>() / n;
+        let sbp_variance = sbp.iter().map(|bp| (bp - mean_sbp).powi(2)).sum::<f64>() / n;
 
         // Simplified BRS (would need proper cross-correlation)
         let mean_rr = rr_intervals.iter().sum::<f64>() / rr_intervals.len() as f64;
@@ -527,7 +542,8 @@ mod tests {
         let mut generator = CardiopulmonaryGenerator::new(config);
 
         let normal = generator.generate_resting(60.0);
-        let afib = generator.generate_pathological(CardiopulmonaryPathology::AtrialFibrillation, 60.0);
+        let afib =
+            generator.generate_pathological(CardiopulmonaryPathology::AtrialFibrillation, 60.0);
 
         // AFib should have higher variability
         assert!(afib.ground_truth.hrv_metrics.sdnn > normal.ground_truth.hrv_metrics.sdnn * 0.5);

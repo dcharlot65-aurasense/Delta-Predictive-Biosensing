@@ -70,17 +70,17 @@ pub struct AdExConfig {
 impl Default for AdExConfig {
     fn default() -> Self {
         Self {
-            c_m: 281.0,        // pF
-            g_l: 30.0,         // nS
-            e_l: -70.6,        // mV
-            delta_t: 2.0,      // mV
-            v_thresh: -50.4,   // mV
-            v_spike: 20.0,     // mV
-            v_reset: -70.6,    // mV
-            tau_w: 144.0,      // ms
-            a: 4.0,            // nS
-            b: 0.0805,         // nA
-            tau_refrac: 0.0,   // ms
+            c_m: 281.0,      // pF
+            g_l: 30.0,       // nS
+            e_l: -70.6,      // mV
+            delta_t: 2.0,    // mV
+            v_thresh: -50.4, // mV
+            v_spike: 20.0,   // mV
+            v_reset: -70.6,  // mV
+            tau_w: 144.0,    // ms
+            a: 4.0,          // nS
+            b: 0.0805,       // nA
+            tau_refrac: 0.0, // ms
             _padding: 0.0,
         }
     }
@@ -122,7 +122,7 @@ impl AdExConfig {
             v_reset: -70.6,
             tau_w: 144.0,
             a: 4.0,
-            b: 0.5,           // Increased adaptation
+            b: 0.5, // Increased adaptation
             tau_refrac: 0.0,
             _padding: 0.0,
         }

@@ -43,37 +43,33 @@
 //! let spike = neuron.update(1.0); // 1ms timestep
 //! ```
 
-pub mod compartment;
-pub mod morphology;
 pub mod channels;
-pub mod synapse;
+pub mod compartment;
 pub mod integration;
-pub mod plasticity;
+pub mod morphology;
 pub mod multi_compartment;
+pub mod plasticity;
+pub mod synapse;
 
 // Re-export main types
-pub use compartment::{Compartment, CompartmentConfig, CableParams};
-pub use morphology::{DendriticTree, BranchNode, MorphologyData, SwcPoint};
 pub use channels::{
-    IonChannel, HodgkinHuxleyChannel, CalciumChannel, PotassiumChannel,
-    NmdaReceptor, AmpaReceptor, GabaAReceptor, GabaBReceptor,
-    ChannelType, GatingVariable,
+    AmpaReceptor, CalciumChannel, ChannelType, GabaAReceptor, GabaBReceptor, GatingVariable,
+    HodgkinHuxleyChannel, IonChannel, NmdaReceptor, PotassiumChannel,
 };
-pub use synapse::{
-    DendriticSynapse, SynapseConfig, SynapseType, SynapticConductance,
-};
+pub use compartment::{CableParams, Compartment, CompartmentConfig};
 pub use integration::{
-    DendriticIntegration, PassiveIntegration, ActiveIntegration,
-    NonlinearDendrites, CoincidenceDetection,
+    ActiveIntegration, CoincidenceDetection, DendriticIntegration, NonlinearDendrites,
+    PassiveIntegration,
+};
+pub use morphology::{BranchNode, DendriticTree, MorphologyData, SwcPoint};
+pub use multi_compartment::{
+    BackpropagationConfig, MultiCompartmentNeuron, NeuronConfig, NumericalSolver,
 };
 pub use plasticity::{
-    DendriticPlasticity, DendriticStdp, BranchSpecificPlasticity,
-    CompartmentPlasticity, Heterosynaptic, Metaplasticity,
+    BranchSpecificPlasticity, CompartmentPlasticity, DendriticPlasticity, DendriticStdp,
+    Heterosynaptic, Metaplasticity,
 };
-pub use multi_compartment::{
-    MultiCompartmentNeuron, NeuronConfig, BackpropagationConfig,
-    NumericalSolver,
-};
+pub use synapse::{DendriticSynapse, SynapseConfig, SynapseType, SynapticConductance};
 
 #[cfg(test)]
 mod tests {

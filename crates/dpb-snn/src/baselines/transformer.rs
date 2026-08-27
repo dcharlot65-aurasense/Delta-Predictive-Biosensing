@@ -29,8 +29,10 @@ impl MultiHeadAttention {
     }
 
     fn num_parameters(&self) -> usize {
-        count_params(&self.q_proj.shape) + count_params(&self.k_proj.shape) +
-        count_params(&self.v_proj.shape) + count_params(&self.o_proj.shape)
+        count_params(&self.q_proj.shape)
+            + count_params(&self.k_proj.shape)
+            + count_params(&self.v_proj.shape)
+            + count_params(&self.o_proj.shape)
     }
 }
 
@@ -53,8 +55,10 @@ impl FeedForward {
     }
 
     fn num_parameters(&self) -> usize {
-        count_params(&self.w1.shape) + count_params(&self.w2.shape) +
-        count_params(&self.b1.shape) + count_params(&self.b2.shape)
+        count_params(&self.w1.shape)
+            + count_params(&self.w2.shape)
+            + count_params(&self.b1.shape)
+            + count_params(&self.b2.shape)
     }
 }
 
@@ -81,9 +85,12 @@ impl TransformerEncoderLayer {
     }
 
     fn num_parameters(&self) -> usize {
-        self.attention.num_parameters() + self.feed_forward.num_parameters() +
-        count_params(&self.norm1_gamma.shape) + count_params(&self.norm1_beta.shape) +
-        count_params(&self.norm2_gamma.shape) + count_params(&self.norm2_beta.shape)
+        self.attention.num_parameters()
+            + self.feed_forward.num_parameters()
+            + count_params(&self.norm1_gamma.shape)
+            + count_params(&self.norm1_beta.shape)
+            + count_params(&self.norm2_gamma.shape)
+            + count_params(&self.norm2_beta.shape)
     }
 }
 
@@ -96,7 +103,13 @@ pub struct TransformerEncoder {
 }
 
 impl TransformerEncoder {
-    pub fn new(d_model: usize, num_heads: usize, num_layers: usize, output_size: usize, seed: u64) -> Self {
+    pub fn new(
+        d_model: usize,
+        num_heads: usize,
+        num_layers: usize,
+        output_size: usize,
+        seed: u64,
+    ) -> Self {
         let d_ff = d_model * 4;
         let mut layers = Vec::new();
 
@@ -125,16 +138,18 @@ impl ANNBaseline for TransformerEncoder {
 
     fn forward(&self, input: &Tensor) -> Tensor {
         // Simplified forward pass
-        let batch_size = if input.shape.len() == 3 { input.shape[0] } else { 1 };
+        let batch_size = if input.shape.len() == 3 {
+            input.shape[0]
+        } else {
+            1
+        };
         let x = Tensor::zeros(vec![batch_size, self.d_model]);
 
         x.matmul(&self.output_proj).add(&self.output_bias)
     }
 
     fn num_parameters(&self) -> usize {
-        let layer_params: usize = self.layers.iter()
-            .map(|l| l.num_parameters())
-            .sum();
+        let layer_params: usize = self.layers.iter().map(|l| l.num_parameters()).sum();
 
         layer_params + count_params(&self.output_proj.shape) + count_params(&self.output_bias.shape)
     }
@@ -154,8 +169,12 @@ impl ANNBaseline for TransformerEncoder {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("TransformerEncoder: {} layers, d_model={}, {} heads",
-                self.layers.len(), self.d_model, self.layers[0].attention.num_heads)
+        format!(
+            "TransformerEncoder: {} layers, d_model={}, {} heads",
+            self.layers.len(),
+            self.d_model,
+            self.layers[0].attention.num_heads
+        )
     }
 }
 
@@ -190,7 +209,10 @@ impl ANNBaseline for TransformerSmall {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("TransformerSmall: 2 layers, d_model={}", self.encoder.d_model)
+        format!(
+            "TransformerSmall: 2 layers, d_model={}",
+            self.encoder.d_model
+        )
     }
 }
 
@@ -225,7 +247,10 @@ impl ANNBaseline for TransformerMedium {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("TransformerMedium: 4 layers, d_model={}", self.encoder.d_model)
+        format!(
+            "TransformerMedium: 4 layers, d_model={}",
+            self.encoder.d_model
+        )
     }
 }
 
@@ -260,7 +285,10 @@ impl ANNBaseline for TransformerLarge {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("TransformerLarge: 6 layers, d_model={}", self.encoder.d_model)
+        format!(
+            "TransformerLarge: 6 layers, d_model={}",
+            self.encoder.d_model
+        )
     }
 }
 
@@ -277,7 +305,12 @@ impl LinearTransformer {
         let mut layers = Vec::new();
 
         for i in 0..num_layers {
-            layers.push(TransformerEncoderLayer::new(d_model, 8, d_ff, seed + i as u64 * 100));
+            layers.push(TransformerEncoderLayer::new(
+                d_model,
+                8,
+                d_ff,
+                seed + i as u64 * 100,
+            ));
         }
 
         Self {
@@ -294,7 +327,11 @@ impl ANNBaseline for LinearTransformer {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let batch_size = if input.shape.len() == 3 { input.shape[0] } else { 1 };
+        let batch_size = if input.shape.len() == 3 {
+            input.shape[0]
+        } else {
+            1
+        };
         let d_model = self.output_proj.shape[0];
         let x = Tensor::zeros(vec![batch_size, d_model]);
 
@@ -302,9 +339,7 @@ impl ANNBaseline for LinearTransformer {
     }
 
     fn num_parameters(&self) -> usize {
-        let layer_params: usize = self.layers.iter()
-            .map(|l| l.num_parameters())
-            .sum();
+        let layer_params: usize = self.layers.iter().map(|l| l.num_parameters()).sum();
 
         layer_params + count_params(&self.output_proj.shape) + count_params(&self.output_bias.shape)
     }
@@ -319,8 +354,10 @@ impl ANNBaseline for LinearTransformer {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("LinearTransformer: {} layers with linear attention (O(n) complexity)",
-                self.layers.len())
+        format!(
+            "LinearTransformer: {} layers with linear attention (O(n) complexity)",
+            self.layers.len()
+        )
     }
 }
 
@@ -362,8 +399,11 @@ impl ANNBaseline for Performer {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("Performer: {} layers with FAVOR+ attention ({} random features)",
-                self.encoder.layers.len(), self.random_features)
+        format!(
+            "Performer: {} layers with FAVOR+ attention ({} random features)",
+            self.encoder.layers.len(),
+            self.random_features
+        )
     }
 }
 
@@ -398,7 +438,9 @@ impl ANNBaseline for Informer {
     }
 
     fn num_parameters(&self) -> usize {
-        let distill_params: usize = self.distilling_layers.iter()
+        let distill_params: usize = self
+            .distilling_layers
+            .iter()
             .map(|l| count_params(&l.shape))
             .sum();
 
@@ -416,8 +458,10 @@ impl ANNBaseline for Informer {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("Informer: {} layers with ProbSparse self-attention for time series",
-                self.encoder.layers.len())
+        format!(
+            "Informer: {} layers with ProbSparse self-attention for time series",
+            self.encoder.layers.len()
+        )
     }
 }
 
@@ -466,8 +510,10 @@ impl ANNBaseline for Autoformer {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("Autoformer: {} layers with auto-correlation and series decomposition",
-                self.encoder.layers.len())
+        format!(
+            "Autoformer: {} layers with auto-correlation and series decomposition",
+            self.encoder.layers.len()
+        )
     }
 }
 

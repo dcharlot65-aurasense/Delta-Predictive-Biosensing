@@ -19,7 +19,12 @@ pub struct SpikeTensor {
 
 impl SpikeTensor {
     /// Creates a new spike tensor.
-    pub fn new(batch_size: usize, num_channels: usize, num_timesteps: usize, dt: f64) -> Result<Self> {
+    pub fn new(
+        batch_size: usize,
+        num_channels: usize,
+        num_timesteps: usize,
+        dt: f64,
+    ) -> Result<Self> {
         if batch_size == 0 || num_channels == 0 || num_timesteps == 0 {
             return Err(DpbError::InvalidDimensions(
                 "All dimensions must be positive".to_string(),
@@ -112,9 +117,10 @@ impl SpikeTensor {
     /// Gets a single batch item.
     pub fn get_batch(&self, index: usize) -> Result<ArrayView2<'_, f32>> {
         if index >= self.batch_size() {
-            return Err(DpbError::OutOfBounds(
-                format!("Batch index {} out of bounds", index),
-            ));
+            return Err(DpbError::OutOfBounds(format!(
+                "Batch index {} out of bounds",
+                index
+            )));
         }
         Ok(self.data.index_axis(ndarray::Axis(0), index))
     }
@@ -143,7 +149,8 @@ impl SpikeTensor {
                     if value.abs() >= threshold {
                         let timestamp = time_idx as f64 * self.dt;
                         let polarity = if value > 0.0 { 1 } else { -1 };
-                        let event = SpikeEvent::new(timestamp, channel as u32, polarity, value.abs());
+                        let event =
+                            SpikeEvent::new(timestamp, channel as u32, polarity, value.abs());
                         train.add_event(event);
                     }
                 }
@@ -157,7 +164,8 @@ impl SpikeTensor {
 
     /// Applies a threshold to create binary spikes.
     pub fn threshold(&mut self, threshold: f32) {
-        self.data.mapv_inplace(|x| if x >= threshold { 1.0 } else { 0.0 });
+        self.data
+            .mapv_inplace(|x| if x >= threshold { 1.0 } else { 0.0 });
     }
 
     /// Computes spike counts per channel.
@@ -167,7 +175,8 @@ impl SpikeTensor {
 
         for batch_idx in 0..batch_size {
             for channel in 0..num_channels {
-                let count = self.data
+                let count = self
+                    .data
                     .index_axis(ndarray::Axis(0), batch_idx)
                     .index_axis(ndarray::Axis(0), channel)
                     .iter()
@@ -192,7 +201,8 @@ impl SpikeTensor {
         let mut rates = Array1::zeros(num_channels);
 
         for channel in 0..num_channels {
-            let count = self.data
+            let count = self
+                .data
                 .index_axis(ndarray::Axis(1), channel)
                 .iter()
                 .filter(|&&x| x != 0.0)
@@ -253,10 +263,8 @@ impl SpikeTensor {
         }
 
         let arrays: Vec<_> = tensors.iter().map(|t| t.data.view()).collect();
-        let concatenated = ndarray::concatenate(
-            ndarray::Axis(0),
-            &arrays,
-        ).map_err(|e| DpbError::Other(format!("Concatenation failed: {}", e)))?;
+        let concatenated = ndarray::concatenate(ndarray::Axis(0), &arrays)
+            .map_err(|e| DpbError::Other(format!("Concatenation failed: {}", e)))?;
 
         Self::from_array(concatenated, dt)
     }

@@ -2,7 +2,7 @@
 //!
 //! Defines tensor types, shapes, and quantization parameters for TFLite models.
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// TensorFlow Lite tensor
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -128,7 +128,8 @@ impl TensorShape {
             return 0;
         }
 
-        self.dims.iter()
+        self.dims
+            .iter()
             .map(|&d| if d < 0 { 1 } else { d as usize })
             .product()
     }
@@ -141,7 +142,11 @@ impl TensorShape {
     /// Get static shape (replace -1 with 1)
     pub fn to_static(&self) -> Self {
         Self {
-            dims: self.dims.iter().map(|&d| if d < 0 { 1 } else { d }).collect(),
+            dims: self
+                .dims
+                .iter()
+                .map(|&d| if d < 0 { 1 } else { d })
+                .collect(),
         }
     }
 }
@@ -190,7 +195,10 @@ impl TensorType {
 
     /// Check if type supports quantization
     pub fn supports_quantization(&self) -> bool {
-        matches!(self, TensorType::Int8 | TensorType::UInt8 | TensorType::Int16)
+        matches!(
+            self,
+            TensorType::Int8 | TensorType::UInt8 | TensorType::Int16
+        )
     }
 
     /// Check if type is floating point
@@ -506,11 +514,7 @@ mod tests {
 
     #[test]
     fn test_quantization_per_channel() {
-        let quant = QuantizationParams::per_channel(
-            vec![0.1, 0.2, 0.3],
-            vec![0, 0, 0],
-            0,
-        );
+        let quant = QuantizationParams::per_channel(vec![0.1, 0.2, 0.3], vec![0, 0, 0], 0);
 
         assert!(quant.is_per_channel());
         assert_eq!(quant.num_channels(), 3);
@@ -525,11 +529,7 @@ mod tests {
 
     #[test]
     fn test_quantization_validation_mismatch() {
-        let quant = QuantizationParams::per_channel(
-            vec![0.1, 0.2],
-            vec![0],
-            0,
-        );
+        let quant = QuantizationParams::per_channel(vec![0.1, 0.2], vec![0], 0);
         assert!(quant.validate().is_err());
     }
 
@@ -559,11 +559,7 @@ mod tests {
 
     #[test]
     fn test_quantize_per_channel() {
-        let quant = QuantizationParams::per_channel(
-            vec![0.1, 0.2, 0.3],
-            vec![0, 0, 0],
-            0,
-        );
+        let quant = QuantizationParams::per_channel(vec![0.1, 0.2, 0.3], vec![0, 0, 0], 0);
 
         let value = 1.0;
         let q0 = quant.quantize_value(value, 0);

@@ -101,11 +101,7 @@ pub struct EdfSignal {
 
 impl EdfSignal {
     /// Create a new EDF signal descriptor
-    pub fn new(
-        label: String,
-        physical_dimension: String,
-        samples_per_record: usize,
-    ) -> Self {
+    pub fn new(label: String, physical_dimension: String, samples_per_record: usize) -> Self {
         Self {
             label,
             transducer_type: String::new(),
@@ -171,7 +167,9 @@ impl EdfSignal {
         let normalized = (physical - self.physical_min) / physical_range;
         let digital = self.digital_min as f64 + normalized * digital_range as f64;
 
-        digital.round().clamp(self.digital_min as f64, self.digital_max as f64) as i16
+        digital
+            .round()
+            .clamp(self.digital_min as f64, self.digital_max as f64) as i16
     }
 }
 
@@ -302,9 +300,9 @@ impl EdfReader {
                     .parse()
                     .map_err(|_| DpbError::DataValidation("Invalid digital max".to_string()))?,
                 prefiltering: prefiltering[i].clone(),
-                samples_per_record: samples_per_record[i]
-                    .parse()
-                    .map_err(|_| DpbError::DataValidation("Invalid samples per record".to_string()))?,
+                samples_per_record: samples_per_record[i].parse().map_err(|_| {
+                    DpbError::DataValidation("Invalid samples per record".to_string())
+                })?,
             };
             signals.push(signal);
         }
@@ -365,9 +363,7 @@ impl EdfReader {
         }
 
         if self.header.n_records < 0 {
-            return Err(DpbError::Other(
-                "Unknown number of records".to_string(),
-            ));
+            return Err(DpbError::Other("Unknown number of records".to_string()));
         }
 
         let signal = &self.signals[signal_index];
@@ -375,11 +371,7 @@ impl EdfReader {
         let mut samples = Vec::with_capacity(total_samples);
 
         // Calculate bytes per record
-        let bytes_per_record: usize = self
-            .signals
-            .iter()
-            .map(|s| s.samples_per_record * 2)
-            .sum();
+        let bytes_per_record: usize = self.signals.iter().map(|s| s.samples_per_record * 2).sum();
 
         // Calculate offset to this signal's data within each record
         let signal_offset: usize = self.signals[0..signal_index]
@@ -388,19 +380,17 @@ impl EdfReader {
             .sum();
 
         // Seek to start of data records
-        self.file
-            .seek(SeekFrom::Start(self.header_bytes as u64))?;
+        self.file.seek(SeekFrom::Start(self.header_bytes as u64))?;
 
         // Read each record
         let mut record_buffer = vec![0u8; bytes_per_record];
 
         for _ in 0..self.header.n_records {
-            self.file
-                .read_exact(&mut record_buffer)?;
+            self.file.read_exact(&mut record_buffer)?;
 
             // Extract this signal's samples from the record
-            let signal_bytes = &record_buffer
-                [signal_offset..signal_offset + signal.samples_per_record * 2];
+            let signal_bytes =
+                &record_buffer[signal_offset..signal_offset + signal.samples_per_record * 2];
 
             for chunk in signal_bytes.as_chunks::<2>().0 {
                 let digital = i16::from_le_bytes([chunk[0], chunk[1]]);
@@ -423,9 +413,7 @@ impl EdfReader {
     /// Vector of signal samples, one vector per signal
     pub fn read_record(&mut self, record_index: usize) -> Result<Vec<Vec<f64>>> {
         if self.header.n_records < 0 {
-            return Err(DpbError::Other(
-                "Unknown number of records".to_string(),
-            ));
+            return Err(DpbError::Other("Unknown number of records".to_string()));
         }
 
         if record_index >= self.header.n_records as usize {
@@ -437,21 +425,15 @@ impl EdfReader {
         }
 
         // Calculate bytes per record
-        let bytes_per_record: usize = self
-            .signals
-            .iter()
-            .map(|s| s.samples_per_record * 2)
-            .sum();
+        let bytes_per_record: usize = self.signals.iter().map(|s| s.samples_per_record * 2).sum();
 
         // Seek to the specific record
         let record_offset = self.header_bytes + record_index * bytes_per_record;
-        self.file
-            .seek(SeekFrom::Start(record_offset as u64))?;
+        self.file.seek(SeekFrom::Start(record_offset as u64))?;
 
         // Read the record
         let mut record_buffer = vec![0u8; bytes_per_record];
-        self.file
-            .read_exact(&mut record_buffer)?;
+        self.file.read_exact(&mut record_buffer)?;
 
         // Parse samples for each signal
         let mut all_samples = Vec::with_capacity(self.header.n_signals);
@@ -538,18 +520,24 @@ impl EdfWriter {
         Self::write_field(&mut buffer, 184, 8, &header_bytes.to_string());
         // Reserved field at 192 (44 bytes)
         Self::write_field(&mut buffer, 236, 8, &self.header.n_records.to_string());
-        Self::write_field(&mut buffer, 244, 8, &self.header.record_duration.to_string());
+        Self::write_field(
+            &mut buffer,
+            244,
+            8,
+            &self.header.record_duration.to_string(),
+        );
         Self::write_field(&mut buffer, 252, 4, &self.header.n_signals.to_string());
 
-        self.file
-            .write_all(&buffer)?;
+        self.file.write_all(&buffer)?;
 
         // Write signal headers
         let signal_header_size = self.header.n_signals * 256;
         let mut signal_buffer = vec![b' '; signal_header_size];
 
         // Write each field for all signals
-        Self::write_signal_field(&mut signal_buffer, 0, 16, &self.signals, |s| s.label.clone());
+        Self::write_signal_field(&mut signal_buffer, 0, 16, &self.signals, |s| {
+            s.label.clone()
+        });
         Self::write_signal_field(&mut signal_buffer, 16, 80, &self.signals, |s| {
             s.transducer_type.clone()
         });
@@ -576,8 +564,7 @@ impl EdfWriter {
         });
         // Reserved field at 208 (32 bytes per signal)
 
-        self.file
-            .write_all(&signal_buffer)?;
+        self.file.write_all(&signal_buffer)?;
 
         Ok(())
     }
@@ -634,8 +621,7 @@ impl EdfWriter {
             // Write samples for this signal
             for &sample in samples {
                 let digital = self.signals[i].physical_to_digital(sample);
-                self.file
-                    .write_all(&digital.to_le_bytes())?;
+                self.file.write_all(&digital.to_le_bytes())?;
             }
         }
 
@@ -649,13 +635,11 @@ impl EdfWriter {
         self.header.n_records = self.records_written as i32;
 
         // Seek to beginning and rewrite header
-        self.file
-            .seek(SeekFrom::Start(0))?;
+        self.file.seek(SeekFrom::Start(0))?;
 
         self.write_headers()?;
 
-        self.file
-            .flush()?;
+        self.file.flush()?;
 
         Ok(())
     }
@@ -705,13 +689,9 @@ mod tests {
 
     #[test]
     fn test_header_builder() {
-        let header = EdfHeader::new(
-            "Patient X".to_string(),
-            "Recording Y".to_string(),
-            2,
-        )
-        .with_start_datetime("01.01.20".to_string(), "12.00.00".to_string())
-        .with_records(100, 1.0);
+        let header = EdfHeader::new("Patient X".to_string(), "Recording Y".to_string(), 2)
+            .with_start_datetime("01.01.20".to_string(), "12.00.00".to_string())
+            .with_records(100, 1.0);
 
         assert_eq!(header.patient_id, "Patient X");
         assert_eq!(header.n_signals, 2);
@@ -743,5 +723,4 @@ mod tests {
         assert_eq!(signal.physical_to_digital(-5.0), i16::MIN);
         assert_eq!(signal.physical_to_digital(5.0), i16::MAX);
     }
-
 }

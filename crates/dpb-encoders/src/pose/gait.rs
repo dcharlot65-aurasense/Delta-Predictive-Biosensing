@@ -39,7 +39,7 @@ impl PopulationTemplate for StrideLengthTemplate {
         // Based on height if available
         match context.height_cm {
             Some(height) => height * 0.007, // ~0.7% of height
-            None => 1.4, // Average adult
+            None => 1.4,                    // Average adult
         }
     }
 
@@ -120,8 +120,7 @@ pub struct HeelStrikeEncoder;
 impl HeelStrikeEncoder {
     /// Creates a new [`HeelStrikeEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }
 
@@ -240,15 +239,13 @@ impl EventEncoder for ToeOffEncoder {
 // ============================================================================
 
 /// Configuration for [`GaitPhaseEncoder`].
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GaitPhaseConfig {
     /// Heel-strike times.
     pub heel_strikes: Vec<f64>,
     /// Toe-off times.
     pub toe_offs: Vec<f64>,
 }
-
 
 /// Gait phase encoder.
 pub struct GaitPhaseEncoder {
@@ -295,12 +292,7 @@ impl EventEncoder for GaitPhaseEncoder {
 
                     if deviation > 0.1 {
                         // >10% deviation
-                        events.push(SpikeEvent::new(
-                            heel_strike,
-                            0,
-                            1,
-                            deviation as f32,
-                        ));
+                        events.push(SpikeEvent::new(heel_strike, 0, 1, deviation as f32));
                     }
                 }
             }

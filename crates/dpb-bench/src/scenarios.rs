@@ -93,7 +93,8 @@ impl EncodingScenario {
 
             // Compare with ground truth
             // Extract timestamps from temporal annotations
-            let gt_times: Vec<f64> = ground_truth.temporal
+            let gt_times: Vec<f64> = ground_truth
+                .temporal
                 .as_ref()
                 .map(|t| t.iter().map(|(time, _, _)| *time).collect())
                 .unwrap_or_default();
@@ -103,7 +104,10 @@ impl EncodingScenario {
 
             metrics.insert("precision".to_string(), precision);
             metrics.insert("recall".to_string(), recall);
-            metrics.insert("f1_score".to_string(), 2.0 * precision * recall / (precision + recall));
+            metrics.insert(
+                "f1_score".to_string(),
+                2.0 * precision * recall / (precision + recall),
+            );
         }
 
         profiler.stop();
@@ -111,7 +115,10 @@ impl EncodingScenario {
         // Calculate encoding rate
         let encoding_rate = total_events as f64 / (total_samples as f64 / dataset.sample_rate());
         metrics.insert("encoding_rate".to_string(), encoding_rate);
-        metrics.insert("avg_events_per_trial".to_string(), total_events as f64 / self.num_trials as f64);
+        metrics.insert(
+            "avg_events_per_trial".to_string(),
+            total_events as f64 / self.num_trials as f64,
+        );
 
         let timing = TimingInfo {
             total_ms: profiler.elapsed_ms(),
@@ -138,7 +145,10 @@ impl EncodingScenario {
         let mut true_positives = 0;
 
         for &(event_time, _) in events {
-            if ground_truth.iter().any(|&gt_time| (event_time - gt_time).abs() < tolerance) {
+            if ground_truth
+                .iter()
+                .any(|&gt_time| (event_time - gt_time).abs() < tolerance)
+            {
                 true_positives += 1;
             }
         }
@@ -155,7 +165,10 @@ impl EncodingScenario {
         let mut true_positives = 0;
 
         for &gt_time in ground_truth {
-            if events.iter().any(|&(event_time, _)| (event_time - gt_time).abs() < tolerance) {
+            if events
+                .iter()
+                .any(|&(event_time, _)| (event_time - gt_time).abs() < tolerance)
+            {
                 true_positives += 1;
             }
         }
@@ -266,7 +279,10 @@ impl ClassificationScenario {
 
         metrics.insert("precision".to_string(), avg_precision);
         metrics.insert("recall".to_string(), avg_recall);
-        metrics.insert("f1_score".to_string(), 2.0 * avg_precision * avg_recall / (avg_precision + avg_recall));
+        metrics.insert(
+            "f1_score".to_string(),
+            2.0 * avg_precision * avg_recall / (avg_precision + avg_recall),
+        );
 
         let timing = TimingInfo {
             total_ms: profiler.elapsed_ms(),
@@ -475,7 +491,11 @@ impl LatencyScenario {
             metrics,
             timing,
             error: if !success {
-                Some(format!("Latency {:.2}ms exceeds target {:.2}ms", avg_latency, self.target_latency_ms.unwrap()))
+                Some(format!(
+                    "Latency {:.2}ms exceeds target {:.2}ms",
+                    avg_latency,
+                    self.target_latency_ms.unwrap()
+                ))
             } else {
                 None
             },
@@ -510,7 +530,13 @@ mod tests {
 
         let result = scenario.run(|sample| {
             // Mock classifier
-            Ok(if sample[0] < 0.3 { 0 } else if sample[0] < 0.6 { 1 } else { 2 })
+            Ok(if sample[0] < 0.3 {
+                0
+            } else if sample[0] < 0.6 {
+                1
+            } else {
+                2
+            })
         });
 
         assert!(result.is_ok());

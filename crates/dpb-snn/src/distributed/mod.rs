@@ -49,11 +49,11 @@
 //! - [`fault_tolerance`]: Failure detection and recovery
 //! - [`metrics`]: Performance monitoring and optimization
 
-pub mod coordinator;
-pub mod partitioning;
 pub mod communication;
+pub mod coordinator;
 pub mod fault_tolerance;
 pub mod metrics;
+pub mod partitioning;
 
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
@@ -329,10 +329,20 @@ pub trait CommunicationBackend: Send + Sync {
     fn all_gather(&self, send_data: &[f32], recv_data: &mut [f32]) -> DistributedResult<()>;
 
     /// Scatter operation
-    fn scatter(&self, send_data: &[f32], recv_data: &mut [f32], root: usize) -> DistributedResult<()>;
+    fn scatter(
+        &self,
+        send_data: &[f32],
+        recv_data: &mut [f32],
+        root: usize,
+    ) -> DistributedResult<()>;
 
     /// Gather operation
-    fn gather(&self, send_data: &[f32], recv_data: &mut [f32], root: usize) -> DistributedResult<()>;
+    fn gather(
+        &self,
+        send_data: &[f32],
+        recv_data: &mut [f32],
+        root: usize,
+    ) -> DistributedResult<()>;
 
     /// Send data to specific rank
     fn send(&self, data: &[f32], dst: usize, tag: i32) -> DistributedResult<()>;
@@ -424,12 +434,22 @@ impl CommunicationBackend for MockBackend {
         Ok(())
     }
 
-    fn scatter(&self, send_data: &[f32], recv_data: &mut [f32], _root: usize) -> DistributedResult<()> {
+    fn scatter(
+        &self,
+        send_data: &[f32],
+        recv_data: &mut [f32],
+        _root: usize,
+    ) -> DistributedResult<()> {
         recv_data.copy_from_slice(&send_data[..recv_data.len()]);
         Ok(())
     }
 
-    fn gather(&self, send_data: &[f32], recv_data: &mut [f32], _root: usize) -> DistributedResult<()> {
+    fn gather(
+        &self,
+        send_data: &[f32],
+        recv_data: &mut [f32],
+        _root: usize,
+    ) -> DistributedResult<()> {
         recv_data[..send_data.len()].copy_from_slice(send_data);
         Ok(())
     }
@@ -457,17 +477,17 @@ fn create_backend(config: &DistributedConfig) -> DistributedResult<Arc<dyn Commu
         DistributedBackend::Mpi => {
             return Err(DistributedError::Backend(
                 "MPI backend not yet implemented - use trait-based abstraction".to_string(),
-            ))
+            ));
         }
         DistributedBackend::Gloo => {
             return Err(DistributedError::Backend(
                 "Gloo backend not yet implemented - use trait-based abstraction".to_string(),
-            ))
+            ));
         }
         DistributedBackend::Nccl => {
             return Err(DistributedError::Backend(
                 "NCCL backend not yet implemented - use trait-based abstraction".to_string(),
-            ))
+            ));
         }
     };
 
@@ -551,9 +571,11 @@ mod tests {
 
         // Test all_reduce
         let mut data = vec![1.0, 2.0, 3.0, 4.0];
-        assert!(runtime
-            .backend()
-            .all_reduce(&mut data, ReduceOp::Sum)
-            .is_ok());
+        assert!(
+            runtime
+                .backend()
+                .all_reduce(&mut data, ReduceOp::Sum)
+                .is_ok()
+        );
     }
 }

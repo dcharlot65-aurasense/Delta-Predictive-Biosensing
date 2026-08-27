@@ -1,6 +1,6 @@
 //! Hand movement generators for functional tasks
 
-use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
+use crate::traits::{GeneratedData, SpatialGroundTruth, SyntheticGenerator};
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
@@ -13,10 +13,10 @@ pub struct PronationSupinationGenerator;
 pub struct PronationSupinationParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub rom: f64,              // Range of motion (degrees)
-    pub speed: f64,            // Cycles per second
-    pub regularity: f64,       // 0-1 (1 = perfectly regular)
-    pub asymmetry: f64,        // 0-1 (0 = symmetric, 1 = highly asymmetric)
+    pub rom: f64,        // Range of motion (degrees)
+    pub speed: f64,      // Cycles per second
+    pub regularity: f64, // 0-1 (1 = perfectly regular)
+    pub asymmetry: f64,  // 0-1 (0 = symmetric, 1 = highly asymmetric)
 }
 
 impl SyntheticGenerator for PronationSupinationGenerator {
@@ -24,7 +24,11 @@ impl SyntheticGenerator for PronationSupinationGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = PronationSupinationParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -37,7 +41,8 @@ impl SyntheticGenerator for PronationSupinationGenerator {
 
         for i in 0..n_frames {
             let t = i as f64 * dt;
-            let phase = (2.0 * PI * params.speed * t + timing_noise.sample(&mut rng)).rem_euclid(2.0 * PI);
+            let phase =
+                (2.0 * PI * params.speed * t + timing_noise.sample(&mut rng)).rem_euclid(2.0 * PI);
 
             // Apply asymmetry (different speeds for pronation vs supination)
             let adjusted_phase = if phase < PI {
@@ -77,13 +82,19 @@ impl SyntheticGenerator for PronationSupinationGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.regularity < 0.0 || params.regularity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("regularity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "regularity must be 0-1".to_string(),
+            ));
         }
         if params.asymmetry < 0.0 || params.asymmetry > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("asymmetry must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "asymmetry must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -97,8 +108,8 @@ pub struct HandOpenCloseParams {
     pub duration: f64,
     pub frame_rate: f64,
     pub aperture_range: (f64, f64), // Min and max aperture (cm)
-    pub speed: f64,                  // Cycles per second
-    pub closure_completeness: f64,   // 0-1 (1 = full closure)
+    pub speed: f64,                 // Cycles per second
+    pub closure_completeness: f64,  // 0-1 (1 = full closure)
 }
 
 impl SyntheticGenerator for HandOpenCloseGenerator {
@@ -106,7 +117,11 @@ impl SyntheticGenerator for HandOpenCloseGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = HandOpenCloseParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -123,11 +138,11 @@ impl SyntheticGenerator for HandOpenCloseGenerator {
             let normalized = (phase.sin() + 1.0) / 2.0;
 
             // Apply closure completeness
-            let effective_min = params.aperture_range.0 +
-                (params.aperture_range.1 - params.aperture_range.0) * (1.0 - params.closure_completeness);
+            let effective_min = params.aperture_range.0
+                + (params.aperture_range.1 - params.aperture_range.0)
+                    * (1.0 - params.closure_completeness);
 
-            let aperture = effective_min +
-                (params.aperture_range.1 - effective_min) * normalized;
+            let aperture = effective_min + (params.aperture_range.1 - effective_min) * normalized;
 
             apertures.push(aperture);
         }
@@ -141,7 +156,11 @@ impl SyntheticGenerator for HandOpenCloseGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(apertures, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            apertures,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -156,13 +175,19 @@ impl SyntheticGenerator for HandOpenCloseGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.aperture_range.0 >= params.aperture_range.1 {
-            return Err(crate::GeneratorError::InvalidParameter("aperture_range.0 must be < aperture_range.1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "aperture_range.0 must be < aperture_range.1".to_string(),
+            ));
         }
         if params.closure_completeness < 0.0 || params.closure_completeness > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("closure_completeness must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "closure_completeness must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -175,10 +200,10 @@ pub struct PrecisionGripGenerator;
 pub struct PrecisionGripParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub target_force: f64,          // Target force (N)
-    pub force_control_noise: f64,   // Force variability (std dev as fraction of target)
-    pub tremor_amplitude: f64,      // Tremor amplitude (N)
-    pub tremor_frequency: f64,      // Tremor frequency (Hz)
+    pub target_force: f64,        // Target force (N)
+    pub force_control_noise: f64, // Force variability (std dev as fraction of target)
+    pub tremor_amplitude: f64,    // Tremor amplitude (N)
+    pub tremor_frequency: f64,    // Tremor frequency (Hz)
 }
 
 impl SyntheticGenerator for PrecisionGripGenerator {
@@ -186,14 +211,19 @@ impl SyntheticGenerator for PrecisionGripGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = PrecisionGripParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
         let dt = 1.0 / params.frame_rate;
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
-        let force_noise = Normal::new(0.0, params.target_force * params.force_control_noise).unwrap();
+        let force_noise =
+            Normal::new(0.0, params.target_force * params.force_control_noise).unwrap();
 
         let mut forces = Vec::with_capacity(n_frames);
 
@@ -201,11 +231,7 @@ impl SyntheticGenerator for PrecisionGripGenerator {
             let t = i as f64 * dt;
 
             // Build up to target force over first 0.5 seconds
-            let ramp = if t < 0.5 {
-                t / 0.5
-            } else {
-                1.0
-            };
+            let ramp = if t < 0.5 { t / 0.5 } else { 1.0 };
 
             let base_force = params.target_force * ramp;
             let noise = force_noise.sample(&mut rng);
@@ -240,10 +266,14 @@ impl SyntheticGenerator for PrecisionGripGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.target_force < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("target_force must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "target_force must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -256,17 +286,17 @@ pub struct ReachingMovementGenerator;
 pub struct ReachingMovementParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub target_position: [f64; 3],  // Target position (cm)
-    pub movement_time: f64,          // Time to reach target (s)
+    pub target_position: [f64; 3], // Target position (cm)
+    pub movement_time: f64,        // Time to reach target (s)
     pub speed_profile: SpeedProfile,
-    pub accuracy: f64,               // 0-1 (1 = perfect accuracy)
-    pub smoothness: f64,             // 0-1 (1 = perfectly smooth)
+    pub accuracy: f64,   // 0-1 (1 = perfect accuracy)
+    pub smoothness: f64, // 0-1 (1 = perfectly smooth)
 }
 
 #[derive(Debug, Clone)]
 pub enum SpeedProfile {
-    Smooth,      // Bell-shaped velocity profile
-    Jerky,       // Multiple sub-movements
+    Smooth,       // Bell-shaped velocity profile
+    Jerky,        // Multiple sub-movements
     Bradykinetic, // Slow, hesitant
 }
 
@@ -275,7 +305,11 @@ impl SyntheticGenerator for ReachingMovementGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = ReachingMovementParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -331,7 +365,11 @@ impl SyntheticGenerator for ReachingMovementGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(positions, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            positions,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -348,13 +386,19 @@ impl SyntheticGenerator for ReachingMovementGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.accuracy < 0.0 || params.accuracy > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("accuracy must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "accuracy must be 0-1".to_string(),
+            ));
         }
         if params.smoothness < 0.0 || params.smoothness > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("smoothness must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "smoothness must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -368,9 +412,9 @@ pub struct DrawingParams {
     pub duration: f64,
     pub frame_rate: f64,
     pub pattern: DrawingPattern,
-    pub tremor_amplitude: f64,   // cm
-    pub tremor_frequency: f64,   // Hz
-    pub accuracy: f64,            // 0-1 (1 = perfect accuracy)
+    pub tremor_amplitude: f64, // cm
+    pub tremor_frequency: f64, // Hz
+    pub accuracy: f64,         // 0-1 (1 = perfect accuracy)
 }
 
 #[derive(Debug, Clone)]
@@ -393,7 +437,11 @@ impl SyntheticGenerator for DrawingGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = DrawingParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -409,13 +457,13 @@ impl SyntheticGenerator for DrawingGenerator {
             let progress = t / params.duration;
 
             let (ideal_x, ideal_y) = match &params.pattern {
-                DrawingPattern::Spiral { revolutions, max_radius } => {
+                DrawingPattern::Spiral {
+                    revolutions,
+                    max_radius,
+                } => {
                     let angle = 2.0 * PI * revolutions * progress;
                     let radius = max_radius * progress;
-                    (
-                        radius * angle.cos(),
-                        radius * angle.sin(),
-                    )
+                    (radius * angle.cos(), radius * angle.sin())
                 }
                 DrawingPattern::Line { length, angle } => {
                     let angle_rad = angle * PI / 180.0;
@@ -426,10 +474,7 @@ impl SyntheticGenerator for DrawingGenerator {
                 }
                 DrawingPattern::Circle { radius } => {
                     let angle = 2.0 * PI * progress;
-                    (
-                        radius * angle.cos(),
-                        radius * angle.sin(),
-                    )
+                    (radius * angle.cos(), radius * angle.sin())
                 }
             };
 
@@ -471,10 +516,14 @@ impl SyntheticGenerator for DrawingGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.accuracy < 0.0 || params.accuracy > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("accuracy must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "accuracy must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -489,7 +538,10 @@ mod tests {
         let generator = PronationSupinationGenerator;
         let params = PronationSupinationGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -497,7 +549,10 @@ mod tests {
         let generator = HandOpenCloseGenerator;
         let params = HandOpenCloseGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
 
         // Check that aperture stays within range
         for &aperture in &result.signal {
@@ -510,7 +565,10 @@ mod tests {
         let generator = PrecisionGripGenerator;
         let params = PrecisionGripGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
 
         // Check forces are non-negative
         for &force in &result.signal {
@@ -523,7 +581,10 @@ mod tests {
         let generator = ReachingMovementGenerator;
         let params = ReachingMovementGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -531,7 +592,10 @@ mod tests {
         let generator = DrawingGenerator;
         let params = DrawingGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -540,6 +604,9 @@ mod tests {
         let mut params = DrawingGenerator::default_params();
         params.pattern = DrawingPattern::Circle { radius: 5.0 };
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 }

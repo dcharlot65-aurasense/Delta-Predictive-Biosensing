@@ -1,6 +1,6 @@
 //! Fixation generators
 
-use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
+use crate::traits::{GeneratedData, SpatialGroundTruth, SyntheticGenerator};
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
@@ -13,7 +13,7 @@ pub struct StableFixationParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub fixation_position: [f64; 2], // [x, y] degrees
-    pub drift_std: f64,               // degrees (typically 0.05-0.1)
+    pub drift_std: f64,              // degrees (typically 0.05-0.1)
 }
 
 impl SyntheticGenerator for StableFixationGenerator {
@@ -21,7 +21,11 @@ impl SyntheticGenerator for StableFixationGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = StableFixationParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -49,7 +53,11 @@ impl SyntheticGenerator for StableFixationGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -63,10 +71,14 @@ impl SyntheticGenerator for StableFixationGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.drift_std < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("drift_std must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "drift_std must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -80,7 +92,7 @@ pub struct MicrosaccadeParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub fixation_position: [f64; 2],
-    pub microsaccade_rate: f64,  // per second (typically 1-2)
+    pub microsaccade_rate: f64,      // per second (typically 1-2)
     pub amplitude_range: (f64, f64), // degrees (typically 0.1-1.0)
 }
 
@@ -89,7 +101,11 @@ impl SyntheticGenerator for MicrosaccadeGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = MicrosaccadeParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -123,7 +139,10 @@ impl SyntheticGenerator for MicrosaccadeGenerator {
             let start_idx = (ms_time * params.sampling_rate) as usize;
             let end_idx = ((ms_time + duration_s) * params.sampling_rate) as usize;
 
-            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let i = start_idx + i_off;
                 let t_local = (i - start_idx) as f64 * dt;
                 let progress = (t_local / duration_s).min(1.0);
@@ -152,7 +171,11 @@ impl SyntheticGenerator for MicrosaccadeGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -167,7 +190,9 @@ impl SyntheticGenerator for MicrosaccadeGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -181,8 +206,8 @@ pub struct SquareWaveJerksParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub fixation_position: [f64; 2],
-    pub jerk_rate: f64,        // per second
-    pub jerk_amplitude: f64,   // degrees (typically 0.5-5)
+    pub jerk_rate: f64,              // per second
+    pub jerk_amplitude: f64,         // degrees (typically 0.5-5)
     pub intersaccadic_interval: f64, // seconds (typically 0.2)
 }
 
@@ -191,7 +216,11 @@ impl SyntheticGenerator for SquareWaveJerksGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = SquareWaveJerksParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -212,7 +241,10 @@ impl SyntheticGenerator for SquareWaveJerksGenerator {
             let start_idx1 = (jerk_time * params.sampling_rate) as usize;
             let end_idx1 = ((jerk_time + 0.02) * params.sampling_rate) as usize; // 20ms
 
-            for (i_off, i_slot) in gaze_position[start_idx1..end_idx1.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[start_idx1..end_idx1.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let _i = start_idx1 + i_off;
                 *i_slot = [
                     params.fixation_position[0] + params.jerk_amplitude * direction,
@@ -221,11 +253,16 @@ impl SyntheticGenerator for SquareWaveJerksGenerator {
             }
 
             // Intersaccadic interval
-            let start_idx2 = ((jerk_time + params.intersaccadic_interval) * params.sampling_rate) as usize;
-            let end_idx2 = ((jerk_time + params.intersaccadic_interval + 0.02) * params.sampling_rate) as usize;
+            let start_idx2 =
+                ((jerk_time + params.intersaccadic_interval) * params.sampling_rate) as usize;
+            let end_idx2 = ((jerk_time + params.intersaccadic_interval + 0.02)
+                * params.sampling_rate) as usize;
 
             // Second saccade (back to fixation)
-            for (i_off, i_slot) in gaze_position[start_idx2..end_idx2.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[start_idx2..end_idx2.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let _i = start_idx2 + i_off;
                 *i_slot = params.fixation_position;
             }
@@ -237,7 +274,11 @@ impl SyntheticGenerator for SquareWaveJerksGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -253,7 +294,9 @@ impl SyntheticGenerator for SquareWaveJerksGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -267,10 +310,10 @@ pub struct UnstableFixationParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub fixation_position: [f64; 2],
-    pub drift_std: f64,              // degrees (increased, typically 0.2-0.5)
-    pub nystagmus_amplitude: f64,     // degrees (slow phase drift)
-    pub nystagmus_frequency: f64,     // Hz (beats per second)
-    pub restoring_force: f64,         // 0-1 (lower = more drift)
+    pub drift_std: f64,           // degrees (increased, typically 0.2-0.5)
+    pub nystagmus_amplitude: f64, // degrees (slow phase drift)
+    pub nystagmus_frequency: f64, // Hz (beats per second)
+    pub restoring_force: f64,     // 0-1 (lower = more drift)
 }
 
 impl SyntheticGenerator for UnstableFixationGenerator {
@@ -278,7 +321,11 @@ impl SyntheticGenerator for UnstableFixationGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = UnstableFixationParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -302,8 +349,10 @@ impl SyntheticGenerator for UnstableFixationGenerator {
             let nystagmus_x = params.nystagmus_amplitude * phase.sin();
 
             // Weak restoring force
-            current_pos[0] += (params.fixation_position[0] - current_pos[0]) * params.restoring_force;
-            current_pos[1] += (params.fixation_position[1] - current_pos[1]) * params.restoring_force;
+            current_pos[0] +=
+                (params.fixation_position[0] - current_pos[0]) * params.restoring_force;
+            current_pos[1] +=
+                (params.fixation_position[1] - current_pos[1]) * params.restoring_force;
 
             gaze_position.push([current_pos[0] + nystagmus_x, current_pos[1]]);
 
@@ -319,7 +368,11 @@ impl SyntheticGenerator for UnstableFixationGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -336,10 +389,14 @@ impl SyntheticGenerator for UnstableFixationGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.drift_std < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("drift_std must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "drift_std must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -353,10 +410,10 @@ pub struct FixationDurationParams {
     pub total_duration: f64,
     pub sampling_rate: f64,
     pub target_positions: Vec<[f64; 2]>,
-    pub duration_mean: f64,           // seconds (mean fixation duration)
-    pub duration_std: f64,            // seconds
-    pub min_duration: f64,            // seconds (minimum fixation)
-    pub max_duration: f64,            // seconds (maximum fixation)
+    pub duration_mean: f64, // seconds (mean fixation duration)
+    pub duration_std: f64,  // seconds
+    pub min_duration: f64,  // seconds (minimum fixation)
+    pub max_duration: f64,  // seconds (maximum fixation)
 }
 
 impl SyntheticGenerator for FixationDurationGenerator {
@@ -364,7 +421,11 @@ impl SyntheticGenerator for FixationDurationGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = FixationDurationParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.total_duration * params.sampling_rate) as usize;
@@ -380,7 +441,8 @@ impl SyntheticGenerator for FixationDurationGenerator {
             let target = params.target_positions[target_idx];
 
             // Generate fixation duration
-            let duration = duration_dist.sample(&mut rng)
+            let duration = duration_dist
+                .sample(&mut rng)
                 .max(params.min_duration)
                 .min(params.max_duration);
 
@@ -389,7 +451,10 @@ impl SyntheticGenerator for FixationDurationGenerator {
 
             // Stable fixation with small drift
             let mut current_pos = target;
-            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let _i = start_idx + i_off;
                 current_pos[0] += drift_dist.sample(&mut rng);
                 current_pos[1] += drift_dist.sample(&mut rng);
@@ -411,19 +476,18 @@ impl SyntheticGenerator for FixationDurationGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
         FixationDurationParams {
             total_duration: 30.0,
             sampling_rate: 500.0,
-            target_positions: vec![
-                [0.0, 0.0],
-                [5.0, 5.0],
-                [-5.0, 5.0],
-                [0.0, -5.0],
-            ],
+            target_positions: vec![[0.0, 0.0], [5.0, 5.0], [-5.0, 5.0], [0.0, -5.0]],
             duration_mean: 1.5,
             duration_std: 0.5,
             min_duration: 0.2,
@@ -433,10 +497,14 @@ impl SyntheticGenerator for FixationDurationGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.total_duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("total_duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "total_duration must be positive".to_string(),
+            ));
         }
         if params.min_duration <= 0.0 || params.max_duration <= params.min_duration {
-            return Err(crate::GeneratorError::InvalidParameter("invalid duration range".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "invalid duration range".to_string(),
+            ));
         }
         Ok(())
     }
@@ -450,11 +518,11 @@ pub struct OcularFlutterParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub fixation_position: [f64; 2],
-    pub flutter_frequency: f64,       // Hz (typically 10-15 Hz)
-    pub flutter_amplitude: f64,       // degrees (typically 0.5-2.0)
-    pub flutter_onset_time: f64,      // seconds (when flutter starts)
-    pub flutter_duration: f64,        // seconds (how long flutter lasts)
-    pub burst_count: usize,           // number of flutter bursts
+    pub flutter_frequency: f64,  // Hz (typically 10-15 Hz)
+    pub flutter_amplitude: f64,  // degrees (typically 0.5-2.0)
+    pub flutter_onset_time: f64, // seconds (when flutter starts)
+    pub flutter_duration: f64,   // seconds (how long flutter lasts)
+    pub burst_count: usize,      // number of flutter bursts
 }
 
 impl SyntheticGenerator for OcularFlutterGenerator {
@@ -462,7 +530,11 @@ impl SyntheticGenerator for OcularFlutterGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = OcularFlutterParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -473,7 +545,8 @@ impl SyntheticGenerator for OcularFlutterGenerator {
 
         // Generate flutter bursts
         for burst in 0..params.burst_count {
-            let burst_onset = params.flutter_onset_time + (burst as f64) * (params.flutter_duration + 2.0);
+            let burst_onset =
+                params.flutter_onset_time + (burst as f64) * (params.flutter_duration + 2.0);
 
             if burst_onset >= params.duration {
                 break;
@@ -485,13 +558,17 @@ impl SyntheticGenerator for OcularFlutterGenerator {
             // Random direction for this burst
             let direction = if rng.random::<bool>() { 1.0 } else { -1.0 };
 
-            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let i = start_idx + i_off;
                 let t_local = (i - start_idx) as f64 * dt;
                 let phase = 2.0 * std::f64::consts::PI * params.flutter_frequency * t_local;
 
                 // Oscillation with envelope
-                let envelope = (1.0 - (t_local / params.flutter_duration - 0.5).abs() * 2.0).max(0.0);
+                let envelope =
+                    (1.0 - (t_local / params.flutter_duration - 0.5).abs() * 2.0).max(0.0);
                 let oscillation = params.flutter_amplitude * phase.sin() * envelope * direction;
 
                 *i_slot = [
@@ -507,7 +584,11 @@ impl SyntheticGenerator for OcularFlutterGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -525,10 +606,14 @@ impl SyntheticGenerator for OcularFlutterGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.flutter_frequency < 5.0 || params.flutter_frequency > 20.0 {
-            return Err(crate::GeneratorError::InvalidParameter("flutter_frequency should be 5-20 Hz".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "flutter_frequency should be 5-20 Hz".to_string(),
+            ));
         }
         Ok(())
     }
@@ -543,7 +628,10 @@ mod tests {
         let generator = StableFixationGenerator;
         let params = StableFixationGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -551,7 +639,10 @@ mod tests {
         let generator = MicrosaccadeGenerator;
         let params = MicrosaccadeGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -559,7 +650,10 @@ mod tests {
         let generator = UnstableFixationGenerator;
         let params = UnstableFixationGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -567,7 +661,10 @@ mod tests {
         let generator = FixationDurationGenerator;
         let params = FixationDurationGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.total_duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.total_duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -575,6 +672,9 @@ mod tests {
         let generator = OcularFlutterGenerator;
         let params = OcularFlutterGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 }

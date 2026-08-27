@@ -2,8 +2,8 @@
 
 use super::SNNArchitecture;
 use crate::{
-    layers::{SpikingLayer, SpikingLinear, SpikingRNN},
     SNNConfig, SNNError, SNNResult, SpikeTensor,
+    layers::{SpikingLayer, SpikingLinear, SpikingRNN},
 };
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
@@ -61,7 +61,11 @@ impl RecurrentSNN {
         // Create recurrent layers
         let mut recurrent_layers = Vec::new();
         for i in 0..hidden_sizes.len() {
-            let h_in = if i == 0 { hidden_sizes[0] } else { hidden_sizes[i - 1] };
+            let h_in = if i == 0 {
+                hidden_sizes[0]
+            } else {
+                hidden_sizes[i - 1]
+            };
             let h_out = hidden_sizes[i];
 
             recurrent_layers.push(SpikingRNN::new(

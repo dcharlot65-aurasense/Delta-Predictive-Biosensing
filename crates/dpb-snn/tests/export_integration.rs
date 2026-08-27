@@ -1,11 +1,11 @@
 //! Integration tests for the export module
 
-use dpb_snn::export::{
-    OnnxExporter, OnnxConfig, WeightExporter, WeightFormat, ModelWeights,
-    ModelConfig, LayerConfig, ExportMetadata,
-};
 use dpb_snn::export::config::LayerType;
 use dpb_snn::export::weights::LayerWeights;
+use dpb_snn::export::{
+    ExportMetadata, LayerConfig, ModelConfig, ModelWeights, OnnxConfig, OnnxExporter,
+    WeightExporter, WeightFormat,
+};
 
 #[test]
 fn test_complete_onnx_export_pipeline() {
@@ -51,7 +51,8 @@ fn test_complete_onnx_export_pipeline() {
             "SpikingLinear".to_string(),
             vec![0.1; 8192],
             vec![128, 64],
-        ).with_bias(vec![0.01; 64]),
+        )
+        .with_bias(vec![0.01; 64]),
     );
 
     // Layer 2 weights: 64 x 32 = 2048 parameters
@@ -61,7 +62,8 @@ fn test_complete_onnx_export_pipeline() {
             "SpikingLinear".to_string(),
             vec![0.2; 2048],
             vec![64, 32],
-        ).with_bias(vec![0.02; 32]),
+        )
+        .with_bias(vec![0.02; 32]),
     );
 
     // Layer 3 weights: 32 x 10 = 320 parameters
@@ -71,7 +73,8 @@ fn test_complete_onnx_export_pipeline() {
             "SpikingLinear".to_string(),
             vec![0.3; 320],
             vec![32, 10],
-        ).with_bias(vec![0.03; 10]),
+        )
+        .with_bias(vec![0.03; 10]),
     );
 
     weights.update_checksum();
@@ -80,11 +83,7 @@ fn test_complete_onnx_export_pipeline() {
     let exporter = OnnxExporter::with_default_config();
 
     // Export model
-    let result = exporter.export_snn_model(
-        &weights,
-        &config.layers,
-        &config.input_shape,
-    );
+    let result = exporter.export_snn_model(&weights, &config.layers, &config.input_shape);
 
     assert!(result.is_ok());
     let export_result = result.unwrap();
@@ -112,7 +111,8 @@ fn test_weight_serialization_formats() {
             "Linear".to_string(),
             vec![1.0, 2.0, 3.0, 4.0],
             vec![2, 2],
-        ).with_bias(vec![0.1, 0.2]),
+        )
+        .with_bias(vec![0.1, 0.2]),
     );
 
     weights.update_checksum();
@@ -123,7 +123,10 @@ fn test_weight_serialization_formats() {
     assert!(!binary_bytes.is_empty());
 
     let loaded_binary = WeightExporter::load(&binary_bytes, WeightFormat::Binary).unwrap();
-    assert_eq!(loaded_binary.metadata.model_name, weights.metadata.model_name);
+    assert_eq!(
+        loaded_binary.metadata.model_name,
+        weights.metadata.model_name
+    );
     assert_eq!(loaded_binary.layers.len(), weights.layers.len());
     assert_eq!(loaded_binary.layers[0].weights, weights.layers[0].weights);
 
@@ -146,14 +149,12 @@ fn test_weight_quantization_and_pruning() {
     // Create test weights with various magnitudes
     let mut weights = ModelWeights::new("optimization_test".to_string());
 
-    weights.add_layer(
-        LayerWeights::new(
-            "layer1".to_string(),
-            "Linear".to_string(),
-            vec![0.001, 0.5, 1.0, 2.0, 3.5, 5.0],
-            vec![6],
-        ),
-    );
+    weights.add_layer(LayerWeights::new(
+        "layer1".to_string(),
+        "Linear".to_string(),
+        vec![0.001, 0.5, 1.0, 2.0, 3.5, 5.0],
+        vec![6],
+    ));
 
     let original_weights = weights.layers[0].weights.clone();
 
@@ -163,7 +164,11 @@ fn test_weight_quantization_and_pruning() {
 
     // Quantized weights should be different but similar
     assert_ne!(quantized_weights.layers[0].weights, original_weights);
-    for (q, o) in quantized_weights.layers[0].weights.iter().zip(original_weights.iter()) {
+    for (q, o) in quantized_weights.layers[0]
+        .weights
+        .iter()
+        .zip(original_weights.iter())
+    {
         assert!((q - o).abs() < 0.1); // Within quantization error
     }
 
@@ -239,11 +244,7 @@ fn test_encoder_export() {
         "scale": 1.0
     });
 
-    let result = exporter.export_encoder(
-        "rate",
-        &params,
-        &[128],
-    );
+    let result = exporter.export_encoder("rate", &params, &[128]);
 
     assert!(result.is_ok());
     let export_result = result.unwrap();
@@ -251,20 +252,12 @@ fn test_encoder_export() {
     assert!(!export_result.warnings.is_empty()); // Should warn about approximation
 
     // Test population encoder
-    let result = exporter.export_encoder(
-        "population",
-        &params,
-        &[128],
-    );
+    let result = exporter.export_encoder("population", &params, &[128]);
 
     assert!(result.is_ok());
 
     // Test unsupported encoder
-    let result = exporter.export_encoder(
-        "unknown",
-        &params,
-        &[128],
-    );
+    let result = exporter.export_encoder("unknown", &params, &[128]);
 
     assert!(result.is_err());
 }
@@ -276,31 +269,19 @@ fn test_decoder_export() {
     let params = serde_json::json!({});
 
     // Test spike count decoder
-    let result = exporter.export_decoder(
-        "spike_count",
-        &params,
-        &[100, 10],
-    );
+    let result = exporter.export_decoder("spike_count", &params, &[100, 10]);
 
     assert!(result.is_ok());
     let export_result = result.unwrap();
     assert!(!export_result.model_bytes.is_empty());
 
     // Test rate decoder
-    let result = exporter.export_decoder(
-        "rate",
-        &params,
-        &[100, 10],
-    );
+    let result = exporter.export_decoder("rate", &params, &[100, 10]);
 
     assert!(result.is_ok());
 
     // Test unsupported decoder
-    let result = exporter.export_decoder(
-        "unknown",
-        &params,
-        &[100, 10],
-    );
+    let result = exporter.export_decoder("unknown", &params, &[100, 10]);
 
     assert!(result.is_err());
 }
@@ -356,25 +337,21 @@ fn test_onnx_config_customization() {
 #[test]
 fn test_checksum_consistency() {
     let mut weights1 = ModelWeights::new("model1".to_string());
-    weights1.add_layer(
-        LayerWeights::new(
-            "layer1".to_string(),
-            "Linear".to_string(),
-            vec![1.0, 2.0, 3.0],
-            vec![3],
-        ),
-    );
+    weights1.add_layer(LayerWeights::new(
+        "layer1".to_string(),
+        "Linear".to_string(),
+        vec![1.0, 2.0, 3.0],
+        vec![3],
+    ));
     weights1.update_checksum();
 
     let mut weights2 = ModelWeights::new("model1".to_string());
-    weights2.add_layer(
-        LayerWeights::new(
-            "layer1".to_string(),
-            "Linear".to_string(),
-            vec![1.0, 2.0, 3.0],
-            vec![3],
-        ),
-    );
+    weights2.add_layer(LayerWeights::new(
+        "layer1".to_string(),
+        "Linear".to_string(),
+        vec![1.0, 2.0, 3.0],
+        vec![3],
+    ));
     weights2.update_checksum();
 
     // Same weights should produce same checksum
@@ -382,14 +359,12 @@ fn test_checksum_consistency() {
 
     // Different weights should produce different checksum
     let mut weights3 = ModelWeights::new("model1".to_string());
-    weights3.add_layer(
-        LayerWeights::new(
-            "layer1".to_string(),
-            "Linear".to_string(),
-            vec![1.0, 2.0, 4.0], // Different value
-            vec![3],
-        ),
-    );
+    weights3.add_layer(LayerWeights::new(
+        "layer1".to_string(),
+        "Linear".to_string(),
+        vec![1.0, 2.0, 4.0], // Different value
+        vec![3],
+    ));
     weights3.update_checksum();
 
     assert_ne!(weights1.metadata.checksum, weights3.metadata.checksum);
@@ -408,7 +383,7 @@ fn test_convolutional_layer_export() {
             stride: (1, 1),
             padding: (1, 1),
         },
-        784, // 28*28
+        784,  // 28*28
         6272, // 26*26*9 (approximate)
     ));
 

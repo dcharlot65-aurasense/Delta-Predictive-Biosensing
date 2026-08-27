@@ -284,9 +284,7 @@ impl PyTimeSeries {
             ));
         }
 
-        let data: Vec<f32> = (0..shape[0])
-            .map(|i| array[[i, channel]])
-            .collect();
+        let data: Vec<f32> = (0..shape[0]).map(|i| array[[i, channel]]).collect();
 
         Ok(PyArray1::from_vec(py, data).into())
     }

@@ -8,7 +8,7 @@
 use iai_callgrind::{library_benchmark, library_benchmark_group, main};
 use std::hint::black_box;
 
-use dpb_bench::datasets::{SyntheticECG, SyntheticGait, SyntheticTremor, BenchmarkDataset};
+use dpb_bench::datasets::{BenchmarkDataset, SyntheticECG, SyntheticGait, SyntheticTremor};
 use dpb_core::{EventEncoder, SignalBuffer, SpikeEvent};
 use dpb_encoders::prelude::*;
 
@@ -85,7 +85,7 @@ mod setup {
 #[library_benchmark]
 #[bench::ecg_1000((setup::level_crossing_encoder(), setup::ecg_signal_1000()))]
 fn bench_level_crossing_ecg_1000(
-    ((encoder, config), signal): ((LevelCrossingEncoder, LevelCrossingConfig), SignalBuffer)
+    ((encoder, config), signal): ((LevelCrossingEncoder, LevelCrossingConfig), SignalBuffer),
 ) -> Vec<SpikeEvent> {
     black_box(encoder.encode(black_box(&signal), &config).unwrap())
 }
@@ -93,7 +93,7 @@ fn bench_level_crossing_ecg_1000(
 #[library_benchmark]
 #[bench::ecg_5000((setup::level_crossing_encoder(), setup::ecg_signal_5000()))]
 fn bench_level_crossing_ecg_5000(
-    ((encoder, config), signal): ((LevelCrossingEncoder, LevelCrossingConfig), SignalBuffer)
+    ((encoder, config), signal): ((LevelCrossingEncoder, LevelCrossingConfig), SignalBuffer),
 ) -> Vec<SpikeEvent> {
     black_box(encoder.encode(black_box(&signal), &config).unwrap())
 }
@@ -102,7 +102,7 @@ fn bench_level_crossing_ecg_5000(
 #[library_benchmark]
 #[bench::ecg_1000((setup::derivative_encoder(), setup::ecg_signal_1000()))]
 fn bench_derivative_ecg_1000(
-    ((encoder, config), signal): ((DerivativeEncoder, DerivativeConfig), SignalBuffer)
+    ((encoder, config), signal): ((DerivativeEncoder, DerivativeConfig), SignalBuffer),
 ) -> Vec<SpikeEvent> {
     black_box(encoder.encode(black_box(&signal), &config).unwrap())
 }
@@ -110,7 +110,7 @@ fn bench_derivative_ecg_1000(
 #[library_benchmark]
 #[bench::ecg_5000((setup::derivative_encoder(), setup::ecg_signal_5000()))]
 fn bench_derivative_ecg_5000(
-    ((encoder, config), signal): ((DerivativeEncoder, DerivativeConfig), SignalBuffer)
+    ((encoder, config), signal): ((DerivativeEncoder, DerivativeConfig), SignalBuffer),
 ) -> Vec<SpikeEvent> {
     black_box(encoder.encode(black_box(&signal), &config).unwrap())
 }
@@ -119,7 +119,7 @@ fn bench_derivative_ecg_5000(
 #[library_benchmark]
 #[bench::ecg_1000((setup::ecg_rpeak_encoder(), setup::ecg_signal_1000()))]
 fn bench_ecg_rpeak_1000(
-    ((encoder, config), signal): ((EcgRPeakEncoder, EcgRPeakConfig), SignalBuffer)
+    ((encoder, config), signal): ((EcgRPeakEncoder, EcgRPeakConfig), SignalBuffer),
 ) -> Vec<SpikeEvent> {
     black_box(encoder.encode(black_box(&signal), &config).unwrap())
 }
@@ -127,7 +127,7 @@ fn bench_ecg_rpeak_1000(
 #[library_benchmark]
 #[bench::ecg_5000((setup::ecg_rpeak_encoder(), setup::ecg_signal_5000()))]
 fn bench_ecg_rpeak_5000(
-    ((encoder, config), signal): ((EcgRPeakEncoder, EcgRPeakConfig), SignalBuffer)
+    ((encoder, config), signal): ((EcgRPeakEncoder, EcgRPeakConfig), SignalBuffer),
 ) -> Vec<SpikeEvent> {
     black_box(encoder.encode(black_box(&signal), &config).unwrap())
 }
@@ -136,7 +136,7 @@ fn bench_ecg_rpeak_5000(
 #[library_benchmark]
 #[bench::gait_1000((setup::heel_strike_encoder(), setup::gait_signal_1000()))]
 fn bench_heel_strike_1000(
-    ((encoder, config), signal): ((HeelStrikeEncoder, HeelStrikeConfig), SignalBuffer)
+    ((encoder, config), signal): ((HeelStrikeEncoder, HeelStrikeConfig), SignalBuffer),
 ) -> Vec<SpikeEvent> {
     black_box(encoder.encode(black_box(&signal), &config).unwrap())
 }
@@ -145,7 +145,10 @@ fn bench_heel_strike_1000(
 #[library_benchmark]
 #[bench::tremor_1000((setup::tremor_frequency_encoder(), setup::tremor_signal_1000()))]
 fn bench_tremor_frequency_1000(
-    ((encoder, config), signal): ((TremorFrequencyEncoder, TremorFrequencyConfig), SignalBuffer)
+    ((encoder, config), signal): (
+        (TremorFrequencyEncoder, TremorFrequencyConfig),
+        SignalBuffer,
+    ),
 ) -> Vec<SpikeEvent> {
     black_box(encoder.encode(black_box(&signal), &config).unwrap())
 }
@@ -179,9 +182,8 @@ library_benchmark_group!(
 );
 
 main!(
-    library_benchmark_groups =
-        level_crossing,
-        derivative,
-        ecg_rpeak,
-        domain_specific
+    library_benchmark_groups = level_crossing,
+    derivative,
+    ecg_rpeak,
+    domain_specific
 );

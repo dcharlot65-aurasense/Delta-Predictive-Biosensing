@@ -3,7 +3,7 @@
 //! Provides metadata support for TFLite models including descriptions,
 //! input/output information, and associated files.
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// TensorFlow Lite model metadata
@@ -91,14 +91,12 @@ impl TFLiteMetadata {
 
     /// Serialize to JSON bytes
     pub fn to_json_bytes(&self) -> Result<Vec<u8>, String> {
-        serde_json::to_vec(self)
-            .map_err(|e| format!("Failed to serialize metadata: {}", e))
+        serde_json::to_vec(self).map_err(|e| format!("Failed to serialize metadata: {}", e))
     }
 
     /// Deserialize from JSON
     pub fn from_json(json: &str) -> Result<Self, String> {
-        serde_json::from_str(json)
-            .map_err(|e| format!("Failed to parse metadata: {}", e))
+        serde_json::from_str(json).map_err(|e| format!("Failed to parse metadata: {}", e))
     }
 
     /// Validate metadata
@@ -248,14 +246,9 @@ impl TensorMetadata {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ContentType {
     /// Image data (RGB, grayscale, etc.)
-    Image {
-        color_space: ColorSpace,
-    },
+    Image { color_space: ColorSpace },
     /// Audio data
-    Audio {
-        sample_rate: u32,
-        channels: u8,
-    },
+    Audio { sample_rate: u32, channels: u8 },
     /// Feature vector
     FeatureVector,
     /// Bounding boxes
@@ -421,13 +414,10 @@ mod tests {
 
     #[test]
     fn test_metadata_builder() {
-        let metadata = TFLiteMetadata::new(
-            "test_model".to_string(),
-            "Description".to_string(),
-        )
-        .with_version("2.0.0".to_string())
-        .with_author("Test Author".to_string())
-        .with_license("MIT".to_string());
+        let metadata = TFLiteMetadata::new("test_model".to_string(), "Description".to_string())
+            .with_version("2.0.0".to_string())
+            .with_author("Test Author".to_string())
+            .with_license("MIT".to_string());
 
         assert_eq!(metadata.version, "2.0.0");
         assert_eq!(metadata.author, Some("Test Author".to_string()));
@@ -436,21 +426,17 @@ mod tests {
 
     #[test]
     fn test_metadata_add_input_output() {
-        let mut metadata = TFLiteMetadata::new(
-            "test".to_string(),
-            "Test".to_string(),
-        );
+        let mut metadata = TFLiteMetadata::new("test".to_string(), "Test".to_string());
 
         let input = TensorMetadata::new(
             "input".to_string(),
-            ContentType::Image { color_space: ColorSpace::RGB },
+            ContentType::Image {
+                color_space: ColorSpace::RGB,
+            },
         );
         metadata.add_input(input);
 
-        let output = TensorMetadata::new(
-            "output".to_string(),
-            ContentType::FeatureVector,
-        );
+        let output = TensorMetadata::new("output".to_string(), ContentType::FeatureVector);
         metadata.add_output(output);
 
         assert_eq!(metadata.inputs.len(), 1);
@@ -459,10 +445,7 @@ mod tests {
 
     #[test]
     fn test_metadata_custom_properties() {
-        let mut metadata = TFLiteMetadata::new(
-            "test".to_string(),
-            "Test".to_string(),
-        );
+        let mut metadata = TFLiteMetadata::new("test".to_string(), "Test".to_string());
 
         metadata.add_property("key1".to_string(), "value1".to_string());
         metadata.add_property("key2".to_string(), "value2".to_string());
@@ -476,10 +459,7 @@ mod tests {
 
     #[test]
     fn test_metadata_json_roundtrip() {
-        let metadata = TFLiteMetadata::new(
-            "test".to_string(),
-            "Test".to_string(),
-        );
+        let metadata = TFLiteMetadata::new("test".to_string(), "Test".to_string());
 
         let json = metadata.to_json().unwrap();
         let loaded = TFLiteMetadata::from_json(&json).unwrap();
@@ -490,10 +470,7 @@ mod tests {
 
     #[test]
     fn test_metadata_validation_empty_name() {
-        let metadata = TFLiteMetadata::new(
-            "".to_string(),
-            "Test".to_string(),
-        );
+        let metadata = TFLiteMetadata::new("".to_string(), "Test".to_string());
 
         let result = metadata.validate();
         assert!(result.is_err());
@@ -516,13 +493,17 @@ mod tests {
     fn test_tensor_metadata_creation() {
         let tensor = TensorMetadata::new(
             "input".to_string(),
-            ContentType::Image { color_space: ColorSpace::RGB },
+            ContentType::Image {
+                color_space: ColorSpace::RGB,
+            },
         );
 
         assert_eq!(tensor.name, "input");
         assert!(matches!(
             tensor.content_type,
-            ContentType::Image { color_space: ColorSpace::RGB }
+            ContentType::Image {
+                color_space: ColorSpace::RGB
+            }
         ));
     }
 
@@ -531,7 +512,9 @@ mod tests {
         let norm = NormalizationParams::imagenet();
         let tensor = TensorMetadata::new(
             "input".to_string(),
-            ContentType::Image { color_space: ColorSpace::RGB },
+            ContentType::Image {
+                color_space: ColorSpace::RGB,
+            },
         )
         .with_normalization(norm);
 
@@ -540,16 +523,10 @@ mod tests {
 
     #[test]
     fn test_tensor_metadata_validation() {
-        let tensor = TensorMetadata::new(
-            "input".to_string(),
-            ContentType::FeatureVector,
-        );
+        let tensor = TensorMetadata::new("input".to_string(), ContentType::FeatureVector);
         assert!(tensor.validate().is_ok());
 
-        let empty_tensor = TensorMetadata::new(
-            "".to_string(),
-            ContentType::FeatureVector,
-        );
+        let empty_tensor = TensorMetadata::new("".to_string(), ContentType::FeatureVector);
         assert!(empty_tensor.validate().is_err());
     }
 
@@ -574,10 +551,7 @@ mod tests {
 
     #[test]
     fn test_normalization_params() {
-        let norm = NormalizationParams::new(
-            vec![0.5, 0.5, 0.5],
-            vec![0.25, 0.25, 0.25],
-        );
+        let norm = NormalizationParams::new(vec![0.5, 0.5, 0.5], vec![0.25, 0.25, 0.25]);
 
         assert_eq!(norm.mean.len(), 3);
         assert_eq!(norm.std.len(), 3);
@@ -618,10 +592,7 @@ mod tests {
 
     #[test]
     fn test_associated_file_creation() {
-        let file = AssociatedFile::new(
-            "labels.txt".to_string(),
-            FileType::Labels,
-        );
+        let file = AssociatedFile::new("labels.txt".to_string(), FileType::Labels);
 
         assert_eq!(file.name, "labels.txt");
         assert_eq!(file.file_type, FileType::Labels);
@@ -629,11 +600,7 @@ mod tests {
 
     #[test]
     fn test_associated_file_label_file() {
-        let labels = vec![
-            "cat".to_string(),
-            "dog".to_string(),
-            "bird".to_string(),
-        ];
+        let labels = vec!["cat".to_string(), "dog".to_string(), "bird".to_string()];
 
         let file = AssociatedFile::label_file("labels.txt".to_string(), labels);
 
@@ -649,16 +616,10 @@ mod tests {
 
     #[test]
     fn test_associated_file_validation() {
-        let file = AssociatedFile::new(
-            "test.txt".to_string(),
-            FileType::Labels,
-        );
+        let file = AssociatedFile::new("test.txt".to_string(), FileType::Labels);
         assert!(file.validate().is_ok());
 
-        let empty_file = AssociatedFile::new(
-            "".to_string(),
-            FileType::Labels,
-        );
+        let empty_file = AssociatedFile::new("".to_string(), FileType::Labels);
         assert!(empty_file.validate().is_err());
     }
 }

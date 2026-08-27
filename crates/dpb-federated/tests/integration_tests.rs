@@ -28,7 +28,12 @@ fn update(client: &str, round: u64, data: Vec<f32>, num_samples: usize) -> Model
 }
 
 fn delta_values(delta: &ParameterDelta) -> Vec<f32> {
-    delta.changes.get("layer0").expect("layer0 present").data.clone()
+    delta
+        .changes
+        .get("layer0")
+        .expect("layer0 present")
+        .data
+        .clone()
 }
 
 // ── Configuration ────────────────────────────────────────────────────────
@@ -90,7 +95,10 @@ fn test_model_weights_flatten_round_trip() {
 
     let mut restored = ModelWeights::zeros(&[("layer0", vec![4])]);
     restored.unflatten(&flat).expect("same total size");
-    assert_eq!(restored.get("layer0").unwrap().data, original.get("layer0").unwrap().data);
+    assert_eq!(
+        restored.get("layer0").unwrap().data,
+        original.get("layer0").unwrap().data
+    );
 }
 
 #[test]
@@ -171,7 +179,9 @@ fn test_median_resists_an_outlier() {
         update("c2", 1, vec![1000.0], 10), // adversarial
     ];
 
-    let median = MedianAggregator::new().aggregate(&updates).expect("aggregation");
+    let median = MedianAggregator::new()
+        .aggregate(&updates)
+        .expect("aggregation");
     let value = delta_values(&median)[0];
     assert!(
         (value - 2.0).abs() < 1e-6,
@@ -221,8 +231,14 @@ fn test_single_client_aggregation_is_the_identity() {
 #[test]
 fn test_aggregators_report_their_strategy() {
     assert_eq!(FedAvg::new().strategy(), AggregationStrategy::FedAvg);
-    assert_eq!(WeightedAvg::new().strategy(), AggregationStrategy::WeightedAvg);
-    assert_eq!(MedianAggregator::new().strategy(), AggregationStrategy::Median);
+    assert_eq!(
+        WeightedAvg::new().strategy(),
+        AggregationStrategy::WeightedAvg
+    );
+    assert_eq!(
+        MedianAggregator::new().strategy(),
+        AggregationStrategy::Median
+    );
     assert_eq!(
         TrimmedMeanAggregator::new(0.1).strategy(),
         AggregationStrategy::TrimmedMean

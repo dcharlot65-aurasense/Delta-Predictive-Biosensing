@@ -487,7 +487,10 @@ impl NeuromorphicExporter {
         writeln!(code, "# Layers: {}", config.layers.len())?;
         writeln!(code, "# Connections: {}", config.connections.len())?;
         writeln!(code, "#")?;
-        writeln!(code, "# Requires: pip install nir  (developed against nir 1.0.8)")?;
+        writeln!(
+            code,
+            "# Requires: pip install nir  (developed against nir 1.0.8)"
+        )?;
         writeln!(code, "# Run this file to write <network>.nir")?;
         writeln!(code)?;
         writeln!(code, "import numpy as np")?;
@@ -560,7 +563,7 @@ impl NeuromorphicExporter {
                     return Err(NeuromorphicExportError::InvalidConfig(format!(
                         "connection {} -> {} references an unknown layer",
                         conn.source, conn.target
-                    )))
+                    )));
                 }
             };
 
@@ -643,21 +646,45 @@ impl NeuromorphicExporter {
 
         // Imports
         writeln!(code, "import numpy as np")?;
-        writeln!(code, "from lava.magma.core.process.process import AbstractProcess")?;
-        writeln!(code, "from lava.magma.core.process.ports.ports import InPort, OutPort")?;
-        writeln!(code, "from lava.magma.core.model.py.model import PyLoihiProcessModel")?;
+        writeln!(
+            code,
+            "from lava.magma.core.process.process import AbstractProcess"
+        )?;
+        writeln!(
+            code,
+            "from lava.magma.core.process.ports.ports import InPort, OutPort"
+        )?;
+        writeln!(
+            code,
+            "from lava.magma.core.model.py.model import PyLoihiProcessModel"
+        )?;
         writeln!(code, "from lava.magma.core.model.py.type import LavaPyType")?;
-        writeln!(code, "from lava.magma.core.model.py.ports import PyInPort, PyOutPort")?;
-        writeln!(code, "from lava.magma.core.resources import CPU, Loihi2NeuroCore")?;
-        writeln!(code, "from lava.magma.core.decorator import implements, requires")?;
-        writeln!(code, "from lava.magma.core.sync.protocols.loihi_protocol import LoihiProtocol")?;
+        writeln!(
+            code,
+            "from lava.magma.core.model.py.ports import PyInPort, PyOutPort"
+        )?;
+        writeln!(
+            code,
+            "from lava.magma.core.resources import CPU, Loihi2NeuroCore"
+        )?;
+        writeln!(
+            code,
+            "from lava.magma.core.decorator import implements, requires"
+        )?;
+        writeln!(
+            code,
+            "from lava.magma.core.sync.protocols.loihi_protocol import LoihiProtocol"
+        )?;
         writeln!(code, "from lava.proc.lif.process import LIF")?;
         writeln!(code, "from lava.proc.dense.process import Dense")?;
         writeln!(code)?;
 
         // Network class
         writeln!(code, "class {}Network:", config.name)?;
-        writeln!(code, "    \"\"\"DPB-generated Lava network for Loihi 2.\"\"\"")?;
+        writeln!(
+            code,
+            "    \"\"\"DPB-generated Lava network for Loihi 2.\"\"\""
+        )?;
         writeln!(code)?;
         writeln!(code, "    def __init__(self):")?;
         writeln!(code, "        # Create layers")?;
@@ -667,9 +694,21 @@ impl NeuromorphicExporter {
             let params = &layer.params;
             writeln!(code, "        self.{} = LIF(", layer.name)?;
             writeln!(code, "            shape=({},),", layer.size)?;
-            writeln!(code, "            du={:.4},  # decay constant", 1.0 / params.tau_m)?;
-            writeln!(code, "            dv={:.4},  # voltage decay", 1.0 / params.tau_syn)?;
-            writeln!(code, "            vth={:.1},  # threshold", params.v_thresh.abs() as i32)?;
+            writeln!(
+                code,
+                "            du={:.4},  # decay constant",
+                1.0 / params.tau_m
+            )?;
+            writeln!(
+                code,
+                "            dv={:.4},  # voltage decay",
+                1.0 / params.tau_syn
+            )?;
+            writeln!(
+                code,
+                "            vth={:.1},  # threshold",
+                params.v_thresh.abs() as i32
+            )?;
             writeln!(code, "        )")?;
         }
 
@@ -682,30 +721,64 @@ impl NeuromorphicExporter {
             let tgt_layer = config.layers.iter().find(|l| l.name == conn.target);
 
             if let (Some(src), Some(tgt)) = (src_layer, tgt_layer) {
-                writeln!(code, "        # Connection: {} -> {}", conn.source, conn.target)?;
+                writeln!(
+                    code,
+                    "        # Connection: {} -> {}",
+                    conn.source, conn.target
+                )?;
 
                 if let Some(ref weights) = conn.weights {
                     writeln!(code, "        weights_{} = np.array([", i)?;
                     for row in weights {
-                        let row_str: Vec<String> = row.iter().map(|w| format!("{:.4}", w)).collect();
+                        let row_str: Vec<String> =
+                            row.iter().map(|w| format!("{:.4}", w)).collect();
                         writeln!(code, "            [{}],", row_str.join(", "))?;
                     }
                     writeln!(code, "        ])")?;
                 } else {
-                    writeln!(code, "        weights_{} = np.random.randn({}, {}) * 0.1", i, tgt.size, src.size)?;
+                    writeln!(
+                        code,
+                        "        weights_{} = np.random.randn({}, {}) * 0.1",
+                        i, tgt.size, src.size
+                    )?;
                 }
 
-                writeln!(code, "        self.dense_{} = Dense(weights=weights_{})", i, i)?;
-                writeln!(code, "        self.{}.s_out.connect(self.dense_{}.s_in)", conn.source, i)?;
-                writeln!(code, "        self.dense_{}.a_out.connect(self.{}.a_in)", i, conn.target)?;
+                writeln!(
+                    code,
+                    "        self.dense_{} = Dense(weights=weights_{})",
+                    i, i
+                )?;
+                writeln!(
+                    code,
+                    "        self.{}.s_out.connect(self.dense_{}.s_in)",
+                    conn.source, i
+                )?;
+                writeln!(
+                    code,
+                    "        self.dense_{}.a_out.connect(self.{}.a_in)",
+                    i, conn.target
+                )?;
             }
         }
 
         writeln!(code)?;
-        writeln!(code, "    def run(self, num_steps={}):", config.duration_ms as i32)?;
-        writeln!(code, "        \"\"\"Run the network for specified timesteps.\"\"\"")?;
-        writeln!(code, "        from lava.magma.core.run_configs import Loihi2HwCfg, Loihi2SimCfg")?;
-        writeln!(code, "        from lava.magma.core.run_conditions import RunSteps")?;
+        writeln!(
+            code,
+            "    def run(self, num_steps={}):",
+            config.duration_ms as i32
+        )?;
+        writeln!(
+            code,
+            "        \"\"\"Run the network for specified timesteps.\"\"\""
+        )?;
+        writeln!(
+            code,
+            "        from lava.magma.core.run_configs import Loihi2HwCfg, Loihi2SimCfg"
+        )?;
+        writeln!(
+            code,
+            "        from lava.magma.core.run_conditions import RunSteps"
+        )?;
         writeln!(code)?;
         writeln!(code, "        # Try hardware, fall back to simulation")?;
         writeln!(code, "        try:")?;
@@ -728,7 +801,11 @@ impl NeuromorphicExporter {
         writeln!(code, "if __name__ == '__main__':")?;
         writeln!(code, "    # Create and run network")?;
         writeln!(code, "    network = {}Network()", config.name)?;
-        writeln!(code, "    network.run(num_steps={})", config.duration_ms as i32)?;
+        writeln!(
+            code,
+            "    network.run(num_steps={})",
+            config.duration_ms as i32
+        )?;
         writeln!(code, "    network.stop()")?;
         writeln!(code, "    print('Network execution complete')")?;
 
@@ -791,24 +868,37 @@ impl NeuromorphicExporter {
             };
 
             if let ConnectionType::FromMatrix = conn.conn_type
-                && let Some(ref weights) = conn.weights {
-                    writeln!(code, "# Connection list for {} -> {}", conn.source, conn.target)?;
-                    writeln!(code, "conn_list = [")?;
-                    for (i, row) in weights.iter().enumerate() {
-                        for (j, &w) in row.iter().enumerate() {
-                            if w.abs() > 1e-6 {
-                                writeln!(code, "    ({}, {}, {:.4}, {:.1}),", j, i, w, conn.delay)?;
-                            }
+                && let Some(ref weights) = conn.weights
+            {
+                writeln!(
+                    code,
+                    "# Connection list for {} -> {}",
+                    conn.source, conn.target
+                )?;
+                writeln!(code, "conn_list = [")?;
+                for (i, row) in weights.iter().enumerate() {
+                    for (j, &w) in row.iter().enumerate() {
+                        if w.abs() > 1e-6 {
+                            writeln!(code, "    ({}, {}, {:.4}, {:.1}),", j, i, w, conn.delay)?;
                         }
                     }
-                    writeln!(code, "]")?;
                 }
+                writeln!(code, "]")?;
+            }
 
-            writeln!(code, "proj_{}_{} = sim.Projection(", conn.source, conn.target)?;
+            writeln!(
+                code,
+                "proj_{}_{} = sim.Projection(",
+                conn.source, conn.target
+            )?;
             writeln!(code, "    {},", conn.source)?;
             writeln!(code, "    {},", conn.target)?;
-            writeln!(code, "    {},"  , connector)?;
-            writeln!(code, "    synapse_type=sim.StaticSynapse(weight=1.0, delay={:.1}),", conn.delay)?;
+            writeln!(code, "    {},", connector)?;
+            writeln!(
+                code,
+                "    synapse_type=sim.StaticSynapse(weight=1.0, delay={:.1}),",
+                conn.delay
+            )?;
             writeln!(code, "    receptor_type='excitatory'")?;
             writeln!(code, ")")?;
             writeln!(code)?;
@@ -832,7 +922,11 @@ impl NeuromorphicExporter {
         if self.include_recorder {
             writeln!(code, "# Extract spike data")?;
             for layer in &config.layers {
-                writeln!(code, "{}_spikes = {}.get_data('spikes').segments[0].spiketrains", layer.name, layer.name)?;
+                writeln!(
+                    code,
+                    "{}_spikes = {}.get_data('spikes').segments[0].spiketrains",
+                    layer.name, layer.name
+                )?;
             }
             writeln!(code)?;
         }
@@ -847,10 +941,19 @@ impl NeuromorphicExporter {
             writeln!(code, "# Visualization")?;
             writeln!(code, "import matplotlib.pyplot as plt")?;
             writeln!(code)?;
-            writeln!(code, "fig, axes = plt.subplots({}, 1, figsize=(12, {}))", config.layers.len(), config.layers.len() * 3)?;
+            writeln!(
+                code,
+                "fig, axes = plt.subplots({}, 1, figsize=(12, {}))",
+                config.layers.len(),
+                config.layers.len() * 3
+            )?;
             for (i, layer) in config.layers.iter().enumerate() {
                 writeln!(code, "for idx, train in enumerate({}_spikes):", layer.name)?;
-                writeln!(code, "    axes[{}].scatter(train, [idx]*len(train), s=1)", i)?;
+                writeln!(
+                    code,
+                    "    axes[{}].scatter(train, [idx]*len(train), s=1)",
+                    i
+                )?;
                 writeln!(code, "axes[{}].set_ylabel('{}')", i, layer.name)?;
                 writeln!(code, "axes[{}].set_xlim(0, {:.1})", i, config.duration_ms)?;
             }
@@ -864,7 +967,10 @@ impl NeuromorphicExporter {
     }
 
     /// Export for BrainScaleS-2 (hxtorch).
-    fn export_brainscales(&self, config: &NetworkConfig) -> Result<String, NeuromorphicExportError> {
+    fn export_brainscales(
+        &self,
+        config: &NetworkConfig,
+    ) -> Result<String, NeuromorphicExportError> {
         let mut code = String::new();
 
         // Header
@@ -872,8 +978,14 @@ impl NeuromorphicExporter {
         writeln!(code, "# Generated by dpb-export")?;
         writeln!(code, "# Framework: hxtorch")?;
         writeln!(code, "#")?;
-        writeln!(code, "# Note: BrainScaleS-2 operates in accelerated analog mode")?;
-        writeln!(code, "# (approximately 1000x faster than biological real-time)")?;
+        writeln!(
+            code,
+            "# Note: BrainScaleS-2 operates in accelerated analog mode"
+        )?;
+        writeln!(
+            code,
+            "# (approximately 1000x faster than biological real-time)"
+        )?;
         writeln!(code)?;
 
         // Imports
@@ -891,7 +1003,10 @@ impl NeuromorphicExporter {
 
         // Network class
         writeln!(code, "class {}Network(torch.nn.Module):", config.name)?;
-        writeln!(code, "    \"\"\"DPB-generated network for BrainScaleS-2.\"\"\"")?;
+        writeln!(
+            code,
+            "    \"\"\"DPB-generated network for BrainScaleS-2.\"\"\""
+        )?;
         writeln!(code)?;
         writeln!(code, "    def __init__(self):")?;
         writeln!(code, "        super().__init__()")?;
@@ -911,14 +1026,21 @@ impl NeuromorphicExporter {
             writeln!(code, "        self.neuron_{} = snn.Neuron(", layer.name)?;
             writeln!(code, "            size={},", layer.size)?;
             writeln!(code, "            leak={:.4},", 1.0 / layer.params.tau_m)?;
-            writeln!(code, "            threshold={:.1},", layer.params.v_thresh.abs())?;
+            writeln!(
+                code,
+                "            threshold={:.1},",
+                layer.params.v_thresh.abs()
+            )?;
             writeln!(code, "        )")?;
             writeln!(code)?;
         }
 
         // Forward pass
         writeln!(code, "    def forward(self, spikes):")?;
-        writeln!(code, "        \"\"\"Forward pass through the network.\"\"\"")?;
+        writeln!(
+            code,
+            "        \"\"\"Forward pass through the network.\"\"\""
+        )?;
         writeln!(code, "        x = spikes")?;
         for (i, layer) in config.layers.iter().enumerate() {
             if i == 0 {
@@ -937,15 +1059,26 @@ impl NeuromorphicExporter {
         writeln!(code, "    network = {}Network()", config.name)?;
         writeln!(code)?;
         writeln!(code, "    # Create input spikes (example)")?;
-        writeln!(code, "    num_timesteps = {}", (config.duration_ms / config.dt) as i32)?;
-        writeln!(code, "    input_spikes = torch.rand(num_timesteps, {}) > 0.9", config.layers[0].size)?;
+        writeln!(
+            code,
+            "    num_timesteps = {}",
+            (config.duration_ms / config.dt) as i32
+        )?;
+        writeln!(
+            code,
+            "    input_spikes = torch.rand(num_timesteps, {}) > 0.9",
+            config.layers[0].size
+        )?;
         writeln!(code, "    input_spikes = input_spikes.float()")?;
         writeln!(code)?;
         writeln!(code, "    # Run inference")?;
         writeln!(code, "    with torch.no_grad():")?;
         writeln!(code, "        output_spikes = network(input_spikes)")?;
         writeln!(code)?;
-        writeln!(code, "    print(f'Output spike count: {{output_spikes.sum().item()}}')")?;
+        writeln!(
+            code,
+            "    print(f'Output spike count: {{output_spikes.sum().item()}}')"
+        )?;
         writeln!(code)?;
         writeln!(code, "    # Release hardware")?;
         writeln!(code, "    hxtorch.release_hardware()")?;
@@ -977,17 +1110,37 @@ impl NeuromorphicExporter {
         // Populations
         for layer in &config.layers {
             let params = &layer.params;
-            writeln!(code, "{} = sim.Population({}, sim.IF_curr_exp(", layer.name, layer.size)?;
-            writeln!(code, "    tau_m={:.1}, tau_syn_E={:.1}, tau_syn_I={:.1},", params.tau_m, params.tau_syn, params.tau_syn)?;
-            writeln!(code, "    v_thresh={:.1}, v_reset={:.1}, v_rest={:.1}", params.v_thresh, params.v_reset, params.v_rest)?;
+            writeln!(
+                code,
+                "{} = sim.Population({}, sim.IF_curr_exp(",
+                layer.name, layer.size
+            )?;
+            writeln!(
+                code,
+                "    tau_m={:.1}, tau_syn_E={:.1}, tau_syn_I={:.1},",
+                params.tau_m, params.tau_syn, params.tau_syn
+            )?;
+            writeln!(
+                code,
+                "    v_thresh={:.1}, v_reset={:.1}, v_rest={:.1}",
+                params.v_thresh, params.v_reset, params.v_rest
+            )?;
             writeln!(code, "), label='{}')", layer.name)?;
         }
         writeln!(code)?;
 
         // Projections
         for conn in &config.connections {
-            writeln!(code, "sim.Projection({}, {}, sim.AllToAllConnector(),", conn.source, conn.target)?;
-            writeln!(code, "    synapse_type=sim.StaticSynapse(weight=0.1, delay={:.1}))", conn.delay)?;
+            writeln!(
+                code,
+                "sim.Projection({}, {}, sim.AllToAllConnector(),",
+                conn.source, conn.target
+            )?;
+            writeln!(
+                code,
+                "    synapse_type=sim.StaticSynapse(weight=0.1, delay={:.1}))",
+                conn.delay
+            )?;
         }
         writeln!(code)?;
 
@@ -1114,7 +1267,11 @@ mod nir_export_tests {
         // NIR is a format; its "specs" must not read like invented silicon.
         let s = NeuromorphicTarget::Nir.specs();
         assert_eq!(s.weight_bits, 64, "NIR stores float64 parameters");
-        assert_eq!(s.neurons_per_core, u32::MAX, "format imposes no capacity limit");
+        assert_eq!(
+            s.neurons_per_core,
+            u32::MAX,
+            "format imposes no capacity limit"
+        );
     }
 }
 

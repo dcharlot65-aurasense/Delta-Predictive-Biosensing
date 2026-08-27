@@ -123,7 +123,7 @@ impl FhirClient {
     pub fn create(&self, _resource: FhirResource) -> Result<CreatedResource> {
         // Placeholder for HTTP POST implementation
         Err(DpbError::Other(
-            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string()
+            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string(),
         ))
     }
 
@@ -137,14 +137,14 @@ impl FhirClient {
     /// 3. Return the resource
     pub fn read(&self, _resource_type: ResourceType, _id: &str) -> Result<FhirResource> {
         Err(DpbError::Other(
-            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string()
+            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string(),
         ))
     }
 
     /// Reads the version history of a resource
     pub fn history(&self, _resource_type: ResourceType, _id: &str) -> Result<Bundle> {
         Err(DpbError::Other(
-            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string()
+            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string(),
         ))
     }
 
@@ -158,7 +158,7 @@ impl FhirClient {
     /// 3. Return the updated resource
     pub fn update(&self, _resource: FhirResource) -> Result<FhirResource> {
         Err(DpbError::Other(
-            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string()
+            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string(),
         ))
     }
 
@@ -169,7 +169,7 @@ impl FhirClient {
         _params: SearchParams,
     ) -> Result<FhirResource> {
         Err(DpbError::Other(
-            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string()
+            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string(),
         ))
     }
 
@@ -178,14 +178,18 @@ impl FhirClient {
     /// Deletes a resource (DELETE)
     pub fn delete(&self, _resource_type: ResourceType, _id: &str) -> Result<()> {
         Err(DpbError::Other(
-            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string()
+            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string(),
         ))
     }
 
     /// Conditionally deletes resources based on search criteria
-    pub fn conditional_delete(&self, _resource_type: ResourceType, _params: SearchParams) -> Result<()> {
+    pub fn conditional_delete(
+        &self,
+        _resource_type: ResourceType,
+        _params: SearchParams,
+    ) -> Result<()> {
         Err(DpbError::Other(
-            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string()
+            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string(),
         ))
     }
 
@@ -199,14 +203,14 @@ impl FhirClient {
     /// 3. Return search result bundle
     pub fn search(&self, _resource_type: ResourceType, _params: SearchParams) -> Result<Bundle> {
         Err(DpbError::Other(
-            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string()
+            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string(),
         ))
     }
 
     /// Performs a system-level search across all resource types
     pub fn search_all(&self, _params: SearchParams) -> Result<Bundle> {
         Err(DpbError::Other(
-            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string()
+            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string(),
         ))
     }
 
@@ -215,14 +219,14 @@ impl FhirClient {
     /// Submits a transaction bundle (atomic operation)
     pub fn transaction(&self, _bundle: Bundle) -> Result<Bundle> {
         Err(DpbError::Other(
-            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string()
+            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string(),
         ))
     }
 
     /// Submits a batch bundle (independent operations)
     pub fn batch(&self, _bundle: Bundle) -> Result<Bundle> {
         Err(DpbError::Other(
-            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string()
+            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string(),
         ))
     }
 
@@ -231,7 +235,7 @@ impl FhirClient {
     /// Retrieves the server's capability statement
     pub fn capabilities(&self) -> Result<CapabilityStatement> {
         Err(DpbError::Other(
-            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string()
+            "HTTP client not implemented. Integrate reqwest or similar HTTP library.".to_string(),
         ))
     }
 }
@@ -311,9 +315,11 @@ impl SearchParams {
         let mut parts = Vec::new();
         for (key, values) in &self.params {
             for value in values {
-                parts.push(format!("{}={}",
+                parts.push(format!(
+                    "{}={}",
                     urlencoding::encode(key),
-                    urlencoding::encode(value)));
+                    urlencoding::encode(value)
+                ));
             }
         }
         parts.join("&")
@@ -419,8 +425,8 @@ mod tests {
 
     #[test]
     fn test_search_params_date_range() {
-        let params = SearchParams::new()
-            .date_range("2025-01-01".to_string(), "2025-12-31".to_string());
+        let params =
+            SearchParams::new().date_range("2025-01-01".to_string(), "2025-12-31".to_string());
 
         let query = params.to_query_string();
         assert!(query.contains("date=ge2025-01-01"));
@@ -452,8 +458,7 @@ mod tests {
         let config = FhirClientConfig::new("https://example.com/fhir".to_string());
         let client = FhirClient::new(config);
 
-        let params = SearchParams::new()
-            .patient("Patient/123".to_string());
+        let params = SearchParams::new().patient("Patient/123".to_string());
 
         let url = client.search_url(ResourceType::Observation, &params);
         assert!(url.starts_with("https://example.com/fhir/Observation?"));

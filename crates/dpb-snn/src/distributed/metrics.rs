@@ -87,12 +87,7 @@ impl DistributedMetrics {
     }
 
     /// Record step completion
-    pub fn record_step(
-        &self,
-        batch_size: usize,
-        compute_time: Duration,
-        comm_time: Duration,
-    ) {
+    pub fn record_step(&self, batch_size: usize, compute_time: Duration, comm_time: Duration) {
         let mut state = self.state.write().unwrap();
         state.step += 1;
         state.samples_processed += batch_size;
@@ -182,11 +177,7 @@ impl DistributedMetrics {
             .collect();
 
         let mean = loads.iter().sum::<f64>() / loads.len() as f64;
-        let variance = loads
-            .iter()
-            .map(|&l| (l - mean).powi(2))
-            .sum::<f64>()
-            / loads.len() as f64;
+        let variance = loads.iter().map(|&l| (l - mean).powi(2)).sum::<f64>() / loads.len() as f64;
 
         let std_dev = variance.sqrt();
         let coefficient_of_variation = if mean > 0.0 { std_dev / mean } else { 0.0 };
@@ -359,10 +350,22 @@ impl MetricsSummary {
         println!("Elapsed time: {:.2}s", self.elapsed_time.as_secs_f64());
         println!("World size: {}", self.world_size);
         println!("\n=== Performance ===");
-        println!("Average throughput: {:.2} samples/sec", self.average_throughput);
-        println!("Global throughput: {:.2} samples/sec", self.global_throughput);
-        println!("Communication overhead: {:.2}%", self.communication_overhead * 100.0);
-        println!("Scaling efficiency: {:.2}%", self.scaling_efficiency * 100.0);
+        println!(
+            "Average throughput: {:.2} samples/sec",
+            self.average_throughput
+        );
+        println!(
+            "Global throughput: {:.2} samples/sec",
+            self.global_throughput
+        );
+        println!(
+            "Communication overhead: {:.2}%",
+            self.communication_overhead * 100.0
+        );
+        println!(
+            "Scaling efficiency: {:.2}%",
+            self.scaling_efficiency * 100.0
+        );
         println!("Load balance score: {:.2}", self.load_balance_score);
     }
 }
@@ -535,11 +538,7 @@ mod tests {
         let runtime = Arc::new(DistributedRuntime::init(config).unwrap());
         let metrics = DistributedMetrics::new(runtime);
 
-        metrics.record_step(
-            32,
-            Duration::from_millis(100),
-            Duration::from_millis(10),
-        );
+        metrics.record_step(32, Duration::from_millis(100), Duration::from_millis(10));
 
         assert!(metrics.current_throughput() > 0.0);
         assert!(metrics.communication_overhead() < 1.0);
@@ -551,11 +550,7 @@ mod tests {
         let runtime = Arc::new(DistributedRuntime::init(config).unwrap());
         let metrics = DistributedMetrics::new(runtime);
 
-        metrics.record_step(
-            100,
-            Duration::from_secs(1),
-            Duration::from_millis(100),
-        );
+        metrics.record_step(100, Duration::from_secs(1), Duration::from_millis(100));
 
         let throughput = metrics.current_throughput();
         assert!(throughput > 80.0 && throughput < 100.0); // ~90 samples/sec
@@ -567,11 +562,7 @@ mod tests {
         let runtime = Arc::new(DistributedRuntime::init(config).unwrap());
         let metrics = DistributedMetrics::new(runtime);
 
-        metrics.record_step(
-            100,
-            Duration::from_secs(1),
-            Duration::from_millis(100),
-        );
+        metrics.record_step(100, Duration::from_secs(1), Duration::from_millis(100));
 
         let global = metrics.global_throughput();
         let local = metrics.average_throughput();
@@ -586,11 +577,7 @@ mod tests {
         let metrics = DistributedMetrics::new(runtime);
 
         // 10% communication overhead
-        metrics.record_step(
-            100,
-            Duration::from_millis(900),
-            Duration::from_millis(100),
-        );
+        metrics.record_step(100, Duration::from_millis(900), Duration::from_millis(100));
 
         let overhead = metrics.communication_overhead();
         assert!((overhead - 0.1).abs() < 0.01);
@@ -602,11 +589,7 @@ mod tests {
         let runtime = Arc::new(DistributedRuntime::init(config).unwrap());
         let metrics = DistributedMetrics::new(runtime);
 
-        metrics.record_step(
-            100,
-            Duration::from_millis(900),
-            Duration::from_millis(100),
-        );
+        metrics.record_step(100, Duration::from_millis(900), Duration::from_millis(100));
 
         let efficiency = metrics.scaling_efficiency();
         assert!(efficiency > 0.0 && efficiency <= 1.0);

@@ -291,7 +291,10 @@ impl PerturbationGenerator {
                 time_to_peak = t - onset_time;
             }
 
-            if t > onset_time + perturbation_duration + 0.2 && disp < baseline_threshold && recovery_time == total_duration {
+            if t > onset_time + perturbation_duration + 0.2
+                && disp < baseline_threshold
+                && recovery_time == total_duration
+            {
                 recovery_time = t - onset_time;
             }
         }
@@ -305,7 +308,10 @@ impl PerturbationGenerator {
         let min_mos = bos_limit - peak_disp;
 
         let ground_truth = PerturbationGroundTruth {
-            perturbation_type: PerturbationType::Translation { velocity, displacement },
+            perturbation_type: PerturbationType::Translation {
+                velocity,
+                displacement,
+            },
             direction,
             recovery_strategy,
             onset_time,
@@ -607,11 +613,8 @@ mod tests {
             ..Default::default()
         };
         let mut generator = PerturbationGenerator::new(config);
-        let output = generator.generate_translation_response(
-            PerturbationDirection::Posterior,
-            0.3,
-            0.05,
-        );
+        let output =
+            generator.generate_translation_response(PerturbationDirection::Posterior, 0.3, 0.05);
 
         assert!(!output.com_ap.is_empty());
         assert!(output.ground_truth.peak_displacement > 0.0);
@@ -638,11 +641,7 @@ mod tests {
             ..Default::default()
         };
         let mut generator = PerturbationGenerator::new(config);
-        let output = generator.generate_push_response(
-            PerturbationDirection::Anterior,
-            50.0,
-            0.1,
-        );
+        let output = generator.generate_push_response(PerturbationDirection::Anterior, 50.0, 0.1);
 
         assert!(!output.com_ap.is_empty());
         assert!(output.ground_truth.time_to_peak > 0.0);
@@ -661,7 +660,10 @@ mod tests {
             0.25, // Large perturbation
         );
 
-        assert_eq!(output.ground_truth.recovery_strategy, RecoveryStrategy::Stepping);
+        assert_eq!(
+            output.ground_truth.recovery_strategy,
+            RecoveryStrategy::Stepping
+        );
         assert!(output.ground_truth.step_taken.is_some());
     }
 }

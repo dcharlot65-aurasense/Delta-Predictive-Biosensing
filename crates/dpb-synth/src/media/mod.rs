@@ -70,33 +70,33 @@
 //! let pipeline = MediaPipeline::new(config)?;
 //! ```
 
-pub mod mujoco;
-pub mod opensim;
-pub mod pybullet;
+pub mod bark;
 pub mod blender;
 pub mod chatterbox;
-pub mod f5tts;
-pub mod bark;
-pub mod ltx_video;
 pub mod cogvideo;
+pub mod f5tts;
+pub mod ltx_video;
 pub mod mediapipe;
+pub mod mujoco;
 pub mod openpose;
-pub mod smplx;
+pub mod opensim;
 pub mod pipeline;
+pub mod pybullet;
+pub mod smplx;
 
-pub use mujoco::{MuJoCoSimulator, MuJoCoConfig, MusculoskeletalModel, MotionTrajectory};
-pub use opensim::{OpenSimBridge, GaitModel, TremorModel, PathologyParams};
-pub use pybullet::{PyBulletSimulator, PyBulletConfig, PyBulletGaitParams, PyBulletTremorParams};
-pub use blender::{BlenderRenderer, BlenderConfig, RenderOutput, AnimationScript};
-pub use chatterbox::{ChatterboxTTS, VoiceConfig, EmotionControl, SpeechOutput};
-pub use f5tts::{F5TTSGenerator, F5TTSConfig, F5TTSPrompt, PathologicalVoiceParams};
-pub use bark::{BarkGenerator, BarkConfig, BarkPrompt, BarkSpeaker};
-pub use ltx_video::{LTXVideoGenerator, DiffusionConfig, VideoPrompt};
-pub use cogvideo::{CogVideoXGenerator, CogVideoConfig, CogVideoPrompt, CogVideoVariant};
-pub use mediapipe::{MediaPipeExtractor, PoseEstimate, HandLandmarks, FaceMesh};
-pub use openpose::{OpenPoseExtractor, OpenPoseConfig, OpenPosePose, OpenPoseFrame};
-pub use smplx::{SMPLXModel, SMPLXConfig, BodyPose, BodyShape, SMPLXAnimation};
-pub use pipeline::{MediaPipeline, PipelineConfig, SyntheticScenario, ScenarioOutput};
+pub use bark::{BarkConfig, BarkGenerator, BarkPrompt, BarkSpeaker};
+pub use blender::{AnimationScript, BlenderConfig, BlenderRenderer, RenderOutput};
+pub use chatterbox::{ChatterboxTTS, EmotionControl, SpeechOutput, VoiceConfig};
+pub use cogvideo::{CogVideoConfig, CogVideoPrompt, CogVideoVariant, CogVideoXGenerator};
+pub use f5tts::{F5TTSConfig, F5TTSGenerator, F5TTSPrompt, PathologicalVoiceParams};
+pub use ltx_video::{DiffusionConfig, LTXVideoGenerator, VideoPrompt};
+pub use mediapipe::{FaceMesh, HandLandmarks, MediaPipeExtractor, PoseEstimate};
+pub use mujoco::{MotionTrajectory, MuJoCoConfig, MuJoCoSimulator, MusculoskeletalModel};
+pub use openpose::{OpenPoseConfig, OpenPoseExtractor, OpenPoseFrame, OpenPosePose};
+pub use opensim::{GaitModel, OpenSimBridge, PathologyParams, TremorModel};
+pub use pipeline::{MediaPipeline, PipelineConfig, ScenarioOutput, SyntheticScenario};
+pub use pybullet::{PyBulletConfig, PyBulletGaitParams, PyBulletSimulator, PyBulletTremorParams};
+pub use smplx::{BodyPose, BodyShape, SMPLXAnimation, SMPLXConfig, SMPLXModel};
 
 use thiserror::Error;
 
@@ -188,8 +188,7 @@ pub enum AudioBackend {
 }
 
 /// Common ground truth data for all generated media
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct MediaGroundTruth {
     /// Timestamps in seconds
     pub timestamps: Vec<f64>,
@@ -340,7 +339,6 @@ impl Default for JointAngles {
     }
 }
 
-
 /// Check if a tool is available in the system PATH
 pub fn check_tool_available(tool: &str) -> bool {
     std::process::Command::new("which")
@@ -435,8 +433,18 @@ mod tests {
     fn test_backend_detection() {
         let backends = get_available_backends();
         // At minimum, procedural and skeleton2D should be available
-        assert!(backends.motion.iter().any(|(b, a)| *b == MotionBackend::Procedural && *a));
-        assert!(backends.video.iter().any(|(b, a)| *b == VideoBackend::Skeleton2D && *a));
+        assert!(
+            backends
+                .motion
+                .iter()
+                .any(|(b, a)| *b == MotionBackend::Procedural && *a)
+        );
+        assert!(
+            backends
+                .video
+                .iter()
+                .any(|(b, a)| *b == VideoBackend::Skeleton2D && *a)
+        );
     }
 
     #[test]

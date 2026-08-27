@@ -37,11 +37,7 @@ impl TemporalPatternDecoder {
         }
 
         // Normalized cross-correlation
-        let dot_product: f32 = spikes
-            .iter()
-            .zip(template.iter())
-            .map(|(s, t)| s * t)
-            .sum();
+        let dot_product: f32 = spikes.iter().zip(template.iter()).map(|(s, t)| s * t).sum();
 
         let spike_norm: f32 = spikes.iter().map(|s| s * s).sum::<f32>().sqrt();
         let template_norm: f32 = template.iter().map(|t| t * t).sum::<f32>().sqrt();
@@ -135,10 +131,7 @@ impl LatencyDecoder {
                 .sum()
         } else {
             // Simple inverse latency
-            spike_times
-                .iter()
-                .map(|&t| 1.0 / (t as f32 + 1.0))
-                .sum()
+            spike_times.iter().map(|&t| 1.0 / (t as f32 + 1.0)).sum()
         }
     }
 }
@@ -625,7 +618,7 @@ mod tests {
         let mut spike_data = Array3::zeros((1, 20, 2));
         spike_data[[0, 5, 0]] = 1.0;
         spike_data[[0, 15, 0]] = 1.0; // Last spike at t=15
-        spike_data[[0, 8, 1]] = 1.0;  // Last spike at t=8
+        spike_data[[0, 8, 1]] = 1.0; // Last spike at t=8
 
         let spikes = SpikeTensor::from_dense(spike_data, false);
         let output = decoder.decode(&spikes).unwrap();
@@ -653,8 +646,8 @@ mod tests {
         let decoder = RankOrderDecoder::new(3, 20);
 
         let mut spike_data = Array3::zeros((1, 20, 3));
-        spike_data[[0, 2, 0]] = 1.0;  // First
-        spike_data[[0, 5, 1]] = 1.0;  // Second
+        spike_data[[0, 2, 0]] = 1.0; // First
+        spike_data[[0, 5, 1]] = 1.0; // Second
         spike_data[[0, 10, 2]] = 1.0; // Third
 
         let spikes = SpikeTensor::from_dense(spike_data, false);

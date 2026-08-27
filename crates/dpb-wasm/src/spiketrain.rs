@@ -1,7 +1,7 @@
 //! SpikeTrain for WebAssembly
 
-use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
+use wasm_bindgen::prelude::*;
 
 /// A single spike event.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -62,12 +62,7 @@ impl WasmSpikeTrain {
     /// * `channel` - Channel index (0-based)
     /// * `polarity` - +1 (upward) or -1 (downward)
     #[wasm_bindgen(js_name = "addEvent")]
-    pub fn add_event(
-        &mut self,
-        timestamp: f64,
-        channel: u32,
-        polarity: i8,
-    ) -> Result<(), JsValue> {
+    pub fn add_event(&mut self, timestamp: f64, channel: u32, polarity: i8) -> Result<(), JsValue> {
         if channel >= self.num_channels {
             return Err(JsValue::from_str(&format!(
                 "Channel {} out of bounds (max: {})",
@@ -149,8 +144,7 @@ impl WasmSpikeTrain {
             .filter(|e| e.channel == channel)
             .collect();
 
-        serde_wasm_bindgen::to_value(&channel_events)
-            .map_err(|e| JsValue::from_str(&e.to_string()))
+        serde_wasm_bindgen::to_value(&channel_events).map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
     /// Get spikes in a time range.
@@ -162,8 +156,7 @@ impl WasmSpikeTrain {
             .filter(|e| e.timestamp >= start && e.timestamp < end)
             .collect();
 
-        serde_wasm_bindgen::to_value(&range_events)
-            .map_err(|e| JsValue::from_str(&e.to_string()))
+        serde_wasm_bindgen::to_value(&range_events).map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
     /// Calculate spike rate (spikes per second).
@@ -173,8 +166,16 @@ impl WasmSpikeTrain {
             return 0.0;
         }
 
-        let min_t = self.events.iter().map(|e| e.timestamp).fold(f64::MAX, f64::min);
-        let max_t = self.events.iter().map(|e| e.timestamp).fold(f64::MIN, f64::max);
+        let min_t = self
+            .events
+            .iter()
+            .map(|e| e.timestamp)
+            .fold(f64::MAX, f64::min);
+        let max_t = self
+            .events
+            .iter()
+            .map(|e| e.timestamp)
+            .fold(f64::MIN, f64::max);
 
         let duration = max_t - min_t;
         if duration <= 0.0 {
@@ -199,7 +200,8 @@ impl WasmSpikeTrain {
     /// Sort events by timestamp.
     #[wasm_bindgen(js_name = "sortByTime")]
     pub fn sort_by_time(&mut self) {
-        self.events.sort_by(|a, b| a.timestamp.total_cmp(&b.timestamp));
+        self.events
+            .sort_by(|a, b| a.timestamp.total_cmp(&b.timestamp));
     }
 
     /// Clear all events.
@@ -218,8 +220,16 @@ impl WasmSpikeTrain {
             return Ok(arr.into());
         }
 
-        let min_t = self.events.iter().map(|e| e.timestamp).fold(f64::MAX, f64::min);
-        let max_t = self.events.iter().map(|e| e.timestamp).fold(f64::MIN, f64::max);
+        let min_t = self
+            .events
+            .iter()
+            .map(|e| e.timestamp)
+            .fold(f64::MAX, f64::min);
+        let max_t = self
+            .events
+            .iter()
+            .map(|e| e.timestamp)
+            .fold(f64::MIN, f64::max);
 
         let arr = js_sys::Array::new();
         arr.push(&min_t.into());

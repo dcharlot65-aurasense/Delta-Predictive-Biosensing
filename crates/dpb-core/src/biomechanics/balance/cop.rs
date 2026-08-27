@@ -155,11 +155,7 @@ impl CopAnalyzer {
         let path = self.path_length(cop_x, cop_y);
         let duration = (cop_x.len() - 1) as f64 / self.sample_rate;
 
-        if duration > 0.0 {
-            path / duration
-        } else {
-            0.0
-        }
+        if duration > 0.0 { path / duration } else { 0.0 }
     }
 
     /// Calculate RMS (root mean square) displacement
@@ -206,10 +202,7 @@ impl CopAnalyzer {
         let mean: f64 = cop.iter().sum::<f64>() / cop.len() as f64;
         let centered: Vec<f64> = cop.iter().map(|&x| x - mean).collect();
 
-        let zero_crossings = centered
-            .windows(2)
-            .filter(|w| w[0] * w[1] < 0.0)
-            .count();
+        let zero_crossings = centered.windows(2).filter(|w| w[0] * w[1] < 0.0).count();
 
         // Estimate frequency from zero-crossing rate
         // Each cycle has 2 zero crossings

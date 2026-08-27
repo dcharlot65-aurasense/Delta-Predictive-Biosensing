@@ -637,7 +637,10 @@ impl EventEncoder for ArtifactEncoder {
 
             // Check for blink artifact (large slow wave)
             let mean: f32 = window.iter().sum::<f32>() / window.len() as f32;
-            let max_deviation = window.iter().map(|x| (x - mean).abs()).fold(0.0_f32, f32::max);
+            let max_deviation = window
+                .iter()
+                .map(|x| (x - mean).abs())
+                .fold(0.0_f32, f32::max);
             if max_deviation > config.blink_threshold {
                 // Check if it's a slow wave (blink-like)
                 let zero_crossings = count_zero_crossings(window, mean);
@@ -748,7 +751,8 @@ impl EventEncoder for ErpEncoder {
             return Ok(events);
         }
 
-        let baseline: f32 = samples[..baseline_samples].iter().sum::<f32>() / baseline_samples as f32;
+        let baseline: f32 =
+            samples[..baseline_samples].iter().sum::<f32>() / baseline_samples as f32;
 
         // Search for P300 (positive peak in 250-500ms range)
         let p300_start = ms_to_samples(config.p300_latency_range.0);
@@ -849,7 +853,12 @@ impl EventEncoder for SpindleEncoder {
         let dt = 1.0 / sample_rate;
 
         // Band-pass filter for sigma band (simplified using moving average difference)
-        let filtered = bandpass_simple(samples, sample_rate as f32, config.freq_range.0, config.freq_range.1);
+        let filtered = bandpass_simple(
+            samples,
+            sample_rate as f32,
+            config.freq_range.0,
+            config.freq_range.1,
+        );
 
         // Calculate envelope using Hilbert-like transform (simplified)
         let envelope = calculate_envelope(&filtered);
@@ -929,7 +938,12 @@ fn encode_band_power(
         let time = i as f64 * dt;
 
         // Estimate band power using Goertzel-like approach
-        let power = estimate_band_power(window, sample_rate as f32, config.low_freq, config.high_freq);
+        let power = estimate_band_power(
+            window,
+            sample_rate as f32,
+            config.low_freq,
+            config.high_freq,
+        );
 
         let power_value = if config.use_log_power {
             (power + 1e-10).ln()
@@ -1050,7 +1064,11 @@ fn find_peak(samples: &[f32], find_max: bool) -> (usize, f32) {
     let mut best_val = samples[0];
 
     for (i, &val) in samples.iter().enumerate() {
-        let is_better = if find_max { val > best_val } else { val < best_val };
+        let is_better = if find_max {
+            val > best_val
+        } else {
+            val < best_val
+        };
         if is_better {
             best_idx = i;
             best_val = val;
@@ -1115,8 +1133,14 @@ mod tests {
     #[test]
     fn test_alpha_power_template() {
         let template = AlphaPowerTemplate;
-        let young = Context { age: Some(25.0), ..Default::default() };
-        let old = Context { age: Some(75.0), ..Default::default() };
+        let young = Context {
+            age: Some(25.0),
+            ..Default::default()
+        };
+        let old = Context {
+            age: Some(75.0),
+            ..Default::default()
+        };
 
         // Alpha power decreases with age
         assert!(template.expected_value(&young) > template.expected_value(&old));

@@ -10,7 +10,7 @@
 use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 
-use super::modulators::{ModulatorySystem, Acetylcholine};
+use super::modulators::{Acetylcholine, ModulatorySystem};
 use super::{NeuromodError, NeuromodResult};
 
 /// Acetylcholine receptor types
@@ -181,7 +181,11 @@ impl AcetylcholineSystem {
     ///
     /// Enhances signal-to-noise ratio by amplifying attended signals
     /// and suppressing noise/distractors
-    pub fn apply_attention_gating(&self, input: &Array1<f64>, salience: &Array1<f64>) -> Array1<f64> {
+    pub fn apply_attention_gating(
+        &self,
+        input: &Array1<f64>,
+        salience: &Array1<f64>,
+    ) -> Array1<f64> {
         let attention = self.get_attention_level();
         let enhancement = self.config.snr_enhancement * attention;
 
@@ -317,7 +321,8 @@ impl ModulatorySystem for AcetylcholineSystem {
     }
 
     fn set_concentration(&mut self, concentration: f64) -> NeuromodResult<()> {
-        if concentration < 0.0 || concentration > self.acetylcholine.concentration.max_concentration {
+        if concentration < 0.0 || concentration > self.acetylcholine.concentration.max_concentration
+        {
             return Err(NeuromodError::ConcentrationOutOfBounds {
                 value: concentration,
                 min: 0.0,
@@ -329,8 +334,12 @@ impl ModulatorySystem for AcetylcholineSystem {
         // it; leaving them at their previous occupancy would report a
         // receptor-derived effect for a concentration that is no longer
         // present.
-        self.acetylcholine.nicotinic_receptors.equilibrate(concentration);
-        self.acetylcholine.muscarinic_receptors.equilibrate(concentration);
+        self.acetylcholine
+            .nicotinic_receptors
+            .equilibrate(concentration);
+        self.acetylcholine
+            .muscarinic_receptors
+            .equilibrate(concentration);
         self.update_attention_state();
         Ok(())
     }
@@ -449,7 +458,8 @@ mod tests {
 
         // Consolidation: low ACh is good
         system.set_concentration(0.05).unwrap();
-        let consolidation_factor = system.get_consolidation_factor(ConsolidationPhase::Consolidation);
+        let consolidation_factor =
+            system.get_consolidation_factor(ConsolidationPhase::Consolidation);
         assert!(consolidation_factor > 0.5);
     }
 

@@ -3,30 +3,29 @@
 //! This module provides various fusion strategies for integrating spike trains
 //! from multiple biosensing modalities (contact sensors, pose, hand, eye, voice).
 
-pub mod early;
-pub mod late;
 pub mod attention;
-pub mod hierarchical;
-pub mod temporal;
-pub mod gated;
-pub mod neuroplay;
 pub mod cognitive_motor;
+pub mod early;
+pub mod gated;
+pub mod hierarchical;
+pub mod late;
+pub mod neuroplay;
+pub mod temporal;
 
-pub use early::EarlyFusionSNN;
-pub use late::LateFusionSNN;
 pub use attention::CrossModalAttentionSNN;
-pub use hierarchical::HierarchicalFusionSNN;
-pub use temporal::TemporalAlignmentSNN;
-pub use gated::GatedFusionSNN;
-pub use neuroplay::NeuroPlaySNN;
 pub use cognitive_motor::{
-    CognitiveMotorFusion, CognitiveMotorFusionConfig, CognitiveMotorFusionSNN,
-    CognitiveProfile, MotorProfile, IntegratedAssessment,
-    DissociationPattern, DissociationType, ChangeMetrics, ChangeDirection,
-    RiskCategory, DomainZScores,
+    ChangeDirection, ChangeMetrics, CognitiveMotorFusion, CognitiveMotorFusionConfig,
+    CognitiveMotorFusionSNN, CognitiveProfile, DissociationPattern, DissociationType,
+    DomainZScores, IntegratedAssessment, MotorProfile, RiskCategory,
 };
+pub use early::EarlyFusionSNN;
+pub use gated::GatedFusionSNN;
+pub use hierarchical::HierarchicalFusionSNN;
+pub use late::LateFusionSNN;
+pub use neuroplay::NeuroPlaySNN;
+pub use temporal::TemporalAlignmentSNN;
 
-use crate::{SpikeTensor, SNNResult, SNNError};
+use crate::{SNNError, SNNResult, SpikeTensor};
 use ndarray::Array3;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -50,11 +49,11 @@ impl Modality {
     /// Get typical feature dimension for each modality
     pub fn default_feature_dim(&self) -> usize {
         match self {
-            Modality::Contact => 128,  // ECG, EDA, tremor combined
-            Modality::Pose => 256,     // Full body keypoints
-            Modality::Hand => 128,     // Hand landmarks
-            Modality::Eye => 64,       // Gaze, pupil metrics
-            Modality::Voice => 128,    // Speech features
+            Modality::Contact => 128, // ECG, EDA, tremor combined
+            Modality::Pose => 256,    // Full body keypoints
+            Modality::Hand => 128,    // Hand landmarks
+            Modality::Eye => 64,      // Gaze, pupil metrics
+            Modality::Voice => 128,   // Speech features
         }
     }
 
@@ -98,7 +97,7 @@ impl Default for FusionConfig {
             attention_heads: 8,
             dropout: 0.1,
             temporal_window_ms: 100.0,
-            output_size: 1,  // Default: single clinical score
+            output_size: 1, // Default: single clinical score
         }
     }
 }
@@ -180,17 +179,18 @@ fn should_use_sparse(tensor: &SpikeTensor) -> bool {
 /// result is sufficiently sparse (< 10% sparsity).
 pub fn concatenate_spikes(tensors: &[&SpikeTensor]) -> SNNResult<SpikeTensor> {
     if tensors.is_empty() {
-        return Err(SNNError::InvalidConfig("Cannot concatenate empty tensor list".to_string()));
+        return Err(SNNError::InvalidConfig(
+            "Cannot concatenate empty tensor list".to_string(),
+        ));
     }
 
     // Track if any input was sparse
-    let has_sparse = tensors.iter().any(|t| matches!(&t.data, crate::SpikeRepresentation::Sparse(_)));
+    let has_sparse = tensors
+        .iter()
+        .any(|t| matches!(&t.data, crate::SpikeRepresentation::Sparse(_)));
 
     // Convert all tensors to dense arrays for concatenation
-    let arrays: Vec<Array3<f32>> = tensors
-        .iter()
-        .map(|t| t.to_dense())
-        .collect();
+    let arrays: Vec<Array3<f32>> = tensors.iter().map(|t| t.to_dense()).collect();
 
     // Get dimensions: (batch, time, features)
     let (batch, time, _) = arrays[0].dim();
@@ -216,7 +216,8 @@ pub fn concatenate_spikes(tensors: &[&SpikeTensor]) -> SNNResult<SpikeTensor> {
     let mut offset = 0;
     for arr in &arrays {
         let features = arr.dim().2;
-        output.slice_mut(ndarray::s![.., .., offset..offset + features])
+        output
+            .slice_mut(ndarray::s![.., .., offset..offset + features])
             .assign(arr);
         offset += features;
     }
@@ -225,7 +226,10 @@ pub fn concatenate_spikes(tensors: &[&SpikeTensor]) -> SNNResult<SpikeTensor> {
     let result_tensor = SpikeTensor::from_dense(output, tensors[0].requires_grad);
 
     if has_sparse && should_use_sparse(&result_tensor) {
-        Ok(SpikeTensor::from_sparse(result_tensor.to_sparse(), tensors[0].requires_grad))
+        Ok(SpikeTensor::from_sparse(
+            result_tensor.to_sparse(),
+            tensors[0].requires_grad,
+        ))
     } else {
         Ok(result_tensor)
     }
@@ -238,11 +242,15 @@ pub fn concatenate_spikes(tensors: &[&SpikeTensor]) -> SNNResult<SpikeTensor> {
 /// is sufficiently sparse (< 10% sparsity) and any input was sparse.
 pub fn average_spikes(tensors: &[&SpikeTensor]) -> SNNResult<SpikeTensor> {
     if tensors.is_empty() {
-        return Err(SNNError::InvalidConfig("Cannot average empty tensor list".to_string()));
+        return Err(SNNError::InvalidConfig(
+            "Cannot average empty tensor list".to_string(),
+        ));
     }
 
     // Track if any input was sparse
-    let has_sparse = tensors.iter().any(|t| matches!(&t.data, crate::SpikeRepresentation::Sparse(_)));
+    let has_sparse = tensors
+        .iter()
+        .any(|t| matches!(&t.data, crate::SpikeRepresentation::Sparse(_)));
 
     // Convert first tensor to dense
     let mut sum = tensors[0].to_dense();
@@ -257,7 +265,10 @@ pub fn average_spikes(tensors: &[&SpikeTensor]) -> SNNResult<SpikeTensor> {
 
     // If input had sparse tensors, convert output back to sparse if beneficial
     if has_sparse && should_use_sparse(&result_tensor) {
-        Ok(SpikeTensor::from_sparse(result_tensor.to_sparse(), tensors[0].requires_grad))
+        Ok(SpikeTensor::from_sparse(
+            result_tensor.to_sparse(),
+            tensors[0].requires_grad,
+        ))
     } else {
         Ok(result_tensor)
     }
@@ -377,7 +388,7 @@ mod tests {
         sparse1.add_spike(0, 2, 10).unwrap();
 
         let mut sparse2 = crate::tensor::SparseSpikes::new(2, 10, 32);
-        sparse2.add_spike(0, 1, 5).unwrap();  // Same spike
+        sparse2.add_spike(0, 1, 5).unwrap(); // Same spike
         sparse2.add_spike(1, 3, 15).unwrap(); // Different spike
 
         let spike1 = SpikeTensor::from_sparse(sparse1, false);

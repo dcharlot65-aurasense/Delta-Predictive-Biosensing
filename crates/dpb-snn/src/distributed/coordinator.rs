@@ -266,13 +266,9 @@ impl TrainingCoordinator {
         // Simple exchange (in production, use non-blocking send/recv)
         if rank % 2 == 0 {
             self.runtime.backend().send(gradients, peer, 0)?;
-            self.runtime
-                .backend()
-                .recv(&mut peer_gradients, peer, 0)?;
+            self.runtime.backend().recv(&mut peer_gradients, peer, 0)?;
         } else {
-            self.runtime
-                .backend()
-                .recv(&mut peer_gradients, peer, 0)?;
+            self.runtime.backend().recv(&mut peer_gradients, peer, 0)?;
             self.runtime.backend().send(gradients, peer, 0)?;
         }
 
@@ -360,7 +356,8 @@ impl TrainingCoordinator {
 
             // Get local gradients if not syncing
             let local_grads = if !should_sync {
-                state.gradient_accumulator
+                state
+                    .gradient_accumulator
                     .get(param_name)
                     .map(|g| g.clone())
             } else {

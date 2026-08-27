@@ -24,9 +24,9 @@ pub struct XyloEstimator {
 impl Default for XyloEstimator {
     fn default() -> Self {
         Self {
-            base_dynamic_power_mw: 0.8,    // 0.8 mW typical active
-            static_power_mw: 0.005,         // 5 µW standby
-            energy_per_synop_pj: 5.0,       // ~5 pJ/synop
+            base_dynamic_power_mw: 0.8, // 0.8 mW typical active
+            static_power_mw: 0.005,     // 5 µW standby
+            energy_per_synop_pj: 5.0,   // ~5 pJ/synop
         }
     }
 }
@@ -116,7 +116,8 @@ impl PowerEstimator for LoihiEstimator {
 
         // Dynamic power based on active cores and spike activity
         let activity_factor = 0.3 + 0.7 * model.spike_rate;
-        let dynamic_power_mw = (active_cores as f64) * self.base_power_per_core_mw * activity_factor;
+        let dynamic_power_mw =
+            (active_cores as f64) * self.base_power_per_core_mw * activity_factor;
 
         // Static power (leakage) - approximately 10% of max power
         let static_power_mw = (active_cores as f64) * self.base_power_per_core_mw * 0.1;
@@ -191,7 +192,8 @@ impl PowerEstimator for SpinnAkerEstimator {
 
         // Power scales with number of active chips
         let activity_factor = 0.4 + 0.6 * model.spike_rate;
-        let total_power_mw = (active_chips as f64) * self.power_per_chip_w * 1000.0 * activity_factor;
+        let total_power_mw =
+            (active_chips as f64) * self.power_per_chip_w * 1000.0 * activity_factor;
 
         // SpiNNaker has significant static power
         let static_power_mw = total_power_mw * 0.2;
@@ -391,8 +393,8 @@ impl PowerEstimator for AkidaEstimator {
 
         // Power scales with activity
         let activity_factor = model.spike_rate / 0.5; // Normalized to 50% activity
-        let dynamic_power_mw = self.base_power_mw +
-            (self.max_power_mw - self.base_power_mw) * activity_factor.min(1.0);
+        let dynamic_power_mw = self.base_power_mw
+            + (self.max_power_mw - self.base_power_mw) * activity_factor.min(1.0);
 
         let static_power_mw = self.base_power_mw * 0.1;
         let total_power_mw = dynamic_power_mw + static_power_mw;

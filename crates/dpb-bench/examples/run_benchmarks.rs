@@ -4,9 +4,9 @@
 //! generate reports in various formats.
 
 use dpb_bench::prelude::*;
+use dpb_core::{EventEncoder, SignalBuffer};
 use dpb_encoders::prelude::*;
 use dpb_neurons::prelude::*;
-use dpb_core::{EventEncoder, SignalBuffer};
 use std::collections::HashMap;
 
 fn main() -> anyhow::Result<()> {
@@ -39,7 +39,10 @@ fn main() -> anyhow::Result<()> {
     println!("Total time: {:.2} ms", report.summary.total_time_ms);
     println!("Average latency: {:.2} ms", report.summary.avg_latency_ms);
     println!("Total energy: {:.3} mJ", report.summary.total_energy_mj);
-    println!("Average sparsity: {:.2}%", report.summary.avg_sparsity * 100.0);
+    println!(
+        "Average sparsity: {:.2}%",
+        report.summary.avg_sparsity * 100.0
+    );
     println!("Peak memory: {:.2} MB", report.summary.peak_memory_mb);
 
     // Export reports
@@ -88,7 +91,10 @@ fn run_encoder_benchmarks(report: &mut BenchmarkReport) -> anyhow::Result<()> {
 
         let mut metrics = HashMap::new();
         metrics.insert("num_events".to_string(), events.len() as f64);
-        metrics.insert("encoding_rate".to_string(), events.len() as f64 / dataset.duration());
+        metrics.insert(
+            "encoding_rate".to_string(),
+            events.len() as f64 / dataset.duration(),
+        );
 
         report.add_result(BenchmarkResult {
             name: "LevelCrossing_ECG".to_string(),
@@ -125,7 +131,8 @@ fn run_encoder_benchmarks(report: &mut BenchmarkReport) -> anyhow::Result<()> {
         energy.record_spikes(events.len(), 1);
 
         // Calculate accuracy vs ground truth
-        let gt_times: Vec<f64> = gt.temporal
+        let gt_times: Vec<f64> = gt
+            .temporal
             .as_ref()
             .map(|t| t.iter().map(|(time, _, _)| *time).collect())
             .unwrap_or_default();
@@ -293,7 +300,10 @@ fn run_scenario_benchmarks(report: &mut BenchmarkReport) -> anyhow::Result<()> {
             let sig_buf = SignalBuffer::single_channel(signal.to_vec(), 250.0);
             let events = encoder.encode(&sig_buf, &config)?;
 
-            Ok(events.into_iter().map(|e| (e.timestamp, e.channel as usize)).collect())
+            Ok(events
+                .into_iter()
+                .map(|e| (e.timestamp, e.channel as usize))
+                .collect())
         })?;
 
         report.add_result(BenchmarkResult {
@@ -319,7 +329,13 @@ fn run_scenario_benchmarks(report: &mut BenchmarkReport) -> anyhow::Result<()> {
 
         let result = scenario.run(|sample| {
             // Simple mock classifier
-            Ok(if sample[0] < 0.3 { 0 } else if sample[0] < 0.6 { 1 } else { 2 })
+            Ok(if sample[0] < 0.3 {
+                0
+            } else if sample[0] < 0.6 {
+                1
+            } else {
+                2
+            })
         })?;
 
         report.add_result(BenchmarkResult {
@@ -362,14 +378,21 @@ fn run_baseline_comparisons() -> anyhow::Result<ComparisonReport> {
     Ok(report)
 }
 
-fn calculate_precision(events: &[dpb_core::SpikeEvent], ground_truth: &[f64], tolerance: f64) -> f64 {
+fn calculate_precision(
+    events: &[dpb_core::SpikeEvent],
+    ground_truth: &[f64],
+    tolerance: f64,
+) -> f64 {
     if events.is_empty() {
         return 0.0;
     }
 
     let mut true_positives = 0;
     for event in events {
-        if ground_truth.iter().any(|&gt| (event.timestamp - gt).abs() < tolerance) {
+        if ground_truth
+            .iter()
+            .any(|&gt| (event.timestamp - gt).abs() < tolerance)
+        {
             true_positives += 1;
         }
     }

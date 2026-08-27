@@ -69,12 +69,16 @@ impl PyAccuracy {
     #[new]
     fn new() -> PyClassInitializer<Self> {
         PyClassInitializer::from(PyMetric {
-                name: "Accuracy".to_string(),
-            })
-            .add_subclass(Self)
-}
+            name: "Accuracy".to_string(),
+        })
+        .add_subclass(Self)
+    }
 
-    fn compute(&self, predictions: PyReadonlyArray1<i32>, targets: PyReadonlyArray1<i32>) -> PyResult<f64> {
+    fn compute(
+        &self,
+        predictions: PyReadonlyArray1<i32>,
+        targets: PyReadonlyArray1<i32>,
+    ) -> PyResult<f64> {
         let preds = predictions.as_slice()?;
         let targs = targets.as_slice()?;
 
@@ -109,12 +113,16 @@ impl PyPrecision {
     #[new]
     fn new() -> PyClassInitializer<Self> {
         PyClassInitializer::from(PyMetric {
-                name: "Precision".to_string(),
-            })
-            .add_subclass(Self)
-}
+            name: "Precision".to_string(),
+        })
+        .add_subclass(Self)
+    }
 
-    fn compute(&self, predictions: PyReadonlyArray1<i32>, targets: PyReadonlyArray1<i32>) -> PyResult<f64> {
+    fn compute(
+        &self,
+        predictions: PyReadonlyArray1<i32>,
+        targets: PyReadonlyArray1<i32>,
+    ) -> PyResult<f64> {
         let preds = predictions.as_slice()?;
         let targs = targets.as_slice()?;
 
@@ -160,12 +168,16 @@ impl PyRecall {
     #[new]
     fn new() -> PyClassInitializer<Self> {
         PyClassInitializer::from(PyMetric {
-                name: "Recall".to_string(),
-            })
-            .add_subclass(Self)
-}
+            name: "Recall".to_string(),
+        })
+        .add_subclass(Self)
+    }
 
-    fn compute(&self, predictions: PyReadonlyArray1<i32>, targets: PyReadonlyArray1<i32>) -> PyResult<f64> {
+    fn compute(
+        &self,
+        predictions: PyReadonlyArray1<i32>,
+        targets: PyReadonlyArray1<i32>,
+    ) -> PyResult<f64> {
         let preds = predictions.as_slice()?;
         let targs = targets.as_slice()?;
 
@@ -211,12 +223,16 @@ impl PyF1Score {
     #[new]
     fn new() -> PyClassInitializer<Self> {
         PyClassInitializer::from(PyMetric {
-                name: "F1Score".to_string(),
-            })
-            .add_subclass(Self)
-}
+            name: "F1Score".to_string(),
+        })
+        .add_subclass(Self)
+    }
 
-    fn compute(&self, predictions: PyReadonlyArray1<i32>, targets: PyReadonlyArray1<i32>) -> PyResult<f64> {
+    fn compute(
+        &self,
+        predictions: PyReadonlyArray1<i32>,
+        targets: PyReadonlyArray1<i32>,
+    ) -> PyResult<f64> {
         // Compute precision and recall
         let precision_metric = PyPrecision;
         let recall_metric = PyRecall;
@@ -247,12 +263,16 @@ impl PyMSE {
     #[new]
     fn new() -> PyClassInitializer<Self> {
         PyClassInitializer::from(PyMetric {
-                name: "MSE".to_string(),
-            })
-            .add_subclass(Self)
-}
+            name: "MSE".to_string(),
+        })
+        .add_subclass(Self)
+    }
 
-    fn compute(&self, predictions: PyReadonlyArray1<f32>, targets: PyReadonlyArray1<f32>) -> PyResult<f64> {
+    fn compute(
+        &self,
+        predictions: PyReadonlyArray1<f32>,
+        targets: PyReadonlyArray1<f32>,
+    ) -> PyResult<f64> {
         let preds = predictions.as_slice()?;
         let targs = targets.as_slice()?;
 
@@ -291,12 +311,16 @@ impl PyRMSE {
     #[new]
     fn new() -> PyClassInitializer<Self> {
         PyClassInitializer::from(PyMetric {
-                name: "RMSE".to_string(),
-            })
-            .add_subclass(Self)
-}
+            name: "RMSE".to_string(),
+        })
+        .add_subclass(Self)
+    }
 
-    fn compute(&self, predictions: PyReadonlyArray1<f32>, targets: PyReadonlyArray1<f32>) -> PyResult<f64> {
+    fn compute(
+        &self,
+        predictions: PyReadonlyArray1<f32>,
+        targets: PyReadonlyArray1<f32>,
+    ) -> PyResult<f64> {
         let mse_metric = PyMSE;
         let mse = mse_metric.compute(predictions, targets)?;
         Ok(mse.sqrt())
@@ -318,12 +342,16 @@ impl PyMAE {
     #[new]
     fn new() -> PyClassInitializer<Self> {
         PyClassInitializer::from(PyMetric {
-                name: "MAE".to_string(),
-            })
-            .add_subclass(Self)
-}
+            name: "MAE".to_string(),
+        })
+        .add_subclass(Self)
+    }
 
-    fn compute(&self, predictions: PyReadonlyArray1<f32>, targets: PyReadonlyArray1<f32>) -> PyResult<f64> {
+    fn compute(
+        &self,
+        predictions: PyReadonlyArray1<f32>,
+        targets: PyReadonlyArray1<f32>,
+    ) -> PyResult<f64> {
         let preds = predictions.as_slice()?;
         let targs = targets.as_slice()?;
 
@@ -400,9 +428,7 @@ impl PyConfusionMatrix {
         let array = PyArray2::from_vec2(
             py,
             &(0..self.num_classes)
-                .map(|i| {
-                    flat[i * self.num_classes..(i + 1) * self.num_classes].to_vec()
-                })
+                .map(|i| flat[i * self.num_classes..(i + 1) * self.num_classes].to_vec())
                 .collect::<Vec<_>>(),
         )
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
@@ -474,12 +500,16 @@ impl PyAUC {
     #[new]
     fn new() -> PyClassInitializer<Self> {
         PyClassInitializer::from(PyMetric {
-                name: "AUC".to_string(),
-            })
-            .add_subclass(Self)
-}
+            name: "AUC".to_string(),
+        })
+        .add_subclass(Self)
+    }
 
-    fn compute(&self, predictions: PyReadonlyArray1<f32>, targets: PyReadonlyArray1<i32>) -> PyResult<f64> {
+    fn compute(
+        &self,
+        predictions: PyReadonlyArray1<f32>,
+        targets: PyReadonlyArray1<i32>,
+    ) -> PyResult<f64> {
         // Previously returned a hardcoded 0.5 for any input, which reads as a
         // perfectly uninformative classifier and is indistinguishable from a
         // real result.
@@ -508,12 +538,16 @@ impl PySpikeDistance {
     #[pyo3(signature = (tau=0.01))]
     fn new(tau: f64) -> PyClassInitializer<Self> {
         PyClassInitializer::from(PyMetric {
-                name: "SpikeDistance".to_string(),
-            })
-            .add_subclass(Self { tau })
-}
+            name: "SpikeDistance".to_string(),
+        })
+        .add_subclass(Self { tau })
+    }
 
-    fn compute(&self, spikes1: PyReadonlyArray1<f64>, spikes2: PyReadonlyArray1<f64>) -> PyResult<f64> {
+    fn compute(
+        &self,
+        spikes1: PyReadonlyArray1<f64>,
+        spikes2: PyReadonlyArray1<f64>,
+    ) -> PyResult<f64> {
         // van Rossum distance, computed here because the Rust crates do not
         // implement a spike metric to delegate to.
         //
@@ -535,8 +569,7 @@ impl PySpikeDistance {
         };
 
         // |f - g|^2 = <f,f> - 2<f,g> + <g,g>
-        let distance_squared =
-            kernel_sum(a, a) - 2.0 * kernel_sum(a, b) + kernel_sum(b, b);
+        let distance_squared = kernel_sum(a, a) - 2.0 * kernel_sum(a, b) + kernel_sum(b, b);
 
         Ok((distance_squared.max(0.0) / (2.0 * tau)).sqrt())
     }
@@ -574,7 +607,11 @@ impl PyMetricCollection {
         for metric in &self.metrics {
             let name: String = metric.getattr(py, "name")?.extract(py)?;
             let value: f64 = metric
-                .call_method1(py, "compute", (predictions.clone_ref(py), targets.clone_ref(py)))?
+                .call_method1(
+                    py,
+                    "compute",
+                    (predictions.clone_ref(py), targets.clone_ref(py)),
+                )?
                 .extract(py)?;
             results.insert(name, value);
         }

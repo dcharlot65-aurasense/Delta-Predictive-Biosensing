@@ -159,10 +159,8 @@ pub struct VowelSpaceEncoder;
 impl VowelSpaceEncoder {
     /// Creates a new [`VowelSpaceEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
-
 }
 
 impl Default for VowelSpaceEncoder {

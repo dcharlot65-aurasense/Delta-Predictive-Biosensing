@@ -3,9 +3,9 @@
 //! Uses gating mechanisms to dynamically weight modalities based on
 //! their reliability and informativeness for the current input.
 
-use super::{FusionNetwork, FusionConfig, Modality};
+use super::{FusionConfig, FusionNetwork, Modality};
 use crate::layers::SpikingLayer;
-use crate::{SpikeTensor, SpikingLinear, SNNResult, SNNError, NeuronParams};
+use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor, SpikingLinear};
 use ndarray::Array3;
 use std::collections::HashMap;
 
@@ -57,7 +57,7 @@ impl GatedFusionSNN {
                 *modality,
                 SpikingLinear::new(
                     input_size,
-                    1,  // Gate value
+                    1, // Gate value
                     true,
                     neuron_params.clone(),
                     dt,
@@ -68,7 +68,7 @@ impl GatedFusionSNN {
 
         // Fusion layers
         let mut fusion_layers = Vec::new();
-        let mut prev_size = config.hidden_size;  // After gating, we sum across modalities
+        let mut prev_size = config.hidden_size; // After gating, we sum across modalities
 
         for i in 0..config.num_layers {
             let next_size = if i == config.num_layers - 1 {
@@ -77,7 +77,14 @@ impl GatedFusionSNN {
                 config.hidden_size
             };
 
-            fusion_layers.push(SpikingLinear::new(prev_size, next_size, true, neuron_params.clone(), dt, adaptive));
+            fusion_layers.push(SpikingLinear::new(
+                prev_size,
+                next_size,
+                true,
+                neuron_params.clone(),
+                dt,
+                adaptive,
+            ));
 
             prev_size = next_size;
         }
@@ -153,26 +160,26 @@ impl FusionNetwork for GatedFusionSNN {
                 && let (Some(extractor), Some(gate)) = (
                     self.feature_extractors.get_mut(modality),
                     gates.get(modality),
-                ) {
-                    let features = extractor.forward(input)?;
+                )
+            {
+                let features = extractor.forward(input)?;
 
-                    // Apply gate (element-wise multiplication with broadcasting)
-                    match features.data {
-                        crate::SpikeRepresentation::Dense(feat_arr) => {
-                            // Broadcast gate across features
-                            let gated = &feat_arr * gate;
-                            gated_features.push(SpikeTensor::from_dense(
-                                gated,
-                                features.requires_grad,
-                            ));
-                        }
-                        _ => return Err(SNNError::InvalidConfig("Sparse not supported".to_string())),
+                // Apply gate (element-wise multiplication with broadcasting)
+                match features.data {
+                    crate::SpikeRepresentation::Dense(feat_arr) => {
+                        // Broadcast gate across features
+                        let gated = &feat_arr * gate;
+                        gated_features.push(SpikeTensor::from_dense(gated, features.requires_grad));
                     }
+                    _ => return Err(SNNError::InvalidConfig("Sparse not supported".to_string())),
                 }
+            }
         }
 
         if gated_features.is_empty() {
-            return Err(SNNError::InvalidConfig("No gated features produced".to_string()));
+            return Err(SNNError::InvalidConfig(
+                "No gated features produced".to_string(),
+            ));
         }
 
         // Sum gated features (weighted combination)
@@ -206,23 +213,21 @@ impl FusionNetwork for GatedFusionSNN {
 
         // Feature extractor parameters
         for extractor in self.feature_extractors.values() {
-            total += extractor.parameters().iter()
+            total += extractor
+                .parameters()
+                .iter()
                 .map(|p| p.len())
                 .sum::<usize>();
         }
 
         // Gate network parameters
         for gate in self.gate_networks.values() {
-            total += gate.parameters().iter()
-                .map(|p| p.len())
-                .sum::<usize>();
+            total += gate.parameters().iter().map(|p| p.len()).sum::<usize>();
         }
 
         // Fusion layer parameters
         for layer in &self.fusion_layers {
-            total += layer.parameters().iter()
-                .map(|p| p.len())
-                .sum::<usize>();
+            total += layer.parameters().iter().map(|p| p.len()).sum::<usize>();
         }
 
         total
@@ -243,7 +248,7 @@ impl FusionNetwork for GatedFusionSNN {
     }
 
     fn handles_missing_modalities(&self) -> bool {
-        true  // Gated fusion naturally handles missing modalities
+        true // Gated fusion naturally handles missing modalities
     }
 }
 

@@ -172,7 +172,9 @@ impl BundleEntry {
     /// Creates a new bundle entry with a resource
     pub fn new(resource: FhirResource) -> Self {
         // Generate full URL from resource type and ID
-        let full_url = resource.id().map(|id| format!("{}/{}", resource.resource_type(), id));
+        let full_url = resource
+            .id()
+            .map(|id| format!("{}/{}", resource.resource_type(), id));
 
         Self {
             full_url,
@@ -342,7 +344,12 @@ impl Bundle {
     }
 
     /// Adds pagination links
-    pub fn with_pagination(mut self, self_url: String, next_url: Option<String>, previous_url: Option<String>) -> Self {
+    pub fn with_pagination(
+        mut self,
+        self_url: String,
+        next_url: Option<String>,
+        previous_url: Option<String>,
+    ) -> Self {
         self.link.push(BundleLink::self_link(self_url));
         if let Some(next) = next_url {
             self.link.push(BundleLink::next(next));
@@ -401,14 +408,20 @@ impl PaginatedBundleBuilder {
 
     /// Builds the paginated bundle with appropriate links
     pub fn build(mut self) -> Bundle {
-        let self_url = format!("{}?_count={}&_page={}",
-            self.base_url, self.page_size, self.page_number);
+        let self_url = format!(
+            "{}?_count={}&_page={}",
+            self.base_url, self.page_size, self.page_number
+        );
 
         let next_url = if let Some(total) = self.bundle.total {
             let max_page = (total as usize).div_ceil(self.page_size);
             if self.page_number + 1 < max_page {
-                Some(format!("{}?_count={}&_page={}",
-                    self.base_url, self.page_size, self.page_number + 1))
+                Some(format!(
+                    "{}?_count={}&_page={}",
+                    self.base_url,
+                    self.page_size,
+                    self.page_number + 1
+                ))
             } else {
                 None
             }
@@ -417,8 +430,12 @@ impl PaginatedBundleBuilder {
         };
 
         let prev_url = if self.page_number > 0 {
-            Some(format!("{}?_count={}&_page={}",
-                self.base_url, self.page_size, self.page_number - 1))
+            Some(format!(
+                "{}?_count={}&_page={}",
+                self.base_url,
+                self.page_size,
+                self.page_number - 1
+            ))
         } else {
             None
         };
@@ -451,8 +468,7 @@ mod tests {
     #[test]
     fn test_bundle_add_resource() {
         let patient = Patient::new("patient-001".to_string());
-        let bundle = Bundle::collection()
-            .add_resource(FhirResource::Patient(patient));
+        let bundle = Bundle::collection().add_resource(FhirResource::Patient(patient));
 
         assert_eq!(bundle.len(), 1);
         assert!(!bundle.is_empty());
@@ -465,7 +481,10 @@ mod tests {
             .with_url("http://example.org/Patient/patient-001".to_string());
 
         assert!(entry.resource.is_some());
-        assert_eq!(entry.full_url, Some("http://example.org/Patient/patient-001".to_string()));
+        assert_eq!(
+            entry.full_url,
+            Some("http://example.org/Patient/patient-001".to_string())
+        );
     }
 
     #[test]

@@ -106,11 +106,7 @@ impl GradientAttribution {
     }
 
     /// Compute gradient * (input - baseline)
-    pub fn compute_with_baseline(
-        inputs: &[f64],
-        baseline: &[f64],
-        gradients: &[f64],
-    ) -> Vec<f64> {
+    pub fn compute_with_baseline(inputs: &[f64], baseline: &[f64], gradients: &[f64]) -> Vec<f64> {
         assert_eq!(inputs.len(), baseline.len());
         assert_eq!(inputs.len(), gradients.len());
 
@@ -423,7 +419,8 @@ mod tests {
         let baseline = vec![0.0, 0.0, 0.0];
         let gradients = vec![0.5, 0.3, 0.2];
 
-        let attribution = GradientAttribution::compute_with_baseline(&inputs, &baseline, &gradients);
+        let attribution =
+            GradientAttribution::compute_with_baseline(&inputs, &baseline, &gradients);
 
         assert_eq!(attribution.len(), 3);
         assert!((attribution[0] - 0.5).abs() < 1e-10);

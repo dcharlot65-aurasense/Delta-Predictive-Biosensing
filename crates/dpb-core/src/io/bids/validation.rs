@@ -100,9 +100,7 @@ pub struct ValidationReport {
 impl ValidationReport {
     /// Create a new empty validation report
     pub fn new() -> Self {
-        Self {
-            issues: Vec::new(),
-        }
+        Self { issues: Vec::new() }
     }
 
     /// Add an issue to the report
@@ -127,7 +125,9 @@ impl ValidationReport {
 
     /// Check if there are any errors
     pub fn has_errors(&self) -> bool {
-        self.issues.iter().any(|i| i.level == ValidationLevel::Error)
+        self.issues
+            .iter()
+            .any(|i| i.level == ValidationLevel::Error)
     }
 
     /// Check if the dataset is valid (no errors)
@@ -384,10 +384,11 @@ impl BidsValidator {
             }
 
             if let Some(name) = path.file_name().and_then(|n| n.to_str())
-                && name.starts_with("sub-") {
-                    has_subjects = true;
-                    self.validate_subject_dir(&path, report);
-                }
+                && name.starts_with("sub-")
+            {
+                has_subjects = true;
+                self.validate_subject_dir(&path, report);
+            }
         }
 
         if !has_subjects {
@@ -466,10 +467,11 @@ impl BidsValidator {
             }
 
             if let Some(name) = path.file_name().and_then(|n| n.to_str())
-                && Modality::from_dir_name(name).is_some() {
-                    has_modalities = true;
-                    break;
-                }
+                && Modality::from_dir_name(name).is_some()
+            {
+                has_modalities = true;
+                break;
+            }
         }
 
         if !has_modalities {
@@ -598,13 +600,9 @@ mod tests {
 
     #[test]
     fn test_validation_issue() {
-        let issue = ValidationIssue::new(
-            ValidationLevel::Error,
-            "TEST_CODE",
-            "Test message",
-        )
-        .with_path(PathBuf::from("/test/path"))
-        .with_line(42);
+        let issue = ValidationIssue::new(ValidationLevel::Error, "TEST_CODE", "Test message")
+            .with_path(PathBuf::from("/test/path"))
+            .with_line(42);
 
         assert_eq!(issue.level, ValidationLevel::Error);
         assert_eq!(issue.code, "TEST_CODE");
@@ -657,7 +655,11 @@ mod tests {
 
         assert!(report.has_errors());
         let errors: Vec<_> = report.issues_with_level(ValidationLevel::Error);
-        assert!(errors.iter().any(|e| e.code == "MISSING_DATASET_DESCRIPTION"));
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.code == "MISSING_DATASET_DESCRIPTION")
+        );
     }
 
     #[test]

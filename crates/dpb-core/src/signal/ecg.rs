@@ -111,7 +111,9 @@ impl PanTompkinsDetector {
     /// Vector of detected R-peaks with metadata
     pub fn detect_r_peaks(&self, ecg: &[f64]) -> Result<Vec<RPeak>> {
         if ecg.is_empty() {
-            return Err(DpbError::InvalidParameter("ECG signal is empty".to_string()));
+            return Err(DpbError::InvalidParameter(
+                "ECG signal is empty".to_string(),
+            ));
         }
 
         // Step 1: Bandpass filter (5-15 Hz)
@@ -184,9 +186,10 @@ impl PanTompkinsDetector {
             window_sum += value;
 
             if window.len() > window_samples
-                && let Some(old) = window.pop_front() {
-                    window_sum -= old;
-                }
+                && let Some(old) = window.pop_front()
+            {
+                window_sum -= old;
+            }
 
             integrated.push(window_sum / window.len() as f64);
         }
@@ -331,7 +334,9 @@ impl QrsMorphology {
     /// Average QRS template
     pub fn extract_template(&self, ecg: &[f64], r_peaks: &[RPeak]) -> Result<QrsTemplate> {
         if r_peaks.is_empty() {
-            return Err(DpbError::InvalidParameter("No R-peaks provided".to_string()));
+            return Err(DpbError::InvalidParameter(
+                "No R-peaks provided".to_string(),
+            ));
         }
 
         let window_samples = ((self.template_window_ms / 1000.0) * self.sample_rate) as usize;
@@ -356,7 +361,9 @@ impl QrsMorphology {
         }
 
         if beat_segments.is_empty() {
-            return Err(DpbError::InvalidParameter("No valid beats for template".to_string()));
+            return Err(DpbError::InvalidParameter(
+                "No valid beats for template".to_string(),
+            ));
         }
 
         // Average all segments
@@ -543,16 +550,19 @@ impl ArrhythmiaDetector {
     ///
     /// # Returns
     /// Arrhythmia analysis results
-    pub fn analyze(&self, r_peaks: &[RPeak], beat_types: &[BeatType]) -> Result<ArrhythmiaAnalysis> {
+    pub fn analyze(
+        &self,
+        r_peaks: &[RPeak],
+        beat_types: &[BeatType],
+    ) -> Result<ArrhythmiaAnalysis> {
         if r_peaks.is_empty() {
-            return Err(DpbError::InvalidParameter("No R-peaks provided".to_string()));
+            return Err(DpbError::InvalidParameter(
+                "No R-peaks provided".to_string(),
+            ));
         }
 
         // Compute mean heart rate
-        let rr_intervals: Vec<f64> = r_peaks
-            .iter()
-            .filter_map(|p| p.rr_interval_ms)
-            .collect();
+        let rr_intervals: Vec<f64> = r_peaks.iter().filter_map(|p| p.rr_interval_ms).collect();
 
         let mean_hr_bpm = if !rr_intervals.is_empty() {
             let mean_rr_ms = rr_intervals.iter().sum::<f64>() / rr_intervals.len() as f64;
@@ -594,10 +604,7 @@ impl ArrhythmiaDetector {
         }
 
         let mean = rr_intervals.iter().sum::<f64>() / rr_intervals.len() as f64;
-        let variance = rr_intervals
-            .iter()
-            .map(|x| (x - mean).powi(2))
-            .sum::<f64>()
+        let variance = rr_intervals.iter().map(|x| (x - mean).powi(2)).sum::<f64>()
             / rr_intervals.len() as f64;
 
         let cv = variance.sqrt() / mean; // Coefficient of variation

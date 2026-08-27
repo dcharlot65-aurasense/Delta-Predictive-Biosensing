@@ -6,10 +6,10 @@
 //! Run with: cargo run --example json_export -p dpb-export
 
 use dpb_export::{
+    ModelExporter,
     encoder_export::{EncoderParams, MockEncoder},
     json::JsonExporter,
     metadata::ModelMetadata,
-    ModelExporter,
 };
 use std::path::PathBuf;
 

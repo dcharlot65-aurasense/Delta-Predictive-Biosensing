@@ -54,7 +54,11 @@ pub struct ModelVersion {
 impl ModelVersion {
     /// Create a new model version
     pub fn new(major: u16, minor: u16, patch: u16) -> Self {
-        Self { major, minor, patch }
+        Self {
+            major,
+            minor,
+            patch,
+        }
     }
 
     /// Get version as u32 (major << 16 | minor << 8 | patch)
@@ -200,8 +204,7 @@ pub struct MobileModel {
 }
 
 /// Model metadata
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ModelMetadata {
     /// Model description
     pub description: String,
@@ -225,7 +228,6 @@ pub struct ModelMetadata {
     pub tags: Vec<String>,
 }
 
-
 impl MobileModel {
     /// Create a new mobile model
     pub fn new(name: String, input_dim: usize, output_dim: usize) -> Self {
@@ -244,16 +246,12 @@ impl MobileModel {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, ModelError> {
         // Validate minimum size
         if bytes.len() < 16 {
-            return Err(ModelError::InvalidFormat(
-                "Model data too small".into()
-            ));
+            return Err(ModelError::InvalidFormat("Model data too small".into()));
         }
 
         // Check magic number (first 4 bytes: "DPB\0")
         if &bytes[0..4] != b"DPB\0" {
-            return Err(ModelError::InvalidFormat(
-                "Invalid magic number".into()
-            ));
+            return Err(ModelError::InvalidFormat("Invalid magic number".into()));
         }
 
         // Check version (next 4 bytes)
@@ -261,8 +259,9 @@ impl MobileModel {
         let version = ModelVersion::from_u32(version_u32);
 
         // Validate version
-        if version.as_u32() < crate::MIN_MODEL_VERSION ||
-           version.as_u32() > crate::MAX_MODEL_VERSION {
+        if version.as_u32() < crate::MIN_MODEL_VERSION
+            || version.as_u32() > crate::MAX_MODEL_VERSION
+        {
             return Err(ModelError::UnsupportedVersion {
                 version: version.as_u32(),
                 min: crate::MIN_MODEL_VERSION,
@@ -311,44 +310,46 @@ impl MobileModel {
         // Check input/output dimensions
         if self.input_dim == 0 {
             return Err(ModelError::InvalidFormat(
-                "Input dimension cannot be zero".into()
+                "Input dimension cannot be zero".into(),
             ));
         }
 
         if self.output_dim == 0 {
             return Err(ModelError::InvalidFormat(
-                "Output dimension cannot be zero".into()
+                "Output dimension cannot be zero".into(),
             ));
         }
 
         // Check layers
         if self.layers.is_empty() {
             return Err(ModelError::InvalidFormat(
-                "Model must have at least one layer".into()
+                "Model must have at least one layer".into(),
             ));
         }
 
         // Validate layer dimensions match
         for (i, layer) in self.layers.iter().enumerate() {
             if i == 0 && layer.input_dim != self.input_dim {
-                return Err(ModelError::InvalidFormat(
-                    format!("First layer input dimension {} doesn't match model input dimension {}",
-                        layer.input_dim, self.input_dim)
-                ));
+                return Err(ModelError::InvalidFormat(format!(
+                    "First layer input dimension {} doesn't match model input dimension {}",
+                    layer.input_dim, self.input_dim
+                )));
             }
 
             if i == self.layers.len() - 1 && layer.output_dim != self.output_dim {
-                return Err(ModelError::InvalidFormat(
-                    format!("Last layer output dimension {} doesn't match model output dimension {}",
-                        layer.output_dim, self.output_dim)
-                ));
+                return Err(ModelError::InvalidFormat(format!(
+                    "Last layer output dimension {} doesn't match model output dimension {}",
+                    layer.output_dim, self.output_dim
+                )));
             }
 
             if i > 0 && layer.input_dim != self.layers[i - 1].output_dim {
-                return Err(ModelError::InvalidFormat(
-                    format!("Layer {} input dimension {} doesn't match previous layer output dimension {}",
-                        i, layer.input_dim, self.layers[i - 1].output_dim)
-                ));
+                return Err(ModelError::InvalidFormat(format!(
+                    "Layer {} input dimension {} doesn't match previous layer output dimension {}",
+                    i,
+                    layer.input_dim,
+                    self.layers[i - 1].output_dim
+                )));
             }
         }
 
@@ -367,14 +368,17 @@ impl MobileModel {
 
     /// Get total weight bytes
     pub fn weight_bytes(&self) -> usize {
-        self.layers.iter()
+        self.layers
+            .iter()
             .map(|l| l.weights.len() + l.bias.as_ref().map(|b| b.len()).unwrap_or(0))
             .sum()
     }
 
     /// Get model compression ratio
     pub fn compression_ratio(&self) -> f32 {
-        let uncompressed_size: usize = self.layers.iter()
+        let uncompressed_size: usize = self
+            .layers
+            .iter()
             .map(|l| l.input_dim * l.output_dim * 4) // 4 bytes per float32
             .sum();
 
@@ -454,7 +458,7 @@ mod tests {
             output_dim: 5,
             layer_type: LayerType::FullyConnected,
             quantization: QuantizationType::Float32,
-            weights: vec![0u8; 200], // 10 * 5 * 4 bytes
+            weights: vec![0u8; 200],   // 10 * 5 * 4 bytes
             bias: Some(vec![0u8; 20]), // 5 * 4 bytes
             scale: None,
             zero_point: None,

@@ -1,10 +1,10 @@
 //! Federated learning server for aggregation.
 
 use crate::{
-    aggregation::{create_aggregator, Aggregator},
+    FederatedError, Result,
+    aggregation::{Aggregator, create_aggregator},
     config::FedConfig,
     model::{ModelUpdate, ModelWeights},
-    FederatedError, Result,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -59,7 +59,9 @@ impl FederatedServer {
     /// Register a new client.
     pub fn register_client(&mut self, client_id: &str) -> Result<()> {
         if self.clients.contains_key(client_id) {
-            return Err(FederatedError::ClientAlreadyRegistered(client_id.to_string()));
+            return Err(FederatedError::ClientAlreadyRegistered(
+                client_id.to_string(),
+            ));
         }
 
         info!("Registering client: {}", client_id);
@@ -138,7 +140,9 @@ impl FederatedServer {
     pub fn receive_update(&mut self, update: ModelUpdate) -> Result<()> {
         // Verify client is registered
         if !self.clients.contains_key(&update.client_id) {
-            return Err(FederatedError::ClientNotRegistered(update.client_id.clone()));
+            return Err(FederatedError::ClientNotRegistered(
+                update.client_id.clone(),
+            ));
         }
 
         // Verify round number
@@ -150,7 +154,11 @@ impl FederatedServer {
         }
 
         // Check if we already have an update from this client
-        if self.pending_updates.iter().any(|u| u.client_id == update.client_id) {
+        if self
+            .pending_updates
+            .iter()
+            .any(|u| u.client_id == update.client_id)
+        {
             warn!(
                 "Duplicate update from client {} in round {}",
                 update.client_id, self.current_round

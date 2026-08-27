@@ -34,8 +34,10 @@ impl ANNBaseline for MLP2Layer {
     }
 
     fn num_parameters(&self) -> usize {
-        count_params(&self.w1.shape) + count_params(&self.b1.shape) +
-        count_params(&self.w2.shape) + count_params(&self.b2.shape)
+        count_params(&self.w1.shape)
+            + count_params(&self.b1.shape)
+            + count_params(&self.w2.shape)
+            + count_params(&self.b2.shape)
     }
 
     fn flops_per_inference(&self) -> u64 {
@@ -45,8 +47,10 @@ impl ANNBaseline for MLP2Layer {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("MLP2Layer: {} -> {} -> {}",
-                self.w1.shape[0], self.hidden_size, self.w2.shape[1])
+        format!(
+            "MLP2Layer: {} -> {} -> {}",
+            self.w1.shape[0], self.hidden_size, self.w2.shape[1]
+        )
     }
 }
 
@@ -61,7 +65,13 @@ pub struct MLP3Layer {
 }
 
 impl MLP3Layer {
-    pub fn new(input_size: usize, hidden1: usize, hidden2: usize, output_size: usize, seed: u64) -> Self {
+    pub fn new(
+        input_size: usize,
+        hidden1: usize,
+        hidden2: usize,
+        output_size: usize,
+        seed: u64,
+    ) -> Self {
         Self {
             w1: xavier_init(vec![input_size, hidden1], seed),
             b1: Tensor::zeros(vec![hidden1]),
@@ -85,9 +95,12 @@ impl ANNBaseline for MLP3Layer {
     }
 
     fn num_parameters(&self) -> usize {
-        count_params(&self.w1.shape) + count_params(&self.b1.shape) +
-        count_params(&self.w2.shape) + count_params(&self.b2.shape) +
-        count_params(&self.w3.shape) + count_params(&self.b3.shape)
+        count_params(&self.w1.shape)
+            + count_params(&self.b1.shape)
+            + count_params(&self.w2.shape)
+            + count_params(&self.b2.shape)
+            + count_params(&self.w3.shape)
+            + count_params(&self.b3.shape)
     }
 
     fn flops_per_inference(&self) -> u64 {
@@ -98,8 +111,10 @@ impl ANNBaseline for MLP3Layer {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("MLP3Layer: {} -> {} -> {} -> {}",
-                self.w1.shape[0], self.w2.shape[0], self.w3.shape[0], self.w3.shape[1])
+        format!(
+            "MLP3Layer: {} -> {} -> {} -> {}",
+            self.w1.shape[0], self.w2.shape[0], self.w3.shape[0], self.w3.shape[1]
+        )
     }
 }
 
@@ -151,22 +166,30 @@ impl ANNBaseline for MLP4Layer {
     }
 
     fn num_parameters(&self) -> usize {
-        self.layers.iter()
+        self.layers
+            .iter()
             .map(|(w, b)| count_params(&w.shape) + count_params(&b.shape))
             .sum()
     }
 
     fn flops_per_inference(&self) -> u64 {
-        self.layers.iter()
+        self.layers
+            .iter()
             .map(|(w, _)| (w.shape[0] * w.shape[1] * 2) as u64)
             .sum()
     }
 
     fn architecture_summary(&self) -> String {
-        let sizes: Vec<String> = self.layers.iter()
+        let sizes: Vec<String> = self
+            .layers
+            .iter()
             .map(|(w, _)| w.shape[1].to_string())
             .collect();
-        format!("MLP4Layer: {} -> {}", self.layers[0].0.shape[0], sizes.join(" -> "))
+        format!(
+            "MLP4Layer: {} -> {}",
+            self.layers[0].0.shape[0],
+            sizes.join(" -> ")
+        )
     }
 }
 
@@ -177,7 +200,13 @@ pub struct MLPDropout {
 }
 
 impl MLPDropout {
-    pub fn new(input_size: usize, hidden_sizes: &[usize], output_size: usize, dropout_rate: f32, seed: u64) -> Self {
+    pub fn new(
+        input_size: usize,
+        hidden_sizes: &[usize],
+        output_size: usize,
+        dropout_rate: f32,
+        seed: u64,
+    ) -> Self {
         let mut layers = Vec::new();
         let mut in_size = input_size;
 
@@ -194,7 +223,10 @@ impl MLPDropout {
             Tensor::zeros(vec![output_size]),
         ));
 
-        Self { layers, dropout_rate }
+        Self {
+            layers,
+            dropout_rate,
+        }
     }
 }
 
@@ -217,19 +249,25 @@ impl ANNBaseline for MLPDropout {
     }
 
     fn num_parameters(&self) -> usize {
-        self.layers.iter()
+        self.layers
+            .iter()
             .map(|(w, b)| count_params(&w.shape) + count_params(&b.shape))
             .sum()
     }
 
     fn flops_per_inference(&self) -> u64 {
-        self.layers.iter()
+        self.layers
+            .iter()
             .map(|(w, _)| (w.shape[0] * w.shape[1] * 2) as u64)
             .sum()
     }
 
     fn architecture_summary(&self) -> String {
-        format!("MLPDropout (p={}): {} layers", self.dropout_rate, self.layers.len())
+        format!(
+            "MLPDropout (p={}): {} layers",
+            self.dropout_rate,
+            self.layers.len()
+        )
     }
 }
 
@@ -251,16 +289,19 @@ impl MLPBatchNorm {
                 Tensor::zeros(vec![h_size]),
             ));
             bn_params.push((
-                Tensor::zeros(vec![h_size]),     // mean
-                Tensor::ones(vec![h_size]),      // var
-                Tensor::ones(vec![h_size]),      // gamma
-                Tensor::zeros(vec![h_size]),     // beta
+                Tensor::zeros(vec![h_size]), // mean
+                Tensor::ones(vec![h_size]),  // var
+                Tensor::ones(vec![h_size]),  // gamma
+                Tensor::zeros(vec![h_size]), // beta
             ));
             in_size = h_size;
         }
 
         layers.push((
-            xavier_init(vec![in_size, output_size], seed + hidden_sizes.len() as u64 * 2),
+            xavier_init(
+                vec![in_size, output_size],
+                seed + hidden_sizes.len() as u64 * 2,
+            ),
             Tensor::zeros(vec![output_size]),
         ));
 
@@ -289,14 +330,20 @@ impl ANNBaseline for MLPBatchNorm {
     }
 
     fn num_parameters(&self) -> usize {
-        let layer_params: usize = self.layers.iter()
+        let layer_params: usize = self
+            .layers
+            .iter()
             .map(|(w, b)| count_params(&w.shape) + count_params(&b.shape))
             .sum();
 
-        let bn_params: usize = self.bn_params.iter()
+        let bn_params: usize = self
+            .bn_params
+            .iter()
             .map(|(mean, var, gamma, beta)| {
-                count_params(&mean.shape) + count_params(&var.shape) +
-                count_params(&gamma.shape) + count_params(&beta.shape)
+                count_params(&mean.shape)
+                    + count_params(&var.shape)
+                    + count_params(&gamma.shape)
+                    + count_params(&beta.shape)
             })
             .sum();
 
@@ -304,11 +351,15 @@ impl ANNBaseline for MLPBatchNorm {
     }
 
     fn flops_per_inference(&self) -> u64 {
-        let matmul_ops: u64 = self.layers.iter()
+        let matmul_ops: u64 = self
+            .layers
+            .iter()
             .map(|(w, _)| (w.shape[0] * w.shape[1] * 2) as u64)
             .sum();
 
-        let bn_ops: u64 = self.bn_params.iter()
+        let bn_ops: u64 = self
+            .bn_params
+            .iter()
             .map(|(mean, _, _, _)| (mean.shape[0] * 10) as u64) // Rough estimate
             .sum();
 
@@ -340,7 +391,10 @@ impl MLPResidual {
 
             // Add projection if dimensions don't match
             if in_size != h_size {
-                projections.push(Some(xavier_init(vec![in_size, h_size], seed + i as u64 * 2 + 1)));
+                projections.push(Some(xavier_init(
+                    vec![in_size, h_size],
+                    seed + i as u64 * 2 + 1,
+                )));
             } else {
                 projections.push(None);
             }
@@ -349,12 +403,18 @@ impl MLPResidual {
         }
 
         layers.push((
-            xavier_init(vec![in_size, output_size], seed + hidden_sizes.len() as u64 * 2),
+            xavier_init(
+                vec![in_size, output_size],
+                seed + hidden_sizes.len() as u64 * 2,
+            ),
             Tensor::zeros(vec![output_size]),
         ));
         projections.push(None);
 
-        Self { layers, projections }
+        Self {
+            layers,
+            projections,
+        }
     }
 }
 
@@ -384,11 +444,15 @@ impl ANNBaseline for MLPResidual {
     }
 
     fn num_parameters(&self) -> usize {
-        let layer_params: usize = self.layers.iter()
+        let layer_params: usize = self
+            .layers
+            .iter()
             .map(|(w, b)| count_params(&w.shape) + count_params(&b.shape))
             .sum();
 
-        let proj_params: usize = self.projections.iter()
+        let proj_params: usize = self
+            .projections
+            .iter()
             .filter_map(|p| p.as_ref())
             .map(|w| count_params(&w.shape))
             .sum();
@@ -397,11 +461,15 @@ impl ANNBaseline for MLPResidual {
     }
 
     fn flops_per_inference(&self) -> u64 {
-        let layer_ops: u64 = self.layers.iter()
+        let layer_ops: u64 = self
+            .layers
+            .iter()
             .map(|(w, _)| (w.shape[0] * w.shape[1] * 2) as u64)
             .sum();
 
-        let proj_ops: u64 = self.projections.iter()
+        let proj_ops: u64 = self
+            .projections
+            .iter()
             .filter_map(|p| p.as_ref())
             .map(|w| (w.shape[0] * w.shape[1] * 2) as u64)
             .sum();
@@ -410,7 +478,10 @@ impl ANNBaseline for MLPResidual {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("MLPResidual: {} layers with skip connections", self.layers.len())
+        format!(
+            "MLPResidual: {} layers with skip connections",
+            self.layers.len()
+        )
     }
 }
 
@@ -444,8 +515,10 @@ impl ANNBaseline for MLPWideSingle {
     }
 
     fn num_parameters(&self) -> usize {
-        count_params(&self.w1.shape) + count_params(&self.b1.shape) +
-        count_params(&self.w2.shape) + count_params(&self.b2.shape)
+        count_params(&self.w1.shape)
+            + count_params(&self.b1.shape)
+            + count_params(&self.w2.shape)
+            + count_params(&self.b2.shape)
     }
 
     fn flops_per_inference(&self) -> u64 {
@@ -455,8 +528,10 @@ impl ANNBaseline for MLPWideSingle {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("MLPWideSingle: {} -> {} -> {} (wide shallow)",
-                self.w1.shape[0], self.w1.shape[1], self.w2.shape[1])
+        format!(
+            "MLPWideSingle: {} -> {} -> {} (wide shallow)",
+            self.w1.shape[0], self.w1.shape[1], self.w2.shape[1]
+        )
     }
 }
 
@@ -466,7 +541,13 @@ pub struct MLPDeep {
 }
 
 impl MLPDeep {
-    pub fn new(input_size: usize, narrow_hidden: usize, num_layers: usize, output_size: usize, seed: u64) -> Self {
+    pub fn new(
+        input_size: usize,
+        narrow_hidden: usize,
+        num_layers: usize,
+        output_size: usize,
+        seed: u64,
+    ) -> Self {
         assert!(num_layers >= 8, "MLPDeep requires at least 8 layers");
 
         let mut layers = Vec::new();
@@ -487,7 +568,10 @@ impl MLPDeep {
 
         // Output layer
         layers.push((
-            xavier_init(vec![narrow_hidden, output_size], seed + (num_layers - 1) as u64),
+            xavier_init(
+                vec![narrow_hidden, output_size],
+                seed + (num_layers - 1) as u64,
+            ),
             Tensor::zeros(vec![output_size]),
         ));
 
@@ -514,19 +598,24 @@ impl ANNBaseline for MLPDeep {
     }
 
     fn num_parameters(&self) -> usize {
-        self.layers.iter()
+        self.layers
+            .iter()
             .map(|(w, b)| count_params(&w.shape) + count_params(&b.shape))
             .sum()
     }
 
     fn flops_per_inference(&self) -> u64 {
-        self.layers.iter()
+        self.layers
+            .iter()
             .map(|(w, _)| (w.shape[0] * w.shape[1] * 2) as u64)
             .sum()
     }
 
     fn architecture_summary(&self) -> String {
-        format!("MLPDeep: {} layers (deep narrow architecture)", self.layers.len())
+        format!(
+            "MLPDeep: {} layers (deep narrow architecture)",
+            self.layers.len()
+        )
     }
 }
 
@@ -544,7 +633,7 @@ mod tests {
         assert_eq!(output.shape, vec![1, 5]);
 
         let params = mlp.num_parameters();
-        assert_eq!(params, 10*20 + 20 + 20*5 + 5);
+        assert_eq!(params, 10 * 20 + 20 + 20 * 5 + 5);
     }
 
     #[test]

@@ -3,10 +3,10 @@
 //! These tests verify basic end-to-end functionality without relying on
 //! advanced features that may not be fully implemented.
 
-use dpb_snn::*;
 use dpb_snn::architectures::SNNArchitecture;
+use dpb_snn::decoders::{Decoder, SpikeRateDecoder};
 use dpb_snn::tensor::SpikeTensor;
-use dpb_snn::decoders::{SpikeRateDecoder, Decoder};
+use dpb_snn::*;
 use ndarray::Array3;
 
 /// Create a simple test spike tensor
@@ -46,11 +46,8 @@ fn test_basic_snn_forward_pass() {
     };
 
     // Create SNN
-    let mut snn = FeedforwardSNN::new(
-        vec![num_input, num_hidden, num_output],
-        config,
-        true,
-    ).expect("Failed to create SNN");
+    let mut snn = FeedforwardSNN::new(vec![num_input, num_hidden, num_output], config, true)
+        .expect("Failed to create SNN");
 
     // Create input
     let input = create_test_spikes(batch_size, num_timesteps, num_input);
@@ -65,8 +62,14 @@ fn test_basic_snn_forward_pass() {
     assert_eq!(out_neurons, num_output);
 
     println!("  ✓ Forward pass successful");
-    println!("    Input shape: ({}, {}, {})", batch_size, num_timesteps, num_input);
-    println!("    Output shape: ({}, {}, {})", out_batch, out_time, out_neurons);
+    println!(
+        "    Input shape: ({}, {}, {})",
+        batch_size, num_timesteps, num_input
+    );
+    println!(
+        "    Output shape: ({}, {}, {})",
+        out_batch, out_time, out_neurons
+    );
 }
 
 #[test]
@@ -87,11 +90,8 @@ fn test_snn_with_decoder() {
     };
 
     // Create SNN
-    let mut snn = FeedforwardSNN::new(
-        vec![num_input, 32, num_output],
-        config,
-        true,
-    ).expect("Failed to create SNN");
+    let mut snn = FeedforwardSNN::new(vec![num_input, 32, num_output], config, true)
+        .expect("Failed to create SNN");
 
     // Create input
     let input = create_test_spikes(batch_size, num_timesteps, num_input);
@@ -144,7 +144,9 @@ fn test_multiple_snn_architectures() {
     for (name, layers) in architectures {
         let mut snn = FeedforwardSNN::new(layers.clone(), config.clone(), true)
             .expect("Failed to create SNN");
-        let output = snn.forward(&input).unwrap_or_else(|_| panic!("{} forward failed", name));
+        let output = snn
+            .forward(&input)
+            .unwrap_or_else(|_| panic!("{} forward failed", name));
 
         let (out_batch, _out_time, out_neurons) = output.shape();
         assert_eq!(out_batch, batch_size);
@@ -172,7 +174,11 @@ fn test_spike_rate_computation() {
 
     // Verify all rates are in valid range [0, 1]
     for &rate in spike_rate.iter() {
-        assert!((0.0..=1.0).contains(&rate), "Spike rate {} out of range", rate);
+        assert!(
+            (0.0..=1.0).contains(&rate),
+            "Spike rate {} out of range",
+            rate
+        );
     }
 
     println!("  ✓ Spike rate computation successful");
@@ -190,10 +196,7 @@ fn test_neuron_models() {
 
     let input = create_test_spikes(batch_size, num_timesteps, num_input);
 
-    let models = vec![
-        NeuronModel::LIF,
-        NeuronModel::AdaptiveLIF,
-    ];
+    let models = vec![NeuronModel::LIF, NeuronModel::AdaptiveLIF];
 
     for model in models {
         let config = SNNConfig {
@@ -203,11 +206,8 @@ fn test_neuron_models() {
             neuron_params: NeuronParams::default(),
         };
 
-        let mut snn = FeedforwardSNN::new(
-            vec![num_input, num_output],
-            config,
-            true,
-        ).expect("Failed to create SNN");
+        let mut snn = FeedforwardSNN::new(vec![num_input, num_output], config, true)
+            .expect("Failed to create SNN");
 
         let output = snn.forward(&input).expect("Forward pass failed");
 
@@ -234,11 +234,8 @@ fn test_batch_processing() {
         neuron_params: NeuronParams::default(),
     };
 
-    let mut snn = FeedforwardSNN::new(
-        vec![num_input, 20, num_output],
-        config,
-        true,
-    ).expect("Failed to create SNN");
+    let mut snn = FeedforwardSNN::new(vec![num_input, 20, num_output], config, true)
+        .expect("Failed to create SNN");
 
     // Test different batch sizes
     let batch_sizes = vec![1, 2, 4, 8];

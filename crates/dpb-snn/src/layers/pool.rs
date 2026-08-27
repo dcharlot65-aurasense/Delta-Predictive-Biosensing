@@ -194,7 +194,10 @@ pub struct TemporalAvgPool {
 
 impl TemporalAvgPool {
     pub fn new(window_size: usize, stride: usize) -> Self {
-        Self { window_size, stride }
+        Self {
+            window_size,
+            stride,
+        }
     }
 
     pub fn output_steps(&self, input_steps: usize) -> usize {

@@ -11,10 +11,10 @@ use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use super::dopamine::{DopamineSystem, DopamineConfig};
-use super::acetylcholine::{AcetylcholineSystem, AcetylcholineConfig};
-use super::modulators::{Neuromodulator, NeuromodulatorType, ModulatorySystem};
 use super::NeuromodResult;
+use super::acetylcholine::{AcetylcholineConfig, AcetylcholineSystem};
+use super::dopamine::{DopamineConfig, DopamineSystem};
+use super::modulators::{ModulatorySystem, Neuromodulator, NeuromodulatorType};
 
 /// Brain state
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -377,7 +377,12 @@ impl ModulatoryNetwork {
     }
 
     /// Update with reward signal (for dopamine)
-    pub fn update_with_reward(&mut self, dt: f64, reward: f64, next_value: f64) -> NeuromodResult<()> {
+    pub fn update_with_reward(
+        &mut self,
+        dt: f64,
+        reward: f64,
+        next_value: f64,
+    ) -> NeuromodResult<()> {
         if let Some(ref mut da) = self.dopamine {
             da.update_from_rpe(dt, reward, next_value)?;
         }

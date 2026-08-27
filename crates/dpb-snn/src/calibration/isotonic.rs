@@ -30,7 +30,11 @@ impl IsotonicCalibration {
         }
 
         // Sort by scores
-        let mut data: Vec<(f64, f64)> = scores.iter().zip(labels.iter()).map(|(&s, &l)| (s, l)).collect();
+        let mut data: Vec<(f64, f64)> = scores
+            .iter()
+            .zip(labels.iter())
+            .map(|(&s, &l)| (s, l))
+            .collect();
         data.sort_by(|a, b| a.0.total_cmp(&b.0));
 
         let sorted_scores: Vec<f64> = data.iter().map(|(s, _)| *s).collect();
@@ -204,7 +208,10 @@ mod tests {
 
         // Check monotonicity
         for i in 1..y.len() {
-            assert!(y[i] >= y[i - 1], "Isotonic regression should be non-decreasing");
+            assert!(
+                y[i] >= y[i - 1],
+                "Isotonic regression should be non-decreasing"
+            );
         }
     }
 

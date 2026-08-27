@@ -152,10 +152,10 @@ impl PowerEstimator for MemoryAccessEstimator {
 
         // Static power depends on memory type
         let static_power_mw = match self.memory_type {
-            MemoryType::OnChipSRAM => 0.1,      // Minimal leakage
-            MemoryType::Cache => 1.0,           // Some leakage
-            MemoryType::DRAM => 10.0,           // Refresh power
-            MemoryType::NonVolatile => 0.01,    // Very low retention power
+            MemoryType::OnChipSRAM => 0.1,   // Minimal leakage
+            MemoryType::Cache => 1.0,        // Some leakage
+            MemoryType::DRAM => 10.0,        // Refresh power
+            MemoryType::NonVolatile => 0.01, // Very low retention power
         };
 
         let total_power_mw = dynamic_power_mw + static_power_mw;
@@ -282,8 +282,8 @@ mod tests {
 
         let energy_j = estimator.estimate_accesses(1000, 500);
 
-        let expected_j = (1000.0 * estimator.energy_per_read_pj +
-                         500.0 * estimator.energy_per_write_pj) * 1e-12;
+        let expected_j =
+            (1000.0 * estimator.energy_per_read_pj + 500.0 * estimator.energy_per_write_pj) * 1e-12;
 
         assert!((energy_j - expected_j).abs() < 1e-15);
     }

@@ -33,8 +33,16 @@ impl ANNBaseline for SimpleRNN {
     fn forward(&self, input: &Tensor) -> Tensor {
         // Assume input shape: [batch, seq_len, input_size]
         // For simplicity, process last time step
-        let batch_size = if input.shape.len() == 3 { input.shape[0] } else { 1 };
-        let seq_len = if input.shape.len() == 3 { input.shape[1] } else { input.shape[0] };
+        let batch_size = if input.shape.len() == 3 {
+            input.shape[0]
+        } else {
+            1
+        };
+        let seq_len = if input.shape.len() == 3 {
+            input.shape[1]
+        } else {
+            input.shape[0]
+        };
 
         let mut h = Tensor::zeros(vec![batch_size, self.hidden_size]);
 
@@ -48,23 +56,28 @@ impl ANNBaseline for SimpleRNN {
     }
 
     fn num_parameters(&self) -> usize {
-        count_params(&self.w_ih.shape) + count_params(&self.w_hh.shape) +
-        count_params(&self.w_ho.shape) + count_params(&self.b_h.shape) +
-        count_params(&self.b_o.shape)
+        count_params(&self.w_ih.shape)
+            + count_params(&self.w_hh.shape)
+            + count_params(&self.w_ho.shape)
+            + count_params(&self.b_h.shape)
+            + count_params(&self.b_o.shape)
     }
 
     fn flops_per_inference(&self) -> u64 {
         // Approximate for sequence length 100
         let seq_len = 100;
-        let hidden_ops = (self.w_ih.shape[0] * self.w_ih.shape[1] +
-                          self.w_hh.shape[0] * self.w_hh.shape[1]) * seq_len;
+        let hidden_ops = (self.w_ih.shape[0] * self.w_ih.shape[1]
+            + self.w_hh.shape[0] * self.w_hh.shape[1])
+            * seq_len;
         let output_ops = self.w_ho.shape[0] * self.w_ho.shape[1];
         (hidden_ops + output_ops) as u64 * 2
     }
 
     fn architecture_summary(&self) -> String {
-        format!("SimpleRNN: {} -> {} -> {}",
-                self.w_ih.shape[0], self.hidden_size, self.w_ho.shape[1])
+        format!(
+            "SimpleRNN: {} -> {} -> {}",
+            self.w_ih.shape[0], self.hidden_size, self.w_ho.shape[1]
+        )
     }
 }
 
@@ -104,7 +117,11 @@ impl ANNBaseline for LSTM {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let batch_size = if input.shape.len() == 3 { input.shape[0] } else { 1 };
+        let batch_size = if input.shape.len() == 3 {
+            input.shape[0]
+        } else {
+            1
+        };
         let h = Tensor::zeros(vec![batch_size, self.hidden_size]);
 
         // Simplified LSTM forward (just return output from hidden state)
@@ -112,22 +129,28 @@ impl ANNBaseline for LSTM {
     }
 
     fn num_parameters(&self) -> usize {
-        count_params(&self.w_ih.shape) + count_params(&self.w_hh.shape) +
-        count_params(&self.w_ho.shape) + count_params(&self.b_ih.shape) +
-        count_params(&self.b_hh.shape) + count_params(&self.b_o.shape)
+        count_params(&self.w_ih.shape)
+            + count_params(&self.w_hh.shape)
+            + count_params(&self.w_ho.shape)
+            + count_params(&self.b_ih.shape)
+            + count_params(&self.b_hh.shape)
+            + count_params(&self.b_o.shape)
     }
 
     fn flops_per_inference(&self) -> u64 {
         let seq_len = 100;
-        let lstm_ops = (self.w_ih.shape[0] * self.w_ih.shape[1] +
-                        self.w_hh.shape[0] * self.w_hh.shape[1]) * seq_len;
+        let lstm_ops = (self.w_ih.shape[0] * self.w_ih.shape[1]
+            + self.w_hh.shape[0] * self.w_hh.shape[1])
+            * seq_len;
         let output_ops = self.w_ho.shape[0] * self.w_ho.shape[1];
         (lstm_ops + output_ops) as u64 * 2
     }
 
     fn architecture_summary(&self) -> String {
-        format!("LSTM: {} -> {} (hidden) -> {}",
-                self.w_ih.shape[0], self.hidden_size, self.w_ho.shape[1])
+        format!(
+            "LSTM: {} -> {} (hidden) -> {}",
+            self.w_ih.shape[0], self.hidden_size, self.w_ho.shape[1]
+        )
     }
 }
 
@@ -165,8 +188,10 @@ impl ANNBaseline for BiLSTM {
     }
 
     fn num_parameters(&self) -> usize {
-        self.lstm_forward.num_parameters() + self.lstm_backward.num_parameters() +
-        count_params(&self.w_out.shape) + count_params(&self.b_out.shape)
+        self.lstm_forward.num_parameters()
+            + self.lstm_backward.num_parameters()
+            + count_params(&self.w_out.shape)
+            + count_params(&self.b_out.shape)
     }
 
     fn flops_per_inference(&self) -> u64 {
@@ -187,7 +212,10 @@ pub struct StackedLSTM {
 
 impl StackedLSTM {
     pub fn new(input_size: usize, hidden_sizes: &[usize], output_size: usize, seed: u64) -> Self {
-        assert!(hidden_sizes.len() >= 2 && hidden_sizes.len() <= 3, "2-3 LSTM layers");
+        assert!(
+            hidden_sizes.len() >= 2 && hidden_sizes.len() <= 3,
+            "2-3 LSTM layers"
+        );
 
         let mut lstm_layers = Vec::new();
         let mut in_size = input_size;
@@ -201,7 +229,11 @@ impl StackedLSTM {
         let w_out = xavier_init(vec![last_hidden, output_size], seed + 100);
         let b_out = Tensor::zeros(vec![output_size]);
 
-        Self { lstm_layers, w_out, b_out }
+        Self {
+            lstm_layers,
+            w_out,
+            b_out,
+        }
     }
 }
 
@@ -221,20 +253,26 @@ impl ANNBaseline for StackedLSTM {
     }
 
     fn num_parameters(&self) -> usize {
-        let lstm_params: usize = self.lstm_layers.iter()
+        let lstm_params: usize = self
+            .lstm_layers
+            .iter()
             .map(|lstm| lstm.num_parameters())
             .sum();
         lstm_params + count_params(&self.w_out.shape) + count_params(&self.b_out.shape)
     }
 
     fn flops_per_inference(&self) -> u64 {
-        self.lstm_layers.iter()
+        self.lstm_layers
+            .iter()
             .map(|lstm| lstm.flops_per_inference())
             .sum()
     }
 
     fn architecture_summary(&self) -> String {
-        format!("StackedLSTM: {} stacked LSTM layers", self.lstm_layers.len())
+        format!(
+            "StackedLSTM: {} stacked LSTM layers",
+            self.lstm_layers.len()
+        )
     }
 }
 
@@ -274,29 +312,41 @@ impl ANNBaseline for GRU {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let batch_size = if input.shape.len() == 3 { input.shape[0] } else { 1 };
+        let batch_size = if input.shape.len() == 3 {
+            input.shape[0]
+        } else {
+            1
+        };
         let h = Tensor::zeros(vec![batch_size, self.hidden_size]);
 
         h.matmul(&self.w_ho).add(&self.b_o)
     }
 
     fn num_parameters(&self) -> usize {
-        count_params(&self.w_ih.shape) + count_params(&self.w_hh.shape) +
-        count_params(&self.w_ho.shape) + count_params(&self.b_ih.shape) +
-        count_params(&self.b_hh.shape) + count_params(&self.b_o.shape)
+        count_params(&self.w_ih.shape)
+            + count_params(&self.w_hh.shape)
+            + count_params(&self.w_ho.shape)
+            + count_params(&self.b_ih.shape)
+            + count_params(&self.b_hh.shape)
+            + count_params(&self.b_o.shape)
     }
 
     fn flops_per_inference(&self) -> u64 {
         let seq_len = 100;
-        let gru_ops = (self.w_ih.shape[0] * self.w_ih.shape[1] +
-                       self.w_hh.shape[0] * self.w_hh.shape[1]) * seq_len;
+        let gru_ops = (self.w_ih.shape[0] * self.w_ih.shape[1]
+            + self.w_hh.shape[0] * self.w_hh.shape[1])
+            * seq_len;
         let output_ops = self.w_ho.shape[0] * self.w_ho.shape[1];
         (gru_ops + output_ops) as u64 * 2
     }
 
     fn architecture_summary(&self) -> String {
-        format!("GRU: {} -> {} (hidden) -> {}",
-                self.w_ih.shape[0] / 3, self.hidden_size, self.w_ho.shape[1])
+        format!(
+            "GRU: {} -> {} (hidden) -> {}",
+            self.w_ih.shape[0] / 3,
+            self.hidden_size,
+            self.w_ho.shape[1]
+        )
     }
 }
 
@@ -333,8 +383,10 @@ impl ANNBaseline for BiGRU {
     }
 
     fn num_parameters(&self) -> usize {
-        self.gru_forward.num_parameters() + self.gru_backward.num_parameters() +
-        count_params(&self.w_out.shape) + count_params(&self.b_out.shape)
+        self.gru_forward.num_parameters()
+            + self.gru_backward.num_parameters()
+            + count_params(&self.w_out.shape)
+            + count_params(&self.b_out.shape)
     }
 
     fn flops_per_inference(&self) -> u64 {
@@ -367,7 +419,11 @@ impl StackedGRU {
         let w_out = xavier_init(vec![last_hidden, output_size], seed + 100);
         let b_out = Tensor::zeros(vec![output_size]);
 
-        Self { gru_layers, w_out, b_out }
+        Self {
+            gru_layers,
+            w_out,
+            b_out,
+        }
     }
 }
 
@@ -387,14 +443,13 @@ impl ANNBaseline for StackedGRU {
     }
 
     fn num_parameters(&self) -> usize {
-        let gru_params: usize = self.gru_layers.iter()
-            .map(|gru| gru.num_parameters())
-            .sum();
+        let gru_params: usize = self.gru_layers.iter().map(|gru| gru.num_parameters()).sum();
         gru_params + count_params(&self.w_out.shape) + count_params(&self.b_out.shape)
     }
 
     fn flops_per_inference(&self) -> u64 {
-        self.gru_layers.iter()
+        self.gru_layers
+            .iter()
             .map(|gru| gru.flops_per_inference())
             .sum()
     }
@@ -435,7 +490,9 @@ impl ANNBaseline for PeepholeLSTM {
     }
 
     fn num_parameters(&self) -> usize {
-        let peephole_params: usize = self.peephole_weights.iter()
+        let peephole_params: usize = self
+            .peephole_weights
+            .iter()
             .map(|w| count_params(&w.shape))
             .sum();
         self.lstm.num_parameters() + peephole_params
@@ -477,9 +534,9 @@ impl ANNBaseline for AttentionLSTM {
     }
 
     fn num_parameters(&self) -> usize {
-        self.lstm.num_parameters() +
-        count_params(&self.attention_w.shape) +
-        count_params(&self.attention_v.shape)
+        self.lstm.num_parameters()
+            + count_params(&self.attention_w.shape)
+            + count_params(&self.attention_v.shape)
     }
 
     fn flops_per_inference(&self) -> u64 {
@@ -520,16 +577,22 @@ impl ANNBaseline for IndRNN {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let batch_size = if input.shape.len() == 3 { input.shape[0] } else { 1 };
+        let batch_size = if input.shape.len() == 3 {
+            input.shape[0]
+        } else {
+            1
+        };
         let h = Tensor::zeros(vec![batch_size, self.hidden_size]);
 
         h.matmul(&self.w_ho).add(&self.b_o)
     }
 
     fn num_parameters(&self) -> usize {
-        count_params(&self.w_ih.shape) + count_params(&self.u.shape) +
-        count_params(&self.w_ho.shape) + count_params(&self.b_h.shape) +
-        count_params(&self.b_o.shape)
+        count_params(&self.w_ih.shape)
+            + count_params(&self.u.shape)
+            + count_params(&self.w_ho.shape)
+            + count_params(&self.b_h.shape)
+            + count_params(&self.b_o.shape)
     }
 
     fn flops_per_inference(&self) -> u64 {
@@ -540,8 +603,10 @@ impl ANNBaseline for IndRNN {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("IndRNN: Independently recurrent with diagonal weights, {} hidden units",
-                self.hidden_size)
+        format!(
+            "IndRNN: Independently recurrent with diagonal weights, {} hidden units",
+            self.hidden_size
+        )
     }
 }
 

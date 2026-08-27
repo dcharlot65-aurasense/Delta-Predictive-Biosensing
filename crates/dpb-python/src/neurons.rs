@@ -1,10 +1,10 @@
 //! Python bindings for neuron models
 
-use dpb_neurons::traits::{MembraneDynamics, NeuronModel as NeuronDynamics};
-use dpb_neurons::lif::LifConfig;
 use dpb_neurons::LifNeuron;
-use pyo3::prelude::*;
+use dpb_neurons::lif::LifConfig;
+use dpb_neurons::traits::{MembraneDynamics, NeuronModel as NeuronDynamics};
 use pyo3::PyClassInitializer;
+use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use std::collections::HashMap;
 
@@ -102,7 +102,12 @@ impl PyLifNeuron {
     /// and silent.
     #[new]
     #[pyo3(signature = (tau=20.0, threshold=-50.0, reset=-65.0, refractory_period=2.0))]
-    fn new(tau: f64, threshold: f64, reset: f64, refractory_period: f64) -> PyClassInitializer<Self> {
+    fn new(
+        tau: f64,
+        threshold: f64,
+        reset: f64,
+        refractory_period: f64,
+    ) -> PyClassInitializer<Self> {
         let mut params = HashMap::new();
         params.insert("tau".to_string(), tau);
         params.insert("threshold".to_string(), threshold);
@@ -110,27 +115,27 @@ impl PyLifNeuron {
         params.insert("refractory_period".to_string(), refractory_period);
 
         PyClassInitializer::from(PyNeuronModel {
-                name: "LIF".to_string(),
-                params,
-            })
-            .add_subclass(Self {
-                tau,
-                threshold,
-                reset,
-                refractory_period,
-                inner: LifNeuron::new(LifConfig {
-                    tau_mem: tau as f32,
-                    v_thresh: threshold as f32,
-                    v_reset: reset as f32,
-                    // Rest tracks reset: a neuron that resets to -65 should
-                    // also idle there, or its first interval differs from the
-                    // rest.
-                    v_rest: reset as f32,
-                    tau_refrac: refractory_period as f32,
-                    ..LifConfig::default()
-                }),
-            })
-}
+            name: "LIF".to_string(),
+            params,
+        })
+        .add_subclass(Self {
+            tau,
+            threshold,
+            reset,
+            refractory_period,
+            inner: LifNeuron::new(LifConfig {
+                tau_mem: tau as f32,
+                v_thresh: threshold as f32,
+                v_reset: reset as f32,
+                // Rest tracks reset: a neuron that resets to -65 should
+                // also idle there, or its first interval differs from the
+                // rest.
+                v_rest: reset as f32,
+                tau_refrac: refractory_period as f32,
+                ..LifConfig::default()
+            }),
+        })
+    }
 
     fn step(&mut self, input_current: f32, dt: f32) -> bool {
         // Delegated to `dpb_neurons::LifNeuron` rather than re-integrated here,
@@ -202,24 +207,25 @@ impl PyAlifNeuron {
         params.insert("adaptation_increment".to_string(), adaptation_increment);
 
         PyClassInitializer::from(PyNeuronModel {
-                name: "ALIF".to_string(),
-                params,
-            })
-            .add_subclass(Self {
-                tau,
-                threshold,
-                reset,
-                tau_adaptation,
-                adaptation_increment,
-                voltage: 0.0,
-                threshold_adaptive: threshold,
-            })
-}
+            name: "ALIF".to_string(),
+            params,
+        })
+        .add_subclass(Self {
+            tau,
+            threshold,
+            reset,
+            tau_adaptation,
+            adaptation_increment,
+            voltage: 0.0,
+            threshold_adaptive: threshold,
+        })
+    }
 
     fn step(&mut self, input_current: f32, dt: f32) -> bool {
         // Decay adaptive threshold
         let decay = (-dt as f64 / self.tau_adaptation).exp();
-        self.threshold_adaptive = self.threshold + (self.threshold_adaptive - self.threshold) * decay;
+        self.threshold_adaptive =
+            self.threshold + (self.threshold_adaptive - self.threshold) * decay;
 
         // Integrate membrane potential
         let mem_decay = (-dt as f64 / self.tau).exp();
@@ -281,18 +287,18 @@ impl PyIzhikevichNeuron {
         params.insert("d".to_string(), d);
 
         PyClassInitializer::from(PyNeuronModel {
-                name: "Izhikevich".to_string(),
-                params,
-            })
-            .add_subclass(Self {
-                a,
-                b,
-                c,
-                d,
-                v: c,
-                u: b * c,
-            })
-}
+            name: "Izhikevich".to_string(),
+            params,
+        })
+        .add_subclass(Self {
+            a,
+            b,
+            c,
+            d,
+            v: c,
+            u: b * c,
+        })
+    }
 
     fn step(&mut self, input_current: f32, dt: f32) -> bool {
         let i = input_current as f64;
@@ -378,22 +384,22 @@ impl PyHodgkinHuxleyNeuron {
         params.insert("EL".to_string(), EL);
 
         PyClassInitializer::from(PyNeuronModel {
-                name: "HodgkinHuxley".to_string(),
-                params,
-            })
-            .add_subclass(Self {
-                g_na: gNa,
-                g_k: gK,
-                g_l: gL,
-                e_na: ENa,
-                e_k: EK,
-                e_l: EL,
-                v: -65.0,
-                m: 0.05,
-                h: 0.6,
-                n: 0.32,
-            })
-}
+            name: "HodgkinHuxley".to_string(),
+            params,
+        })
+        .add_subclass(Self {
+            g_na: gNa,
+            g_k: gK,
+            g_l: gL,
+            e_na: ENa,
+            e_k: EK,
+            e_l: EL,
+            v: -65.0,
+            m: 0.05,
+            h: 0.6,
+            n: 0.32,
+        })
+    }
 
     fn step(&mut self, input_current: f32, dt: f32) -> bool {
         let i_ext = input_current as f64;
@@ -409,9 +415,15 @@ impl PyHodgkinHuxleyNeuron {
         self.v += dv;
 
         // Update gating variables (simplified)
-        self.m += dt as f64 * (0.1 * (self.v + 40.0) / (1.0 - (-0.1 * (self.v + 40.0)).exp()) * (1.0 - self.m) - 4.0 * ((-self.v - 65.0) / 18.0).exp() * self.m);
-        self.h += dt as f64 * (0.07 * ((-self.v - 65.0) / 20.0).exp() * (1.0 - self.h) - (1.0 / (1.0 + ((-self.v - 35.0) / 10.0).exp())) * self.h);
-        self.n += dt as f64 * (0.01 * (self.v + 55.0) / (1.0 - (-0.1 * (self.v + 55.0)).exp()) * (1.0 - self.n) - 0.125 * ((-self.v - 65.0) / 80.0).exp() * self.n);
+        self.m += dt as f64
+            * (0.1 * (self.v + 40.0) / (1.0 - (-0.1 * (self.v + 40.0)).exp()) * (1.0 - self.m)
+                - 4.0 * ((-self.v - 65.0) / 18.0).exp() * self.m);
+        self.h += dt as f64
+            * (0.07 * ((-self.v - 65.0) / 20.0).exp() * (1.0 - self.h)
+                - (1.0 / (1.0 + ((-self.v - 35.0) / 10.0).exp())) * self.h);
+        self.n += dt as f64
+            * (0.01 * (self.v + 55.0) / (1.0 - (-0.1 * (self.v + 55.0)).exp()) * (1.0 - self.n)
+                - 0.125 * ((-self.v - 65.0) / 80.0).exp() * self.n);
 
         // Detect spike (crossing 0 mV threshold)
         old_v < 0.0 && self.v >= 0.0
@@ -452,20 +464,18 @@ fn create_neuron(name: &str, config: Option<&Bound<'_, PyDict>>) -> PyResult<Py<
 
                 Py::new(py, PyLifNeuron::new(tau, threshold, 0.0, 0.002))?.into_any()
             }
-            "alif" => {
-                Py::new(py, PyAlifNeuron::new(0.02, 1.0, 0.0, 0.1, 0.1))?.into_any()
-            }
-            "izhikevich" => {
-                Py::new(py, PyIzhikevichNeuron::new(0.02, 0.2, -65.0, 8.0))?.into_any()
-            }
-            "hodgkin_huxley" => {
-                Py::new(py, PyHodgkinHuxleyNeuron::new(120.0, 36.0, 0.3, 50.0, -77.0, -54.387))?.into_any()
-            }
+            "alif" => Py::new(py, PyAlifNeuron::new(0.02, 1.0, 0.0, 0.1, 0.1))?.into_any(),
+            "izhikevich" => Py::new(py, PyIzhikevichNeuron::new(0.02, 0.2, -65.0, 8.0))?.into_any(),
+            "hodgkin_huxley" => Py::new(
+                py,
+                PyHodgkinHuxleyNeuron::new(120.0, 36.0, 0.3, 50.0, -77.0, -54.387),
+            )?
+            .into_any(),
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(format!(
                     "Unknown neuron model: {}",
                     name
-                )))
+                )));
             }
         };
 

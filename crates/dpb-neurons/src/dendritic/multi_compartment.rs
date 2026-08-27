@@ -52,9 +52,9 @@ impl Default for BackpropagationConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            attenuation: 0.002,  // ~2% attenuation per μm
-            velocity: 200.0,     // 200 μm/ms (~0.2 m/s)
-            amplitude: 100.0,    // 100 mV spike
+            attenuation: 0.002, // ~2% attenuation per μm
+            velocity: 200.0,    // 200 μm/ms (~0.2 m/s)
+            amplitude: 100.0,   // 100 mV spike
         }
     }
 }
@@ -243,15 +243,17 @@ impl MultiCompartmentNeuron {
             let mut acc = AxialCoupling::NONE;
 
             let mut couple = |neighbour: &Compartment| {
-                acc.current += comp.axial_current_to(neighbour.voltage(), neighbour.axial_resistance());
+                acc.current +=
+                    comp.axial_current_to(neighbour.voltage(), neighbour.axial_resistance());
                 acc.conductance += 1.0 / (comp.axial_resistance() + neighbour.axial_resistance());
             };
 
             // Current from parent
             if let Some(parent_idx) = comp.parent()
-                && let Some(parent) = self.compartments.get(parent_idx) {
-                    couple(parent);
-                }
+                && let Some(parent) = self.compartments.get(parent_idx)
+            {
+                couple(parent);
+            }
 
             // Current from children
             for &child_idx in comp.children() {
@@ -315,14 +317,15 @@ impl MultiCompartmentNeuron {
 
         // Remove and process arrived backprop spikes
         let mut arrived = Vec::new();
-        self.backprop_queue.retain(|(idx, arrival_time, amplitude)| {
-            if self.time >= *arrival_time {
-                arrived.push((*idx, *amplitude));
-                false
-            } else {
-                true
-            }
-        });
+        self.backprop_queue
+            .retain(|(idx, arrival_time, amplitude)| {
+                if self.time >= *arrival_time {
+                    arrived.push((*idx, *amplitude));
+                    false
+                } else {
+                    true
+                }
+            });
 
         // Apply backprop depolarization
         for (idx, amplitude) in arrived {
@@ -361,11 +364,10 @@ impl MultiCompartmentNeuron {
             // Calculate attenuated amplitude
             let amplitude = config.amplitude * (-config.attenuation * distance).exp();
 
-            self.backprop_queue.push((comp.index(), arrival_time, amplitude));
+            self.backprop_queue
+                .push((comp.index(), arrival_time, amplitude));
         }
     }
-
-
 
     /// How many forward-Euler substeps `dt` must be split into to stay inside
     /// the scheme's stability limit.
@@ -383,9 +385,10 @@ impl MultiCompartmentNeuron {
             let mut g = cable.conductance;
 
             if let Some(parent) = comp.parent()
-                && let Some(p) = self.compartments.get(parent) {
-                    g += 1.0 / (comp.axial_resistance() + p.axial_resistance());
-                }
+                && let Some(p) = self.compartments.get(parent)
+            {
+                g += 1.0 / (comp.axial_resistance() + p.axial_resistance());
+            }
             for &child in comp.children() {
                 if let Some(c) = self.compartments.get(child) {
                     g += 1.0 / (comp.axial_resistance() + c.axial_resistance());
@@ -645,14 +648,16 @@ impl MultiCompartmentNeuron {
         k_conductance: Option<f64>,
     ) {
         if let Some(g_na) = na_conductance
-            && let Some(na_slot) = self.na_channels.get_mut(idx) {
-                *na_slot = Some(HodgkinHuxleyChannel::sodium(g_na));
-            }
+            && let Some(na_slot) = self.na_channels.get_mut(idx)
+        {
+            *na_slot = Some(HodgkinHuxleyChannel::sodium(g_na));
+        }
 
         if let Some(g_k) = k_conductance
-            && let Some(k_slot) = self.k_channels.get_mut(idx) {
-                *k_slot = Some(HodgkinHuxleyChannel::potassium(g_k));
-            }
+            && let Some(k_slot) = self.k_channels.get_mut(idx)
+        {
+            *k_slot = Some(HodgkinHuxleyChannel::potassium(g_k));
+        }
     }
 
     /// Get voltage trace for all compartments
@@ -666,7 +671,9 @@ impl MultiCompartmentNeuron {
 
     /// Calculate input resistance at soma
     pub fn input_resistance(&self) -> f64 {
-        self.compartments.first().map_or(0.0, |c| c.input_resistance())
+        self.compartments
+            .first()
+            .map_or(0.0, |c| c.input_resistance())
     }
 
     /// Calculate membrane time constant at soma
@@ -923,8 +930,6 @@ mod tests {
         assert_eq!(neuron.config.refractory_period, 3.0);
     }
 
-
-
     /// The implicit tree solve must agree with an explicit reference.
     ///
     /// Guards the Hines elimination in `solve_implicit`: at a timestep well
@@ -937,7 +942,10 @@ mod tests {
         let make = |solver| {
             MultiCompartmentNeuron::with_config(
                 4,
-                NeuronConfig { solver, ..Default::default() },
+                NeuronConfig {
+                    solver,
+                    ..Default::default()
+                },
             )
         };
         let mut implicit = make(NumericalSolver::BackwardEuler);
@@ -979,7 +987,10 @@ mod tests {
         ] {
             let mut neuron = MultiCompartmentNeuron::with_config(
                 4,
-                NeuronConfig { solver, ..Default::default() },
+                NeuronConfig {
+                    solver,
+                    ..Default::default()
+                },
             );
             neuron.stimulate_compartment(3, 10.0);
             for _ in 0..200 {
@@ -993,5 +1004,4 @@ mod tests {
             }
         }
     }
-
 }

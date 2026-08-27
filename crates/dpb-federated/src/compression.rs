@@ -1,7 +1,8 @@
 //! Gradient compression for communication efficiency.
 
 use crate::{
-    model::{CompressionInfo, ParameterDelta, Tensor}, Result,
+    Result,
+    model::{CompressionInfo, ParameterDelta, Tensor},
 };
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
@@ -131,10 +132,7 @@ impl GradientCompressor {
             .map(|(i, v)| (i, v.abs()))
             .collect();
         // Sort by magnitude descending (NaN-safe comparison)
-        magnitudes.sort_by(|a, b| {
-            b.1.partial_cmp(&a.1)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        magnitudes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Create mask
         let mut mask = vec![false; tensor.data.len()];
@@ -244,10 +242,7 @@ impl GradientCompressor {
             .map(|(i, v)| (i, v.abs()))
             .collect();
         // Sort by magnitude descending (NaN-safe comparison)
-        magnitudes.sort_by(|a, b| {
-            b.1.partial_cmp(&a.1)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        magnitudes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         let mut mask = vec![false; tensor.data.len()];
         for (i, _) in magnitudes.iter().take(k) {
@@ -415,9 +410,12 @@ mod tests {
         let mut compressor = GradientCompressor::top_k(0.5);
         let mut delta = ParameterDelta::new(
             0,
-            [("w".to_string(), Tensor::new(vec![1.0, 5.0, 2.0, 3.0], vec![4]))]
-                .into_iter()
-                .collect(),
+            [(
+                "w".to_string(),
+                Tensor::new(vec![1.0, 5.0, 2.0, 3.0], vec![4]),
+            )]
+            .into_iter()
+            .collect(),
         );
 
         compressor.compress(&mut delta).unwrap();

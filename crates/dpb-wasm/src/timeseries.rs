@@ -1,7 +1,7 @@
 //! TimeSeries for WebAssembly
 
-use wasm_bindgen::prelude::*;
 use js_sys::Float32Array;
+use wasm_bindgen::prelude::*;
 
 /// Multi-channel time series data for browser-based processing.
 ///

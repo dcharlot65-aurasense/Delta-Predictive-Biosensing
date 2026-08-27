@@ -1,8 +1,6 @@
 //! EDA (Electrodermal Activity / Galvanic Skin Response) encoders
 
-use dpb_core::{
-    Context, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent,
-};
+use dpb_core::{Context, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent};
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
@@ -61,7 +59,7 @@ pub struct EdaLevelCrossingConfig {
 impl Default for EdaLevelCrossingConfig {
     fn default() -> Self {
         Self {
-            threshold: 0.05, // 0.05 μS
+            threshold: 0.05,        // 0.05 μS
             refractory_period: 1.0, // 1 second
         }
     }
@@ -73,8 +71,7 @@ pub struct EdaLevelCrossingEncoder;
 impl EdaLevelCrossingEncoder {
     /// Creates a new [`EdaLevelCrossingEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }
 
@@ -149,8 +146,7 @@ pub struct EdaScrEncoder;
 impl EdaScrEncoder {
     /// Creates a new [`EdaScrEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn detect_scr(&self, signal: &[f32], config: &EdaScrConfig, sample_rate: f64) -> Vec<usize> {
@@ -294,7 +290,7 @@ mod tests {
         let signal = SignalBuffer::single_channel(data, 10.0);
         let encoder = EdaLevelCrossingEncoder::new();
         let config = EdaLevelCrossingConfig {
-            threshold: 0.01, // Lower threshold to trigger on smaller changes
+            threshold: 0.01,        // Lower threshold to trigger on smaller changes
             refractory_period: 0.1, // Short refractory period
         };
 

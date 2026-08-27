@@ -2,12 +2,11 @@
 //!
 //! Provides converters to transform DPB biosensor data structures into FHIR resources.
 
-use super::observations::{VitalSignsObservation, WaveformObservation, ComponentObservation};
+use super::observations::{ComponentObservation, VitalSignsObservation, WaveformObservation};
 use super::resources::{
     CodeableConcept, Device, DiagnosticReport, Observation, Patient, Quantity, Reference,
 };
 use crate::types::{Context, SignalBuffer};
-
 
 /// Converts DPB Context to FHIR Patient demographics
 pub struct PatientDemographics;
@@ -97,9 +96,8 @@ impl SignalToObservation {
         time: String,
         device_id: Option<String>,
     ) -> Observation {
-        let mut obs = VitalSignsObservation::blood_pressure(
-            obs_id, patient_id, systolic, diastolic, time,
-        );
+        let mut obs =
+            VitalSignsObservation::blood_pressure(obs_id, patient_id, systolic, diastolic, time);
 
         if let Some(device) = device_id {
             obs = obs.with_device(device);
@@ -116,9 +114,8 @@ impl SignalToObservation {
         time: String,
         device_id: Option<String>,
     ) -> Observation {
-        let mut obs = VitalSignsObservation::respiratory_rate(
-            obs_id, patient_id, breaths_per_min, time,
-        );
+        let mut obs =
+            VitalSignsObservation::respiratory_rate(obs_id, patient_id, breaths_per_min, time);
 
         if let Some(device) = device_id {
             obs = obs.with_device(device);
@@ -135,9 +132,8 @@ impl SignalToObservation {
         time: String,
         device_id: Option<String>,
     ) -> Observation {
-        let mut obs = VitalSignsObservation::oxygen_saturation(
-            obs_id, patient_id, spo2_percent, time,
-        );
+        let mut obs =
+            VitalSignsObservation::oxygen_saturation(obs_id, patient_id, spo2_percent, time);
 
         if let Some(device) = device_id {
             obs = obs.with_device(device);
@@ -154,9 +150,8 @@ impl SignalToObservation {
         time: String,
         device_id: Option<String>,
     ) -> Observation {
-        let mut obs = VitalSignsObservation::body_temperature(
-            obs_id, patient_id, temp_celsius, time,
-        );
+        let mut obs =
+            VitalSignsObservation::body_temperature(obs_id, patient_id, temp_celsius, time);
 
         if let Some(device) = device_id {
             obs = obs.with_device(device);
@@ -604,9 +599,9 @@ mod tests {
         let observations = MetricsToObservation::hrv_time_domain(
             "patient-001".to_string(),
             time,
-            50.0,  // SDNN
-            30.0,  // RMSSD
-            20.0,  // pNN50
+            50.0, // SDNN
+            30.0, // RMSSD
+            20.0, // pNN50
             Some("device-001".to_string()),
         );
 

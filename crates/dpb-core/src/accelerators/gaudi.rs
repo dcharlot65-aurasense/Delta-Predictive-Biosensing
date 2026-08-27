@@ -33,8 +33,8 @@ use super::{
     Accelerator, AcceleratorBuffer, AcceleratorCapabilities, AcceleratorError,
     AcceleratorOperation, AcceleratorType, OperationType,
 };
-use std::sync::{atomic::AtomicU64, Mutex};
 use std::collections::HashMap;
+use std::sync::{Mutex, atomic::AtomicU64};
 
 /// Gaudi device handle.
 #[cfg(feature = "intel-gaudi")]
@@ -136,7 +136,7 @@ impl GaudiAccelerator {
         if cfg!(feature = "intel-gaudi-runtime") {
             // Would call actual Synapse API here
             Err(AcceleratorError::NotAvailable(
-                "Gaudi runtime not initialized. Ensure Synapse AI SDK is installed.".to_string()
+                "Gaudi runtime not initialized. Ensure Synapse AI SDK is installed.".to_string(),
             ))
         } else {
             // Simulation mode for development/testing
@@ -162,7 +162,7 @@ impl GaudiAccelerator {
             supports_fp16: true,
             supports_bf16: true,
             supports_int8: true,
-            peak_tflops: 420.0, // BF16 peak
+            peak_tflops: 420.0,            // BF16 peak
             memory_bandwidth_gbps: 2450.0, // HBM bandwidth
         }
     }
@@ -205,17 +205,19 @@ impl GaudiAccelerator {
     ) -> Result<(), AcceleratorError> {
         let kernels = self.kernels.lock().expect("accelerator mutex poisoned");
 
-        let _kernel = kernels.get(name)
-            .ok_or_else(|| AcceleratorError::InvalidOperation(
-                format!("Kernel '{}' not found", name)
-            ))?;
+        let _kernel = kernels.get(name).ok_or_else(|| {
+            AcceleratorError::InvalidOperation(format!("Kernel '{}' not found", name))
+        })?;
 
         // In production:
         // - synLaunch(stream, kernel, inputs, outputs, grid_dims)
 
         tracing::debug!(
             "Executing kernel '{}' with {} inputs, {} outputs, grid {:?}",
-            name, inputs.len(), outputs.len(), grid_dims
+            name,
+            inputs.len(),
+            outputs.len(),
+            grid_dims
         );
 
         Ok(())
@@ -228,7 +230,11 @@ impl GaudiAccelerator {
     }
 
     /// Allocate memory with specific alignment.
-    pub fn allocate_aligned(&self, size: usize, alignment: usize) -> Result<GaudiBuffer, AcceleratorError> {
+    pub fn allocate_aligned(
+        &self,
+        size: usize,
+        alignment: usize,
+    ) -> Result<GaudiBuffer, AcceleratorError> {
         // In production: synDeviceMalloc() with alignment
         let aligned_size = (size + alignment - 1) & !(alignment - 1);
 
@@ -280,17 +286,28 @@ impl Accelerator for GaudiAccelerator {
     fn allocate(&self, size_bytes: usize) -> Result<AcceleratorBuffer, AcceleratorError> {
         let gaudi_buf = self.allocate_aligned(size_bytes, 256)?;
 
-        let id = self.next_buffer_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let id = self
+            .next_buffer_id
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         let mut buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         buffers.insert(id, gaudi_buf);
 
-        Ok(AcceleratorBuffer::new(id, size_bytes, AcceleratorType::IntelGaudi))
+        Ok(AcceleratorBuffer::new(
+            id,
+            size_bytes,
+            AcceleratorType::IntelGaudi,
+        ))
     }
 
-    fn copy_to_device(&self, buffer: &mut AcceleratorBuffer, data: &[f32]) -> Result<(), AcceleratorError> {
+    fn copy_to_device(
+        &self,
+        buffer: &mut AcceleratorBuffer,
+        data: &[f32],
+    ) -> Result<(), AcceleratorError> {
         let buffers = self.buffers.lock().expect("accelerator mutex poisoned");
-        let _gaudi_buf = buffers.get(&buffer.id)
+        let _gaudi_buf = buffers
+            .get(&buffer.id)
             .ok_or_else(|| AcceleratorError::InvalidOperation("Buffer not found".to_string()))?;
 
         // In production: synMemCopyAsync(stream, device_ptr, host_ptr, size, H2D)
@@ -299,13 +316,22 @@ impl Accelerator for GaudiAccelerator {
         Ok(())
     }
 
-    fn copy_from_device(&self, buffer: &AcceleratorBuffer, data: &mut [f32]) -> Result<(), AcceleratorError> {
+    fn copy_from_device(
+        &self,
+        buffer: &AcceleratorBuffer,
+        data: &mut [f32],
+    ) -> Result<(), AcceleratorError> {
         let buffers = self.buffers.lock().expect("accelerator mutex poisoned");
-        let _gaudi_buf = buffers.get(&buffer.id)
+        let _gaudi_buf = buffers
+            .get(&buffer.id)
             .ok_or_else(|| AcceleratorError::InvalidOperation("Buffer not found".to_string()))?;
 
         // In production: synMemCopyAsync(stream, host_ptr, device_ptr, size, D2H)
-        tracing::debug!("Copy {} floats from device buffer {}", data.len(), buffer.id);
+        tracing::debug!(
+            "Copy {} floats from device buffer {}",
+            data.len(),
+            buffer.id
+        );
 
         Ok(())
     }
@@ -326,9 +352,10 @@ impl Accelerator for GaudiAccelerator {
                 tracing::debug!("Execute matmul on Gaudi MME");
                 Ok(())
             }
-            _ => Err(AcceleratorError::Unsupported(
-                format!("Operation {:?} not supported on Gaudi", operation.op_type)
-            ))
+            _ => Err(AcceleratorError::Unsupported(format!(
+                "Operation {:?} not supported on Gaudi",
+                operation.op_type
+            ))),
         }
     }
 
@@ -498,7 +525,11 @@ impl GaudiGraph {
     /// Compile the graph.
     pub fn compile(&self) -> Result<CompiledGaudiGraph, AcceleratorError> {
         // In production: synGraphCompile()
-        tracing::debug!("Compiling Gaudi graph '{}' with {} nodes", self.name, self.nodes.len());
+        tracing::debug!(
+            "Compiling Gaudi graph '{}' with {} nodes",
+            self.name,
+            self.nodes.len()
+        );
 
         Ok(CompiledGaudiGraph {
             handle: self.handle + 1,
@@ -539,12 +570,7 @@ mod tests {
         let mut graph = GaudiGraph::new("test_graph");
 
         let input = graph.add_input("signal", &[256, 8], GaudiDtype::Float32);
-        let output = graph.add_tpc_node(
-            "level_crossing",
-            &[input],
-            &[256, 8],
-            GaudiDtype::Float32,
-        );
+        let output = graph.add_tpc_node("level_crossing", &[input], &[256, 8], GaudiDtype::Float32);
         graph.mark_output(output);
 
         assert_eq!(graph.tensors.len(), 2);

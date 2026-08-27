@@ -84,8 +84,7 @@ impl VentilatoryThreshold {
         for bp in (vo2.len() / 4)..(3 * vo2.len() / 4) {
             // Fit two lines: before and after breakpoint
             let (slope1, _, residuals1) = self.linear_fit(&vo2_smooth[..bp], &vco2_smooth[..bp]);
-            let (slope2, _, residuals2) =
-                self.linear_fit(&vo2_smooth[bp..], &vco2_smooth[bp..]);
+            let (slope2, _, residuals2) = self.linear_fit(&vo2_smooth[bp..], &vco2_smooth[bp..]);
 
             // VT1: slope increases from ~1.0 to >1.0
             if slope2 > slope1 && slope1 > 0.5 && slope2 < 2.0 {
@@ -353,11 +352,11 @@ impl VentilatoryThreshold {
         let vt2_hr = vt2.and_then(|v| v.hr_at_vt).unwrap_or(vt1_hr * 1.12);
 
         TrainingZones {
-            zone1_max_hr: vt1_hr * 0.85,     // Recovery
-            zone2_max_hr: vt1_hr,             // Aerobic base
+            zone1_max_hr: vt1_hr * 0.85,           // Recovery
+            zone2_max_hr: vt1_hr,                  // Aerobic base
             zone3_max_hr: (vt1_hr + vt2_hr) / 2.0, // Tempo
-            zone4_max_hr: vt2_hr,             // Threshold
-            zone5_max_hr: vt2_hr * 1.05,     // VO2max
+            zone4_max_hr: vt2_hr,                  // Threshold
+            zone5_max_hr: vt2_hr * 1.05,           // VO2max
         }
     }
 

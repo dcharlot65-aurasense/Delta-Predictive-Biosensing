@@ -74,7 +74,8 @@ impl ConvergenceAnalyzer for LearningCurveSmoothed {
 
         // Calculate noise in raw curves
         if self.loss_history.len() > 1 {
-            let loss_variance: f64 = self.loss_history
+            let loss_variance: f64 = self
+                .loss_history
                 .windows(2)
                 .map(|w| (w[1] - w[0]).abs())
                 .sum::<f64>()
@@ -162,7 +163,9 @@ impl ConvergenceAnalyzer for GeneralizationGapAnalyzer {
             let recent_gap = self.gap_history[self.gap_history.len() - 1];
             let early_gap = self.gap_history[0];
             if recent_gap > early_gap * 1.5 {
-                report.add_recommendation("Generalization gap is increasing. Consider regularization.");
+                report.add_recommendation(
+                    "Generalization gap is increasing. Consider regularization.",
+                );
             }
         }
 
@@ -240,7 +243,9 @@ impl ConvergenceAnalyzer for OverfittingDetector {
         report.add_metric("epochs_without_improvement", self.epochs_worse as f64);
 
         if self.converged {
-            report.add_recommendation("Overfitting detected. Consider early stopping or regularization.");
+            report.add_recommendation(
+                "Overfitting detected. Consider early stopping or regularization.",
+            );
         }
 
         report
@@ -328,9 +333,12 @@ impl ConvergenceAnalyzer for LearningRateAnalyzer {
 
             if let Some(optimal_lr) = self.optimal_lr {
                 if current_lr > optimal_lr * 2.0 {
-                    report.add_recommendation("Learning rate may be too high. Consider reducing it.");
+                    report
+                        .add_recommendation("Learning rate may be too high. Consider reducing it.");
                 } else if current_lr < optimal_lr * 0.5 {
-                    report.add_recommendation("Learning rate may be too low. Consider increasing it.");
+                    report.add_recommendation(
+                        "Learning rate may be too low. Consider increasing it.",
+                    );
                 }
             }
         }
@@ -443,7 +451,8 @@ impl ConvergenceAnalyzer for EpochEfficiencyAnalyzer {
         if self.epoch_losses.len() > 1 {
             let improvement = self.epoch_losses[self.epoch_losses.len() - 2]
                 - self.epoch_losses[self.epoch_losses.len() - 1];
-            let efficiency = improvement / self.epoch_losses[self.epoch_losses.len() - 2].max(1e-10);
+            let efficiency =
+                improvement / self.epoch_losses[self.epoch_losses.len() - 2].max(1e-10);
             self.efficiency_scores.push(efficiency);
         }
     }
@@ -460,15 +469,17 @@ impl ConvergenceAnalyzer for EpochEfficiencyAnalyzer {
         let mut report = AnalysisReport::new(self.name().to_string());
 
         if !self.efficiency_scores.is_empty() {
-            let mean_efficiency = self.efficiency_scores.iter().sum::<f64>()
-                / self.efficiency_scores.len() as f64;
+            let mean_efficiency =
+                self.efficiency_scores.iter().sum::<f64>() / self.efficiency_scores.len() as f64;
             report.add_metric("mean_epoch_efficiency", mean_efficiency);
 
             if let Some(&recent_efficiency) = self.efficiency_scores.last() {
                 report.add_metric("recent_epoch_efficiency", recent_efficiency);
 
                 if recent_efficiency < 0.01 {
-                    report.add_recommendation("Epoch efficiency is low. Consider stopping or adjusting hyperparameters.");
+                    report.add_recommendation(
+                        "Epoch efficiency is low. Consider stopping or adjusting hyperparameters.",
+                    );
                 }
             }
         }
@@ -528,7 +539,8 @@ mod tests {
 
         // Increasing val loss
         for i in 5..10 {
-            let metrics = TrainingMetrics::new(i, 0.5, 0.9).with_val_loss(0.5 + (i - 5) as f64 * 0.1);
+            let metrics =
+                TrainingMetrics::new(i, 0.5, 0.9).with_val_loss(0.5 + (i - 5) as f64 * 0.1);
             detector.update(i, &metrics);
         }
 

@@ -62,7 +62,12 @@ impl PressurePainThreshold {
 
     /// Calculate suprathreshold pain intensity
     /// Pressure at which specific pain intensity (e.g., 5/10) is reached
-    pub fn suprathreshold_pressure(&self, pressure: &[f64], pain_ratings: &[f64], target_rating: f64) -> Option<f64> {
+    pub fn suprathreshold_pressure(
+        &self,
+        pressure: &[f64],
+        pain_ratings: &[f64],
+        target_rating: f64,
+    ) -> Option<f64> {
         if pressure.len() != pain_ratings.len() || pressure.is_empty() {
             return None;
         }
@@ -423,10 +428,16 @@ mod tests {
     fn test_cpm_classification() {
         let cpm = ConditionedPainModulation::new(StimulusType::Cold, StimulusType::Pressure);
 
-        assert_eq!(cpm.classify_response(20.0), CpmResponse::PronouncedInhibition);
+        assert_eq!(
+            cpm.classify_response(20.0),
+            CpmResponse::PronouncedInhibition
+        );
         assert_eq!(cpm.classify_response(10.0), CpmResponse::ModerateInhibition);
         assert_eq!(cpm.classify_response(0.0), CpmResponse::NoEffect);
-        assert_eq!(cpm.classify_response(-10.0), CpmResponse::ModerateFacilitation);
+        assert_eq!(
+            cpm.classify_response(-10.0),
+            CpmResponse::ModerateFacilitation
+        );
     }
 
     #[test]
@@ -434,12 +445,32 @@ mod tests {
         let ppt = PressurePainThreshold::default();
 
         let left = vec![
-            PptTrial { threshold_kpa: 300.0, site: PptSite::Trapezius, side: Some(Side::Left), trial_number: 1 },
-            PptTrial { threshold_kpa: 310.0, site: PptSite::Trapezius, side: Some(Side::Left), trial_number: 2 },
+            PptTrial {
+                threshold_kpa: 300.0,
+                site: PptSite::Trapezius,
+                side: Some(Side::Left),
+                trial_number: 1,
+            },
+            PptTrial {
+                threshold_kpa: 310.0,
+                site: PptSite::Trapezius,
+                side: Some(Side::Left),
+                trial_number: 2,
+            },
         ];
         let right = vec![
-            PptTrial { threshold_kpa: 350.0, site: PptSite::Trapezius, side: Some(Side::Right), trial_number: 1 },
-            PptTrial { threshold_kpa: 360.0, site: PptSite::Trapezius, side: Some(Side::Right), trial_number: 2 },
+            PptTrial {
+                threshold_kpa: 350.0,
+                site: PptSite::Trapezius,
+                side: Some(Side::Right),
+                trial_number: 1,
+            },
+            PptTrial {
+                threshold_kpa: 360.0,
+                site: PptSite::Trapezius,
+                side: Some(Side::Right),
+                trial_number: 2,
+            },
         ];
 
         let diff = ppt.side_difference(&left, &right);

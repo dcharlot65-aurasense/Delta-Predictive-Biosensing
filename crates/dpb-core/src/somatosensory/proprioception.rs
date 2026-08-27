@@ -57,11 +57,8 @@ impl JointPositionSense {
         }
 
         let mean: f64 = errors.iter().sum::<f64>() / errors.len() as f64;
-        let variance: f64 = errors
-            .iter()
-            .map(|e| (e - mean).powi(2))
-            .sum::<f64>()
-            / errors.len() as f64;
+        let variance: f64 =
+            errors.iter().map(|e| (e - mean).powi(2)).sum::<f64>() / errors.len() as f64;
 
         variance.sqrt()
     }

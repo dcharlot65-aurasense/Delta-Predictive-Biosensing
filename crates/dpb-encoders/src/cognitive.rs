@@ -526,8 +526,14 @@ mod tests {
     #[test]
     fn test_simple_rt_template() {
         let template = SimpleRtTemplate;
-        let young = Context { age: Some(25.0), ..Default::default() };
-        let old = Context { age: Some(75.0), ..Default::default() };
+        let young = Context {
+            age: Some(25.0),
+            ..Default::default()
+        };
+        let old = Context {
+            age: Some(75.0),
+            ..Default::default()
+        };
 
         assert!(template.expected_value(&young) < template.expected_value(&old));
     }
@@ -536,12 +542,12 @@ mod tests {
     fn test_reaction_time_encoder() {
         // Simulate a series of RTs
         let data = vec![
-            250.0, // Normal
-            120.0, // Fast
-            450.0, // Normal
-            800.0, // Slow
+            250.0,  // Normal
+            120.0,  // Fast
+            450.0,  // Normal
+            800.0,  // Slow
             1200.0, // Lapse
-            280.0, // Normal
+            280.0,  // Normal
         ];
 
         let signal = SignalBuffer::single_channel(data, 1.0);
@@ -584,7 +590,10 @@ mod tests {
 
         let events = encoder.encode(&signal, &config).unwrap();
 
-        let errors = events.iter().filter(|e| e.channel >= 1 && e.channel <= 3).count();
+        let errors = events
+            .iter()
+            .filter(|e| e.channel >= 1 && e.channel <= 3)
+            .count();
         assert_eq!(errors, 4, "Should detect 4 errors");
 
         let bursts = events.iter().filter(|e| e.channel == 4).count();

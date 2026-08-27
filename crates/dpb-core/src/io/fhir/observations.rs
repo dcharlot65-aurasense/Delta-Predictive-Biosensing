@@ -146,7 +146,12 @@ impl VitalSignsObservation {
 
     /// Creates a respiratory rate observation (LOINC: 9279-1)
     /// Time should be in RFC3339 format
-    pub fn respiratory_rate(id: String, patient_ref: String, breaths_per_min: f64, time: String) -> Self {
+    pub fn respiratory_rate(
+        id: String,
+        patient_ref: String,
+        breaths_per_min: f64,
+        time: String,
+    ) -> Self {
         let mut vs = Self::new(id, patient_ref);
         vs.observation.code = CodeableConcept::loinc("9279-1", "Respiratory rate");
         vs.observation.value_quantity = Some(Quantity::new(breaths_per_min, "breaths/min", "/min"));
@@ -156,7 +161,12 @@ impl VitalSignsObservation {
 
     /// Creates a body temperature observation (LOINC: 8310-5)
     /// Time should be in RFC3339 format
-    pub fn body_temperature(id: String, patient_ref: String, temp_celsius: f64, time: String) -> Self {
+    pub fn body_temperature(
+        id: String,
+        patient_ref: String,
+        temp_celsius: f64,
+        time: String,
+    ) -> Self {
         let mut vs = Self::new(id, patient_ref);
         vs.observation.code = CodeableConcept::loinc("8310-5", "Body temperature");
         vs.observation.value_quantity = Some(Quantity::new(temp_celsius, "°C", "Cel"));
@@ -166,7 +176,12 @@ impl VitalSignsObservation {
 
     /// Creates an oxygen saturation observation (LOINC: 59408-5)
     /// Time should be in RFC3339 format
-    pub fn oxygen_saturation(id: String, patient_ref: String, spo2_percent: f64, time: String) -> Self {
+    pub fn oxygen_saturation(
+        id: String,
+        patient_ref: String,
+        spo2_percent: f64,
+        time: String,
+    ) -> Self {
         let mut vs = Self::new(id, patient_ref);
         vs.observation.code = CodeableConcept::loinc("59408-5", "Oxygen saturation");
         vs.observation.value_quantity = Some(Quantity::new(spo2_percent, "%", "%"));
@@ -398,20 +413,23 @@ mod tests {
         .build();
 
         assert_eq!(obs.component.len(), 2);
-        assert_eq!(obs.component[0].value_quantity.as_ref().unwrap().value, Some(120.0));
-        assert_eq!(obs.component[1].value_quantity.as_ref().unwrap().value, Some(80.0));
+        assert_eq!(
+            obs.component[0].value_quantity.as_ref().unwrap().value,
+            Some(120.0)
+        );
+        assert_eq!(
+            obs.component[1].value_quantity.as_ref().unwrap().value,
+            Some(80.0)
+        );
     }
 
     #[test]
     fn test_ecg_waveform() {
         let time = "2025-01-01T00:00:00Z".to_string();
-        let obs = WaveformObservation::ecg(
-            "obs-ecg-001".to_string(),
-            "patient-123".to_string(),
-            time,
-        )
-        .with_device("device-001".to_string())
-        .build();
+        let obs =
+            WaveformObservation::ecg("obs-ecg-001".to_string(), "patient-123".to_string(), time)
+                .with_device("device-001".to_string())
+                .build();
 
         assert_eq!(obs.resource_type, "Observation");
         assert!(obs.device.is_some());
@@ -442,7 +460,10 @@ mod tests {
     #[test]
     fn data_attachment_lands_in_value_attachment() {
         let obs = WaveformObservation::new("dpb-1".to_string(), "pat-1".to_string())
-            .with_data_attachment("https://example.org/wave.edf".to_string(), "application/EDF")
+            .with_data_attachment(
+                "https://example.org/wave.edf".to_string(),
+                "application/EDF",
+            )
             .build();
 
         let att = obs
@@ -456,6 +477,9 @@ mod tests {
         assert!(obs.value_quantity.is_none());
 
         let json = serde_json::to_string(&obs).unwrap();
-        assert!(json.contains("valueAttachment"), "attachment missing from JSON: {json}");
+        assert!(
+            json.contains("valueAttachment"),
+            "attachment missing from JSON: {json}"
+        );
     }
 }

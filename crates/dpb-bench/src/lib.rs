@@ -42,41 +42,33 @@
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 
-pub mod datasets;
 pub mod baselines;
+pub mod datasets;
 pub mod profiling;
 pub mod reports;
 pub mod scenarios;
 
 // Re-export commonly used types
 pub use datasets::{
-    SyntheticECG, SyntheticGait, SyntheticTremor, SyntheticVoice,
-    BenchmarkDataset,
+    BenchmarkDataset, SyntheticECG, SyntheticGait, SyntheticTremor, SyntheticVoice,
 };
 
 pub use baselines::{
-    ANNBaseline, ConventionalBaseline, SNNBaseline,
-    BaselineResult, ComparisonMetrics,
+    ANNBaseline, BaselineResult, ComparisonMetrics, ConventionalBaseline, SNNBaseline,
 };
 
-pub use profiling::{
-    TimeProfiler, MemoryProfiler, SpikeProfiler, EnergyEstimator,
-    ProfileResult,
-};
+pub use profiling::{EnergyEstimator, MemoryProfiler, ProfileResult, SpikeProfiler, TimeProfiler};
 
-pub use reports::{
-    BenchmarkReport, ComparisonReport, ReportFormat,
-};
+pub use reports::{BenchmarkReport, ComparisonReport, ReportFormat};
 
 pub use scenarios::{
-    EncodingScenario, ClassificationScenario, RegressionScenario, LatencyScenario,
-    ScenarioResult,
+    ClassificationScenario, EncodingScenario, LatencyScenario, RegressionScenario, ScenarioResult,
 };
 
 /// Prelude module for convenient imports
 pub mod prelude {
-    pub use crate::datasets::*;
     pub use crate::baselines::*;
+    pub use crate::datasets::*;
     pub use crate::profiling::*;
     pub use crate::reports::*;
     pub use crate::scenarios::*;

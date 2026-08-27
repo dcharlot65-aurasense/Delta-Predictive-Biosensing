@@ -1,6 +1,6 @@
 //! EMG (electromyography) signal generators
 
-use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
+use crate::traits::{Event, GeneratedData, SyntheticGenerator, TimeSeriesGroundTruth};
 use ndarray::Array1;
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
@@ -14,8 +14,8 @@ pub struct SurfaceEmgGenerator;
 pub struct SurfaceEmgParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub baseline_amplitude: f64,  // baseline noise
-    pub contraction_level: f64,   // 0-1 (% of MVC)
+    pub baseline_amplitude: f64, // baseline noise
+    pub contraction_level: f64,  // 0-1 (% of MVC)
 }
 
 impl SyntheticGenerator for SurfaceEmgGenerator {
@@ -23,15 +23,19 @@ impl SyntheticGenerator for SurfaceEmgGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = SurfaceEmgParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         // EMG is modeled as filtered white noise with amplitude proportional to contraction
-        let amplitude = params.baseline_amplitude +
-            params.contraction_level * params.baseline_amplitude * 10.0;
+        let amplitude =
+            params.baseline_amplitude + params.contraction_level * params.baseline_amplitude * 10.0;
 
         let noise_dist = Normal::new(0.0, amplitude).unwrap();
 
@@ -56,7 +60,8 @@ impl SyntheticGenerator for SurfaceEmgGenerator {
                     signal[idx + 3] -= amplitude * 2.0;
                     signal[idx + 4] -= amplitude * 3.0;
                 }
-                next_muap += muap_interval + rng.random_range(-muap_interval * 0.3..muap_interval * 0.3);
+                next_muap +=
+                    muap_interval + rng.random_range(-muap_interval * 0.3..muap_interval * 0.3);
             }
         }
 
@@ -72,7 +77,11 @@ impl SyntheticGenerator for SurfaceEmgGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -86,13 +95,19 @@ impl SyntheticGenerator for SurfaceEmgGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.sampling_rate < 500.0 {
-            return Err(crate::GeneratorError::InvalidParameter("sampling_rate should be >= 500 Hz for EMG".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "sampling_rate should be >= 500 Hz for EMG".to_string(),
+            ));
         }
         if params.contraction_level < 0.0 || params.contraction_level > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("contraction_level must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "contraction_level must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -115,7 +130,11 @@ impl SyntheticGenerator for VoluntaryContractionGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = VoluntaryContractionParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -157,8 +176,8 @@ impl SyntheticGenerator for VoluntaryContractionGenerator {
             }
 
             // Generate EMG signal
-            let amplitude = params.baseline_amplitude +
-                contraction_level * params.baseline_amplitude * 10.0;
+            let amplitude =
+                params.baseline_amplitude + contraction_level * params.baseline_amplitude * 10.0;
             let sample = amplitude * rng.random_range(-1.0..1.0);
 
             signal.push(sample);
@@ -169,7 +188,8 @@ impl SyntheticGenerator for VoluntaryContractionGenerator {
         let mut gt_params = HashMap::new();
         gt_params.insert("fatigue_rate".to_string(), params.fatigue_rate);
 
-        let segments = params.contraction_segments
+        let segments = params
+            .contraction_segments
             .iter()
             .map(|(start, end, mvc)| crate::traits::Segment {
                 start: *start,
@@ -184,7 +204,11 @@ impl SyntheticGenerator for VoluntaryContractionGenerator {
             segments,
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -192,20 +216,21 @@ impl SyntheticGenerator for VoluntaryContractionGenerator {
             duration: 30.0,
             sampling_rate: 2000.0,
             baseline_amplitude: 0.01,
-            contraction_segments: vec![
-                (5.0, 10.0, 50.0),
-                (15.0, 25.0, 80.0),
-            ],
+            contraction_segments: vec![(5.0, 10.0, 50.0), (15.0, 25.0, 80.0)],
             fatigue_rate: 5.0, // 5% per second
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.sampling_rate < 500.0 {
-            return Err(crate::GeneratorError::InvalidParameter("sampling_rate should be >= 500 Hz".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "sampling_rate should be >= 500 Hz".to_string(),
+            ));
         }
         Ok(())
     }
@@ -235,7 +260,11 @@ impl SyntheticGenerator for PathologicalEmgGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = PathologicalEmgParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -275,7 +304,8 @@ impl SyntheticGenerator for PathologicalEmgGenerator {
                         }
                     }
 
-                    next_event += event_interval + rng.random_range(-event_interval * 0.5..event_interval * 0.5);
+                    next_event += event_interval
+                        + rng.random_range(-event_interval * 0.5..event_interval * 0.5);
                 }
             }
             PathologyType::Fibrillation => {
@@ -340,7 +370,11 @@ impl SyntheticGenerator for PathologicalEmgGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -355,10 +389,14 @@ impl SyntheticGenerator for PathologicalEmgGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.sampling_rate < 500.0 {
-            return Err(crate::GeneratorError::InvalidParameter("sampling_rate should be >= 500 Hz".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "sampling_rate should be >= 500 Hz".to_string(),
+            ));
         }
         Ok(())
     }
@@ -373,7 +411,10 @@ mod tests {
         let generator = SurfaceEmgGenerator;
         let params = SurfaceEmgGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]

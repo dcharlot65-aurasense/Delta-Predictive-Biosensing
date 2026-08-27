@@ -80,8 +80,7 @@ pub enum SmplError {
 }
 
 /// SMPL body model variant
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum SmplBodyModel {
     /// Original SMPL (10 shape params, 72 pose params)
     #[default]
@@ -93,7 +92,6 @@ pub enum SmplBodyModel {
     /// STAR model (alternative to SMPL)
     Star,
 }
-
 
 impl SmplBodyModel {
     /// Get the number of shape parameters
@@ -109,9 +107,9 @@ impl SmplBodyModel {
     /// Get the number of pose parameters (axis-angle)
     pub fn num_pose_params(&self) -> usize {
         match self {
-            SmplBodyModel::Smpl => 72,      // 24 joints × 3
-            SmplBodyModel::SmplH => 156,    // 52 joints × 3
-            SmplBodyModel::SmplX => 165,    // 55 joints × 3 (body + hands + face)
+            SmplBodyModel::Smpl => 72,   // 24 joints × 3
+            SmplBodyModel::SmplH => 156, // 52 joints × 3
+            SmplBodyModel::SmplX => 165, // 55 joints × 3 (body + hands + face)
             SmplBodyModel::Star => 72,
         }
     }
@@ -168,9 +166,10 @@ impl SmplPose {
     /// Create pose from flat axis-angle array
     pub fn from_axis_angles(angles: &[f64]) -> SmplResult<Self> {
         if angles.len() < 72 {
-            return Err(SmplError::InvalidPose(
-                format!("Expected at least 72 pose params, got {}", angles.len())
-            ));
+            return Err(SmplError::InvalidPose(format!(
+                "Expected at least 72 pose params, got {}",
+                angles.len()
+            )));
         }
 
         Ok(Self {
@@ -193,22 +192,22 @@ impl SmplPose {
 
         // Hip flexion (alternating)
         let hip_angle = 0.4 * phase_rad.sin();
-        pose.body_pose[0] = hip_angle;   // Left hip X
-        pose.body_pose[3] = -hip_angle;  // Right hip X
+        pose.body_pose[0] = hip_angle; // Left hip X
+        pose.body_pose[3] = -hip_angle; // Right hip X
 
         // Knee flexion (synchronized with hip)
         let knee_angle = 0.3 * (phase_rad + 0.5).sin().max(0.0);
-        pose.body_pose[9] = knee_angle;   // Left knee
-        pose.body_pose[12] = 0.3 * (phase_rad - 0.5 + std::f64::consts::PI).sin().max(0.0);  // Right knee
+        pose.body_pose[9] = knee_angle; // Left knee
+        pose.body_pose[12] = 0.3 * (phase_rad - 0.5 + std::f64::consts::PI).sin().max(0.0); // Right knee
 
         // Arm swing (opposite to legs)
         let arm_angle = 0.3 * phase_rad.sin();
-        pose.body_pose[48] = -arm_angle;  // Left shoulder
-        pose.body_pose[51] = arm_angle;   // Right shoulder
+        pose.body_pose[48] = -arm_angle; // Left shoulder
+        pose.body_pose[51] = arm_angle; // Right shoulder
 
         // Slight elbow bend
-        pose.body_pose[54] = 0.2;  // Left elbow
-        pose.body_pose[57] = 0.2;  // Right elbow
+        pose.body_pose[54] = 0.2; // Left elbow
+        pose.body_pose[57] = 0.2; // Right elbow
 
         pose
     }
@@ -242,8 +241,8 @@ impl SmplPose {
         let mut pose = Self::neutral();
 
         // Position arm for tapping (seated position)
-        pose.body_pose[48] = -0.5;  // Shoulder forward
-        pose.body_pose[54] = 1.2;   // Elbow bent
+        pose.body_pose[48] = -0.5; // Shoulder forward
+        pose.body_pose[54] = 1.2; // Elbow bent
 
         // Hand poses would go here for SMPL-H/X
         pose.left_hand_pose = Some(vec![0.0; 45]);
@@ -262,33 +261,37 @@ pub struct SmplShape {
 impl SmplShape {
     /// Average/neutral body shape
     pub fn neutral() -> Self {
-        Self { betas: vec![0.0; 10] }
+        Self {
+            betas: vec![0.0; 10],
+        }
     }
 
     /// Create custom shape from beta values
     pub fn from_betas(betas: &[f64]) -> Self {
-        Self { betas: betas.to_vec() }
+        Self {
+            betas: betas.to_vec(),
+        }
     }
 
     /// Tall body type
     pub fn tall() -> Self {
         let mut betas = vec![0.0; 10];
-        betas[0] = 2.0;  // Height increase
+        betas[0] = 2.0; // Height increase
         Self { betas }
     }
 
     /// Heavy body type
     pub fn heavy() -> Self {
         let mut betas = vec![0.0; 10];
-        betas[1] = 2.0;  // Weight increase
+        betas[1] = 2.0; // Weight increase
         Self { betas }
     }
 
     /// Elderly body type (stooped posture modifier)
     pub fn elderly() -> Self {
         let mut betas = vec![0.0; 10];
-        betas[0] = -0.5;  // Slightly shorter
-        betas[1] = 0.5;   // Slightly heavier
+        betas[0] = -0.5; // Slightly shorter
+        betas[1] = 0.5; // Slightly heavier
         Self { betas }
     }
 }
@@ -386,14 +389,8 @@ impl Default for SmplLighting {
         Self {
             ambient_color: [1.0, 1.0, 1.0],
             ambient_intensity: 0.3,
-            light_positions: vec![
-                [2.0, 3.0, 2.0],
-                [-2.0, 3.0, -2.0],
-            ],
-            light_colors: vec![
-                [1.0, 1.0, 1.0],
-                [0.8, 0.8, 1.0],
-            ],
+            light_positions: vec![[2.0, 3.0, 2.0], [-2.0, 3.0, -2.0]],
+            light_colors: vec![[1.0, 1.0, 1.0], [0.8, 0.8, 1.0]],
             light_intensities: vec![0.7, 0.3],
         }
     }
@@ -523,7 +520,10 @@ impl SmplRenderer {
     /// Check if Python and required packages are available
     pub fn check_requirements(&self) -> SmplResult<bool> {
         let output = Command::new(&self.params.python_path)
-            .args(["-c", "import torch; import pytorch3d; import smplx; print('OK')"])
+            .args([
+                "-c",
+                "import torch; import pytorch3d; import smplx; print('OK')",
+            ])
             .output()
             .map_err(|e| SmplError::PythonNotFound(e.to_string()))?;
 
@@ -585,11 +585,7 @@ impl SmplRenderer {
         let params_json = serde_json::to_string(&render_params)?;
 
         let output = Command::new(&self.params.python_path)
-            .args([
-                script_path.to_str().unwrap(),
-                "--params",
-                &params_json,
-            ])
+            .args([script_path.to_str().unwrap(), "--params", &params_json])
             .output()
             .map_err(|e| SmplError::RenderError(e.to_string()))?;
 
@@ -600,16 +596,15 @@ impl SmplRenderer {
 
         // Parse output
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result: SmplOutput = serde_json::from_str(&stdout)
-            .unwrap_or_else(|_| SmplOutput {
-                image_path: output_path.to_path_buf(),
-                depth_path: None,
-                segmentation_path: None,
-                joints_3d: None,
-                joints_2d: None,
-                vertices: None,
-                metadata: HashMap::new(),
-            });
+        let result: SmplOutput = serde_json::from_str(&stdout).unwrap_or_else(|_| SmplOutput {
+            image_path: output_path.to_path_buf(),
+            depth_path: None,
+            segmentation_path: None,
+            joints_3d: None,
+            joints_2d: None,
+            vertices: None,
+            metadata: HashMap::new(),
+        });
 
         Ok(result)
     }
@@ -641,7 +636,7 @@ impl SmplRenderer {
     pub fn render_gait_animation(
         &self,
         duration: f64,
-        cadence: f64,  // steps per minute
+        cadence: f64, // steps per minute
         shape: &SmplShape,
         output_dir: &Path,
         parkinsonian_severity: f64,
@@ -690,8 +685,11 @@ impl SmplRenderer {
         let left_ankle = keypoints[27];
         let right_ankle = keypoints[28];
 
-        let left_knee_angle = (left_ankle[2] - left_knee[2]).atan2(left_knee[1] - left_ankle[1]) - left_hip_angle;
-        let right_knee_angle = (right_ankle[2] - right_knee[2]).atan2(right_knee[1] - right_ankle[1]) - right_hip_angle;
+        let left_knee_angle =
+            (left_ankle[2] - left_knee[2]).atan2(left_knee[1] - left_ankle[1]) - left_hip_angle;
+        let right_knee_angle = (right_ankle[2] - right_knee[2])
+            .atan2(right_knee[1] - right_ankle[1])
+            - right_hip_angle;
 
         pose.body_pose[9] = left_knee_angle.max(0.0);
         pose.body_pose[12] = right_knee_angle.max(0.0);

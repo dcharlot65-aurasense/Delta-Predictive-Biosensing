@@ -375,10 +375,9 @@ impl GrfGenerator {
             vertical[i] = 1.0 + 0.02 * (2.0 * PI * sway_freq * t).sin();
 
             // COP sway (AP typically larger than ML)
-            cop_y[i] = 0.01 * (2.0 * PI * sway_freq * t).sin()
-                + 0.005 * (2.0 * PI * 0.5 * t).sin();
-            cop_x[i] = 0.005 * (2.0 * PI * sway_freq * 1.3 * t).cos()
-                + 0.003 * (2.0 * PI * 0.7 * t).cos();
+            cop_y[i] = 0.01 * (2.0 * PI * sway_freq * t).sin() + 0.005 * (2.0 * PI * 0.5 * t).sin();
+            cop_x[i] =
+                0.005 * (2.0 * PI * sway_freq * 1.3 * t).cos() + 0.003 * (2.0 * PI * 0.7 * t).cos();
 
             // Small AP/ML forces from sway
             ap[i] = 0.01 * (2.0 * PI * sway_freq * t).cos();
@@ -406,7 +405,11 @@ impl GrfGenerator {
     }
 
     /// Generate pathological GRF pattern
-    pub fn generate_pathological(&mut self, pathology: PathologicalGrf, duration: f64) -> GrfOutput {
+    pub fn generate_pathological(
+        &mut self,
+        pathology: PathologicalGrf,
+        duration: f64,
+    ) -> GrfOutput {
         let mut output = self.generate_walking(duration);
 
         match pathology {
@@ -420,7 +423,8 @@ impl GrfGenerator {
             }
             PathologicalGrf::Shuffling => {
                 // Reduced vertical force oscillation (flat pattern)
-                let mean_force: f64 = output.vertical.iter().sum::<f64>() / output.vertical.len() as f64;
+                let mean_force: f64 =
+                    output.vertical.iter().sum::<f64>() / output.vertical.len() as f64;
                 for v in output.vertical.iter_mut() {
                     *v = mean_force + (*v - mean_force) * 0.3; // Reduced amplitude
                 }
@@ -600,7 +604,12 @@ impl GrfGenerator {
         // Step count from events
         let step_count = events
             .iter()
-            .filter(|e| matches!(e.event_type, ForceEventType::HeelStrike | ForceEventType::FootStrike))
+            .filter(|e| {
+                matches!(
+                    e.event_type,
+                    ForceEventType::HeelStrike | ForceEventType::FootStrike
+                )
+            })
             .count();
 
         // Symmetry index if we have enough steps
@@ -785,10 +794,16 @@ mod tests {
 
         // Vertical force should show characteristic peaks
         let max_fz = output.vertical.iter().cloned().fold(0.0, f64::max);
-        assert!(max_fz > 1.0 && max_fz < 1.5, "Peak vertical force should be 1.0-1.5 BW");
+        assert!(
+            max_fz > 1.0 && max_fz < 1.5,
+            "Peak vertical force should be 1.0-1.5 BW"
+        );
 
         // Should have multiple steps
-        assert!(output.ground_truth.step_count >= 4, "Should have at least 4 steps in 5s");
+        assert!(
+            output.ground_truth.step_count >= 4,
+            "Should have at least 4 steps in 5s"
+        );
     }
 
     #[test]
@@ -814,7 +829,10 @@ mod tests {
 
         // Landing should have impact event
         assert!(!output.events.is_empty());
-        assert!(matches!(output.events[0].event_type, ForceEventType::LandingImpact));
+        assert!(matches!(
+            output.events[0].event_type,
+            ForceEventType::LandingImpact
+        ));
 
         // Peak force should be high
         let max_fz = output.vertical.iter().cloned().fold(0.0, f64::max);
@@ -832,7 +850,12 @@ mod tests {
         assert!((mean_fz - 1.0).abs() < 0.1, "Standing should be ~1 BW");
 
         // All samples should be standing phase
-        assert!(output.phase_labels.iter().all(|&p| p == GaitPhaseLabel::Standing));
+        assert!(
+            output
+                .phase_labels
+                .iter()
+                .all(|&p| p == GaitPhaseLabel::Standing)
+        );
     }
 
     #[test]
@@ -849,7 +872,10 @@ mod tests {
         assert!(!output.vertical.is_empty());
         assert!(output.ground_truth.peak_vertical_force_bw > 0.0);
         // Symmetry index may be NaN if insufficient steps detected
-        assert!(output.ground_truth.symmetry_index.is_finite() || output.ground_truth.symmetry_index.is_nan());
+        assert!(
+            output.ground_truth.symmetry_index.is_finite()
+                || output.ground_truth.symmetry_index.is_nan()
+        );
     }
 
     #[test]

@@ -7,7 +7,7 @@
 //! - Multi-modal fatigue integration
 
 use crate::error::{DpbError, Result};
-use ndarray::{ArrayView1};
+use ndarray::ArrayView1;
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
@@ -42,7 +42,7 @@ pub struct EmgFatigueAnalyzer {
     sample_rate: f64,
     window_size: usize,
     overlap: f64,
-    mdf_threshold: f64,  // Hz/s threshold for fatigue detection
+    mdf_threshold: f64, // Hz/s threshold for fatigue detection
 }
 
 impl EmgFatigueAnalyzer {
@@ -101,8 +101,8 @@ impl EmgFatigueAnalyzer {
             let target_mdf = initial_mdf * 0.6;
             let remaining_decrease = final_mdf - target_mdf;
             if remaining_decrease > 0.0 {
-                let time_per_window = (self.window_size as f64 / self.sample_rate)
-                    * (1.0 - self.overlap);
+                let time_per_window =
+                    (self.window_size as f64 / self.sample_rate) * (1.0 - self.overlap);
                 let current_duration = mdf_series.len() as f64 * time_per_window;
                 let rate = mdf_slope.abs();
                 if rate > 0.0 {
@@ -117,9 +117,8 @@ impl EmgFatigueAnalyzer {
             None
         };
 
-        let fatigue_detected = mdf_slope < self.mdf_threshold
-            || mdf_decrease_percent > 15.0
-            || fatigue_index > 0.5;
+        let fatigue_detected =
+            mdf_slope < self.mdf_threshold || mdf_decrease_percent > 15.0 || fatigue_index > 0.5;
 
         Ok(EmgFatigueMetrics {
             mdf_slope,
@@ -135,10 +134,7 @@ impl EmgFatigueAnalyzer {
     }
 
     /// Extract time-varying spectral features
-    fn extract_features(
-        &self,
-        signal: ArrayView1<f64>,
-    ) -> Result<(Vec<f64>, Vec<f64>, Vec<f64>)> {
+    fn extract_features(&self, signal: ArrayView1<f64>) -> Result<(Vec<f64>, Vec<f64>, Vec<f64>)> {
         let step = ((1.0 - self.overlap) * self.window_size as f64) as usize;
         let step = step.max(1);
         let num_windows = (signal.len() - self.window_size) / step + 1;
@@ -239,8 +235,7 @@ impl EmgFatigueAnalyzer {
         }
 
         let n = values.len() as f64;
-        let time_per_window =
-            (self.window_size as f64 / self.sample_rate) * (1.0 - self.overlap);
+        let time_per_window = (self.window_size as f64 / self.sample_rate) * (1.0 - self.overlap);
 
         let x_mean = (n - 1.0) * time_per_window / 2.0;
         let y_mean: f64 = values.iter().sum::<f64>() / n;
@@ -254,11 +249,7 @@ impl EmgFatigueAnalyzer {
             den += (x - x_mean).powi(2);
         }
 
-        if den > 0.0 {
-            num / den
-        } else {
-            0.0
-        }
+        if den > 0.0 { num / den } else { 0.0 }
     }
 
     /// Calculate normalized fatigue index
@@ -323,13 +314,13 @@ impl ForceFatigueAnalyzer {
         // Get initial force (first 10% of signal)
         let init_samples = (force.len() as f64 * 0.1) as usize;
         let init_samples = init_samples.max(1);
-        let initial_force: f64 = force.slice(ndarray::s![..init_samples]).iter().sum::<f64>()
-            / init_samples as f64;
+        let initial_force: f64 =
+            force.slice(ndarray::s![..init_samples]).iter().sum::<f64>() / init_samples as f64;
 
         // Get final force (last 10% of signal)
         let final_start = force.len() - init_samples;
-        let final_force: f64 = force.slice(ndarray::s![final_start..]).iter().sum::<f64>()
-            / init_samples as f64;
+        let final_force: f64 =
+            force.slice(ndarray::s![final_start..]).iter().sum::<f64>() / init_samples as f64;
 
         // Calculate decline
         let decline_percent = if initial_force > 0.0 {
@@ -397,11 +388,7 @@ impl ForceFatigueAnalyzer {
             den += (x - x_mean).powi(2);
         }
 
-        if den > 0.0 {
-            num / den
-        } else {
-            0.0
-        }
+        if den > 0.0 { num / den } else { 0.0 }
     }
 
     fn calculate_fatigue_index(&self, decline_percent: f64, force_cv: f64) -> f64 {
@@ -510,10 +497,7 @@ impl CognitiveFatigueAnalyzer {
                     * 100.0;
 
                 let last_start = acc.len().saturating_sub(self.block_size);
-                let last_acc: f64 = acc[last_start..]
-                    .iter()
-                    .filter(|&&a| a)
-                    .count() as f64
+                let last_acc: f64 = acc[last_start..].iter().filter(|&&a| a).count() as f64
                     / acc[last_start..].len() as f64
                     * 100.0;
 
@@ -529,11 +513,8 @@ impl CognitiveFatigueAnalyzer {
             };
 
         // Calculate fatigue index
-        let fatigue_index = self.calculate_fatigue_index(
-            rt_increase_percent,
-            accuracy_decline_percent,
-            lapse_rate,
-        );
+        let fatigue_index =
+            self.calculate_fatigue_index(rt_increase_percent, accuracy_decline_percent, lapse_rate);
 
         // Detect time-on-task effect (significant RT increase over time)
         let rt_slope = self.calculate_block_slope(reaction_times_ms, num_blocks);
@@ -559,8 +540,8 @@ impl CognitiveFatigueAnalyzer {
             return 0.0;
         }
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>()
-            / (values.len() - 1) as f64;
+        let variance =
+            values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64;
         variance.sqrt()
     }
 
@@ -591,19 +572,10 @@ impl CognitiveFatigueAnalyzer {
             den += (x - x_mean).powi(2);
         }
 
-        if den > 0.0 {
-            num / den
-        } else {
-            0.0
-        }
+        if den > 0.0 { num / den } else { 0.0 }
     }
 
-    fn calculate_fatigue_index(
-        &self,
-        rt_increase: f64,
-        acc_decline: f64,
-        lapse_rate: f64,
-    ) -> f64 {
+    fn calculate_fatigue_index(&self, rt_increase: f64, acc_decline: f64, lapse_rate: f64) -> f64 {
         let rt_component = (rt_increase / 30.0).clamp(0.0, 1.0);
         let acc_component = (acc_decline / 20.0).clamp(0.0, 1.0);
         let lapse_component = (lapse_rate / 5.0).clamp(0.0, 1.0);
@@ -761,8 +733,7 @@ mod tests {
             // Decreasing frequency component over time to simulate fatigue
             let freq = 80.0 - 20.0 * (t / (n_samples as f64 / sample_rate));
             let freq = freq.max(40.0);
-            signal[i] = (2.0 * std::f64::consts::PI * freq * t).sin()
-                + 0.3 * rand_noise();
+            signal[i] = (2.0 * std::f64::consts::PI * freq * t).sin() + 0.3 * rand_noise();
         }
         signal
     }
@@ -797,9 +768,7 @@ mod tests {
         let sample_rate = 100.0;
         // Simulated declining force
         let n = 1000;
-        let force: Array1<f64> = (0..n)
-            .map(|i| 100.0 * (-0.001 * i as f64).exp())
-            .collect();
+        let force: Array1<f64> = (0..n).map(|i| 100.0 * (-0.001 * i as f64).exp()).collect();
 
         let analyzer = ForceFatigueAnalyzer::new(sample_rate);
         let result = analyzer.analyze(force.view());

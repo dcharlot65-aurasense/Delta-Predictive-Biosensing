@@ -424,7 +424,7 @@ impl PyGpuProfiler {
             None => {
                 return Err(pyo3::exceptions::PyRuntimeError::new_err(format!(
                     "profiler region '{name}' was stopped without being started"
-                )))
+                )));
             }
         };
 

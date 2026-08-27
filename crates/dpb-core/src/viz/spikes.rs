@@ -1,6 +1,9 @@
 //! Spike train visualization utilities.
 
-use super::{colors, export::{JsonBuilder, SvgBuilder}, PlotConfig, Visualization};
+use super::{
+    PlotConfig, Visualization, colors,
+    export::{JsonBuilder, SvgBuilder},
+};
 
 /// Spike raster plot (neuron x time).
 pub struct RasterPlot {
@@ -126,7 +129,11 @@ impl SpikeHistogram {
     }
 
     /// Creates a new spike histogram with custom configuration.
-    pub fn with_config(spike_counts: Vec<usize>, bin_labels: Vec<String>, config: PlotConfig) -> Self {
+    pub fn with_config(
+        spike_counts: Vec<usize>,
+        bin_labels: Vec<String>,
+        config: PlotConfig,
+    ) -> Self {
         Self {
             spike_counts,
             bin_labels,
@@ -232,7 +239,11 @@ impl ISIHistogram {
         }
 
         let min_isi = self.intervals.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max_isi = self.intervals.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let max_isi = self
+            .intervals
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
         let range = if (max_isi - min_isi).abs() < 1e-9 {
             1.0
         } else {
@@ -330,7 +341,11 @@ impl FiringRateHeatmap {
     }
 
     /// Creates a new firing rate heatmap with custom configuration.
-    pub fn with_config(firing_rates: Vec<Vec<f32>>, time_bins: Vec<f64>, config: PlotConfig) -> Self {
+    pub fn with_config(
+        firing_rates: Vec<Vec<f32>>,
+        time_bins: Vec<f64>,
+        config: PlotConfig,
+    ) -> Self {
         Self {
             firing_rates,
             time_bins,
@@ -413,7 +428,11 @@ impl Visualization for FiringRateHeatmap {
             .add_int("num_time_bins", self.firing_rates.len() as i64)
             .add_int(
                 "num_neurons",
-                if self.firing_rates.is_empty() { 0 } else { self.firing_rates[0].len() as i64 },
+                if self.firing_rates.is_empty() {
+                    0
+                } else {
+                    self.firing_rates[0].len() as i64
+                },
             );
         json.build()
     }

@@ -227,7 +227,10 @@ mod tests {
 
     #[test]
     fn test_synaptic_input_inhibitory() {
-        let input = SynapticInput::Inhibitory { g: 1.0, e_rev: -75.0 };
+        let input = SynapticInput::Inhibitory {
+            g: 1.0,
+            e_rev: -75.0,
+        };
         let current = input.to_current(-65.0);
         assert_eq!(current, 1.0 * (-75.0 - (-65.0))); // Should be -10.0
     }

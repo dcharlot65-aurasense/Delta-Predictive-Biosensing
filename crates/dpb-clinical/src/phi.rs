@@ -60,11 +60,11 @@
 //! # }
 //! ```
 
-use chrono::Datelike;
 use crate::Result;
+use chrono::Datelike;
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 /// PHI identifier types per HIPAA Safe Harbor
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -200,8 +200,8 @@ impl DeIdentificationConfig {
         Self {
             methods,
             hash_salt: None,
-            retain_date_year: true, // Year is allowed
-            retain_state: true,     // State is allowed
+            retain_date_year: true,      // Year is allowed
+            retain_state: true,          // State is allowed
             age_over_89_threshold: true, // Ages 90+ become "90+"
             pseudonym_key: None,
         }
@@ -218,16 +218,37 @@ impl DeIdentificationConfig {
         methods.insert(PhiIdentifier::PhoneNumber, DeIdentificationMethod::Remove);
         methods.insert(PhiIdentifier::FaxNumber, DeIdentificationMethod::Remove);
         methods.insert(PhiIdentifier::EmailAddress, DeIdentificationMethod::Remove);
-        methods.insert(PhiIdentifier::SocialSecurityNumber, DeIdentificationMethod::Remove);
-        methods.insert(PhiIdentifier::MedicalRecordNumber, DeIdentificationMethod::Pseudonymize);
-        methods.insert(PhiIdentifier::HealthPlanNumber, DeIdentificationMethod::Remove);
+        methods.insert(
+            PhiIdentifier::SocialSecurityNumber,
+            DeIdentificationMethod::Remove,
+        );
+        methods.insert(
+            PhiIdentifier::MedicalRecordNumber,
+            DeIdentificationMethod::Pseudonymize,
+        );
+        methods.insert(
+            PhiIdentifier::HealthPlanNumber,
+            DeIdentificationMethod::Remove,
+        );
         methods.insert(PhiIdentifier::AccountNumber, DeIdentificationMethod::Remove);
-        methods.insert(PhiIdentifier::CertificateNumber, DeIdentificationMethod::Remove);
-        methods.insert(PhiIdentifier::VehicleIdentifier, DeIdentificationMethod::Remove);
-        methods.insert(PhiIdentifier::DeviceIdentifier, DeIdentificationMethod::Pseudonymize);
+        methods.insert(
+            PhiIdentifier::CertificateNumber,
+            DeIdentificationMethod::Remove,
+        );
+        methods.insert(
+            PhiIdentifier::VehicleIdentifier,
+            DeIdentificationMethod::Remove,
+        );
+        methods.insert(
+            PhiIdentifier::DeviceIdentifier,
+            DeIdentificationMethod::Pseudonymize,
+        );
         methods.insert(PhiIdentifier::WebUrl, DeIdentificationMethod::Remove);
         methods.insert(PhiIdentifier::IpAddress, DeIdentificationMethod::Remove);
-        methods.insert(PhiIdentifier::BiometricIdentifier, DeIdentificationMethod::Remove);
+        methods.insert(
+            PhiIdentifier::BiometricIdentifier,
+            DeIdentificationMethod::Remove,
+        );
         methods.insert(PhiIdentifier::Photograph, DeIdentificationMethod::Remove);
         methods.insert(PhiIdentifier::OtherUniqueId, DeIdentificationMethod::Hash);
 
@@ -252,26 +273,50 @@ impl DeIdentificationConfig {
 
         // Pseudonymize identifiers for linkage
         methods.insert(PhiIdentifier::Name, DeIdentificationMethod::Pseudonymize);
-        methods.insert(PhiIdentifier::MedicalRecordNumber, DeIdentificationMethod::Pseudonymize);
-        methods.insert(PhiIdentifier::DeviceIdentifier, DeIdentificationMethod::Pseudonymize);
+        methods.insert(
+            PhiIdentifier::MedicalRecordNumber,
+            DeIdentificationMethod::Pseudonymize,
+        );
+        methods.insert(
+            PhiIdentifier::DeviceIdentifier,
+            DeIdentificationMethod::Pseudonymize,
+        );
 
         // Remove other direct identifiers
         methods.insert(PhiIdentifier::PhoneNumber, DeIdentificationMethod::Remove);
         methods.insert(PhiIdentifier::FaxNumber, DeIdentificationMethod::Remove);
         methods.insert(PhiIdentifier::EmailAddress, DeIdentificationMethod::Hash);
-        methods.insert(PhiIdentifier::SocialSecurityNumber, DeIdentificationMethod::Remove);
-        methods.insert(PhiIdentifier::HealthPlanNumber, DeIdentificationMethod::Remove);
+        methods.insert(
+            PhiIdentifier::SocialSecurityNumber,
+            DeIdentificationMethod::Remove,
+        );
+        methods.insert(
+            PhiIdentifier::HealthPlanNumber,
+            DeIdentificationMethod::Remove,
+        );
         methods.insert(PhiIdentifier::AccountNumber, DeIdentificationMethod::Remove);
-        methods.insert(PhiIdentifier::CertificateNumber, DeIdentificationMethod::Remove);
-        methods.insert(PhiIdentifier::VehicleIdentifier, DeIdentificationMethod::Remove);
+        methods.insert(
+            PhiIdentifier::CertificateNumber,
+            DeIdentificationMethod::Remove,
+        );
+        methods.insert(
+            PhiIdentifier::VehicleIdentifier,
+            DeIdentificationMethod::Remove,
+        );
         methods.insert(PhiIdentifier::WebUrl, DeIdentificationMethod::Remove);
         methods.insert(PhiIdentifier::IpAddress, DeIdentificationMethod::Mask);
-        methods.insert(PhiIdentifier::BiometricIdentifier, DeIdentificationMethod::Hash);
+        methods.insert(
+            PhiIdentifier::BiometricIdentifier,
+            DeIdentificationMethod::Hash,
+        );
         methods.insert(PhiIdentifier::Photograph, DeIdentificationMethod::Remove);
         methods.insert(PhiIdentifier::OtherUniqueId, DeIdentificationMethod::Hash);
 
         // Generalize geographic data
-        methods.insert(PhiIdentifier::GeographicData, DeIdentificationMethod::Generalize);
+        methods.insert(
+            PhiIdentifier::GeographicData,
+            DeIdentificationMethod::Generalize,
+        );
         methods.insert(PhiIdentifier::Dates, DeIdentificationMethod::Generalize);
 
         Self {
@@ -507,7 +552,10 @@ impl DeIdentifier {
 
         // Process name
         if record.name.is_some() {
-            let method = self.config.methods.get(&PhiIdentifier::Name)
+            let method = self
+                .config
+                .methods
+                .get(&PhiIdentifier::Name)
                 .copied()
                 .unwrap_or(DeIdentificationMethod::Remove);
             audit_log.push(AuditEntry {
@@ -519,7 +567,10 @@ impl DeIdentifier {
 
         // Process SSN
         if record.ssn.is_some() {
-            let method = self.config.methods.get(&PhiIdentifier::SocialSecurityNumber)
+            let method = self
+                .config
+                .methods
+                .get(&PhiIdentifier::SocialSecurityNumber)
                 .copied()
                 .unwrap_or(DeIdentificationMethod::Remove);
             audit_log.push(AuditEntry {
@@ -531,9 +582,10 @@ impl DeIdentifier {
 
         // Generate pseudonym if configured
         let pseudonym_id = if let Some(ref key) = self.config.pseudonym_key {
-            record.patient_id.as_ref().map(|id| {
-                self.generate_pseudonym(id, key)
-            })
+            record
+                .patient_id
+                .as_ref()
+                .map(|id| self.generate_pseudonym(id, key))
         } else {
             None
         };
@@ -554,7 +606,10 @@ impl DeIdentifier {
 
         // Process device ID
         let device_id_masked = if let Some(ref device) = record.device_id {
-            let method = self.config.methods.get(&PhiIdentifier::DeviceIdentifier)
+            let method = self
+                .config
+                .methods
+                .get(&PhiIdentifier::DeviceIdentifier)
                 .copied()
                 .unwrap_or(DeIdentificationMethod::Remove);
             audit_log.push(AuditEntry {
@@ -564,13 +619,12 @@ impl DeIdentifier {
             });
             match method {
                 DeIdentificationMethod::Mask => Some(self.mask_identifier(device)),
-                DeIdentificationMethod::Pseudonymize => {
-                    self.config.pseudonym_key.as_ref()
-                        .map(|key| self.generate_pseudonym(device, key))
-                }
-                DeIdentificationMethod::Hash => {
-                    Some(self.hash_identifier(device))
-                }
+                DeIdentificationMethod::Pseudonymize => self
+                    .config
+                    .pseudonym_key
+                    .as_ref()
+                    .map(|key| self.generate_pseudonym(device, key)),
+                DeIdentificationMethod::Hash => Some(self.hash_identifier(device)),
                 _ => None,
             }
         } else {
@@ -590,9 +644,7 @@ impl DeIdentifier {
 
     /// Batch de-identifies multiple records.
     pub fn deidentify_batch(&self, records: &[PatientRecord]) -> Result<Vec<DeIdentifiedRecord>> {
-        records.iter()
-            .map(|r| self.deidentify(r))
-            .collect()
+        records.iter().map(|r| self.deidentify(r)).collect()
     }
 
     /// Generates a consistent pseudonym from an identifier.
@@ -605,7 +657,11 @@ impl DeIdentifier {
 
     /// Hashes an identifier with salt.
     fn hash_identifier(&self, id: &str) -> String {
-        let salt = self.config.hash_salt.as_deref().unwrap_or("dpb-default-salt");
+        let salt = self
+            .config
+            .hash_salt
+            .as_deref()
+            .unwrap_or("dpb-default-salt");
         let mut hasher = DefaultHasher::new();
         salt.hash(&mut hasher);
         id.hash(&mut hasher);
@@ -617,7 +673,7 @@ impl DeIdentifier {
         if id.len() <= 4 {
             "*".repeat(id.len())
         } else {
-            format!("{}...{}", &id[..2], &id[id.len()-2..])
+            format!("{}...{}", &id[..2], &id[id.len() - 2..])
         }
     }
 
@@ -628,7 +684,10 @@ impl DeIdentifier {
         audit_log: &mut Vec<AuditEntry>,
         timestamp: u64,
     ) -> (Option<i32>, Option<String>) {
-        let method = self.config.methods.get(&PhiIdentifier::Dates)
+        let method = self
+            .config
+            .methods
+            .get(&PhiIdentifier::Dates)
             .copied()
             .unwrap_or(DeIdentificationMethod::Generalize);
 
@@ -680,7 +739,10 @@ impl DeIdentifier {
         audit_log: &mut Vec<AuditEntry>,
         timestamp: u64,
     ) -> Option<String> {
-        let method = self.config.methods.get(&PhiIdentifier::GeographicData)
+        let method = self
+            .config
+            .methods
+            .get(&PhiIdentifier::GeographicData)
             .copied()
             .unwrap_or(DeIdentificationMethod::Generalize);
 
@@ -692,9 +754,7 @@ impl DeIdentifier {
 
         match method {
             DeIdentificationMethod::Remove => None,
-            DeIdentificationMethod::Generalize if self.config.retain_state => {
-                loc.state.clone()
-            }
+            DeIdentificationMethod::Generalize if self.config.retain_state => loc.state.clone(),
             _ => None,
         }
     }
@@ -846,10 +906,7 @@ impl LDiversityChecker {
             );
 
             if let Some(&value) = record.clinical_data.get(&self.sensitive_attribute) {
-                equivalence_classes
-                    .entry(key)
-                    .or_default()
-                    .push(value);
+                equivalence_classes.entry(key).or_default().push(value);
             }
         }
 
@@ -857,7 +914,8 @@ impl LDiversityChecker {
         let mut violations = Vec::new();
 
         for (key, values) in &equivalence_classes {
-            let unique_count = values.iter()
+            let unique_count = values
+                .iter()
                 .map(|v| (*v * 1000.0) as i64)
                 .collect::<std::collections::HashSet<_>>()
                 .len();
@@ -999,8 +1057,7 @@ mod tests {
         let deidentifier = DeIdentifier::new(config);
 
         // 95-year-old should be grouped as "90+"
-        let record = PatientRecord::new()
-            .with_dob(1930, 1, 1); // ~95 years old in 2025
+        let record = PatientRecord::new().with_dob(1930, 1, 1); // ~95 years old in 2025
 
         let result = deidentifier.deidentify(&record).unwrap();
         assert_eq!(result.age_group, Some("90+".to_string()));

@@ -45,32 +45,30 @@
 
 pub mod database;
 pub mod demographics;
+pub mod geriatric;
+pub mod longitudinal;
 pub mod metrics;
 pub mod multimodal;
 pub mod pediatric;
-pub mod geriatric;
-pub mod longitudinal;
 
 pub use database::{NormativeDatabase, NormativeEntry, NormativeTable};
-pub use demographics::{Demographics, DemographicsFilter, Sex, Ethnicity, Handedness, EducationLevel, AgeGroup, Side};
-pub use metrics::{MetricType, MetricDomain, MetricDirection};
-pub use multimodal::{
-    MultiModalAssessment, MultiModalAssessor, MultiModalProfile,
-    DomainSummary, DomainClassification, ProfileClassification,
-    Dissociation, DissociationType, generate_report,
-};
-pub use pediatric::{
-    PediatricNormativeDb, PediatricReference, PediatricAgeRange,
-    DevelopmentalStage, Percentiles,
+pub use demographics::{
+    AgeGroup, Demographics, DemographicsFilter, EducationLevel, Ethnicity, Handedness, Sex, Side,
 };
 pub use geriatric::{
-    GeriatricNormativeDb, GeriatricReference, GeriatricAgeGroup,
-    FrailtyAdjustment, FrailtyCategory,
+    FrailtyAdjustment, FrailtyCategory, GeriatricAgeGroup, GeriatricNormativeDb, GeriatricReference,
 };
 pub use longitudinal::{
-    MinimalDetectableChange, ChangeStatus, ChangeAnalysis,
-    calculate_mdc, is_real_change, calculate_reliable_change_index,
-    rci_is_significant,
+    ChangeAnalysis, ChangeStatus, MinimalDetectableChange, calculate_mdc,
+    calculate_reliable_change_index, is_real_change, rci_is_significant,
+};
+pub use metrics::{MetricDirection, MetricDomain, MetricType};
+pub use multimodal::{
+    Dissociation, DissociationType, DomainClassification, DomainSummary, MultiModalAssessment,
+    MultiModalAssessor, MultiModalProfile, ProfileClassification, generate_report,
+};
+pub use pediatric::{
+    DevelopmentalStage, PediatricAgeRange, PediatricNormativeDb, PediatricReference, Percentiles,
 };
 
 use serde::{Deserialize, Serialize};
@@ -323,12 +321,20 @@ mod tests {
         // 1 SD above mean should be ~84th percentile
         let p_plus1sd = stats.percentile(115.0);
         // Using wider tolerance for approximation
-        assert!((p_plus1sd - 84.0).abs() < 5.0, "Expected ~84, got {}", p_plus1sd);
+        assert!(
+            (p_plus1sd - 84.0).abs() < 5.0,
+            "Expected ~84, got {}",
+            p_plus1sd
+        );
 
         // 1 SD below mean should be ~16th percentile
         let p_minus1sd = stats.percentile(85.0);
         // Using wider tolerance for approximation
-        assert!((p_minus1sd - 16.0).abs() < 5.0, "Expected ~16, got {}", p_minus1sd);
+        assert!(
+            (p_minus1sd - 16.0).abs() < 5.0,
+            "Expected ~16, got {}",
+            p_minus1sd
+        );
     }
 
     #[test]

@@ -205,8 +205,9 @@ impl NeuronModel for CalciumNeuron {
         self.state.i_ahp += di_ahp * dt;
 
         // Membrane potential dynamics with AHP current
-        let dv = (-(self.state.v - self.config.v_rest) + self.config.r_m * input_current - self.state.i_ahp)
-                 / self.config.tau_mem;
+        let dv = (-(self.state.v - self.config.v_rest) + self.config.r_m * input_current
+            - self.state.i_ahp)
+            / self.config.tau_mem;
         self.state.v += dv * dt;
 
         // Check for spike

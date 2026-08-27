@@ -25,9 +25,9 @@ pub struct SynapticOpEstimator {
 impl Default for SynapticOpEstimator {
     fn default() -> Self {
         Self {
-            energy_per_synop_pj: 10.0,          // Total: 10 pJ/synop
-            weight_access_energy_pj: 3.0,       // Memory access: 3 pJ
-            current_injection_energy_pj: 7.0,   // Analog integration: 7 pJ
+            energy_per_synop_pj: 10.0,        // Total: 10 pJ/synop
+            weight_access_energy_pj: 3.0,     // Memory access: 3 pJ
+            current_injection_energy_pj: 7.0, // Analog integration: 7 pJ
         }
     }
 }
@@ -115,7 +115,7 @@ pub struct MACEstimator {
 impl Default for MACEstimator {
     fn default() -> Self {
         Self {
-            energy_per_mac_pj: 20.0,  // 20 pJ for 16-bit at 28nm
+            energy_per_mac_pj: 20.0, // 20 pJ for 16-bit at 28nm
             technology_nm: 28,
             bit_width: 16,
         }
@@ -282,8 +282,8 @@ impl PowerEstimator for SpikeTransmitEstimator {
         let energy_per_inference_uj = total_energy_j * 1e6;
 
         // Efficiency based on spike transmissions
-        let efficiency_tops_per_w = (total_transmissions / inference_time_s / 1e12) /
-            (total_power_mw / 1000.0);
+        let efficiency_tops_per_w =
+            (total_transmissions / inference_time_s / 1e12) / (total_power_mw / 1000.0);
 
         PowerMetrics {
             dynamic_power_mw,
@@ -397,8 +397,8 @@ impl PowerEstimator for NeuronUpdateEstimator {
         let total_power_mw = dynamic_power_mw + static_power_mw;
         let energy_per_inference_uj = total_energy_j * 1e6;
 
-        let efficiency_tops_per_w = (total_updates / inference_time_s / 1e12) /
-            (total_power_mw / 1000.0);
+        let efficiency_tops_per_w =
+            (total_updates / inference_time_s / 1e12) / (total_power_mw / 1000.0);
 
         PowerMetrics {
             dynamic_power_mw,
@@ -501,7 +501,10 @@ mod tests {
 
         assert!(metrics.total_power_mw > 0.0);
         // Number of operations should equal neurons * timesteps
-        assert_eq!(metrics.synops_per_inference, (stats.num_neurons * stats.timesteps) as u64);
+        assert_eq!(
+            metrics.synops_per_inference,
+            (stats.num_neurons * stats.timesteps) as u64
+        );
     }
 
     #[test]

@@ -11,12 +11,10 @@ pub mod sleep;
 
 pub use eeg::*;
 pub use erp::{
-    ErpGenerator, ErpConfig, ErpOutput, ErpGroundTruth,
-    ErpComponentType, ErpParadigm, ErpPathology,
-    ErpComponent, ErpComponentInfo, Topography,
+    ErpComponent, ErpComponentInfo, ErpComponentType, ErpConfig, ErpGenerator, ErpGroundTruth,
+    ErpOutput, ErpParadigm, ErpPathology, Topography,
 };
 pub use sleep::{
-    SleepMicrostructureGenerator, SleepMicroConfig, SleepMicroOutput,
-    SleepMicroGroundTruth, SpindleInfo, KComplexInfo, SlowOscillationInfo,
-    SleepMicroPathology,
+    KComplexInfo, SleepMicroConfig, SleepMicroGroundTruth, SleepMicroOutput, SleepMicroPathology,
+    SleepMicrostructureGenerator, SlowOscillationInfo, SpindleInfo,
 };

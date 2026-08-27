@@ -213,12 +213,8 @@ impl StimulusSet {
     /// Get the available stimuli for this set
     pub fn get_stimuli(&self) -> Vec<Stimulus> {
         match self {
-            StimulusSet::Letters => {
-                ('A'..='Z').map(Stimulus::Letter).collect()
-            }
-            StimulusSet::Numbers => {
-                (0..=9).map(Stimulus::Number).collect()
-            }
+            StimulusSet::Letters => ('A'..='Z').map(Stimulus::Letter).collect(),
+            StimulusSet::Numbers => (0..=9).map(Stimulus::Number).collect(),
             StimulusSet::Spatial(grid_size) => {
                 let mut positions = Vec::new();
                 for x in 0..*grid_size {
@@ -325,11 +321,7 @@ pub fn z_score(p: f64) -> f64 {
         let num = ((num * t + C[4]) * t + C[3]) * t + C[2];
         let num = ((num * t + C[1]) * t + C[0]) * t - s;
 
-        if y < 0.0 {
-            -num
-        } else {
-            num
-        }
+        if y < 0.0 { -num } else { num }
     }
 }
 

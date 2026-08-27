@@ -604,16 +604,12 @@ impl MetricType {
             | MetricType::GlobalComposite => "score",
 
             // PPG
-            MetricType::PulseTransitTime
-            | MetricType::PrvSdnn => "ms",
-            MetricType::PulseWaveVelocity
-            | MetricType::StiffnessIndex => "m/s",
-            MetricType::AugmentationIndex
-            | MetricType::PerfusionIndex => "%",
+            MetricType::PulseTransitTime | MetricType::PrvSdnn => "ms",
+            MetricType::PulseWaveVelocity | MetricType::StiffnessIndex => "m/s",
+            MetricType::AugmentationIndex | MetricType::PerfusionIndex => "%",
 
             // EDA
-            MetricType::SkinConductanceLevel
-            | MetricType::ScrAmplitude => "μS",
+            MetricType::SkinConductanceLevel | MetricType::ScrAmplitude => "μS",
             MetricType::ScrFrequency => "events/min",
             MetricType::NsScrCount => "events",
             MetricType::EdaRecoveryTime => "s",
@@ -629,24 +625,20 @@ impl MetricType {
 
             // Eye
             MetricType::SaccadePeakVelocity => "°/s",
-            MetricType::SaccadeAmplitude
-            | MetricType::SvvError => "°",
+            MetricType::SaccadeAmplitude | MetricType::SvvError => "°",
             MetricType::SaccadeLatency
             | MetricType::FixationDuration
             | MetricType::PupilResponseLatency => "ms",
-            MetricType::FixationCount
-            | MetricType::BlinkRate => "/min",
+            MetricType::FixationCount | MetricType::BlinkRate => "/min",
             MetricType::PupilDiameter => "mm",
-            MetricType::SmoothPursuitGain
-            | MetricType::VorGain
-            | MetricType::HeadImpulseGain => "gain",
+            MetricType::SmoothPursuitGain | MetricType::VorGain | MetricType::HeadImpulseGain => {
+                "gain"
+            }
 
             // Voice
             MetricType::VoiceF0 => "Hz",
             MetricType::VoiceF0Variability => "semitones",
-            MetricType::VoiceJitter
-            | MetricType::VoiceShimmer
-            | MetricType::CanalParesis => "%",
+            MetricType::VoiceJitter | MetricType::VoiceShimmer | MetricType::CanalParesis => "%",
             MetricType::VoiceHnr => "dB",
             MetricType::SpeechRate => "syllables/s",
             MetricType::VoiceOnsetTime => "ms",
@@ -771,7 +763,8 @@ impl MetricType {
 
     /// Get all metrics in a domain
     pub fn by_domain(domain: MetricDomain) -> Vec<MetricType> {
-        ALL_METRICS.iter()
+        ALL_METRICS
+            .iter()
             .filter(|m| m.domain() == domain)
             .copied()
             .collect()
@@ -906,7 +899,10 @@ mod tests {
 
     #[test]
     fn test_metric_domains() {
-        assert_eq!(MetricType::SimpleReactionTime.domain(), MetricDomain::Cognitive);
+        assert_eq!(
+            MetricType::SimpleReactionTime.domain(),
+            MetricDomain::Cognitive
+        );
         assert_eq!(MetricType::GaitVelocity.domain(), MetricDomain::Motor);
         assert_eq!(MetricType::SwayArea.domain(), MetricDomain::Balance);
         assert_eq!(MetricType::HeartRate.domain(), MetricDomain::Physiological);
@@ -915,12 +911,24 @@ mod tests {
     #[test]
     fn test_metric_directions() {
         // Lower is better
-        assert_eq!(MetricType::SimpleReactionTime.direction(), MetricDirection::LowerIsBetter);
-        assert_eq!(MetricType::TremorAmplitude.direction(), MetricDirection::LowerIsBetter);
+        assert_eq!(
+            MetricType::SimpleReactionTime.direction(),
+            MetricDirection::LowerIsBetter
+        );
+        assert_eq!(
+            MetricType::TremorAmplitude.direction(),
+            MetricDirection::LowerIsBetter
+        );
 
         // Higher is better
-        assert_eq!(MetricType::GaitVelocity.direction(), MetricDirection::HigherIsBetter);
-        assert_eq!(MetricType::GripStrength.direction(), MetricDirection::HigherIsBetter);
+        assert_eq!(
+            MetricType::GaitVelocity.direction(),
+            MetricDirection::HigherIsBetter
+        );
+        assert_eq!(
+            MetricType::GripStrength.direction(),
+            MetricDirection::HigherIsBetter
+        );
     }
 
     #[test]

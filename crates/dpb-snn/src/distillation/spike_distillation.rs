@@ -5,7 +5,7 @@
 //! and membrane potential distillation.
 
 use crate::{SNNError, SNNResult, SpikeTensor};
-use ndarray::{s, Array1, Array2, Array3};
+use ndarray::{Array1, Array2, Array3, s};
 use serde::{Deserialize, Serialize};
 
 /// Configuration for spike-based distillation
@@ -45,7 +45,7 @@ impl SpikeDistillationConfig {
         let total_weight = self.pattern_weight + self.rate_weight + self.membrane_weight;
         if (total_weight - 1.0).abs() > 1e-5 {
             return Err(SNNError::InvalidConfig(
-                "Distillation weights should sum to 1.0".to_string()
+                "Distillation weights should sum to 1.0".to_string(),
             ));
         }
         Ok(())
@@ -116,7 +116,11 @@ impl SpikePatternDistillation {
     }
 
     /// Compute distance between two spike patterns
-    fn pattern_distance(&self, teacher: &ndarray::ArrayView1<f32>, student: &ndarray::ArrayView1<f32>) -> f32 {
+    fn pattern_distance(
+        &self,
+        teacher: &ndarray::ArrayView1<f32>,
+        student: &ndarray::ArrayView1<f32>,
+    ) -> f32 {
         let len = teacher.len();
         let mut min_distance = f32::MAX;
 
@@ -204,16 +208,10 @@ impl SpikeRateDistillation {
     }
 
     /// Compute instantaneous rates with temporal windowing
-    pub fn compute_windowed_rates(
-        &self,
-        spikes: &SpikeTensor,
-    ) -> SNNResult<Array3<f32>> {
+    pub fn compute_windowed_rates(&self, spikes: &SpikeTensor) -> SNNResult<Array3<f32>> {
         let dense = spikes.to_dense();
-        let (batch_size, num_steps, num_neurons) = (
-            dense.shape()[0],
-            dense.shape()[1],
-            dense.shape()[2],
-        );
+        let (batch_size, num_steps, num_neurons) =
+            (dense.shape()[0], dense.shape()[1], dense.shape()[2]);
 
         let num_windows = num_steps.div_ceil(self.window_size);
         let mut rates = Array3::zeros((batch_size, num_windows, num_neurons));
@@ -485,14 +483,16 @@ mod tests {
         teacher_data[[0, 15, 0]] = 1.0;
 
         let mut student_data = Array3::zeros((1, 20, 2));
-        student_data[[0, 6, 0]] = 1.0;  // Slightly shifted
+        student_data[[0, 6, 0]] = 1.0; // Slightly shifted
         student_data[[0, 11, 0]] = 1.0;
         student_data[[0, 16, 0]] = 1.0;
 
         let teacher_spikes = SpikeTensor::from_dense(teacher_data, false);
         let student_spikes = SpikeTensor::from_dense(student_data, false);
 
-        let loss = distiller.compute_loss(&teacher_spikes, &student_spikes).unwrap();
+        let loss = distiller
+            .compute_loss(&teacher_spikes, &student_spikes)
+            .unwrap();
         assert!(loss >= 0.0);
         assert!(loss.is_finite());
     }
@@ -512,7 +512,9 @@ mod tests {
         let teacher_spikes = SpikeTensor::from_dense(teacher_data, false);
         let student_spikes = SpikeTensor::from_dense(student_data, false);
 
-        let loss = distiller.compute_loss(&teacher_spikes, &student_spikes).unwrap();
+        let loss = distiller
+            .compute_loss(&teacher_spikes, &student_spikes)
+            .unwrap();
         assert!(loss >= 0.0);
         assert!(loss.is_finite());
     }
@@ -555,7 +557,9 @@ mod tests {
         let mut student = Array3::zeros((1, 10, 2));
         student[[0, 5, 0]] = 0.85;
 
-        let loss = distiller.compute_threshold_proximity_loss(&teacher, &student, 1.0).unwrap();
+        let loss = distiller
+            .compute_threshold_proximity_loss(&teacher, &student, 1.0)
+            .unwrap();
         assert!(loss > 0.0);
         assert!(loss.is_finite());
     }
@@ -567,7 +571,9 @@ mod tests {
         let teacher_weights = Array2::from_shape_vec((3, 4), vec![1.0; 12]).unwrap();
         let mut student_weights = Array2::zeros((3, 4));
 
-        transfer.transfer_weights(&teacher_weights, &mut student_weights).unwrap();
+        transfer
+            .transfer_weights(&teacher_weights, &mut student_weights)
+            .unwrap();
 
         assert_eq!(student_weights, teacher_weights);
     }
@@ -580,7 +586,9 @@ mod tests {
         let teacher_weights = Array2::from_shape_vec((3, 4), vec![2.0; 12]).unwrap();
         let mut student_weights = Array2::zeros((3, 4));
 
-        transfer.transfer_weights(&teacher_weights, &mut student_weights).unwrap();
+        transfer
+            .transfer_weights(&teacher_weights, &mut student_weights)
+            .unwrap();
 
         for &val in student_weights.iter() {
             assert_eq!(val, 1.0); // 2.0 * 0.5
@@ -594,7 +602,9 @@ mod tests {
         let teacher_weights = Array2::from_shape_vec((4, 5), vec![1.0; 20]).unwrap();
         let mut student_weights = Array2::zeros((2, 3));
 
-        transfer.transfer_weights(&teacher_weights, &mut student_weights).unwrap();
+        transfer
+            .transfer_weights(&teacher_weights, &mut student_weights)
+            .unwrap();
 
         // Check that subset is transferred
         for i in 0..2 {
@@ -629,7 +639,9 @@ mod tests {
         let teacher_spikes = SpikeTensor::from_dense(teacher_data, false);
         let student_spikes = SpikeTensor::from_dense(student_data, false);
 
-        let loss = tca.compute_weighted_loss(&teacher_spikes, &student_spikes).unwrap();
+        let loss = tca
+            .compute_weighted_loss(&teacher_spikes, &student_spikes)
+            .unwrap();
         assert!(loss > 0.0);
         assert!(loss.is_finite());
     }

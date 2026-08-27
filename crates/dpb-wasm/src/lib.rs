@@ -36,18 +36,18 @@
 
 use wasm_bindgen::prelude::*;
 
-pub mod timeseries;
-pub mod spiketrain;
 pub mod encoders;
+pub mod spiketrain;
+pub mod timeseries;
+mod utils;
 pub mod webgpu;
 pub mod webnn;
-mod utils;
 
-pub use timeseries::WasmTimeSeries;
+pub use encoders::{WasmDeltaEncoder, WasmLevelCrossingEncoder};
 pub use spiketrain::WasmSpikeTrain;
-pub use encoders::{WasmLevelCrossingEncoder, WasmDeltaEncoder};
+pub use timeseries::WasmTimeSeries;
 pub use webgpu::{GpuEncoder, GpuEncoderConfig};
-pub use webnn::{WebNNEncoder, WebNNConfig, WebNNDeviceType, WebNNFeatures};
+pub use webnn::{WebNNConfig, WebNNDeviceType, WebNNEncoder, WebNNFeatures};
 
 /// Initialize the WASM module.
 /// Called automatically when the module loads.

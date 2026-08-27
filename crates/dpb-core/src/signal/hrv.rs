@@ -106,18 +106,14 @@ impl HrvAnalyzer {
     /// Create a new HRV analyzer with default thresholds
     pub fn new() -> Self {
         Self {
-            min_rr_ms: 300.0,   // 200 bpm
-            max_rr_ms: 2000.0,  // 30 bpm
+            min_rr_ms: 300.0,            // 200 bpm
+            max_rr_ms: 2000.0,           // 30 bpm
             max_rr_change_percent: 20.0, // 20% max change
         }
     }
 
     /// Create a new HRV analyzer with custom thresholds
-    pub fn with_thresholds(
-        min_rr_ms: f64,
-        max_rr_ms: f64,
-        max_rr_change_percent: f64,
-    ) -> Self {
+    pub fn with_thresholds(min_rr_ms: f64, max_rr_ms: f64, max_rr_change_percent: f64) -> Self {
         Self {
             min_rr_ms,
             max_rr_ms,
@@ -152,7 +148,9 @@ impl HrvAnalyzer {
     /// Time domain HRV metrics
     pub fn compute_time_domain(&self, rr_intervals: &[f64]) -> Result<HrvTimeDomain> {
         if rr_intervals.is_empty() {
-            return Err(DpbError::InvalidParameter("RR intervals are empty".to_string()));
+            return Err(DpbError::InvalidParameter(
+                "RR intervals are empty".to_string(),
+            ));
         }
 
         // Preprocess: remove artifacts and ectopic beats
@@ -236,7 +234,9 @@ impl HrvAnalyzer {
         sample_rate: f64,
     ) -> Result<HrvFrequencyDomain> {
         if rr_intervals.is_empty() {
-            return Err(DpbError::InvalidParameter("RR intervals are empty".to_string()));
+            return Err(DpbError::InvalidParameter(
+                "RR intervals are empty".to_string(),
+            ));
         }
 
         // Preprocess RR intervals
@@ -348,7 +348,9 @@ impl HrvAnalyzer {
     /// Interpolate RR intervals to uniform sampling
     fn interpolate_rr_intervals(&self, rr_intervals: &[f64], sample_rate: f64) -> Result<Vec<f64>> {
         if rr_intervals.is_empty() {
-            return Err(DpbError::InvalidParameter("RR intervals are empty".to_string()));
+            return Err(DpbError::InvalidParameter(
+                "RR intervals are empty".to_string(),
+            ));
         }
 
         // Compute cumulative time points
@@ -456,7 +458,10 @@ impl HrvAnalyzer {
         // Create histogram with 7.8125 ms bins (128 Hz sampling equivalent)
         let bin_size = 7.8125;
         let min_rr = rr_intervals.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max_rr = rr_intervals.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let max_rr = rr_intervals
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
 
         let num_bins = ((max_rr - min_rr) / bin_size).ceil() as usize + 1;
         let mut histogram = vec![0; num_bins];

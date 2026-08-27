@@ -183,11 +183,7 @@ impl CopGenerator {
     }
 
     /// Generate quiet standing COP trajectory
-    pub fn generate_quiet_standing(
-        &mut self,
-        duration: f64,
-        stance: StanceCondition,
-    ) -> CopOutput {
+    pub fn generate_quiet_standing(&mut self, duration: f64, stance: StanceCondition) -> CopOutput {
         let dt = 1.0 / self.config.sample_rate;
         let n_samples = (duration * self.config.sample_rate) as usize;
 
@@ -200,8 +196,14 @@ impl CopGenerator {
 
         // Frequency components (typical postural sway: 0.1-2 Hz)
         let freqs = [0.15, 0.3, 0.5, 0.8, 1.2];
-        let phases_ap: Vec<f64> = freqs.iter().map(|_| self.rng.random::<f64>() * 2.0 * PI).collect();
-        let phases_ml: Vec<f64> = freqs.iter().map(|_| self.rng.random::<f64>() * 2.0 * PI).collect();
+        let phases_ap: Vec<f64> = freqs
+            .iter()
+            .map(|_| self.rng.random::<f64>() * 2.0 * PI)
+            .collect();
+        let phases_ml: Vec<f64> = freqs
+            .iter()
+            .map(|_| self.rng.random::<f64>() * 2.0 * PI)
+            .collect();
         let amps_ap: Vec<f64> = vec![0.4, 0.25, 0.15, 0.12, 0.08];
         let amps_ml: Vec<f64> = vec![0.35, 0.28, 0.18, 0.12, 0.07];
 
@@ -385,18 +387,14 @@ impl CopGenerator {
                 WeightShiftDirection::MedioLateral => {
                     (0.0, amp_ml * (2.0 * PI * frequency * t).sin())
                 }
-                WeightShiftDirection::Circular => {
-                    (
-                        amp_ap * (2.0 * PI * frequency * t).cos(),
-                        amp_ml * (2.0 * PI * frequency * t).sin(),
-                    )
-                }
-                WeightShiftDirection::FigureEight => {
-                    (
-                        amp_ap * (2.0 * PI * frequency * t).sin(),
-                        amp_ml * (4.0 * PI * frequency * t).sin(),
-                    )
-                }
+                WeightShiftDirection::Circular => (
+                    amp_ap * (2.0 * PI * frequency * t).cos(),
+                    amp_ml * (2.0 * PI * frequency * t).sin(),
+                ),
+                WeightShiftDirection::FigureEight => (
+                    amp_ap * (2.0 * PI * frequency * t).sin(),
+                    amp_ml * (4.0 * PI * frequency * t).sin(),
+                ),
             };
 
             let noise_ap: f64 = self.rng.sample(noise_dist);
@@ -456,8 +454,14 @@ impl CopGenerator {
         let modified_sway_ml = base_sway_ml * sway_mod_ml;
 
         let freqs = [0.15, 0.3, 0.5, 0.8, 1.2];
-        let phases_ap: Vec<f64> = freqs.iter().map(|_| self.rng.random::<f64>() * 2.0 * PI).collect();
-        let phases_ml: Vec<f64> = freqs.iter().map(|_| self.rng.random::<f64>() * 2.0 * PI).collect();
+        let phases_ap: Vec<f64> = freqs
+            .iter()
+            .map(|_| self.rng.random::<f64>() * 2.0 * PI)
+            .collect();
+        let phases_ml: Vec<f64> = freqs
+            .iter()
+            .map(|_| self.rng.random::<f64>() * 2.0 * PI)
+            .collect();
 
         let noise_dist = Normal::new(0.0, self.config.noise_level * modified_sway_ap).unwrap();
         let irregular_dist = Normal::new(0.0, irregularity).unwrap();
@@ -531,34 +535,84 @@ impl CopGenerator {
     }
 
     /// Get pathology modification parameters
-    fn get_pathology_params(&self, pathology: PathologicalBalance) -> (f64, f64, f64, f64, f64, f64) {
+    fn get_pathology_params(
+        &self,
+        pathology: PathologicalBalance,
+    ) -> (f64, f64, f64, f64, f64, f64) {
         // Returns: (sway_mod_ap, sway_mod_ml, freq_mod, bias_ap, bias_ml, irregularity)
         match pathology {
-            PathologicalBalance::Parkinsonian { severity } => {
-                (1.0 - 0.3 * severity, 1.0 - 0.3 * severity, 1.2, 0.0, 0.0, 0.001 * severity)
-            }
-            PathologicalBalance::CerebellarAtaxia { severity } => {
-                (1.0 + 1.5 * severity, 1.0 + 1.5 * severity, 0.8, 0.0, 0.0, 0.02 * severity)
-            }
-            PathologicalBalance::VestibularDeficit { bias_direction, severity } => {
+            PathologicalBalance::Parkinsonian { severity } => (
+                1.0 - 0.3 * severity,
+                1.0 - 0.3 * severity,
+                1.2,
+                0.0,
+                0.0,
+                0.001 * severity,
+            ),
+            PathologicalBalance::CerebellarAtaxia { severity } => (
+                1.0 + 1.5 * severity,
+                1.0 + 1.5 * severity,
+                0.8,
+                0.0,
+                0.0,
+                0.02 * severity,
+            ),
+            PathologicalBalance::VestibularDeficit {
+                bias_direction,
+                severity,
+            } => {
                 let bias_ap = 0.02 * severity * bias_direction.cos();
                 let bias_ml = 0.02 * severity * bias_direction.sin();
-                (1.0 + 0.5 * severity, 1.0 + 0.5 * severity, 1.0, bias_ap, bias_ml, 0.005 * severity)
+                (
+                    1.0 + 0.5 * severity,
+                    1.0 + 0.5 * severity,
+                    1.0,
+                    bias_ap,
+                    bias_ml,
+                    0.005 * severity,
+                )
             }
-            PathologicalBalance::PeripheralNeuropathy { severity } => {
-                (1.0 + severity, 1.0 + 0.8 * severity, 0.9, 0.0, 0.0, 0.008 * severity)
-            }
+            PathologicalBalance::PeripheralNeuropathy { severity } => (
+                1.0 + severity,
+                1.0 + 0.8 * severity,
+                0.9,
+                0.0,
+                0.0,
+                0.008 * severity,
+            ),
             PathologicalBalance::AgeRelated { age_factor } => {
                 let mod_factor = 1.0 + 0.3 * (age_factor - 0.5).max(0.0);
-                (mod_factor, mod_factor * 0.9, 0.95, 0.0, 0.0, 0.003 * age_factor)
+                (
+                    mod_factor,
+                    mod_factor * 0.9,
+                    0.95,
+                    0.0,
+                    0.0,
+                    0.003 * age_factor,
+                )
             }
-            PathologicalBalance::Hemiparesis { affected_side, severity } => {
+            PathologicalBalance::Hemiparesis {
+                affected_side,
+                severity,
+            } => {
                 let bias = 0.03 * severity * if affected_side { 1.0 } else { -1.0 };
-                (1.0 + 0.3 * severity, 1.0 + 0.6 * severity, 1.0, 0.0, bias, 0.005 * severity)
+                (
+                    1.0 + 0.3 * severity,
+                    1.0 + 0.6 * severity,
+                    1.0,
+                    0.0,
+                    bias,
+                    0.005 * severity,
+                )
             }
-            PathologicalBalance::AnxietyStiffening { severity } => {
-                (1.0 - 0.4 * severity, 1.0 - 0.4 * severity, 1.5, 0.0, 0.0, 0.001)
-            }
+            PathologicalBalance::AnxietyStiffening { severity } => (
+                1.0 - 0.4 * severity,
+                1.0 - 0.4 * severity,
+                1.5,
+                0.0,
+                0.0,
+                0.001,
+            ),
         }
     }
 
@@ -612,10 +666,12 @@ impl CopGenerator {
             .sum();
 
         // Mean velocity
-        let mean_velocity: f64 = vel_ap.iter()
+        let mean_velocity: f64 = vel_ap
+            .iter()
             .zip(vel_ml.iter())
             .map(|(vap, vml)| (vap.powi(2) + vml.powi(2)).sqrt())
-            .sum::<f64>() / n;
+            .sum::<f64>()
+            / n;
 
         // Range
         let range_ap = cop_ap.iter().cloned().fold(f64::NEG_INFINITY, f64::max)
@@ -626,10 +682,12 @@ impl CopGenerator {
         // 95% confidence ellipse (simplified calculation)
         let var_ap = rms_ap.powi(2);
         let var_ml = rms_ml.powi(2);
-        let covar: f64 = cop_ap.iter()
+        let covar: f64 = cop_ap
+            .iter()
             .zip(cop_ml.iter())
             .map(|(a, m)| (a - mean_ap) * (m - mean_ml))
-            .sum::<f64>() / n;
+            .sum::<f64>()
+            / n;
 
         // Eigenvalues for ellipse
         let trace = var_ap + var_ml;
@@ -726,7 +784,9 @@ impl CopGenerator {
         }
 
         let mean_diff = diffs.iter().sum::<f64>() / diffs.len() as f64;
-        let std_diff = (diffs.iter().map(|d| (d - mean_diff).powi(2)).sum::<f64>() / diffs.len() as f64).sqrt();
+        let std_diff = (diffs.iter().map(|d| (d - mean_diff).powi(2)).sum::<f64>()
+            / diffs.len() as f64)
+            .sqrt();
 
         // Higher entropy for more irregular signals
         if mean_diff > 0.0 {
@@ -773,10 +833,14 @@ mod tests {
         let mut generator = CopGenerator::new(config);
 
         let bilateral = generator.generate_quiet_standing(10.0, StanceCondition::BilateralNormal);
-        let single = generator.generate_quiet_standing(10.0, StanceCondition::SingleLeg { dominant: true });
+        let single =
+            generator.generate_quiet_standing(10.0, StanceCondition::SingleLeg { dominant: true });
 
         // Single leg should have more sway
-        assert!(single.ground_truth.sway_metrics.rms_ml > bilateral.ground_truth.sway_metrics.rms_ml * 0.5);
+        assert!(
+            single.ground_truth.sway_metrics.rms_ml
+                > bilateral.ground_truth.sway_metrics.rms_ml * 0.5
+        );
     }
 
     #[test]
@@ -789,7 +853,11 @@ mod tests {
         let output = generator.generate_limits_of_stability(0.0, 5.0); // Anterior direction
 
         // Should reach significant anterior displacement
-        let max_ap = output.cop_ap.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let max_ap = output
+            .cop_ap
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
         assert!(max_ap > 0.05);
     }
 
@@ -800,11 +868,8 @@ mod tests {
             ..Default::default()
         };
         let mut generator = CopGenerator::new(config);
-        let output = generator.generate_weight_shifting(
-            WeightShiftDirection::MedioLateral,
-            0.5,
-            10.0,
-        );
+        let output =
+            generator.generate_weight_shifting(WeightShiftDirection::MedioLateral, 0.5, 10.0);
 
         assert!(!output.cop_ml.is_empty());
         assert!(output.ground_truth.sway_metrics.range_ml > 0.05);
@@ -845,6 +910,8 @@ mod tests {
         );
 
         // Parkinsonian balance typically shows reduced sway amplitude
-        assert!(pd.ground_truth.sway_metrics.rms_ap < normal.ground_truth.sway_metrics.rms_ap * 1.5);
+        assert!(
+            pd.ground_truth.sway_metrics.rms_ap < normal.ground_truth.sway_metrics.rms_ap * 1.5
+        );
     }
 }

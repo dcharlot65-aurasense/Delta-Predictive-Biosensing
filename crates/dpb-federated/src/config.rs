@@ -1,7 +1,7 @@
 //! Configuration for federated learning.
 
-use serde::{Deserialize, Serialize};
 use crate::privacy::PrivacyConfig;
+use serde::{Deserialize, Serialize};
 
 /// Configuration for federated learning.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,7 +110,6 @@ impl FedConfig {
         self
     }
 
-
     /// Set the aggregation strategy.
     pub fn with_aggregation(mut self, strategy: AggregationStrategy) -> Self {
         self.aggregation = strategy;
@@ -152,8 +151,7 @@ impl FedConfig {
 }
 
 /// Aggregation strategy for combining client updates.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum AggregationStrategy {
     /// Standard Federated Averaging.
     #[default]
@@ -168,10 +166,8 @@ pub enum AggregationStrategy {
     CoordinateMedian,
 }
 
-
 /// Client selection strategy.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ClientSelection {
     /// Select all available clients.
     #[default]
@@ -183,7 +179,6 @@ pub enum ClientSelection {
     /// Priority-based (by data quality/quantity).
     Priority,
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -255,9 +250,7 @@ mod tests {
 
     #[test]
     fn test_config_serialization() {
-        let config = FedConfig::new()
-            .with_rounds(25)
-            .with_min_clients(3);
+        let config = FedConfig::new().with_rounds(25).with_min_clients(3);
 
         let json = serde_json::to_string(&config).unwrap();
         let deserialized: FedConfig = serde_json::from_str(&json).unwrap();

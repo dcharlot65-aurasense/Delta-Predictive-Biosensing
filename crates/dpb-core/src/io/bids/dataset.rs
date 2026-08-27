@@ -180,7 +180,9 @@ impl Participant {
 
     /// Get the subject ID without the "sub-" prefix
     pub fn subject_id(&self) -> &str {
-        self.participant_id.strip_prefix("sub-").unwrap_or(&self.participant_id)
+        self.participant_id
+            .strip_prefix("sub-")
+            .unwrap_or(&self.participant_id)
     }
 }
 
@@ -251,10 +253,7 @@ impl BidsDataset {
     /// # Arguments
     /// * `path` - Path where the dataset should be created
     /// * `description` - Dataset description metadata
-    pub fn create<P: AsRef<Path>>(
-        path: P,
-        description: DatasetDescription,
-    ) -> Result<Self> {
+    pub fn create<P: AsRef<Path>>(path: P, description: DatasetDescription) -> Result<Self> {
         let root = path.as_ref().to_path_buf();
 
         // Create root directory
@@ -271,7 +270,10 @@ impl BidsDataset {
         if !readme_path.exists() {
             fs::write(
                 &readme_path,
-                format!("# {}\n\nBIDS dataset created with DPB Framework\n", description.name),
+                format!(
+                    "# {}\n\nBIDS dataset created with DPB Framework\n",
+                    description.name
+                ),
             )
             .map_err(DpbError::Io)?;
         }
@@ -313,10 +315,11 @@ impl BidsDataset {
 
             if path.is_dir()
                 && let Some(name) = path.file_name().and_then(|n| n.to_str())
-                    && name.starts_with("sub-") {
-                        let subject_id = name.strip_prefix("sub-").unwrap();
-                        subjects.push(BidsSubject::new(&self.root, subject_id));
-                    }
+                && name.starts_with("sub-")
+            {
+                let subject_id = name.strip_prefix("sub-").unwrap();
+                subjects.push(BidsSubject::new(&self.root, subject_id));
+            }
         }
 
         subjects.sort_by(|a, b| a.id().cmp(b.id()));
@@ -329,7 +332,10 @@ impl BidsDataset {
         if subject.path().exists() {
             Ok(subject)
         } else {
-            Err(DpbError::DataValidation(format!("Subject not found: {}", subject_id)))
+            Err(DpbError::DataValidation(format!(
+                "Subject not found: {}",
+                subject_id
+            )))
         }
     }
 
@@ -362,7 +368,10 @@ impl BidsDataset {
                 file,
                 "{}\t{}\t{}\t{}",
                 participant.participant_id,
-                participant.age.map(|a| a.to_string()).unwrap_or_else(|| "n/a".to_string()),
+                participant
+                    .age
+                    .map(|a| a.to_string())
+                    .unwrap_or_else(|| "n/a".to_string()),
                 participant.sex.as_deref().unwrap_or("n/a"),
                 participant.group.as_deref().unwrap_or("n/a"),
             )
@@ -391,13 +400,16 @@ impl BidsDataset {
         let mut lines = reader.lines();
 
         // Read header
-        let header = lines.next()
+        let header = lines
+            .next()
             .ok_or_else(|| DpbError::DataValidation("Empty participants.tsv".to_string()))?
             .map_err(DpbError::Io)?;
         let columns: Vec<&str> = header.split('\t').collect();
 
         // Find standard column indices
-        let id_idx = columns.iter().position(|&c| c == "participant_id")
+        let id_idx = columns
+            .iter()
+            .position(|&c| c == "participant_id")
             .ok_or_else(|| DpbError::DataValidation("Missing participant_id column".to_string()))?;
         let age_idx = columns.iter().position(|&c| c == "age");
         let sex_idx = columns.iter().position(|&c| c == "sex");
@@ -473,7 +485,10 @@ mod tests {
             .with_doi("10.1234/test");
 
         assert_eq!(desc.license, Some("CC0".to_string()));
-        assert_eq!(desc.authors, Some(vec!["Alice".to_string(), "Bob".to_string()]));
+        assert_eq!(
+            desc.authors,
+            Some(vec!["Alice".to_string(), "Bob".to_string()])
+        );
         assert_eq!(desc.dataset_doi, Some("10.1234/test".to_string()));
     }
 
@@ -489,8 +504,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let dataset_path = temp_dir.path().join("test_dataset");
 
-        let description = DatasetDescription::new("Test Dataset", "1.8.0")
-            .with_license("CC0");
+        let description = DatasetDescription::new("Test Dataset", "1.8.0").with_license("CC0");
 
         let dataset = BidsDataset::create(&dataset_path, description)?;
 

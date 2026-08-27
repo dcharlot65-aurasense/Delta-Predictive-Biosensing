@@ -155,15 +155,9 @@ pub use fhir::{
     Bundle, BundleEntry, BundleType, CodeableConcept, Coding, FhirClient, FhirClientConfig,
     FhirResource, Observation, Patient, ResourceType,
 };
-pub use format_detect::{
-    detect_format, FormatType, UnifiedBiosignalReader, UnifiedReader,
-};
-pub use gdf::{
-    GdfDataType, GdfEvent, GdfHeader, GdfReader, GdfSignal, GdfVersion, GdfWriter,
-};
-pub use wfdb::{
-    AnnotationType, WfdbAnnotation, WfdbHeader, WfdbReader, WfdbSignal, WfdbWriter,
-};
+pub use format_detect::{FormatType, UnifiedBiosignalReader, UnifiedReader, detect_format};
+pub use gdf::{GdfDataType, GdfEvent, GdfHeader, GdfReader, GdfSignal, GdfVersion, GdfWriter};
+pub use wfdb::{AnnotationType, WfdbAnnotation, WfdbHeader, WfdbReader, WfdbSignal, WfdbWriter};
 pub use xdf::{ChannelFormat, XdfFile, XdfStream, XdfStreamInfo, XdfWriter};
 
 // Re-export main BIDS types

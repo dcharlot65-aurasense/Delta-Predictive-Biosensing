@@ -107,11 +107,7 @@ pub struct BdfSignal {
 
 impl BdfSignal {
     /// Create a new BDF signal descriptor
-    pub fn new(
-        label: String,
-        physical_dimension: String,
-        samples_per_record: usize,
-    ) -> Self {
+    pub fn new(label: String, physical_dimension: String, samples_per_record: usize) -> Self {
         // Default ranges for 24-bit data
         let digital_min = -8388608; // -2^23
         let digital_max = 8388607; // 2^23 - 1
@@ -275,9 +271,7 @@ impl BdfReader {
         let header_bytes = 256 + signals.len() * 256;
 
         // Find status channel
-        let status_channel_index = signals
-            .iter()
-            .position(|s| s.is_status_channel());
+        let status_channel_index = signals.iter().position(|s| s.is_status_channel());
 
         Ok(Self {
             file,
@@ -373,11 +367,9 @@ impl BdfReader {
                     .parse()
                     .map_err(|_| DpbError::DataValidation("Invalid digital max".to_string()))?,
                 prefiltering: prefiltering[i].clone(),
-                samples_per_record: samples_per_record[i]
-                    .parse()
-                    .map_err(|_| {
-                        DpbError::DataValidation("Invalid samples per record".to_string())
-                    })?,
+                samples_per_record: samples_per_record[i].parse().map_err(|_| {
+                    DpbError::DataValidation("Invalid samples per record".to_string())
+                })?,
             };
             signals.push(signal);
         }
@@ -449,9 +441,7 @@ impl BdfReader {
         }
 
         if self.header.n_records < 0 {
-            return Err(DpbError::Other(
-                "Unknown number of records".to_string(),
-            ));
+            return Err(DpbError::Other("Unknown number of records".to_string()));
         }
 
         let signal = &self.signals[signal_index];
@@ -459,11 +449,7 @@ impl BdfReader {
         let mut samples = Vec::with_capacity(total_samples);
 
         // Calculate bytes per record (24-bit = 3 bytes per sample)
-        let bytes_per_record: usize = self
-            .signals
-            .iter()
-            .map(|s| s.samples_per_record * 3)
-            .sum();
+        let bytes_per_record: usize = self.signals.iter().map(|s| s.samples_per_record * 3).sum();
 
         // Calculate offset to this signal's data within each record
         let signal_offset: usize = self.signals[0..signal_index]
@@ -472,8 +458,7 @@ impl BdfReader {
             .sum();
 
         // Seek to start of data records
-        self.file
-            .seek(SeekFrom::Start(self.header_bytes as u64))?;
+        self.file.seek(SeekFrom::Start(self.header_bytes as u64))?;
 
         // Read each record
         let mut record_buffer = vec![0u8; bytes_per_record];
@@ -482,8 +467,8 @@ impl BdfReader {
             self.file.read_exact(&mut record_buffer)?;
 
             // Extract this signal's samples from the record
-            let signal_bytes = &record_buffer
-                [signal_offset..signal_offset + signal.samples_per_record * 3];
+            let signal_bytes =
+                &record_buffer[signal_offset..signal_offset + signal.samples_per_record * 3];
 
             for chunk in signal_bytes.as_chunks::<3>().0 {
                 let digital = Self::read_int24(chunk);
@@ -497,32 +482,25 @@ impl BdfReader {
 
     /// Read status channel and extract triggers
     pub fn read_triggers(&mut self) -> Result<Vec<BdfTrigger>> {
-        let status_index = self.status_channel_index.ok_or_else(|| {
-            DpbError::Other("No status channel found in BDF file".to_string())
-        })?;
+        let status_index = self
+            .status_channel_index
+            .ok_or_else(|| DpbError::Other("No status channel found in BDF file".to_string()))?;
 
         if self.header.n_records < 0 {
-            return Err(DpbError::Other(
-                "Unknown number of records".to_string(),
-            ));
+            return Err(DpbError::Other("Unknown number of records".to_string()));
         }
 
         let signal = &self.signals[status_index];
         let mut triggers = Vec::new();
 
-        let bytes_per_record: usize = self
-            .signals
-            .iter()
-            .map(|s| s.samples_per_record * 3)
-            .sum();
+        let bytes_per_record: usize = self.signals.iter().map(|s| s.samples_per_record * 3).sum();
 
         let signal_offset: usize = self.signals[0..status_index]
             .iter()
             .map(|s| s.samples_per_record * 3)
             .sum();
 
-        self.file
-            .seek(SeekFrom::Start(self.header_bytes as u64))?;
+        self.file.seek(SeekFrom::Start(self.header_bytes as u64))?;
 
         let mut record_buffer = vec![0u8; bytes_per_record];
         let mut sample_counter = 0;
@@ -530,8 +508,8 @@ impl BdfReader {
         for _ in 0..self.header.n_records {
             self.file.read_exact(&mut record_buffer)?;
 
-            let signal_bytes = &record_buffer
-                [signal_offset..signal_offset + signal.samples_per_record * 3];
+            let signal_bytes =
+                &record_buffer[signal_offset..signal_offset + signal.samples_per_record * 3];
 
             for chunk in signal_bytes.as_chunks::<3>().0 {
                 let status_value = Self::read_int24(chunk);
@@ -551,9 +529,7 @@ impl BdfReader {
     /// Read a specific data record (all signals)
     pub fn read_record(&mut self, record_index: usize) -> Result<Vec<Vec<f64>>> {
         if self.header.n_records < 0 {
-            return Err(DpbError::Other(
-                "Unknown number of records".to_string(),
-            ));
+            return Err(DpbError::Other("Unknown number of records".to_string()));
         }
 
         if record_index >= self.header.n_records as usize {
@@ -564,15 +540,10 @@ impl BdfReader {
             )));
         }
 
-        let bytes_per_record: usize = self
-            .signals
-            .iter()
-            .map(|s| s.samples_per_record * 3)
-            .sum();
+        let bytes_per_record: usize = self.signals.iter().map(|s| s.samples_per_record * 3).sum();
 
         let record_offset = self.header_bytes + record_index * bytes_per_record;
-        self.file
-            .seek(SeekFrom::Start(record_offset as u64))?;
+        self.file.seek(SeekFrom::Start(record_offset as u64))?;
 
         let mut record_buffer = vec![0u8; bytes_per_record];
         self.file.read_exact(&mut record_buffer)?;
@@ -649,7 +620,12 @@ impl BdfWriter {
         Self::write_field(&mut buffer, 176, 8, &self.header.start_time);
         Self::write_field(&mut buffer, 184, 8, &header_bytes.to_string());
         Self::write_field(&mut buffer, 236, 8, &self.header.n_records.to_string());
-        Self::write_field(&mut buffer, 244, 8, &self.header.record_duration.to_string());
+        Self::write_field(
+            &mut buffer,
+            244,
+            8,
+            &self.header.record_duration.to_string(),
+        );
         Self::write_field(&mut buffer, 252, 4, &self.header.n_signals.to_string());
 
         self.file.write_all(&buffer)?;
@@ -658,7 +634,9 @@ impl BdfWriter {
         let signal_header_size = self.header.n_signals * 256;
         let mut signal_buffer = vec![b' '; signal_header_size];
 
-        Self::write_signal_field(&mut signal_buffer, 0, 16, &self.signals, |s| s.label.clone());
+        Self::write_signal_field(&mut signal_buffer, 0, 16, &self.signals, |s| {
+            s.label.clone()
+        });
         Self::write_signal_field(&mut signal_buffer, 16, 80, &self.signals, |s| {
             s.transducer_type.clone()
         });
@@ -829,13 +807,9 @@ mod tests {
 
     #[test]
     fn test_header_builder() {
-        let header = BdfHeader::new(
-            "Patient X".to_string(),
-            "Recording Y".to_string(),
-            4,
-        )
-        .with_start_datetime("01.01.20".to_string(), "12.00.00".to_string())
-        .with_records(100, 1.0);
+        let header = BdfHeader::new("Patient X".to_string(), "Recording Y".to_string(), 4)
+            .with_start_datetime("01.01.20".to_string(), "12.00.00".to_string())
+            .with_records(100, 1.0);
 
         assert_eq!(header.version, 255);
         assert!(header.is_bdf());

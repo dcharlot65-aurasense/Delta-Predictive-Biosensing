@@ -90,9 +90,7 @@ impl ANNToSNNConverter {
             WeightNormalizationMethod::DataBased => {
                 self.data_based_normalization(weights, layer_idx)
             }
-            WeightNormalizationMethod::ModelBased => {
-                self.model_based_normalization(weights)
-            }
+            WeightNormalizationMethod::ModelBased => self.model_based_normalization(weights),
             WeightNormalizationMethod::Hybrid => {
                 // Combine both methods
                 let data_norm = self.data_based_normalization(weights, layer_idx);
@@ -120,7 +118,9 @@ impl ANNToSNNConverter {
     /// Model-based normalization using weight statistics
     fn model_based_normalization(&self, weights: &Tensor) -> Tensor {
         // Find max absolute weight
-        let max_weight = weights.data.iter()
+        let max_weight = weights
+            .data
+            .iter()
             .map(|&w| w.abs())
             .fold(0.0f32, |a, b| a.max(b));
 
@@ -217,7 +217,8 @@ impl ANNToSNNConverter {
                 0.0
             };
 
-            new_bias_data[oc] = scale_factors[oc] * (old_bias - bn_mean.data[oc]) + bn_beta.data[oc];
+            new_bias_data[oc] =
+                scale_factors[oc] * (old_bias - bn_mean.data[oc]) + bn_beta.data[oc];
         }
 
         (
@@ -238,7 +239,9 @@ impl ANNToSNNConverter {
         // Higher activation = higher spike rate
         let num_timesteps = self.config.num_timesteps as f32;
 
-        let spike_data: Vec<f32> = activation.data.iter()
+        let spike_data: Vec<f32> = activation
+            .data
+            .iter()
             .map(|&act| {
                 // Clip to [0, 1] range
                 let rate = act.clamp(0.0, 1.0);
@@ -269,25 +272,43 @@ impl ANNToSNNConverter {
         report.push_str("================================\n\n");
 
         report.push_str("Configuration:\n");
-        report.push_str(&format!("  Weight Normalization: {:?}\n", self.config.weight_norm));
-        report.push_str(&format!("  Threshold Strategy: {:?}\n", self.config.threshold_strategy));
+        report.push_str(&format!(
+            "  Weight Normalization: {:?}\n",
+            self.config.weight_norm
+        ));
+        report.push_str(&format!(
+            "  Threshold Strategy: {:?}\n",
+            self.config.threshold_strategy
+        ));
         report.push_str(&format!("  Time Steps: {}\n", self.config.num_timesteps));
-        report.push_str(&format!("  Bias Correction: {}\n", self.config.bias_correction));
-        report.push_str(&format!("  BatchNorm Folding: {}\n\n", self.config.fold_batchnorm));
+        report.push_str(&format!(
+            "  Bias Correction: {}\n",
+            self.config.bias_correction
+        ));
+        report.push_str(&format!(
+            "  BatchNorm Folding: {}\n\n",
+            self.config.fold_batchnorm
+        ));
 
         if !self.layer_thresholds.is_empty() {
             report.push_str("Layer Statistics:\n");
-            for (i, (threshold, scale)) in self.layer_thresholds.iter()
+            for (i, (threshold, scale)) in self
+                .layer_thresholds
+                .iter()
                 .zip(self.layer_scales.iter())
                 .enumerate()
             {
-                report.push_str(&format!("  Layer {}: threshold={:.4}, scale={:.4}\n",
-                                        i, threshold, scale));
+                report.push_str(&format!(
+                    "  Layer {}: threshold={:.4}, scale={:.4}\n",
+                    i, threshold, scale
+                ));
             }
         }
 
-        report.push_str(&format!("\nEstimated Accuracy Loss: {:.2}%\n",
-                                self.estimate_accuracy_loss(self.layer_thresholds.len()) * 100.0));
+        report.push_str(&format!(
+            "\nEstimated Accuracy Loss: {:.2}%\n",
+            self.estimate_accuracy_loss(self.layer_thresholds.len()) * 100.0
+        ));
 
         report
     }
@@ -316,7 +337,8 @@ pub fn convert_model_to_snn(
     converter.calibrate(&weights, sample_data);
 
     // Normalize all weights
-    let normalized_weights: Vec<Tensor> = weights.iter()
+    let normalized_weights: Vec<Tensor> = weights
+        .iter()
         .enumerate()
         .map(|(i, w)| converter.normalize_weights(w, i))
         .collect();
@@ -325,7 +347,8 @@ pub fn convert_model_to_snn(
     let processed_biases = if converter.config.bias_correction {
         biases.clone()
     } else {
-        biases.iter()
+        biases
+            .iter()
             .map(|b| Tensor::zeros(b.shape.clone()))
             .collect()
     };
@@ -432,16 +455,10 @@ mod tests {
             Tensor::from_vec(vec![0.3, 0.4], vec![2]),
         ];
 
-        let sample_data = vec![
-            Tensor::from_vec(vec![1.0, 0.5], vec![2]),
-        ];
+        let sample_data = vec![Tensor::from_vec(vec![1.0, 0.5], vec![2])];
 
-        let (norm_weights, norm_biases, converter) = convert_model_to_snn(
-            weights,
-            biases,
-            &sample_data,
-            None,
-        );
+        let (norm_weights, norm_biases, converter) =
+            convert_model_to_snn(weights, biases, &sample_data, None);
 
         assert_eq!(norm_weights.len(), 2);
         assert_eq!(norm_biases.len(), 2);

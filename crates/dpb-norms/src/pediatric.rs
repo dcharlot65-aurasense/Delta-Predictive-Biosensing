@@ -236,9 +236,10 @@ impl PediatricReference {
 
         // Check sex (None means applies to both)
         if let Some(ref_sex) = self.sex
-            && ref_sex != sex {
-                return false;
-            }
+            && ref_sex != sex
+        {
+            return false;
+        }
 
         true
     }
@@ -286,12 +287,7 @@ impl PediatricNormativeDb {
     }
 
     /// Lookup the best matching reference
-    pub fn lookup(
-        &self,
-        metric: &str,
-        age_months: u16,
-        sex: Sex,
-    ) -> Option<&PediatricReference> {
+    pub fn lookup(&self, metric: &str, age_months: u16, sex: Sex) -> Option<&PediatricReference> {
         let refs = self.references.get(metric)?;
 
         // Find exact match first (sex-specific and age-matched)
@@ -320,13 +316,7 @@ impl PediatricNormativeDb {
     }
 
     /// Get z-score for a value
-    pub fn get_z_score(
-        &self,
-        metric: &str,
-        value: f64,
-        age_months: u16,
-        sex: Sex,
-    ) -> Option<f64> {
+    pub fn get_z_score(&self, metric: &str, value: f64, age_months: u16, sex: Sex) -> Option<f64> {
         let reference = self.lookup(metric, age_months, sex)?;
         Some(reference.z_score(value))
     }
@@ -340,37 +330,47 @@ impl PediatricNormativeDb {
 
         self.add_reference(PediatricReference::new(
             "hrv_sdnn".to_string(),
-            0, 12,    // Infant
+            0,
+            12, // Infant
             None,
-            85.0, 20.0,
+            85.0,
+            20.0,
         ));
 
         self.add_reference(PediatricReference::new(
             "hrv_sdnn".to_string(),
-            13, 36,   // Toddler
+            13,
+            36, // Toddler
             None,
-            100.0, 22.0,
+            100.0,
+            22.0,
         ));
 
         self.add_reference(PediatricReference::new(
             "hrv_sdnn".to_string(),
-            37, 60,   // Preschool
+            37,
+            60, // Preschool
             None,
-            110.0, 25.0,
+            110.0,
+            25.0,
         ));
 
         self.add_reference(PediatricReference::new(
             "hrv_sdnn".to_string(),
-            61, 144,  // School-age
+            61,
+            144, // School-age
             None,
-            125.0, 28.0,
+            125.0,
+            28.0,
         ));
 
         self.add_reference(PediatricReference::new(
             "hrv_sdnn".to_string(),
-            145, 216, // Adolescent
+            145,
+            216, // Adolescent
             None,
-            135.0, 30.0,
+            135.0,
+            30.0,
         ));
 
         // === Gait Velocity (m/s) ===
@@ -378,37 +378,47 @@ impl PediatricNormativeDb {
 
         self.add_reference(PediatricReference::new(
             "gait_velocity".to_string(),
-            13, 36,   // Toddler (early walkers)
+            13,
+            36, // Toddler (early walkers)
             None,
-            0.65, 0.15,
+            0.65,
+            0.15,
         ));
 
         self.add_reference(PediatricReference::new(
             "gait_velocity".to_string(),
-            37, 60,   // Preschool
+            37,
+            60, // Preschool
             None,
-            0.90, 0.12,
+            0.90,
+            0.12,
         ));
 
         self.add_reference(PediatricReference::new(
             "gait_velocity".to_string(),
-            61, 144,  // School-age
+            61,
+            144, // School-age
             None,
-            1.15, 0.15,
+            1.15,
+            0.15,
         ));
 
         self.add_reference(PediatricReference::new(
             "gait_velocity".to_string(),
-            145, 216, // Adolescent (approaching adult values)
+            145,
+            216, // Adolescent (approaching adult values)
             Some(Sex::Male),
-            1.30, 0.12,
+            1.30,
+            0.12,
         ));
 
         self.add_reference(PediatricReference::new(
             "gait_velocity".to_string(),
-            145, 216, // Adolescent
+            145,
+            216, // Adolescent
             Some(Sex::Female),
-            1.25, 0.12,
+            1.25,
+            0.12,
         ));
 
         // === Reaction Time (ms) ===
@@ -416,30 +426,38 @@ impl PediatricNormativeDb {
 
         self.add_reference(PediatricReference::new(
             "simple_reaction_time".to_string(),
-            61, 96,   // 5-8 years
+            61,
+            96, // 5-8 years
             None,
-            450.0, 80.0,
+            450.0,
+            80.0,
         ));
 
         self.add_reference(PediatricReference::new(
             "simple_reaction_time".to_string(),
-            97, 144,  // 9-12 years
+            97,
+            144, // 9-12 years
             None,
-            350.0, 60.0,
+            350.0,
+            60.0,
         ));
 
         self.add_reference(PediatricReference::new(
             "simple_reaction_time".to_string(),
-            145, 180, // 13-15 years
+            145,
+            180, // 13-15 years
             None,
-            290.0, 50.0,
+            290.0,
+            50.0,
         ));
 
         self.add_reference(PediatricReference::new(
             "simple_reaction_time".to_string(),
-            181, 216, // 16-17 years (approaching adult)
+            181,
+            216, // 16-17 years (approaching adult)
             None,
-            260.0, 45.0,
+            260.0,
+            45.0,
         ));
 
         // === Grip Strength (kg) ===
@@ -447,44 +465,56 @@ impl PediatricNormativeDb {
 
         self.add_reference(PediatricReference::new(
             "grip_strength".to_string(),
-            61, 96,   // 5-8 years
+            61,
+            96, // 5-8 years
             None,
-            10.0, 3.0,
+            10.0,
+            3.0,
         ));
 
         self.add_reference(PediatricReference::new(
             "grip_strength".to_string(),
-            97, 144,  // 9-12 years
+            97,
+            144, // 9-12 years
             None,
-            18.0, 5.0,
+            18.0,
+            5.0,
         ));
 
         self.add_reference(PediatricReference::new(
             "grip_strength".to_string(),
-            145, 180, // 13-15 years
+            145,
+            180, // 13-15 years
             Some(Sex::Male),
-            32.0, 8.0,
+            32.0,
+            8.0,
         ));
 
         self.add_reference(PediatricReference::new(
             "grip_strength".to_string(),
-            145, 180, // 13-15 years
+            145,
+            180, // 13-15 years
             Some(Sex::Female),
-            24.0, 6.0,
+            24.0,
+            6.0,
         ));
 
         self.add_reference(PediatricReference::new(
             "grip_strength".to_string(),
-            181, 216, // 16-17 years
+            181,
+            216, // 16-17 years
             Some(Sex::Male),
-            42.0, 9.0,
+            42.0,
+            9.0,
         ));
 
         self.add_reference(PediatricReference::new(
             "grip_strength".to_string(),
-            181, 216, // 16-17 years
+            181,
+            216, // 16-17 years
             Some(Sex::Female),
-            28.0, 6.0,
+            28.0,
+            6.0,
         ));
 
         // === HRV RMSSD (ms) ===
@@ -492,30 +522,38 @@ impl PediatricNormativeDb {
 
         self.add_reference(PediatricReference::new(
             "hrv_rmssd".to_string(),
-            0, 12,    // Infant
+            0,
+            12, // Infant
             None,
-            35.0, 15.0,
+            35.0,
+            15.0,
         ));
 
         self.add_reference(PediatricReference::new(
             "hrv_rmssd".to_string(),
-            13, 60,   // Toddler + Preschool
+            13,
+            60, // Toddler + Preschool
             None,
-            42.0, 18.0,
+            42.0,
+            18.0,
         ));
 
         self.add_reference(PediatricReference::new(
             "hrv_rmssd".to_string(),
-            61, 144,  // School-age
+            61,
+            144, // School-age
             None,
-            50.0, 20.0,
+            50.0,
+            20.0,
         ));
 
         self.add_reference(PediatricReference::new(
             "hrv_rmssd".to_string(),
-            145, 216, // Adolescent
+            145,
+            216, // Adolescent
             None,
-            55.0, 22.0,
+            55.0,
+            22.0,
         ));
     }
 

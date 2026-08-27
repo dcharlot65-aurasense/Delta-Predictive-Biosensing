@@ -52,8 +52,7 @@ pub enum SkeletonError {
 }
 
 /// Camera view for 3D to 2D projection
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum CameraView {
     /// Front view (XY plane, Z depth)
     #[default]
@@ -65,7 +64,6 @@ pub enum CameraView {
     /// Oblique view (45° rotation)
     Oblique,
 }
-
 
 /// Rendering style for skeleton visualization
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,11 +95,11 @@ pub struct RenderStyle {
 impl Default for RenderStyle {
     fn default() -> Self {
         Self {
-            background_color: [0, 0, 0],        // Black background
-            bone_color: [255, 255, 255],        // White bones
-            joint_color: [255, 200, 0],         // Yellow joints
-            left_color: [0, 150, 255],          // Blue for left side
-            right_color: [255, 100, 100],       // Red for right side
+            background_color: [0, 0, 0],  // Black background
+            bone_color: [255, 255, 255],  // White bones
+            joint_color: [255, 200, 0],   // Yellow joints
+            left_color: [0, 150, 255],    // Blue for left side
+            right_color: [255, 100, 100], // Red for right side
             line_thickness: 2,
             joint_radius: 4,
             draw_joints: true,
@@ -116,11 +114,11 @@ impl RenderStyle {
     /// Clinical style (high contrast, clear visualization)
     pub fn clinical() -> Self {
         Self {
-            background_color: [240, 240, 240],  // Light gray
-            bone_color: [50, 50, 50],           // Dark gray bones
-            joint_color: [200, 0, 0],           // Red joints
-            left_color: [0, 100, 200],          // Blue left
-            right_color: [200, 0, 0],           // Red right
+            background_color: [240, 240, 240], // Light gray
+            bone_color: [50, 50, 50],          // Dark gray bones
+            joint_color: [200, 0, 0],          // Red joints
+            left_color: [0, 100, 200],         // Blue left
+            right_color: [200, 0, 0],          // Red right
             line_thickness: 3,
             joint_radius: 5,
             draw_joints: true,
@@ -151,10 +149,10 @@ impl RenderStyle {
     pub fn neon() -> Self {
         Self {
             background_color: [10, 10, 30],
-            bone_color: [0, 255, 200],          // Cyan bones
-            joint_color: [255, 0, 255],         // Magenta joints
-            left_color: [0, 200, 255],          // Cyan left
-            right_color: [255, 100, 200],       // Pink right
+            bone_color: [0, 255, 200],    // Cyan bones
+            joint_color: [255, 0, 255],   // Magenta joints
+            left_color: [0, 200, 255],    // Cyan left
+            right_color: [255, 100, 200], // Pink right
             line_thickness: 2,
             joint_radius: 4,
             draw_joints: true,
@@ -272,13 +270,11 @@ impl PoseLandmarks {
             (Self::RIGHT_EYE, Self::RIGHT_EYE_OUTER, false),
             (Self::RIGHT_EYE_OUTER, Self::RIGHT_EAR, false),
             (Self::MOUTH_LEFT, Self::MOUTH_RIGHT, true),
-
             // Torso
             (Self::LEFT_SHOULDER, Self::RIGHT_SHOULDER, true),
             (Self::LEFT_SHOULDER, Self::LEFT_HIP, true),
             (Self::RIGHT_SHOULDER, Self::RIGHT_HIP, false),
             (Self::LEFT_HIP, Self::RIGHT_HIP, true),
-
             // Left arm
             (Self::LEFT_SHOULDER, Self::LEFT_ELBOW, true),
             (Self::LEFT_ELBOW, Self::LEFT_WRIST, true),
@@ -286,7 +282,6 @@ impl PoseLandmarks {
             (Self::LEFT_WRIST, Self::LEFT_INDEX, true),
             (Self::LEFT_WRIST, Self::LEFT_THUMB, true),
             (Self::LEFT_PINKY, Self::LEFT_INDEX, true),
-
             // Right arm
             (Self::RIGHT_SHOULDER, Self::RIGHT_ELBOW, false),
             (Self::RIGHT_ELBOW, Self::RIGHT_WRIST, false),
@@ -294,14 +289,12 @@ impl PoseLandmarks {
             (Self::RIGHT_WRIST, Self::RIGHT_INDEX, false),
             (Self::RIGHT_WRIST, Self::RIGHT_THUMB, false),
             (Self::RIGHT_PINKY, Self::RIGHT_INDEX, false),
-
             // Left leg
             (Self::LEFT_HIP, Self::LEFT_KNEE, true),
             (Self::LEFT_KNEE, Self::LEFT_ANKLE, true),
             (Self::LEFT_ANKLE, Self::LEFT_HEEL, true),
             (Self::LEFT_HEEL, Self::LEFT_FOOT_INDEX, true),
             (Self::LEFT_ANKLE, Self::LEFT_FOOT_INDEX, true),
-
             // Right leg
             (Self::RIGHT_HIP, Self::RIGHT_KNEE, false),
             (Self::RIGHT_KNEE, Self::RIGHT_ANKLE, false),
@@ -351,27 +344,22 @@ impl HandLandmarks {
             (Self::INDEX_MCP, Self::MIDDLE_MCP),
             (Self::MIDDLE_MCP, Self::RING_MCP),
             (Self::RING_MCP, Self::PINKY_MCP),
-
             // Thumb
             (Self::THUMB_CMC, Self::THUMB_MCP),
             (Self::THUMB_MCP, Self::THUMB_IP),
             (Self::THUMB_IP, Self::THUMB_TIP),
-
             // Index finger
             (Self::INDEX_MCP, Self::INDEX_PIP),
             (Self::INDEX_PIP, Self::INDEX_DIP),
             (Self::INDEX_DIP, Self::INDEX_TIP),
-
             // Middle finger
             (Self::MIDDLE_MCP, Self::MIDDLE_PIP),
             (Self::MIDDLE_PIP, Self::MIDDLE_DIP),
             (Self::MIDDLE_DIP, Self::MIDDLE_TIP),
-
             // Ring finger
             (Self::RING_MCP, Self::RING_PIP),
             (Self::RING_PIP, Self::RING_DIP),
             (Self::RING_DIP, Self::RING_TIP),
-
             // Pinky finger
             (Self::PINKY_MCP, Self::PINKY_PIP),
             (Self::PINKY_PIP, Self::PINKY_DIP),
@@ -382,11 +370,11 @@ impl HandLandmarks {
     /// Get finger colors for visualization
     pub fn finger_colors() -> Vec<([u8; 3], Vec<usize>)> {
         vec![
-            ([255, 128, 0], vec![1, 2, 3, 4]),       // Thumb - orange
-            ([255, 0, 128], vec![5, 6, 7, 8]),       // Index - pink
-            ([128, 0, 255], vec![9, 10, 11, 12]),   // Middle - purple
-            ([0, 128, 255], vec![13, 14, 15, 16]),  // Ring - blue
-            ([0, 255, 128], vec![17, 18, 19, 20]),  // Pinky - green
+            ([255, 128, 0], vec![1, 2, 3, 4]),     // Thumb - orange
+            ([255, 0, 128], vec![5, 6, 7, 8]),     // Index - pink
+            ([128, 0, 255], vec![9, 10, 11, 12]),  // Middle - purple
+            ([0, 128, 255], vec![13, 14, 15, 16]), // Ring - blue
+            ([0, 255, 128], vec![17, 18, 19, 20]), // Pinky - green
         ]
     }
 }
@@ -455,10 +443,8 @@ impl SkeletonRenderer {
 
     /// Calculate bounding box of keypoints
     fn calculate_bounds(&self, keypoints: &[[f64; 3]]) -> (f32, f32, f32, f32) {
-        let projected: Vec<(f32, f32, f32)> = keypoints
-            .iter()
-            .map(|p| self.project_point(p))
-            .collect();
+        let projected: Vec<(f32, f32, f32)> =
+            keypoints.iter().map(|p| self.project_point(p)).collect();
 
         let min_x = projected.iter().map(|p| p.0).fold(f32::MAX, f32::min);
         let max_x = projected.iter().map(|p| p.0).fold(f32::MIN, f32::max);
@@ -469,7 +455,16 @@ impl SkeletonRenderer {
     }
 
     /// Draw a line on the image (Bresenham's algorithm)
-    fn draw_line(&self, img: &mut RgbImage, x0: i32, y0: i32, x1: i32, y1: i32, color: Rgb<u8>, thickness: u32) {
+    fn draw_line(
+        &self,
+        img: &mut RgbImage,
+        x0: i32,
+        y0: i32,
+        x1: i32,
+        y1: i32,
+        color: Rgb<u8>,
+        thickness: u32,
+    ) {
         let (width, height) = self.params.resolution;
 
         // For thickness > 1, draw multiple parallel lines
@@ -534,7 +529,13 @@ impl SkeletonRenderer {
     }
 
     /// Apply depth shading to a color
-    fn apply_depth_shading(&self, color: [u8; 3], depth: f32, min_depth: f32, max_depth: f32) -> Rgb<u8> {
+    fn apply_depth_shading(
+        &self,
+        color: [u8; 3],
+        depth: f32,
+        min_depth: f32,
+        max_depth: f32,
+    ) -> Rgb<u8> {
         if !self.params.style.depth_shading {
             return Rgb(color);
         }
@@ -560,17 +561,12 @@ impl SkeletonRenderer {
         }
 
         let (width, height) = self.params.resolution;
-        let mut img = ImageBuffer::from_pixel(
-            width,
-            height,
-            Rgb(self.params.style.background_color),
-        );
+        let mut img =
+            ImageBuffer::from_pixel(width, height, Rgb(self.params.style.background_color));
 
         let bounds = self.calculate_bounds(keypoints);
-        let projected: Vec<(f32, f32, f32)> = keypoints
-            .iter()
-            .map(|p| self.project_point(p))
-            .collect();
+        let projected: Vec<(f32, f32, f32)> =
+            keypoints.iter().map(|p| self.project_point(p)).collect();
 
         // Calculate depth range for shading
         let min_depth = projected.iter().map(|p| p.2).fold(f32::MAX, f32::min);
@@ -597,7 +593,15 @@ impl SkeletonRenderer {
             let avg_depth = (p1.2 + p2.2) / 2.0;
             let color = self.apply_depth_shading(base_color, avg_depth, min_depth, max_depth);
 
-            self.draw_line(&mut img, x1, y1, x2, y2, color, self.params.style.line_thickness);
+            self.draw_line(
+                &mut img,
+                x1,
+                y1,
+                x2,
+                y2,
+                color,
+                self.params.style.line_thickness,
+            );
         }
 
         // Draw joints
@@ -635,17 +639,12 @@ impl SkeletonRenderer {
         }
 
         let (width, height) = self.params.resolution;
-        let mut img = ImageBuffer::from_pixel(
-            width,
-            height,
-            Rgb(self.params.style.background_color),
-        );
+        let mut img =
+            ImageBuffer::from_pixel(width, height, Rgb(self.params.style.background_color));
 
         let bounds = self.calculate_bounds(keypoints);
-        let projected: Vec<(f32, f32, f32)> = keypoints
-            .iter()
-            .map(|p| self.project_point(p))
-            .collect();
+        let projected: Vec<(f32, f32, f32)> =
+            keypoints.iter().map(|p| self.project_point(p)).collect();
 
         let min_depth = projected.iter().map(|p| p.2).fold(f32::MAX, f32::min);
         let max_depth = projected.iter().map(|p| p.2).fold(f32::MIN, f32::max);
@@ -677,7 +676,15 @@ impl SkeletonRenderer {
             let avg_depth = (p1.2 + p2.2) / 2.0;
             let color = self.apply_depth_shading(base_color, avg_depth, min_depth, max_depth);
 
-            self.draw_line(&mut img, x1, y1, x2, y2, color, self.params.style.line_thickness);
+            self.draw_line(
+                &mut img,
+                x1,
+                y1,
+                x2,
+                y2,
+                color,
+                self.params.style.line_thickness,
+            );
         }
 
         // Draw joints
@@ -770,12 +777,7 @@ impl SkeletonRenderer {
     }
 
     /// Get ffmpeg command to encode frame sequence to video
-    pub fn get_ffmpeg_command(
-        &self,
-        frame_dir: &Path,
-        prefix: &str,
-        output_path: &Path,
-    ) -> String {
+    pub fn get_ffmpeg_command(&self, frame_dir: &Path, prefix: &str, output_path: &Path) -> String {
         format!(
             "ffmpeg -framerate {} -i {}/{}_%06d.png -c:v libx264 -pix_fmt yuv420p {}",
             self.params.fps,
@@ -914,7 +916,10 @@ mod tests {
         let keypoints = vec![[0.0, 0.0, 0.0]; 10]; // Wrong count
 
         let result = renderer.render_pose(&keypoints);
-        assert!(matches!(result, Err(SkeletonError::InvalidKeypointCount { .. })));
+        assert!(matches!(
+            result,
+            Err(SkeletonError::InvalidKeypointCount { .. })
+        ));
     }
 
     #[test]
@@ -936,14 +941,22 @@ mod tests {
         let landmarks = vec![[0.0, 0.0, 0.0]; 10]; // Wrong count
 
         let result = renderer.render_hand(&landmarks, false);
-        assert!(matches!(result, Err(SkeletonError::InvalidKeypointCount { .. })));
+        assert!(matches!(
+            result,
+            Err(SkeletonError::InvalidKeypointCount { .. })
+        ));
     }
 
     #[test]
     fn test_camera_views() {
         let keypoints = create_test_pose();
 
-        for view in [CameraView::Front, CameraView::Side, CameraView::TopDown, CameraView::Oblique] {
+        for view in [
+            CameraView::Front,
+            CameraView::Side,
+            CameraView::TopDown,
+            CameraView::Oblique,
+        ] {
             let params = SkeletonParams {
                 camera_view: view,
                 ..Default::default()

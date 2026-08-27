@@ -3,9 +3,9 @@
 //! Uses spiking attention mechanisms to learn which modalities are
 //! relevant for the current input context.
 
-use super::{FusionNetwork, FusionConfig, Modality};
-use crate::{SpikeTensor, SpikingLinear, SpikingAttention, SNNResult, SNNError, NeuronParams};
+use super::{FusionConfig, FusionNetwork, Modality};
 use crate::layers::SpikingLayer;
+use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor, SpikingAttention, SpikingLinear};
 use std::collections::HashMap;
 
 /// Cross-modal attention fusion network
@@ -37,7 +37,14 @@ impl CrossModalAttentionSNN {
             let input_size = modality.default_feature_dim();
             encoders.insert(
                 *modality,
-                SpikingLinear::new(input_size, config.hidden_size, true, neuron_params.clone(), dt, adaptive),
+                SpikingLinear::new(
+                    input_size,
+                    config.hidden_size,
+                    true,
+                    neuron_params.clone(),
+                    dt,
+                    adaptive,
+                ),
             );
         }
 
@@ -101,14 +108,17 @@ impl FusionNetwork for CrossModalAttentionSNN {
         let mut encoded = Vec::new();
         for modality in &self.config.modalities {
             if let Some(input) = inputs.get(modality)
-                && let Some(encoder) = self.encoders.get_mut(modality) {
-                    let enc = encoder.forward(input)?;
-                    encoded.push(enc);
-                }
+                && let Some(encoder) = self.encoders.get_mut(modality)
+            {
+                let enc = encoder.forward(input)?;
+                encoded.push(enc);
+            }
         }
 
         if encoded.is_empty() {
-            return Err(SNNError::InvalidConfig("No valid modality encodings".to_string()));
+            return Err(SNNError::InvalidConfig(
+                "No valid modality encodings".to_string(),
+            ));
         }
 
         // Stack encodings: average pool for now (simplification)
@@ -116,8 +126,10 @@ impl FusionNetwork for CrossModalAttentionSNN {
         let mut x = encoded[0].clone();
         for enc in &encoded[1..] {
             match (&x.data, &enc.data) {
-                (crate::SpikeRepresentation::Dense(arr1),
-                 crate::SpikeRepresentation::Dense(arr2)) => {
+                (
+                    crate::SpikeRepresentation::Dense(arr1),
+                    crate::SpikeRepresentation::Dense(arr2),
+                ) => {
                     x = SpikeTensor::from_dense(arr1 + arr2, x.requires_grad);
                 }
                 _ => return Err(SNNError::InvalidConfig("Sparse not supported".to_string())),
@@ -127,10 +139,7 @@ impl FusionNetwork for CrossModalAttentionSNN {
         // Normalize by number of modalities
         match &x.data {
             crate::SpikeRepresentation::Dense(arr) => {
-                x = SpikeTensor::from_dense(
-                    arr / (encoded.len() as f32),
-                    x.requires_grad,
-                );
+                x = SpikeTensor::from_dense(arr / (encoded.len() as f32), x.requires_grad);
             }
             _ => return Err(SNNError::InvalidConfig("Sparse not supported".to_string())),
         }
@@ -151,20 +160,23 @@ impl FusionNetwork for CrossModalAttentionSNN {
 
         // Encoder parameters
         for encoder in self.encoders.values() {
-            total += encoder.parameters().iter()
-                .map(|p| p.len())
-                .sum::<usize>();
+            total += encoder.parameters().iter().map(|p| p.len()).sum::<usize>();
         }
 
         // Attention parameters
         for attention in &self.attention_layers {
-            total += attention.parameters().iter()
+            total += attention
+                .parameters()
+                .iter()
                 .map(|p| p.len())
                 .sum::<usize>();
         }
 
         // Output projection parameters
-        total += self.output_projection.parameters().iter()
+        total += self
+            .output_projection
+            .parameters()
+            .iter()
             .map(|p| p.len())
             .sum::<usize>();
 
@@ -184,7 +196,7 @@ impl FusionNetwork for CrossModalAttentionSNN {
     }
 
     fn handles_missing_modalities(&self) -> bool {
-        true  // Attention can handle variable number of modalities
+        true // Attention can handle variable number of modalities
     }
 }
 

@@ -182,9 +182,16 @@ impl BranchSpecificPlasticity {
 
         if activity > self.activation_threshold {
             // Enhanced plasticity in active branches
-            self.branch_learning_rates.get(branch_idx).copied().unwrap_or(0.0) * 2.0
+            self.branch_learning_rates
+                .get(branch_idx)
+                .copied()
+                .unwrap_or(0.0)
+                * 2.0
         } else {
-            self.branch_learning_rates.get(branch_idx).copied().unwrap_or(0.0)
+            self.branch_learning_rates
+                .get(branch_idx)
+                .copied()
+                .unwrap_or(0.0)
         }
     }
 
@@ -253,7 +260,11 @@ impl CompartmentPlasticity {
 
     /// Get learning rate for compartment at distance
     pub fn learning_rate(&self, compartment_idx: usize, distance_from_soma: f64) -> f64 {
-        let base_rate = self.learning_rates.get(compartment_idx).copied().unwrap_or(0.01);
+        let base_rate = self
+            .learning_rates
+            .get(compartment_idx)
+            .copied()
+            .unwrap_or(0.01);
 
         if self.distance_scaling {
             // Distal synapses have higher plasticity
@@ -330,7 +341,8 @@ impl Heterosynaptic {
         self.recent_activations.push((synapse_id, time, position));
 
         // Keep only recent activations (last 100 ms)
-        self.recent_activations.retain(|(_, t, _)| time - *t < 100.0);
+        self.recent_activations
+            .retain(|(_, t, _)| time - *t < 100.0);
     }
 
     /// Calculate heterosynaptic modulation

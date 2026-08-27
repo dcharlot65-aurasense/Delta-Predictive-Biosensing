@@ -3,9 +3,9 @@
 //! Tests complete signal processing chains from raw input through
 //! filtering, analysis, and feature extraction.
 
-use dpb_core::signal::*;
-use dpb_core::pipeline::*;
 use dpb_core::SignalBuffer;
+use dpb_core::pipeline::*;
+use dpb_core::signal::*;
 use ndarray::Array1;
 use std::f64::consts::PI;
 
@@ -87,7 +87,7 @@ fn generate_synthetic_eeg_with_seizure(
 fn generate_respiratory_with_apnea(
     duration: f64,
     sample_rate: f64,
-    breath_rate: f64, // breaths per minute
+    breath_rate: f64,               // breaths per minute
     apnea_intervals: &[(f64, f64)], // (start, duration) pairs
 ) -> Vec<f64> {
     let num_samples = (duration * sample_rate) as usize;
@@ -132,10 +132,8 @@ fn test_ecg_processing_pipeline() {
     let ecg_data = generate_synthetic_ecg(duration, sample_rate, heart_rate);
 
     // Step 2: Create signal buffer
-    let _signal = SignalBuffer::single_channel(
-        ecg_data.iter().map(|&x| x as f32).collect(),
-        sample_rate,
-    );
+    let _signal =
+        SignalBuffer::single_channel(ecg_data.iter().map(|&x| x as f32).collect(), sample_rate);
 
     // Step 3: Apply bandpass filter (0.5-40 Hz typical for ECG)
     let mut lowpass = IirFilter::butterworth_lowpass(4, 40.0, sample_rate)
@@ -149,8 +147,8 @@ fn test_ecg_processing_pipeline() {
     let filtered_vec: Vec<f64> = filtered.to_vec();
 
     // Step 4: Detect R-peaks using Pan-Tompkins
-    let detector = PanTompkinsDetector::new(sample_rate)
-        .expect("Failed to create Pan-Tompkins detector");
+    let detector =
+        PanTompkinsDetector::new(sample_rate).expect("Failed to create Pan-Tompkins detector");
     let r_peaks = detector
         .detect_r_peaks(&filtered_vec)
         .expect("Failed to detect R-peaks");
@@ -168,10 +166,7 @@ fn test_ecg_processing_pipeline() {
     if r_peaks.len() >= 2 {
         let rr_intervals: Vec<f64> = r_peaks
             .windows(2)
-            .map(|w| {
-                
-                (w[1].index - w[0].index) as f64 / sample_rate * 1000.0
-            })
+            .map(|w| (w[1].index - w[0].index) as f64 / sample_rate * 1000.0)
             .collect();
 
         let analyzer = HrvAnalyzer::new();
@@ -180,12 +175,12 @@ fn test_ecg_processing_pipeline() {
             .expect("Failed to compute HRV");
 
         // Verify HRV metrics are reasonable
-        assert!(hrv_metrics.mean_rr_ms > 0.0, "Mean RR interval should be positive");
-        assert!(hrv_metrics.sdnn_ms >= 0.0, "SDNN should be non-negative");
         assert!(
-            hrv_metrics.rmssd_ms >= 0.0,
-            "RMSSD should be non-negative"
+            hrv_metrics.mean_rr_ms > 0.0,
+            "Mean RR interval should be positive"
         );
+        assert!(hrv_metrics.sdnn_ms >= 0.0, "SDNN should be non-negative");
+        assert!(hrv_metrics.rmssd_ms >= 0.0, "RMSSD should be non-negative");
 
         println!("ECG Processing Pipeline Results:");
         println!("  Duration: {:.1}s @ {:.0} Hz", duration, sample_rate);
@@ -205,16 +200,12 @@ fn test_eeg_seizure_detection_pipeline() {
     let seizure_start = 20.0;
     let seizure_duration = 15.0;
 
-    let eeg_data = generate_synthetic_eeg_with_seizure(
-        duration,
-        sample_rate,
-        seizure_start,
-        seizure_duration,
-    );
+    let eeg_data =
+        generate_synthetic_eeg_with_seizure(duration, sample_rate, seizure_start, seizure_duration);
 
     // Step 2: Apply artifact detection
-    let artifacts = detect_artifacts(&eeg_data, sample_rate, 3.0)
-        .expect("Failed to detect artifacts");
+    let artifacts =
+        detect_artifacts(&eeg_data, sample_rate, 3.0).expect("Failed to detect artifacts");
 
     println!("EEG Artifact Detection:");
     println!("  Total samples: {}", eeg_data.len());
@@ -224,15 +215,13 @@ fn test_eeg_seizure_detection_pipeline() {
         let duration = (artifact.end_sample - artifact.start_sample) as f64 / sample_rate;
         println!(
             "    Type: {:?}, Start: {:.2}s, Duration: {:.2}s",
-            artifact.artifact_type,
-            start_time,
-            duration
+            artifact.artifact_type, start_time, duration
         );
     }
 
     // Step 3: Compute band powers
-    let band_powers = compute_band_powers(&eeg_data, sample_rate)
-        .expect("Failed to compute band powers");
+    let band_powers =
+        compute_band_powers(&eeg_data, sample_rate).expect("Failed to compute band powers");
 
     // Verify band powers are computed
     assert!(band_powers.delta > 0.0, "Delta power should be positive");
@@ -248,13 +237,12 @@ fn test_eeg_seizure_detection_pipeline() {
 
     // Step 4: Run seizure detector
     // Convert 1D signal to 2D array (1 channel x N samples) for seizure detector
-    let signals_2d = ndarray::Array2::from_shape_vec(
-        (1, eeg_data.len()),
-        eeg_data.clone()
-    ).expect("Failed to create 2D array");
+    let signals_2d = ndarray::Array2::from_shape_vec((1, eeg_data.len()), eeg_data.clone())
+        .expect("Failed to create 2D array");
 
     let detector = SeizureDetector::new(sample_rate);
-    let seizures = detector.detect_seizures(signals_2d.view())
+    let seizures = detector
+        .detect_seizures(signals_2d.view())
         .expect("Failed to detect seizures");
 
     // Verify seizure detection results
@@ -291,12 +279,8 @@ fn test_respiratory_analysis_pipeline() {
         (70.0, 15.0), // 15-second apnea at 70s
     ];
 
-    let resp_data = generate_respiratory_with_apnea(
-        duration,
-        sample_rate,
-        breath_rate,
-        &apnea_intervals,
-    );
+    let resp_data =
+        generate_respiratory_with_apnea(duration, sample_rate, breath_rate, &apnea_intervals);
 
     // Step 2: Analyze respiratory signal
     let resp_array = Array1::from_vec(resp_data.clone());
@@ -308,9 +292,18 @@ fn test_respiratory_analysis_pipeline() {
     // Step 3: Verify breath detection
     println!("Respiratory Analysis Results:");
     println!("  Duration: {:.1}s", duration);
-    println!("  Expected breaths: ~{}", (breath_rate * duration / 60.0) as usize);
-    println!("  Detected rate: {:.1} breaths/min", metrics.respiratory_rate);
-    println!("  Mean Ti: {:.2}s, Mean Te: {:.2}s", metrics.mean_ti, metrics.mean_te);
+    println!(
+        "  Expected breaths: ~{}",
+        (breath_rate * duration / 60.0) as usize
+    );
+    println!(
+        "  Detected rate: {:.1} breaths/min",
+        metrics.respiratory_rate
+    );
+    println!(
+        "  Mean Ti: {:.2}s, Mean Te: {:.2}s",
+        metrics.mean_ti, metrics.mean_te
+    );
 
     assert!(
         metrics.respiratory_rate > 0.0,
@@ -356,8 +349,8 @@ fn test_real_time_pipeline_integration() {
         .with_max_latency(60.0)
         .with_execution_mode(ExecutionMode::RealTime);
 
-    let mut executor = PipelineExecutor::new(pipeline_config)
-        .expect("Failed to create pipeline executor");
+    let mut executor =
+        PipelineExecutor::new(pipeline_config).expect("Failed to create pipeline executor");
 
     // Simulate streaming data
     let total_duration = 5.0; // seconds
@@ -365,7 +358,11 @@ fn test_real_time_pipeline_integration() {
 
     println!("Real-time Pipeline Test:");
     println!("  Sample rate: {:.0} Hz", sample_rate);
-    println!("  Window size: {} samples ({:.2}s)", window_size, window_size as f64 / sample_rate);
+    println!(
+        "  Window size: {} samples ({:.2}s)",
+        window_size,
+        window_size as f64 / sample_rate
+    );
     println!("  Hop size: {} samples", hop_size);
 
     // Generate ECG data
@@ -393,7 +390,10 @@ fn test_real_time_pipeline_integration() {
     println!("  Avg latency: {:.2}ms", stats.avg_latency_ms);
     println!("  Max latency: {:.2}ms", stats.max_latency_ms);
     println!("  P95 latency: {:.2}ms", stats.p95_latency_ms);
-    println!("  Deadline miss rate: {:.2}%", stats.deadline_miss_rate * 100.0);
+    println!(
+        "  Deadline miss rate: {:.2}%",
+        stats.deadline_miss_rate * 100.0
+    );
 
     // Verify we processed the expected number of windows
     let expected_windows = (num_samples - window_size) / hop_size + 1;
@@ -435,9 +435,11 @@ fn test_multi_modal_signal_fusion() {
     println!("  Duration: {:.1}s @ {:.0} Hz", duration, sample_rate);
 
     // Process ECG
-    let ecg_detector = PanTompkinsDetector::new(sample_rate)
-        .expect("Failed to create Pan-Tompkins detector");
-    let r_peaks = ecg_detector.detect_r_peaks(&ecg_data).expect("Failed to detect R-peaks");
+    let ecg_detector =
+        PanTompkinsDetector::new(sample_rate).expect("Failed to create Pan-Tompkins detector");
+    let r_peaks = ecg_detector
+        .detect_r_peaks(&ecg_data)
+        .expect("Failed to detect R-peaks");
     println!("  ECG: {} R-peaks detected", r_peaks.len());
 
     // Process Respiratory
@@ -446,17 +448,28 @@ fn test_multi_modal_signal_fusion() {
     let resp_metrics = resp_analyzer
         .analyze(resp_array.view())
         .expect("Failed to analyze respiration");
-    println!("  Respiratory: rate = {:.1} br/min", resp_metrics.respiratory_rate);
+    println!(
+        "  Respiratory: rate = {:.1} br/min",
+        resp_metrics.respiratory_rate
+    );
 
     // Process EDA
     let eda_analyzer = EdaAnalyzer::new(sample_rate);
     let eda_array = Array1::from_vec(eda_data.clone());
-    let eda_decomposition = eda_analyzer.decompose(eda_array.view()).expect("Failed to analyze EDA");
-    println!("  EDA: {} SCR events detected", eda_decomposition.scr_events.len());
+    let eda_decomposition = eda_analyzer
+        .decompose(eda_array.view())
+        .expect("Failed to analyze EDA");
+    println!(
+        "  EDA: {} SCR events detected",
+        eda_decomposition.scr_events.len()
+    );
 
     // Verify all modalities produced results
     assert!(!r_peaks.is_empty(), "ECG analysis produced results");
-    assert!(resp_metrics.respiratory_rate > 0.0, "Respiratory analysis produced results");
+    assert!(
+        resp_metrics.respiratory_rate > 0.0,
+        "Respiratory analysis produced results"
+    );
     // Note: SCR detection may not find events in simple synthetic data
     println!("  ✓ All modalities processed successfully");
 
@@ -488,11 +501,8 @@ fn test_signal_quality_assessment() {
     // Compute SNR for both signals
     let compute_snr = |signal: &[f64]| -> f64 {
         let mean: f64 = signal.iter().sum::<f64>() / signal.len() as f64;
-        let variance: f64 = signal
-            .iter()
-            .map(|&x| (x - mean).powi(2))
-            .sum::<f64>()
-            / signal.len() as f64;
+        let variance: f64 =
+            signal.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / signal.len() as f64;
         let signal_power = mean.abs();
         let noise_power = variance.sqrt();
         20.0 * (signal_power / noise_power).log10()
@@ -504,9 +514,5 @@ fn test_signal_quality_assessment() {
     println!("  Clean signal SNR: {:.1} dB", clean_snr);
     println!("  Noisy signal SNR: {:.1} dB", noisy_snr);
 
-    assert!(
-        clean_snr > noisy_snr,
-        "Clean signal should have higher SNR"
-    );
+    assert!(clean_snr > noisy_snr, "Clean signal should have higher SNR");
 }
-

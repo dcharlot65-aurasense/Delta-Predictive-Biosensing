@@ -35,17 +35,19 @@ impl MetricTrait for SignalToNoiseRatio {
 
     fn compute(&self, signal: &[f32], noise: &[f32]) -> Result<f64> {
         if signal.len() != noise.len() {
-            return Err(DpbError::Other("Signal and noise must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Signal and noise must have the same length".to_string(),
+            ));
         }
         if signal.is_empty() {
             return Ok(0.0);
         }
 
-        let signal_power: f64 = signal.iter().map(|&s| (s as f64) * (s as f64)).sum::<f64>()
-            / signal.len() as f64;
+        let signal_power: f64 =
+            signal.iter().map(|&s| (s as f64) * (s as f64)).sum::<f64>() / signal.len() as f64;
 
-        let noise_power: f64 = noise.iter().map(|&n| (n as f64) * (n as f64)).sum::<f64>()
-            / noise.len() as f64;
+        let noise_power: f64 =
+            noise.iter().map(|&n| (n as f64) * (n as f64)).sum::<f64>() / noise.len() as f64;
 
         if noise_power == 0.0 {
             Ok(f64::INFINITY)
@@ -112,7 +114,9 @@ impl MetricTrait for PeakSignalToNoiseRatio {
 
     fn compute(&self, signal: &[f32], reconstructed: &[f32]) -> Result<f64> {
         if signal.len() != reconstructed.len() {
-            return Err(DpbError::Other("Signal and reconstructed must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Signal and reconstructed must have the same length".to_string(),
+            ));
         }
         if signal.is_empty() {
             return Ok(0.0);
@@ -210,7 +214,9 @@ impl MetricTrait for CrossCorrelation {
 
     fn compute(&self, signal1: &[f32], signal2: &[f32]) -> Result<f64> {
         if signal1.len() != signal2.len() {
-            return Err(DpbError::Other("Signals must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Signals must have the same length".to_string(),
+            ));
         }
         if signal1.is_empty() {
             return Ok(0.0);
@@ -312,7 +318,9 @@ impl MetricTrait for Coherence {
 
     fn compute(&self, signal1: &[f32], signal2: &[f32]) -> Result<f64> {
         if signal1.len() != signal2.len() {
-            return Err(DpbError::Other("Signals must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Signals must have the same length".to_string(),
+            ));
         }
         if signal1.is_empty() {
             return Ok(0.0);
@@ -326,7 +334,9 @@ impl MetricTrait for Coherence {
 
     fn update(&mut self, signal1: &[f32], signal2: &[f32]) {
         // Simplified: accumulate cross-correlation squared
-        let cross_corr = CrossCorrelation::new().compute(signal1, signal2).unwrap_or(0.0);
+        let cross_corr = CrossCorrelation::new()
+            .compute(signal1, signal2)
+            .unwrap_or(0.0);
         self.cross_spec_sum += cross_corr * cross_corr;
         self.count += 1.0;
     }
@@ -464,11 +474,7 @@ impl FrechetDistance {
         for i in 1..n {
             for j in 1..m {
                 let dist = ((signal1[i] - signal2[j]) as f64).abs();
-                ca[i][j] = dist.max(
-                    ca[i - 1][j]
-                        .min(ca[i][j - 1])
-                        .min(ca[i - 1][j - 1])
-                );
+                ca[i][j] = dist.max(ca[i - 1][j].min(ca[i][j - 1]).min(ca[i - 1][j - 1]));
             }
         }
 
@@ -537,7 +543,7 @@ mod tests {
         let reconstructed = vec![1.0, 2.0, 3.0, 4.0];
 
         let result = psnr.compute(&signal, &reconstructed).unwrap();
-        assert_eq!(result, f64::INFINITY);  // Perfect reconstruction
+        assert_eq!(result, f64::INFINITY); // Perfect reconstruction
     }
 
     #[test]
@@ -547,7 +553,7 @@ mod tests {
         let signal2 = vec![1.0, 2.0, 3.0, 4.0];
 
         let result = cc.compute(&signal1, &signal2).unwrap();
-        assert!((result - 1.0).abs() < 1e-6);  // Perfect correlation
+        assert!((result - 1.0).abs() < 1e-6); // Perfect correlation
     }
 
     #[test]
@@ -557,7 +563,7 @@ mod tests {
         let signal2 = vec![1.0, 2.0, 3.0, 4.0];
 
         let result = coh.compute(&signal1, &signal2).unwrap();
-        assert!(result > 0.9);  // High coherence for identical signals
+        assert!(result > 0.9); // High coherence for identical signals
     }
 
     #[test]
@@ -567,7 +573,7 @@ mod tests {
         let signal2 = vec![1.0, 2.0, 3.0, 4.0];
 
         let result = dtw.compute(&signal1, &signal2).unwrap();
-        assert_eq!(result, 0.0);  // Identical signals
+        assert_eq!(result, 0.0); // Identical signals
     }
 
     #[test]
@@ -577,6 +583,6 @@ mod tests {
         let signal2 = vec![1.0, 2.0, 3.0, 4.0];
 
         let result = fd.compute(&signal1, &signal2).unwrap();
-        assert_eq!(result, 0.0);  // Identical signals
+        assert_eq!(result, 0.0); // Identical signals
     }
 }

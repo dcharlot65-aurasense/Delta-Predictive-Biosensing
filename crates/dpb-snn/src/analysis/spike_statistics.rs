@@ -37,8 +37,8 @@ impl ConvergenceAnalyzer for SpikeRateTracker {
         self.spike_rate_history.push(metrics.spike_rate);
 
         if !self.spike_rate_history.is_empty() {
-            self.mean_spike_rate = self.spike_rate_history.iter().sum::<f64>()
-                / self.spike_rate_history.len() as f64;
+            self.mean_spike_rate =
+                self.spike_rate_history.iter().sum::<f64>() / self.spike_rate_history.len() as f64;
         }
     }
 
@@ -129,15 +129,17 @@ impl ConvergenceAnalyzer for SparsityTracker {
         let mut report = AnalysisReport::new(self.name().to_string());
 
         if !self.sparsity_history.is_empty() {
-            let mean_sparsity = self.sparsity_history.iter().sum::<f64>()
-                / self.sparsity_history.len() as f64;
+            let mean_sparsity =
+                self.sparsity_history.iter().sum::<f64>() / self.sparsity_history.len() as f64;
             report.add_metric("mean_sparsity", mean_sparsity);
 
             if let Some(&current_sparsity) = self.sparsity_history.last() {
                 report.add_metric("current_sparsity", current_sparsity);
 
                 if current_sparsity < 0.5 {
-                    report.add_recommendation("Low sparsity. Network is not sparse enough for efficient SNN computation.");
+                    report.add_recommendation(
+                        "Low sparsity. Network is not sparse enough for efficient SNN computation.",
+                    );
                 } else if current_sparsity > 0.99 {
                     report.add_recommendation("Very high sparsity. Network may be too inactive.");
                 }
@@ -214,11 +216,15 @@ impl ConvergenceAnalyzer for SilentNeuronDetector {
     fn analysis_report(&self) -> AnalysisReport {
         let mut report = AnalysisReport::new(self.name().to_string());
 
-        report.add_metric("total_neurons_tracked", self.neuron_spike_counts.len() as f64);
+        report.add_metric(
+            "total_neurons_tracked",
+            self.neuron_spike_counts.len() as f64,
+        );
         report.add_metric("silent_neurons_detected", self.detected_silent.len() as f64);
 
         if !self.detected_silent.is_empty() {
-            let silent_ratio = self.detected_silent.len() as f64 / self.neuron_spike_counts.len() as f64;
+            let silent_ratio =
+                self.detected_silent.len() as f64 / self.neuron_spike_counts.len() as f64;
             report.add_metric("silent_neuron_ratio", silent_ratio);
 
             if silent_ratio > 0.1 {
@@ -263,7 +269,8 @@ impl SaturatedNeuronDetector {
     }
 
     pub fn update_neuron_ratio(&mut self, neuron_id: usize, activity_ratio: f64) {
-        self.neuron_activity_ratios.insert(neuron_id, activity_ratio);
+        self.neuron_activity_ratios
+            .insert(neuron_id, activity_ratio);
     }
 }
 
@@ -299,12 +306,18 @@ impl ConvergenceAnalyzer for SaturatedNeuronDetector {
     fn analysis_report(&self) -> AnalysisReport {
         let mut report = AnalysisReport::new(self.name().to_string());
 
-        report.add_metric("total_neurons_tracked", self.neuron_activity_ratios.len() as f64);
-        report.add_metric("saturated_neurons_detected", self.detected_saturated.len() as f64);
+        report.add_metric(
+            "total_neurons_tracked",
+            self.neuron_activity_ratios.len() as f64,
+        );
+        report.add_metric(
+            "saturated_neurons_detected",
+            self.detected_saturated.len() as f64,
+        );
 
         if !self.detected_saturated.is_empty() {
-            let saturated_ratio = self.detected_saturated.len() as f64
-                / self.neuron_activity_ratios.len() as f64;
+            let saturated_ratio =
+                self.detected_saturated.len() as f64 / self.neuron_activity_ratios.len() as f64;
             report.add_metric("saturated_neuron_ratio", saturated_ratio);
 
             if saturated_ratio > 0.1 {
@@ -388,7 +401,8 @@ impl ConvergenceAnalyzer for TemporalDynamicsAnalyzer {
             report.add_metric("mean_timing_variance", mean_variance);
 
             // Calculate actual variance of spike rates
-            let variance: f64 = self.spike_timing_variance
+            let variance: f64 = self
+                .spike_timing_variance
                 .iter()
                 .map(|&x| (x - mean_variance).powi(2))
                 .sum::<f64>()
@@ -396,17 +410,21 @@ impl ConvergenceAnalyzer for TemporalDynamicsAnalyzer {
             report.add_metric("spike_rate_variance", variance);
 
             if variance < 1e-6 {
-                report.add_recommendation("Very low temporal variance. Spike patterns may be too regular.");
+                report.add_recommendation(
+                    "Very low temporal variance. Spike patterns may be too regular.",
+                );
             }
         }
 
         if !self.synchrony_measures.is_empty() {
-            let mean_synchrony = self.synchrony_measures.iter().sum::<f64>()
-                / self.synchrony_measures.len() as f64;
+            let mean_synchrony =
+                self.synchrony_measures.iter().sum::<f64>() / self.synchrony_measures.len() as f64;
             report.add_metric("mean_synchrony", mean_synchrony);
 
             if mean_synchrony > 0.9 {
-                report.add_recommendation("High synchrony detected. Network may lack diversity in spike patterns.");
+                report.add_recommendation(
+                    "High synchrony detected. Network may lack diversity in spike patterns.",
+                );
             }
         }
 

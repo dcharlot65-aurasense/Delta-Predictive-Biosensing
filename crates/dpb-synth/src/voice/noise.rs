@@ -1,6 +1,6 @@
 //! Noise and degradation generators for audio signals
 
-use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth};
+use crate::traits::{GeneratedData, SyntheticGenerator, TimeSeriesGroundTruth};
 use ndarray::Array1;
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
@@ -15,16 +15,16 @@ pub struct BackgroundNoiseParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub signal_amplitude: f64,
-    pub snr_db: f64,           // Signal-to-noise ratio in dB
+    pub snr_db: f64, // Signal-to-noise ratio in dB
     pub noise_type: NoiseType,
 }
 
 #[derive(Debug, Clone)]
 pub enum NoiseType {
-    White,    // Equal power across all frequencies
-    Pink,     // 1/f power spectrum
-    Babble,   // Multi-talker background
-    Brown,    // 1/f^2 power spectrum
+    White,  // Equal power across all frequencies
+    Pink,   // 1/f power spectrum
+    Babble, // Multi-talker background
+    Brown,  // 1/f^2 power spectrum
 }
 
 impl SyntheticGenerator for BackgroundNoiseGenerator {
@@ -32,7 +32,11 @@ impl SyntheticGenerator for BackgroundNoiseGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = BackgroundNoiseParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -68,7 +72,9 @@ impl SyntheticGenerator for BackgroundNoiseGenerator {
 
                 // Normalize to desired amplitude
                 let max_val = pink.iter().cloned().fold(0.0, f64::max);
-                pink.iter().map(|&v| v / max_val * noise_amplitude).collect()
+                pink.iter()
+                    .map(|&v| v / max_val * noise_amplitude)
+                    .collect()
             }
             NoiseType::Babble => {
                 // Simulate multi-talker babble (3-5 modulated noise sources)
@@ -89,7 +95,10 @@ impl SyntheticGenerator for BackgroundNoiseGenerator {
 
                 // Normalize
                 let max_val = babble.iter().cloned().fold(0.0, f64::max);
-                babble.iter().map(|&v| v / max_val * noise_amplitude).collect()
+                babble
+                    .iter()
+                    .map(|&v| v / max_val * noise_amplitude)
+                    .collect()
             }
             NoiseType::Brown => {
                 // Brownian noise (integrate white noise)
@@ -104,7 +113,10 @@ impl SyntheticGenerator for BackgroundNoiseGenerator {
 
                 // Normalize
                 let max_val = brown.iter().cloned().fold(0.0, f64::max);
-                brown.iter().map(|&v| v / max_val * noise_amplitude).collect()
+                brown
+                    .iter()
+                    .map(|&v| v / max_val * noise_amplitude)
+                    .collect()
             }
         };
 
@@ -121,7 +133,11 @@ impl SyntheticGenerator for BackgroundNoiseGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(noise_array, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            noise_array,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -136,10 +152,14 @@ impl SyntheticGenerator for BackgroundNoiseGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.sampling_rate <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("sampling_rate must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "sampling_rate must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -152,16 +172,16 @@ pub struct RoomAcousticsGenerator;
 pub struct RoomAcousticsParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub rt60: f64,              // Reverberation time (seconds)
+    pub rt60: f64,                   // Reverberation time (seconds)
     pub direct_to_reverb_ratio: f64, // dB
     pub room_size: RoomSize,
 }
 
 #[derive(Debug, Clone)]
 pub enum RoomSize {
-    Small,   // RT60 ~ 0.2-0.4s
-    Medium,  // RT60 ~ 0.4-0.8s
-    Large,   // RT60 ~ 0.8-2.0s
+    Small,  // RT60 ~ 0.2-0.4s
+    Medium, // RT60 ~ 0.4-0.8s
+    Large,  // RT60 ~ 0.8-2.0s
 }
 
 impl SyntheticGenerator for RoomAcousticsGenerator {
@@ -169,7 +189,11 @@ impl SyntheticGenerator for RoomAcousticsGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = RoomAcousticsParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -224,7 +248,10 @@ impl SyntheticGenerator for RoomAcousticsGenerator {
 
         let mut gt_params = HashMap::new();
         gt_params.insert("rt60".to_string(), params.rt60);
-        gt_params.insert("direct_to_reverb_ratio".to_string(), params.direct_to_reverb_ratio);
+        gt_params.insert(
+            "direct_to_reverb_ratio".to_string(),
+            params.direct_to_reverb_ratio,
+        );
         gt_params.insert("decay_constant".to_string(), tau);
 
         let ground_truth = TimeSeriesGroundTruth {
@@ -233,7 +260,11 @@ impl SyntheticGenerator for RoomAcousticsGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(ir_array, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            ir_array,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -248,10 +279,14 @@ impl SyntheticGenerator for RoomAcousticsGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.rt60 <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("rt60 must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "rt60 must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -273,7 +308,11 @@ impl SyntheticGenerator for MicrophoneResponseGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = MicrophoneResponseParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -313,9 +352,11 @@ impl SyntheticGenerator for MicrophoneResponseGenerator {
             frequency_response.push((frequency, magnitude_db));
         }
 
-        let flatness_deviation = frequency_response.iter()
+        let flatness_deviation = frequency_response
+            .iter()
             .map(|(_, mag)| mag.abs())
-            .sum::<f64>() / params.num_frequency_points as f64;
+            .sum::<f64>()
+            / params.num_frequency_points as f64;
 
         let mut gt_params = HashMap::new();
         gt_params.insert("response_flatness".to_string(), params.response_flatness);
@@ -342,10 +383,14 @@ impl SyntheticGenerator for MicrophoneResponseGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.num_frequency_points == 0 {
-            return Err(crate::GeneratorError::InvalidParameter("num_frequency_points must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "num_frequency_points must be positive".to_string(),
+            ));
         }
         if params.response_flatness < 0.0 || params.response_flatness > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("response_flatness must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "response_flatness must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -371,7 +416,7 @@ pub enum CodecType {
     MP3,
     AAC,
     Opus,
-    GSM,    // Mobile phone quality
+    GSM, // Mobile phone quality
 }
 
 impl SyntheticGenerator for CodecArtifactsGenerator {
@@ -379,7 +424,11 @@ impl SyntheticGenerator for CodecArtifactsGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = CodecArtifactsParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -404,7 +453,7 @@ impl SyntheticGenerator for CodecArtifactsGenerator {
             }
             CodecType::GSM => {
                 let noise = 0.03; // GSM has significant artifacts
-                let bw = 3400.0;  // telephone bandwidth
+                let bw = 3400.0; // telephone bandwidth
                 (noise, bw)
             }
         };
@@ -432,7 +481,10 @@ impl SyntheticGenerator for CodecArtifactsGenerator {
 
         let mut gt_params = HashMap::new();
         gt_params.insert("bitrate_kbps".to_string(), params.bitrate_kbps);
-        gt_params.insert("quantization_noise_level".to_string(), quantization_noise_level);
+        gt_params.insert(
+            "quantization_noise_level".to_string(),
+            quantization_noise_level,
+        );
         gt_params.insert("bandwidth_limit_hz".to_string(), bandwidth_limit_hz);
 
         let ground_truth = TimeSeriesGroundTruth {
@@ -441,7 +493,11 @@ impl SyntheticGenerator for CodecArtifactsGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(artifacts_array, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            artifacts_array,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -455,10 +511,14 @@ impl SyntheticGenerator for CodecArtifactsGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.bitrate_kbps <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("bitrate_kbps must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "bitrate_kbps must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -471,14 +531,14 @@ pub struct AudioClippingGenerator;
 pub struct AudioClippingParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub clip_threshold: f64,    // 0-1 (amplitude level where clipping occurs)
+    pub clip_threshold: f64, // 0-1 (amplitude level where clipping occurs)
     pub saturation_type: SaturationType,
 }
 
 #[derive(Debug, Clone)]
 pub enum SaturationType {
-    HardClip,   // Abrupt clipping
-    SoftClip,   // Gradual saturation (tanh-like)
+    HardClip, // Abrupt clipping
+    SoftClip, // Gradual saturation (tanh-like)
 }
 
 impl SyntheticGenerator for AudioClippingGenerator {
@@ -486,7 +546,11 @@ impl SyntheticGenerator for AudioClippingGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = AudioClippingParams;
 
-    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        _seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -496,7 +560,8 @@ impl SyntheticGenerator for AudioClippingGenerator {
             .map(|i| -1.0 + 2.0 * i as f64 / (n_samples - 1) as f64)
             .collect();
 
-        let clipped_amplitudes: Vec<f64> = test_amplitudes.iter()
+        let clipped_amplitudes: Vec<f64> = test_amplitudes
+            .iter()
             .map(|&x| match params.saturation_type {
                 SaturationType::HardClip => {
                     x.max(-params.clip_threshold).min(params.clip_threshold)
@@ -526,7 +591,11 @@ impl SyntheticGenerator for AudioClippingGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(clipped_amplitudes, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            clipped_amplitudes,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -540,10 +609,14 @@ impl SyntheticGenerator for AudioClippingGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.clip_threshold <= 0.0 || params.clip_threshold > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("clip_threshold must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "clip_threshold must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -556,9 +629,9 @@ pub struct TelehealthDegradationGenerator;
 pub struct TelehealthDegradationParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub packet_loss_rate: f64,  // 0-1 (proportion of packets lost)
-    pub jitter_ms: f64,          // milliseconds (timing variation)
-    pub packet_size_ms: f64,     // milliseconds per packet
+    pub packet_loss_rate: f64, // 0-1 (proportion of packets lost)
+    pub jitter_ms: f64,        // milliseconds (timing variation)
+    pub packet_size_ms: f64,   // milliseconds per packet
 }
 
 impl SyntheticGenerator for TelehealthDegradationGenerator {
@@ -566,7 +639,11 @@ impl SyntheticGenerator for TelehealthDegradationGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = TelehealthDegradationParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -607,7 +684,8 @@ impl SyntheticGenerator for TelehealthDegradationGenerator {
         let actual_loss_rate = lost_packets as f64 / num_packets as f64;
 
         // Calculate jitter statistics (for delivered packets)
-        let jitter_values: Vec<f64> = packet_events.iter()
+        let jitter_values: Vec<f64> = packet_events
+            .iter()
             .filter_map(|p| p.actual_time.map(|t| (t - p.ideal_time).abs() * 1000.0))
             .collect();
 
@@ -618,7 +696,10 @@ impl SyntheticGenerator for TelehealthDegradationGenerator {
         };
 
         let mut gt_params = HashMap::new();
-        gt_params.insert("target_packet_loss_rate".to_string(), params.packet_loss_rate);
+        gt_params.insert(
+            "target_packet_loss_rate".to_string(),
+            params.packet_loss_rate,
+        );
         gt_params.insert("actual_packet_loss_rate".to_string(), actual_loss_rate);
         gt_params.insert("target_jitter_ms".to_string(), params.jitter_ms);
         gt_params.insert("mean_jitter_ms".to_string(), mean_jitter);
@@ -631,14 +712,18 @@ impl SyntheticGenerator for TelehealthDegradationGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(packet_events, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            packet_events,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
         TelehealthDegradationParams {
             duration: 10.0,
             sampling_rate: 16000.0,
-            packet_loss_rate: 0.02,  // 2% packet loss
+            packet_loss_rate: 0.02, // 2% packet loss
             jitter_ms: 10.0,
             packet_size_ms: 20.0,
         }
@@ -646,16 +731,24 @@ impl SyntheticGenerator for TelehealthDegradationGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.packet_loss_rate < 0.0 || params.packet_loss_rate > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("packet_loss_rate must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "packet_loss_rate must be 0-1".to_string(),
+            ));
         }
         if params.jitter_ms < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("jitter_ms must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "jitter_ms must be non-negative".to_string(),
+            ));
         }
         if params.packet_size_ms <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("packet_size_ms must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "packet_size_ms must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -664,7 +757,7 @@ impl SyntheticGenerator for TelehealthDegradationGenerator {
 #[derive(Debug, Clone)]
 pub struct PacketEvent {
     pub packet_id: usize,
-    pub ideal_time: f64,      // seconds
+    pub ideal_time: f64,          // seconds
     pub actual_time: Option<f64>, // None if lost
     pub is_lost: bool,
 }
@@ -678,7 +771,10 @@ mod tests {
         let generator = BackgroundNoiseGenerator;
         let params = BackgroundNoiseGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -687,7 +783,10 @@ mod tests {
         let mut params = BackgroundNoiseGenerator::default_params();
         params.noise_type = NoiseType::Pink;
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -695,7 +794,10 @@ mod tests {
         let generator = RoomAcousticsGenerator;
         let params = RoomAcousticsGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -711,7 +813,10 @@ mod tests {
         let generator = CodecArtifactsGenerator;
         let params = CodecArtifactsGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -719,7 +824,10 @@ mod tests {
         let generator = AudioClippingGenerator;
         let params = AudioClippingGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]

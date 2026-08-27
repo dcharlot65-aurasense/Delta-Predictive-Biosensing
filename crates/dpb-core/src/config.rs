@@ -4,8 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Main framework configuration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DpbConfig {
     /// GPU configuration
     pub gpu: GpuConfig,
@@ -18,7 +17,6 @@ pub struct DpbConfig {
     /// Logging and debugging
     pub logging: LoggingConfig,
 }
-
 
 /// GPU-related configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -170,7 +168,7 @@ impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
             architecture: vec![],
-            dt: 0.001, // 1ms
+            dt: 0.001,      // 1ms
             tau_mem: 0.020, // 20ms
             tau_syn: 0.005, // 5ms
             threshold: 1.0,

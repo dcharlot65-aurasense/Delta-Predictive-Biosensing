@@ -356,10 +356,7 @@ mod tests {
         let vs = VibrationSense::tuning_fork_128hz(VibrationSite::GreatToe);
 
         // Normal young person
-        assert_eq!(
-            vs.neuropathy_screening(5.0, 25),
-            NeuropathyRisk::Normal
-        );
+        assert_eq!(vs.neuropathy_screening(5.0, 25), NeuropathyRisk::Normal);
 
         // High threshold = neuropathy risk
         assert_eq!(
@@ -379,6 +376,9 @@ mod tests {
 
     #[test]
     fn test_site_gradient() {
-        assert!(VibrationSite::GreatToe.gradient_factor() > VibrationSite::TibialTuberosity.gradient_factor());
+        assert!(
+            VibrationSite::GreatToe.gradient_factor()
+                > VibrationSite::TibialTuberosity.gradient_factor()
+        );
     }
 }

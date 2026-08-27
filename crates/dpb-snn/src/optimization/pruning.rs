@@ -174,10 +174,7 @@ pub enum PruningSchedule {
     OneShot,
 
     /// Iteratively prune over multiple steps
-    Iterative {
-        steps: usize,
-        final_sparsity: f64,
-    },
+    Iterative { steps: usize, final_sparsity: f64 },
 
     /// Gradually increase sparsity over training
     Gradual {
@@ -469,11 +466,10 @@ mod tests {
 
     #[test]
     fn test_magnitude_pruning() {
-        let mut weights = Array2::from_shape_vec((3, 3), vec![
-            0.5, 0.01, 0.9,
-            0.02, 0.7, 0.03,
-            0.8, 0.04, 0.6,
-        ])
+        let mut weights = Array2::from_shape_vec(
+            (3, 3),
+            vec![0.5, 0.01, 0.9, 0.02, 0.7, 0.03, 0.8, 0.04, 0.6],
+        )
         .unwrap();
 
         let strategy = PruningStrategy::MagnitudeBased { threshold: 0.05 };
@@ -497,11 +493,8 @@ mod tests {
 
     #[test]
     fn test_topk_pruning() {
-        let mut weights = Array2::from_shape_vec((2, 3), vec![
-            0.9, 0.1, 0.5,
-            0.2, 0.8, 0.3,
-        ])
-        .unwrap();
+        let mut weights =
+            Array2::from_shape_vec((2, 3), vec![0.9, 0.1, 0.5, 0.2, 0.8, 0.3]).unwrap();
 
         let strategy = PruningStrategy::TopK {
             target_sparsity: 0.5,
@@ -521,11 +514,14 @@ mod tests {
 
     #[test]
     fn test_structured_pruning() {
-        let mut weights = Array2::from_shape_vec((3, 4), vec![
-            0.1, 0.1, 0.1, 0.1, // Low magnitude row
-            0.9, 0.9, 0.9, 0.9, // High magnitude row
-            0.5, 0.5, 0.5, 0.5, // Medium magnitude row
-        ])
+        let mut weights = Array2::from_shape_vec(
+            (3, 4),
+            vec![
+                0.1, 0.1, 0.1, 0.1, // Low magnitude row
+                0.9, 0.9, 0.9, 0.9, // High magnitude row
+                0.5, 0.5, 0.5, 0.5, // Medium magnitude row
+            ],
+        )
         .unwrap();
 
         let strategy = PruningStrategy::Structured { ratio: 0.33 };
@@ -718,11 +714,7 @@ mod tests {
     fn test_compute_sparsity() {
         let pruner = NetworkPruner::magnitude_gradual(0.1, 0, 10, 0.5);
 
-        let weights = Array2::from_shape_vec((2, 3), vec![
-            1.0, 0.0, 0.5,
-            0.0, 0.0, 1.0,
-        ])
-        .unwrap();
+        let weights = Array2::from_shape_vec((2, 3), vec![1.0, 0.0, 0.5, 0.0, 0.0, 1.0]).unwrap();
 
         let sparsity = pruner.compute_sparsity(&weights);
         assert_abs_diff_eq!(sparsity, 3.0 / 6.0, epsilon = 1e-6);

@@ -9,10 +9,8 @@ use iai_callgrind::{library_benchmark, library_benchmark_group, main};
 use std::hint::black_box;
 
 use dpb_core::signal::{
-    FftProcessor, FirFilter, IirFilter,
-    normalize, NormalizationMethod, remove_dc_offset,
-    find_peaks, find_valleys, zero_crossings, rms, energy, clip,
-    downsample, upsample, resample_linear,
+    FftProcessor, FirFilter, IirFilter, NormalizationMethod, clip, downsample, energy, find_peaks,
+    find_valleys, normalize, remove_dc_offset, resample_linear, rms, upsample, zero_crossings,
 };
 use ndarray::Array1;
 
@@ -67,19 +65,25 @@ mod setup {
 // FFT benchmarks
 #[library_benchmark]
 #[bench::fft_256((setup::fft_processor(), setup::signal_256()))]
-fn bench_fft_256((mut processor, signal): (FftProcessor, Array1<f64>)) -> dpb_core::Result<ndarray::Array1<num_complex::Complex<f64>>> {
+fn bench_fft_256(
+    (mut processor, signal): (FftProcessor, Array1<f64>),
+) -> dpb_core::Result<ndarray::Array1<num_complex::Complex<f64>>> {
     black_box(processor.fft(black_box(signal.view())))
 }
 
 #[library_benchmark]
 #[bench::fft_1024((setup::fft_processor(), setup::signal_1024()))]
-fn bench_fft_1024((mut processor, signal): (FftProcessor, Array1<f64>)) -> dpb_core::Result<ndarray::Array1<num_complex::Complex<f64>>> {
+fn bench_fft_1024(
+    (mut processor, signal): (FftProcessor, Array1<f64>),
+) -> dpb_core::Result<ndarray::Array1<num_complex::Complex<f64>>> {
     black_box(processor.fft(black_box(signal.view())))
 }
 
 #[library_benchmark]
 #[bench::fft_4096((setup::fft_processor(), setup::signal_4096()))]
-fn bench_fft_4096((mut processor, signal): (FftProcessor, Array1<f64>)) -> dpb_core::Result<ndarray::Array1<num_complex::Complex<f64>>> {
+fn bench_fft_4096(
+    (mut processor, signal): (FftProcessor, Array1<f64>),
+) -> dpb_core::Result<ndarray::Array1<num_complex::Complex<f64>>> {
     black_box(processor.fft(black_box(signal.view())))
 }
 
@@ -117,19 +121,28 @@ fn bench_iir_bandpass_1024((mut filter, signal): (IirFilter, Array1<f64>)) -> Ar
 #[library_benchmark]
 #[bench::zscore_1024(setup::signal_1024())]
 fn bench_normalize_zscore(signal: Array1<f64>) -> dpb_core::Result<Array1<f64>> {
-    black_box(normalize(black_box(signal.view()), NormalizationMethod::ZScore))
+    black_box(normalize(
+        black_box(signal.view()),
+        NormalizationMethod::ZScore,
+    ))
 }
 
 #[library_benchmark]
 #[bench::minmax_1024(setup::signal_1024())]
 fn bench_normalize_minmax(signal: Array1<f64>) -> dpb_core::Result<Array1<f64>> {
-    black_box(normalize(black_box(signal.view()), NormalizationMethod::MinMax))
+    black_box(normalize(
+        black_box(signal.view()),
+        NormalizationMethod::MinMax,
+    ))
 }
 
 #[library_benchmark]
 #[bench::robust_1024(setup::signal_1024())]
 fn bench_normalize_robust(signal: Array1<f64>) -> dpb_core::Result<Array1<f64>> {
-    black_box(normalize(black_box(signal.view()), NormalizationMethod::Robust))
+    black_box(normalize(
+        black_box(signal.view()),
+        NormalizationMethod::Robust,
+    ))
 }
 
 // Signal utility benchmarks
@@ -245,11 +258,10 @@ library_benchmark_group!(
 );
 
 main!(
-    library_benchmark_groups =
-        fft,
-        fir_filters,
-        iir_filters,
-        normalization,
-        signal_utilities,
-        resampling
+    library_benchmark_groups = fft,
+    fir_filters,
+    iir_filters,
+    normalization,
+    signal_utilities,
+    resampling
 );

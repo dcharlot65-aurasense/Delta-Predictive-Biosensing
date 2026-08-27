@@ -9,20 +9,18 @@
 //!
 //! All generators provide ground truth for algorithm validation.
 
-pub mod vor;
-pub mod nystagmus;
 pub mod caloric;
+pub mod nystagmus;
+pub mod vor;
 
-pub use vor::{
-    VorGenerator, VorConfig, VorOutput, VorGroundTruth,
-    HeadImpulseResult, VorGain, CatchUpSaccade,
+pub use caloric::{
+    CaloricConfig, CaloricGenerator, CaloricGroundTruth, CaloricOutput, CaloricResponse,
+    CaloricStimulus,
 };
 pub use nystagmus::{
-    NystagmusGenerator, NystagmusConfig, NystagmusOutput,
-    NystagmusGroundTruth, NystagmusType, NystagmusDirection,
-    BeatInfo,
+    BeatInfo, NystagmusConfig, NystagmusDirection, NystagmusGenerator, NystagmusGroundTruth,
+    NystagmusOutput, NystagmusType,
 };
-pub use caloric::{
-    CaloricGenerator, CaloricConfig, CaloricOutput,
-    CaloricGroundTruth, CaloricStimulus, CaloricResponse,
+pub use vor::{
+    CatchUpSaccade, HeadImpulseResult, VorConfig, VorGain, VorGenerator, VorGroundTruth, VorOutput,
 };

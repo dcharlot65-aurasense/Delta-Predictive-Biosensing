@@ -1,8 +1,8 @@
 //! LSL outlet for sending biosignal and spike data.
 
 use crate::{LslError, Result, StreamInfo};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tracing::{debug, info};
 
 /// LSL outlet for streaming data to the network.
@@ -164,10 +164,7 @@ impl LslOutlet {
         }
 
         // In real implementation, this blocks until consumer connects or timeout
-        debug!(
-            "Waiting for consumers (timeout: {}s)",
-            timeout_sec
-        );
+        debug!("Waiting for consumers (timeout: {}s)", timeout_sec);
 
         // Mock: immediate return
         false
@@ -225,7 +222,7 @@ impl SpikeOutlet {
         _num_channels: usize,
         include_amplitudes: bool,
     ) -> Result<Self> {
-        use crate::{stream_types, ChannelFormat};
+        use crate::{ChannelFormat, stream_types};
 
         // Spike streams are irregular rate with 2 or 3 values per event:
         // (channel_id, timestamp[, amplitude])
@@ -262,11 +259,7 @@ impl SpikeOutlet {
         amplitude: Option<f32>,
     ) -> Result<()> {
         let data: Vec<f32> = if self.include_amplitudes {
-            vec![
-                channel as f32,
-                timestamp as f32,
-                amplitude.unwrap_or(1.0),
-            ]
+            vec![channel as f32, timestamp as f32, amplitude.unwrap_or(1.0)]
         } else {
             vec![channel as f32, timestamp as f32]
         };

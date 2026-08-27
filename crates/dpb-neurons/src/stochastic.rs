@@ -195,7 +195,7 @@ impl StochasticLifNeuron {
                 let dw = normal.sample(&mut self.rng) * (dt as f64).sqrt();
 
                 let dou = -self.state.ou_noise as f64 / self.config.tau_ou as f64 * dt as f64
-                          + self.config.noise_sigma as f64 * dw;
+                    + self.config.noise_sigma as f64 * dw;
                 self.state.ou_noise += dou as f32;
 
                 self.state.ou_noise
@@ -210,7 +210,6 @@ impl StochasticLifNeuron {
             }
         }
     }
-
 }
 
 // Note: For reproducibility with seeded RNG, a custom implementation would be needed
@@ -245,7 +244,7 @@ impl NeuronModel for StochasticLifNeuron {
 
         // LIF dynamics with noise
         let dv_det = (-(self.state.v - self.config.v_rest) + self.config.r_m * input_current)
-                     / self.config.tau_mem;
+            / self.config.tau_mem;
 
         let noise = self.generate_noise(dt);
 
@@ -340,7 +339,10 @@ mod tests {
 
         // Voltage should change due to multiplicative noise
         // (Though it might also decay, so just check dynamics work)
-        assert!(neuron.membrane_potential() != v_before || neuron.membrane_potential() < neuron.config.v_thresh);
+        assert!(
+            neuron.membrane_potential() != v_before
+                || neuron.membrane_potential() < neuron.config.v_thresh
+        );
     }
 
     #[test]
@@ -400,9 +402,8 @@ mod tests {
 
         // Check that there's variability in the trajectory
         let mean: f32 = voltages.iter().sum::<f32>() / voltages.len() as f32;
-        let variance: f32 = voltages.iter()
-            .map(|&v| (v - mean).powi(2))
-            .sum::<f32>() / voltages.len() as f32;
+        let variance: f32 =
+            voltages.iter().map(|&v| (v - mean).powi(2)).sum::<f32>() / voltages.len() as f32;
 
         assert!(variance > 0.0, "Stochastic neuron should show variance");
     }

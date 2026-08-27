@@ -6,7 +6,7 @@
 //! - Arrhythmias (PAC, PVC, AF)
 //! - Respiratory sinus arrhythmia (RSA)
 
-use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
+use crate::traits::{Event, GeneratedData, SyntheticGenerator, TimeSeriesGroundTruth};
 use ndarray::Array1;
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
@@ -18,9 +18,9 @@ pub struct EcgMorphologyGenerator;
 
 #[derive(Debug, Clone)]
 pub struct EcgMorphologyParams {
-    pub duration: f64,           // seconds
-    pub sampling_rate: f64,      // Hz
-    pub heart_rate: f64,         // bpm
+    pub duration: f64,      // seconds
+    pub sampling_rate: f64, // Hz
+    pub heart_rate: f64,    // bpm
     pub p_wave: WaveParams,
     pub qrs_complex: WaveParams,
     pub t_wave: WaveParams,
@@ -28,8 +28,8 @@ pub struct EcgMorphologyParams {
 
 #[derive(Debug, Clone)]
 pub struct WaveParams {
-    pub amplitude: f64,  // mV
-    pub width: f64,      // radians
+    pub amplitude: f64,   // mV
+    pub width: f64,       // radians
     pub time_offset: f64, // radians from R peak
 }
 
@@ -38,7 +38,11 @@ impl SyntheticGenerator for EcgMorphologyGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = EcgMorphologyParams;
 
-    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        _seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -59,11 +63,21 @@ impl SyntheticGenerator for EcgMorphologyGenerator {
 
         // Wave parameters (P, Q, R, S, T)
         let waves = vec![
-            ('P', params.p_wave.amplitude, params.p_wave.width, params.p_wave.time_offset),
+            (
+                'P',
+                params.p_wave.amplitude,
+                params.p_wave.width,
+                params.p_wave.time_offset,
+            ),
             ('Q', -0.1, 0.1, -PI / 12.0),
             ('R', 1.0, 0.1, 0.0),
             ('S', -0.2, 0.1, PI / 12.0),
-            ('T', params.t_wave.amplitude, params.t_wave.width, params.t_wave.time_offset),
+            (
+                'T',
+                params.t_wave.amplitude,
+                params.t_wave.width,
+                params.t_wave.time_offset,
+            ),
         ];
 
         for i in 0..n_samples {
@@ -120,10 +134,14 @@ impl SyntheticGenerator for EcgMorphologyGenerator {
             let mut dz_dt = 0.0;
             for (_, ai, bi, thetai) in &waves {
                 let delta_theta = (theta - thetai).rem_euclid(2.0 * PI);
-                let delta_theta = if delta_theta > PI { delta_theta - 2.0 * PI } else { delta_theta };
+                let delta_theta = if delta_theta > PI {
+                    delta_theta - 2.0 * PI
+                } else {
+                    delta_theta
+                };
                 let coefficient = ai * omega / bi.powi(2);
-                dz_dt += -coefficient * delta_theta
-                    * (-delta_theta.powi(2) / (2.0 * bi.powi(2))).exp();
+                dz_dt +=
+                    -coefficient * delta_theta * (-delta_theta.powi(2) / (2.0 * bi.powi(2))).exp();
             }
 
             // Euler integration of the waveform state.
@@ -146,7 +164,11 @@ impl SyntheticGenerator for EcgMorphologyGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -174,13 +196,19 @@ impl SyntheticGenerator for EcgMorphologyGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.sampling_rate <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("sampling_rate must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "sampling_rate must be positive".to_string(),
+            ));
         }
         if params.heart_rate <= 0.0 || params.heart_rate > 300.0 {
-            return Err(crate::GeneratorError::InvalidParameter("heart_rate must be 0-300 bpm".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "heart_rate must be 0-300 bpm".to_string(),
+            ));
         }
         Ok(())
     }
@@ -193,10 +221,10 @@ pub struct HeartRateGenerator;
 pub struct HeartRateParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub mean_hr: f64,           // bpm
-    pub hrv_std: f64,           // RR interval std dev (ms)
-    pub lf_power: f64,          // low frequency power (0.04-0.15 Hz)
-    pub hf_power: f64,          // high frequency power (0.15-0.4 Hz)
+    pub mean_hr: f64,  // bpm
+    pub hrv_std: f64,  // RR interval std dev (ms)
+    pub lf_power: f64, // low frequency power (0.04-0.15 Hz)
+    pub hf_power: f64, // high frequency power (0.15-0.4 Hz)
 }
 
 impl SyntheticGenerator for HeartRateGenerator {
@@ -204,7 +232,11 @@ impl SyntheticGenerator for HeartRateGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = HeartRateParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -244,7 +276,11 @@ impl SyntheticGenerator for HeartRateGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(rr_intervals, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            rr_intervals,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -252,18 +288,22 @@ impl SyntheticGenerator for HeartRateGenerator {
             duration: 60.0,
             sampling_rate: 4.0, // Hz (not used for RR intervals)
             mean_hr: 70.0,
-            hrv_std: 50.0,      // ms
-            lf_power: 0.01,     // normalized power
+            hrv_std: 50.0,  // ms
+            lf_power: 0.01, // normalized power
             hf_power: 0.005,
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.mean_hr <= 0.0 || params.mean_hr > 300.0 {
-            return Err(crate::GeneratorError::InvalidParameter("mean_hr must be 0-300 bpm".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "mean_hr must be 0-300 bpm".to_string(),
+            ));
         }
         Ok(())
     }
@@ -276,12 +316,12 @@ pub struct HrvSpectralGenerator;
 pub struct HrvSpectralParams {
     pub duration: f64,
     pub mean_hr: f64,
-    pub lf_center: f64,    // Hz (typically 0.1)
-    pub lf_width: f64,     // Hz
-    pub lf_power: f64,     // ms^2
-    pub hf_center: f64,    // Hz (typically 0.25)
-    pub hf_width: f64,     // Hz
-    pub hf_power: f64,     // ms^2
+    pub lf_center: f64, // Hz (typically 0.1)
+    pub lf_width: f64,  // Hz
+    pub lf_power: f64,  // ms^2
+    pub hf_center: f64, // Hz (typically 0.25)
+    pub hf_width: f64,  // Hz
+    pub hf_power: f64,  // ms^2
 }
 
 impl SyntheticGenerator for HrvSpectralGenerator {
@@ -289,7 +329,11 @@ impl SyntheticGenerator for HrvSpectralGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = HrvSpectralParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -338,13 +382,15 @@ impl SyntheticGenerator for HrvSpectralGenerator {
             lf_power: 1000.0, // ms^2
             hf_center: 0.25,
             hf_width: 0.1,
-            hf_power: 500.0,  // ms^2
+            hf_power: 500.0, // ms^2
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration < 60.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration should be >= 60s for HRV".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration should be >= 60s for HRV".to_string(),
+            ));
         }
         Ok(())
     }
@@ -359,9 +405,9 @@ pub struct ArrhythmiaGenerator;
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone)]
 pub enum ArrhythmiaType {
-    PAC,  // Premature atrial contraction
-    PVC,  // Premature ventricular contraction
-    AF,   // Atrial fibrillation
+    PAC, // Premature atrial contraction
+    PVC, // Premature ventricular contraction
+    AF,  // Atrial fibrillation
 }
 
 #[derive(Debug, Clone)]
@@ -378,7 +424,11 @@ impl SyntheticGenerator for ArrhythmiaGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = ArrhythmiaParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -427,7 +477,8 @@ impl SyntheticGenerator for ArrhythmiaGenerator {
                         });
                     }
                 }
-                next_event_time += event_interval + rng.random_range(-event_interval * 0.3..event_interval * 0.3);
+                next_event_time +=
+                    event_interval + rng.random_range(-event_interval * 0.3..event_interval * 0.3);
             }
 
             rr_intervals.push(rr.max(0.3));
@@ -444,7 +495,11 @@ impl SyntheticGenerator for ArrhythmiaGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(rr_intervals, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            rr_intervals,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -459,10 +514,14 @@ impl SyntheticGenerator for ArrhythmiaGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.baseline_hr <= 0.0 || params.baseline_hr > 300.0 {
-            return Err(crate::GeneratorError::InvalidParameter("baseline_hr must be 0-300 bpm".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "baseline_hr must be 0-300 bpm".to_string(),
+            ));
         }
         Ok(())
     }
@@ -485,7 +544,11 @@ impl SyntheticGenerator for RsaGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = RsaParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -520,7 +583,11 @@ impl SyntheticGenerator for RsaGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(rr_intervals, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            rr_intervals,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -535,13 +602,19 @@ impl SyntheticGenerator for RsaGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.mean_hr <= 0.0 || params.mean_hr > 300.0 {
-            return Err(crate::GeneratorError::InvalidParameter("mean_hr must be 0-300 bpm".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "mean_hr must be 0-300 bpm".to_string(),
+            ));
         }
         if params.respiratory_rate <= 0.0 || params.respiratory_rate > 60.0 {
-            return Err(crate::GeneratorError::InvalidParameter("respiratory_rate must be 0-60 bpm".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "respiratory_rate must be 0-60 bpm".to_string(),
+            ));
         }
         Ok(())
     }
@@ -552,12 +625,12 @@ pub struct HeartRateRecoveryGenerator;
 
 #[derive(Debug, Clone)]
 pub struct HeartRateRecoveryParams {
-    pub duration: f64,          // seconds
-    pub sampling_rate: f64,     // Hz
-    pub peak_hr: f64,           // bpm (max HR at exercise end)
-    pub resting_hr: f64,        // bpm (baseline resting HR)
-    pub recovery_tau: f64,      // time constant (seconds) - fitness indicator
-    pub hrv_noise: f64,         // beat-to-beat variability (ms)
+    pub duration: f64,      // seconds
+    pub sampling_rate: f64, // Hz
+    pub peak_hr: f64,       // bpm (max HR at exercise end)
+    pub resting_hr: f64,    // bpm (baseline resting HR)
+    pub recovery_tau: f64,  // time constant (seconds) - fitness indicator
+    pub hrv_noise: f64,     // beat-to-beat variability (ms)
 }
 
 impl SyntheticGenerator for HeartRateRecoveryGenerator {
@@ -565,7 +638,11 @@ impl SyntheticGenerator for HeartRateRecoveryGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = HeartRateRecoveryParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -603,7 +680,8 @@ impl SyntheticGenerator for HeartRateRecoveryGenerator {
 
         // Calculate recovery metrics
         let hr_1min = if t >= 60.0 {
-            let rr_at_1min = rr_intervals.iter()
+            let rr_at_1min = rr_intervals
+                .iter()
                 .scan(0.0, |acc, &rr| {
                     *acc += rr;
                     Some(*acc)
@@ -645,29 +723,39 @@ impl SyntheticGenerator for HeartRateRecoveryGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(rr_intervals, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            rr_intervals,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
         HeartRateRecoveryParams {
-            duration: 300.0,  // 5 minutes
+            duration: 300.0, // 5 minutes
             sampling_rate: 4.0,
             peak_hr: 170.0,
             resting_hr: 70.0,
-            recovery_tau: 60.0,  // 60s tau = good fitness
+            recovery_tau: 60.0, // 60s tau = good fitness
             hrv_noise: 40.0,
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.peak_hr <= params.resting_hr {
-            return Err(crate::GeneratorError::InvalidParameter("peak_hr must be > resting_hr".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "peak_hr must be > resting_hr".to_string(),
+            ));
         }
         if params.recovery_tau <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("recovery_tau must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "recovery_tau must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -682,7 +770,10 @@ mod tests {
         let generator = EcgMorphologyGenerator;
         let params = EcgMorphologyGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
         assert!(!result.ground_truth.events.is_empty()); // Should have R peaks
     }
 

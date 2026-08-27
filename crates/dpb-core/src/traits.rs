@@ -119,7 +119,12 @@ impl ReconstructionQuality {
     pub fn compare(original: &[f32], reconstructed: &[f32], n_events: usize) -> Self {
         let n = original.len().min(reconstructed.len());
         if n == 0 {
-            return Self { rmse: 0.0, max_abs_error: 0.0, snr_db: f32::INFINITY, compression_ratio: 1.0 };
+            return Self {
+                rmse: 0.0,
+                max_abs_error: 0.0,
+                snr_db: f32::INFINITY,
+                compression_ratio: 1.0,
+            };
         }
         let mut sq_err = 0.0f64;
         let mut sq_sig = 0.0f64;
@@ -141,7 +146,12 @@ impl ReconstructionQuality {
         } else {
             original.len() as f32 / n_events as f32
         };
-        Self { rmse, max_abs_error: max_abs, snr_db, compression_ratio }
+        Self {
+            rmse,
+            max_abs_error: max_abs,
+            snr_db,
+            compression_ratio,
+        }
     }
 }
 
@@ -254,8 +264,11 @@ pub trait LossFunction: Send + Sync {
     fn compute(&self, predictions: ArrayView2<f32>, targets: ArrayView2<f32>) -> Result<f64>;
 
     /// Computes the gradient of the loss.
-    fn gradient(&self, predictions: ArrayView2<f32>, targets: ArrayView2<f32>)
-        -> Result<Array2<f32>>;
+    fn gradient(
+        &self,
+        predictions: ArrayView2<f32>,
+        targets: ArrayView2<f32>,
+    ) -> Result<Array2<f32>>;
 
     /// Returns the loss function name.
     fn name(&self) -> &str;

@@ -209,8 +209,7 @@ pub struct JitterEncoder;
 impl JitterEncoder {
     /// Creates a new [`JitterEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn calculate_jitter(&self, periods: &[f32]) -> f32 {
@@ -307,8 +306,7 @@ pub struct ShimmerEncoder;
 impl ShimmerEncoder {
     /// Creates a new [`ShimmerEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn calculate_shimmer(&self, amplitudes: &[f32]) -> f32 {
@@ -350,7 +348,10 @@ impl EventEncoder for ShimmerEncoder {
 
         for i in (window_size..samples.len()).step_by(window_size) {
             let window = &samples[i - window_size..i];
-            let peak = window.iter().map(|&x| x.abs()).fold(f32::NEG_INFINITY, f32::max);
+            let peak = window
+                .iter()
+                .map(|&x| x.abs())
+                .fold(f32::NEG_INFINITY, f32::max);
             amplitudes.push(peak);
         }
 
@@ -403,8 +404,7 @@ pub struct HnrEncoder;
 impl HnrEncoder {
     /// Creates a new [`HnrEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn estimate_hnr(&self, _window: &[f32]) -> f32 {

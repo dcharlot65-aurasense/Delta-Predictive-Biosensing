@@ -35,7 +35,8 @@ impl SimpleReactionTime {
     /// Generate a sequence of trials with randomized inter-stimulus intervals
     pub fn generate_trial_sequence(&self, n_trials: usize) -> Vec<Trial> {
         let mut rng = rand::rng();
-        let interval_dist = Uniform::new(self.stimulus_intervals.0, self.stimulus_intervals.1).expect("uniform bounds are ordered and finite");
+        let interval_dist = Uniform::new(self.stimulus_intervals.0, self.stimulus_intervals.1)
+            .expect("uniform bounds are ordered and finite");
 
         (0..n_trials)
             .map(|i| Trial {
@@ -275,11 +276,7 @@ pub fn calculate_rt_metrics(
         / n as f64;
     let std_rt = variance.sqrt();
 
-    let coefficient_of_variation = if mean_rt > 0.0 {
-        std_rt / mean_rt
-    } else {
-        0.0
-    };
+    let coefficient_of_variation = if mean_rt > 0.0 { std_rt / mean_rt } else { 0.0 };
 
     ReactionTimeMetrics {
         mean_rt,

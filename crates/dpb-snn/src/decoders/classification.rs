@@ -585,8 +585,7 @@ impl Decoder for DyskinesiasDecoder {
             let mut irregularity = 0.0;
             for n in 0..num_neurons {
                 for t in 1..num_steps {
-                    irregularity +=
-                        (spike_dense[[b, t, n]] - spike_dense[[b, t - 1, n]]).abs();
+                    irregularity += (spike_dense[[b, t, n]] - spike_dense[[b, t - 1, n]]).abs();
                 }
             }
             irregularity /= (num_steps * num_neurons) as f32;

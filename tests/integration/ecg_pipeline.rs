@@ -10,8 +10,7 @@
 use dpb_core::SignalBuffer;
 use dpb_encoders::prelude::*;
 use dpb_snn::{
-    FeedforwardSNN, SpikeTensor, SpikeRateDecoder,
-    NeuronModel, NeuronParams, SNNConfig,
+    FeedforwardSNN, NeuronModel, NeuronParams, SNNConfig, SpikeRateDecoder, SpikeTensor,
 };
 // `forward` and `decode` are trait methods.
 use dpb_snn::architectures::SNNArchitecture;
@@ -50,7 +49,8 @@ fn test_ecg_pipeline_end_to_end() {
     };
 
     let generator = EcgMorphologyGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate ECG");
 
     // Verify R-peaks are generated
@@ -66,7 +66,7 @@ fn test_ecg_pipeline_end_to_end() {
         r_peaks.len() as f64,
         (expected_beats - 2) as f64,
         (expected_beats + 2) as f64,
-        "R-peak count within expected range"
+        "R-peak count within expected range",
     );
 
     // Step 2: Convert to SignalBuffer and encode
@@ -84,7 +84,8 @@ fn test_ecg_pipeline_end_to_end() {
         mode: LevelCrossingMode::FixedLevel,
     };
 
-    let spike_train = encoder.encode(&signal, &encoder_config)
+    let spike_train = encoder
+        .encode(&signal, &encoder_config)
         .expect("Failed to encode ECG signal");
 
     // Step 3: Verify encoding produced spikes
@@ -120,13 +121,16 @@ fn test_ecg_pipeline_end_to_end() {
         neuron_params: NeuronParams::default(),
     };
 
-    let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 16, 1], snn_config.clone(), true).expect("SNN");
-    let output_spikes = snn.forward(&spike_tensor)
+    let mut snn =
+        FeedforwardSNN::new(vec![num_channels, 32, 16, 1], snn_config.clone(), true).expect("SNN");
+    let output_spikes = snn
+        .forward(&spike_tensor)
         .expect("Failed to run SNN forward pass");
 
     // Step 6: Decode output to heart rate
     let decoder = SpikeRateDecoder::new(1, None, false);
-    let decoded = decoder.decode(&output_spikes)
+    let decoded = decoder
+        .decode(&output_spikes)
         .expect("Failed to decode SNN output");
 
     // Step 7: Validate decoded output shape
@@ -176,7 +180,8 @@ fn test_ecg_pipeline_multiple_heart_rates() {
         };
 
         let generator = EcgMorphologyGenerator;
-        let generated = generator.generate(&params, TEST_SEED)
+        let generated = generator
+            .generate(&params, TEST_SEED)
             .expect("Failed to generate ECG");
 
         let expected_beats = (hr * 10.0 / 60.0) as usize;
@@ -186,10 +191,13 @@ fn test_ecg_pipeline_multiple_heart_rates() {
             actual_beats as f64,
             (expected_beats - 2) as f64,
             (expected_beats + 2) as f64,
-            &format!("HR {} bpm: beat count", hr)
+            &format!("HR {} bpm: beat count", hr),
         );
 
-        println!("HR {:.0} bpm: generated {} beats (expected ~{})", hr, actual_beats, expected_beats);
+        println!(
+            "HR {:.0} bpm: generated {} beats (expected ~{})",
+            hr, actual_beats, expected_beats
+        );
     }
 }
 
@@ -219,9 +227,11 @@ fn test_ecg_pipeline_reproducibility() {
 
     let generator = EcgMorphologyGenerator;
 
-    let gen1 = generator.generate(&params, TEST_SEED)
+    let gen1 = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate ECG (run 1)");
-    let gen2 = generator.generate(&params, TEST_SEED)
+    let gen2 = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate ECG (run 2)");
 
     // Signals should be identical
@@ -235,7 +245,7 @@ fn test_ecg_pipeline_reproducibility() {
         assert_approx_eq(
             gen1.signal[i],
             gen2.signal[i],
-            &format!("Signal sample {}", i)
+            &format!("Signal sample {}", i),
         );
     }
 
@@ -272,7 +282,8 @@ fn test_ecg_encoder_threshold_sensitivity() {
     };
 
     let generator = EcgMorphologyGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate ECG");
 
     let signal_data: Vec<f32> = generated.signal.iter().map(|&x| x as f32).collect();
@@ -287,20 +298,15 @@ fn test_ecg_encoder_threshold_sensitivity() {
             relative: false,
             refractory_period: 0.2,
             // Detection semantics: one event per crossing of the level. The
-        // default `Delta` mode instead emits one event per threshold of
-        // travel, which is the reconstructable sampling behaviour.
-        mode: LevelCrossingMode::FixedLevel,
+            // default `Delta` mode instead emits one event per threshold of
+            // travel, which is the reconstructable sampling behaviour.
+            mode: LevelCrossingMode::FixedLevel,
         };
 
-        let spike_train = encoder.encode(&signal, &config)
-            .expect("Failed to encode");
+        let spike_train = encoder.encode(&signal, &config).expect("Failed to encode");
 
         // Higher thresholds should produce fewer spikes
-        println!(
-            "Threshold {:.1}: {} spikes",
-            threshold,
-            spike_train.len()
-        );
+        println!("Threshold {:.1}: {} spikes", threshold, spike_train.len());
 
         assert!(
             !spike_train.is_empty(),

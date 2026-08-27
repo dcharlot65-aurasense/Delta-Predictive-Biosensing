@@ -62,21 +62,28 @@ impl ANNBaseline for CNN1DSmall {
     }
 
     fn num_parameters(&self) -> usize {
-        count_params(&self.conv1.shape) + count_params(&self.conv2.shape) +
-        count_params(&self.fc1.shape) + count_params(&self.fc2.shape)
+        count_params(&self.conv1.shape)
+            + count_params(&self.conv2.shape)
+            + count_params(&self.fc1.shape)
+            + count_params(&self.fc2.shape)
     }
 
     fn flops_per_inference(&self) -> u64 {
         // Rough estimate
-        let conv1_ops = (self.conv1.shape[0] * self.conv1.shape[1] * self.conv1.shape[2] * 100) as u64;
-        let conv2_ops = (self.conv2.shape[0] * self.conv2.shape[1] * self.conv2.shape[2] * 50) as u64;
-        let fc_ops = (self.fc1.shape[0] * self.fc1.shape[1] * 2 + self.fc2.shape[0] * self.fc2.shape[1] * 2) as u64;
+        let conv1_ops =
+            (self.conv1.shape[0] * self.conv1.shape[1] * self.conv1.shape[2] * 100) as u64;
+        let conv2_ops =
+            (self.conv2.shape[0] * self.conv2.shape[1] * self.conv2.shape[2] * 50) as u64;
+        let fc_ops = (self.fc1.shape[0] * self.fc1.shape[1] * 2
+            + self.fc2.shape[0] * self.fc2.shape[1] * 2) as u64;
         conv1_ops + conv2_ops + fc_ops
     }
 
     fn architecture_summary(&self) -> String {
-        format!("CNN1D_Small: Conv(32,k=7) -> Pool -> Conv(64,k=5) -> Pool -> FC(128) -> FC({})",
-                self.output_size)
+        format!(
+            "CNN1D_Small: Conv(32,k=7) -> Pool -> Conv(64,k=5) -> Pool -> FC(128) -> FC({})",
+            self.output_size
+        )
     }
 }
 
@@ -101,11 +108,20 @@ impl CNN1DMedium {
         let fc_input = 256 * l3;
 
         let fc_layers = vec![
-            (xavier_init(vec![fc_input, 256], seed + 3), Tensor::zeros(vec![256])),
-            (xavier_init(vec![256, output_size], seed + 4), Tensor::zeros(vec![output_size])),
+            (
+                xavier_init(vec![fc_input, 256], seed + 3),
+                Tensor::zeros(vec![256]),
+            ),
+            (
+                xavier_init(vec![256, output_size], seed + 4),
+                Tensor::zeros(vec![output_size]),
+            ),
         ];
 
-        Self { conv_layers, fc_layers }
+        Self {
+            conv_layers,
+            fc_layers,
+        }
     }
 }
 
@@ -139,8 +155,14 @@ impl ANNBaseline for CNN1DMedium {
     }
 
     fn num_parameters(&self) -> usize {
-        let conv_params: usize = self.conv_layers.iter().map(|c| count_params(&c.shape)).sum();
-        let fc_params: usize = self.fc_layers.iter()
+        let conv_params: usize = self
+            .conv_layers
+            .iter()
+            .map(|c| count_params(&c.shape))
+            .sum();
+        let fc_params: usize = self
+            .fc_layers
+            .iter()
             .map(|(w, b)| count_params(&w.shape) + count_params(&b.shape))
             .sum();
         conv_params + fc_params
@@ -151,8 +173,11 @@ impl ANNBaseline for CNN1DMedium {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("CNN1D_Medium: {} conv layers, {} fc layers",
-                self.conv_layers.len(), self.fc_layers.len())
+        format!(
+            "CNN1D_Medium: {} conv layers, {} fc layers",
+            self.conv_layers.len(),
+            self.fc_layers.len()
+        )
     }
 }
 
@@ -183,12 +208,24 @@ impl CNN1DLarge {
         let fc_input = 256 * (input_length / 8);
 
         let fc_layers = vec![
-            (xavier_init(vec![fc_input, 512], seed + 6), Tensor::zeros(vec![512])),
-            (xavier_init(vec![512, 256], seed + 7), Tensor::zeros(vec![256])),
-            (xavier_init(vec![256, output_size], seed + 8), Tensor::zeros(vec![output_size])),
+            (
+                xavier_init(vec![fc_input, 512], seed + 6),
+                Tensor::zeros(vec![512]),
+            ),
+            (
+                xavier_init(vec![512, 256], seed + 7),
+                Tensor::zeros(vec![256]),
+            ),
+            (
+                xavier_init(vec![256, output_size], seed + 8),
+                Tensor::zeros(vec![output_size]),
+            ),
         ];
 
-        Self { conv_blocks, fc_layers }
+        Self {
+            conv_blocks,
+            fc_layers,
+        }
     }
 }
 
@@ -225,12 +262,16 @@ impl ANNBaseline for CNN1DLarge {
     }
 
     fn num_parameters(&self) -> usize {
-        let conv_params: usize = self.conv_blocks.iter()
+        let conv_params: usize = self
+            .conv_blocks
+            .iter()
             .flat_map(|block| block.iter())
             .map(|c| count_params(&c.shape))
             .sum();
 
-        let fc_params: usize = self.fc_layers.iter()
+        let fc_params: usize = self
+            .fc_layers
+            .iter()
             .map(|(w, b)| count_params(&w.shape) + count_params(&b.shape))
             .sum();
 
@@ -242,8 +283,11 @@ impl ANNBaseline for CNN1DLarge {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("CNN1D_Large: {} conv blocks, {} fc layers",
-                self.conv_blocks.len(), self.fc_layers.len())
+        format!(
+            "CNN1D_Large: {} conv blocks, {} fc layers",
+            self.conv_blocks.len(),
+            self.fc_layers.len()
+        )
     }
 }
 
@@ -277,10 +321,14 @@ impl CNN1DResidual {
         let fc_input = 256 * (input_length / 4);
         let fc = (
             xavier_init(vec![fc_input, output_size], seed + 6),
-            Tensor::zeros(vec![output_size])
+            Tensor::zeros(vec![output_size]),
         );
 
-        Self { layers, shortcuts, fc }
+        Self {
+            layers,
+            shortcuts,
+            fc,
+        }
     }
 }
 
@@ -323,7 +371,9 @@ impl ANNBaseline for CNN1DResidual {
 
     fn num_parameters(&self) -> usize {
         let layer_params: usize = self.layers.iter().map(|l| count_params(&l.shape)).sum();
-        let shortcut_params: usize = self.shortcuts.iter()
+        let shortcut_params: usize = self
+            .shortcuts
+            .iter()
             .filter_map(|s| s.as_ref())
             .map(|s| count_params(&s.shape))
             .sum();
@@ -361,10 +411,14 @@ impl CNN1DDilated {
         let fc_input = 64 * (input_length / 2);
         let fc = (
             xavier_init(vec![fc_input, output_size], seed + 10),
-            Tensor::zeros(vec![output_size])
+            Tensor::zeros(vec![output_size]),
         );
 
-        Self { dilated_convs, dilations, fc }
+        Self {
+            dilated_convs,
+            dilations,
+            fc,
+        }
     }
 }
 
@@ -390,7 +444,11 @@ impl ANNBaseline for CNN1DDilated {
     }
 
     fn num_parameters(&self) -> usize {
-        let conv_params: usize = self.dilated_convs.iter().map(|c| count_params(&c.shape)).sum();
+        let conv_params: usize = self
+            .dilated_convs
+            .iter()
+            .map(|c| count_params(&c.shape))
+            .sum();
         let fc_params = count_params(&self.fc.0.shape) + count_params(&self.fc.1.shape);
         conv_params + fc_params
     }
@@ -400,7 +458,10 @@ impl ANNBaseline for CNN1DDilated {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("CNN1D_Dilated: WaveNet-style with dilations {:?}", self.dilations)
+        format!(
+            "CNN1D_Dilated: WaveNet-style with dilations {:?}",
+            self.dilations
+        )
     }
 }
 
@@ -568,7 +629,10 @@ impl TCN {
             layers.push(xavier_init(vec![out_ch, in_ch, 3], seed + i as u64));
 
             if in_ch != out_ch {
-                residual_layers.push(Some(xavier_init(vec![out_ch, in_ch, 1], seed + 10 + i as u64)));
+                residual_layers.push(Some(xavier_init(
+                    vec![out_ch, in_ch, 1],
+                    seed + 10 + i as u64,
+                )));
             } else {
                 residual_layers.push(None);
             }
@@ -579,10 +643,14 @@ impl TCN {
         let fc_input = in_ch * (input_length / 4);
         let fc = (
             xavier_init(vec![fc_input, output_size], seed + 20),
-            Tensor::zeros(vec![output_size])
+            Tensor::zeros(vec![output_size]),
         );
 
-        Self { layers, residual_layers, fc }
+        Self {
+            layers,
+            residual_layers,
+            fc,
+        }
     }
 }
 
@@ -614,7 +682,9 @@ impl ANNBaseline for TCN {
 
     fn num_parameters(&self) -> usize {
         let layer_params: usize = self.layers.iter().map(|l| count_params(&l.shape)).sum();
-        let residual_params: usize = self.residual_layers.iter()
+        let residual_params: usize = self
+            .residual_layers
+            .iter()
             .filter_map(|r| r.as_ref())
             .map(|r| count_params(&r.shape))
             .sum();
@@ -628,7 +698,10 @@ impl ANNBaseline for TCN {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("TCN: {} levels with dilated causal convolutions", self.layers.len())
+        format!(
+            "TCN: {} levels with dilated causal convolutions",
+            self.layers.len()
+        )
     }
 }
 

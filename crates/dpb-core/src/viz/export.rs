@@ -21,7 +21,15 @@ impl SvgBuilder {
     }
 
     /// Adds a line element.
-    pub fn line(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, stroke: &str, width: f32) -> &mut Self {
+    pub fn line(
+        &mut self,
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+        stroke: &str,
+        width: f32,
+    ) -> &mut Self {
         self.elements.push(format!(
             r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="{}" />"#,
             x1, y1, x2, y2, stroke, width
@@ -39,7 +47,16 @@ impl SvgBuilder {
     }
 
     /// Adds a rectangle with stroke.
-    pub fn rect_stroke(&mut self, x: f32, y: f32, width: f32, height: f32, fill: &str, stroke: &str, stroke_width: f32) -> &mut Self {
+    pub fn rect_stroke(
+        &mut self,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+        fill: &str,
+        stroke: &str,
+        stroke_width: f32,
+    ) -> &mut Self {
         self.elements.push(format!(
             r#"<rect x="{}" y="{}" width="{}" height="{}" fill="{}" stroke="{}" stroke-width="{}" />"#,
             x, y, width, height, fill, stroke, stroke_width
@@ -66,7 +83,15 @@ impl SvgBuilder {
     }
 
     /// Adds a text element with anchor.
-    pub fn text_anchor(&mut self, x: f32, y: f32, content: &str, font_size: u32, fill: &str, anchor: &str) -> &mut Self {
+    pub fn text_anchor(
+        &mut self,
+        x: f32,
+        y: f32,
+        content: &str,
+        font_size: u32,
+        fill: &str,
+        anchor: &str,
+    ) -> &mut Self {
         self.elements.push(format!(
             r#"<text x="{}" y="{}" font-family="Arial, sans-serif" font-size="{}" fill="{}" text-anchor="{}">{}</text>"#,
             x, y, font_size, fill, anchor, Self::escape_xml(content)
@@ -84,7 +109,13 @@ impl SvgBuilder {
     }
 
     /// Adds a polyline element.
-    pub fn polyline(&mut self, points: &[(f32, f32)], stroke: &str, width: f32, fill: &str) -> &mut Self {
+    pub fn polyline(
+        &mut self,
+        points: &[(f32, f32)],
+        stroke: &str,
+        width: f32,
+        fill: &str,
+    ) -> &mut Self {
         let points_str = points
             .iter()
             .map(|(x, y)| format!("{},{}", x, y))
@@ -103,7 +134,14 @@ impl SvgBuilder {
         let height = config.height as f32;
 
         // X axis
-        self.line(margin, height - margin, width - margin, height - margin, "#000000", 2.0);
+        self.line(
+            margin,
+            height - margin,
+            width - margin,
+            height - margin,
+            "#000000",
+            2.0,
+        );
         // Y axis
         self.line(margin, margin, margin, height - margin, "#000000", 2.0);
 
@@ -120,7 +158,14 @@ impl SvgBuilder {
     }
 
     /// Adds a grid to the plot.
-    pub fn grid(&mut self, margin: f32, width: u32, height: u32, num_x: usize, num_y: usize) -> &mut Self {
+    pub fn grid(
+        &mut self,
+        margin: f32,
+        width: u32,
+        height: u32,
+        num_x: usize,
+        num_y: usize,
+    ) -> &mut Self {
         let w = width as f32;
         let h = height as f32;
         let plot_width = w - 2.0 * margin;
@@ -192,14 +237,15 @@ pub struct JsonBuilder {
 impl JsonBuilder {
     /// Creates a new JSON builder.
     pub fn new() -> Self {
-        Self {
-            fields: Vec::new(),
-        }
+        Self { fields: Vec::new() }
     }
 
     /// Adds a string field.
     pub fn add_string(&mut self, key: &str, value: &str) -> &mut Self {
-        self.fields.push((key.to_string(), format!(r#""{}""#, Self::escape_json(value))));
+        self.fields.push((
+            key.to_string(),
+            format!(r#""{}""#, Self::escape_json(value)),
+        ));
         self
     }
 
@@ -225,7 +271,11 @@ impl JsonBuilder {
     pub fn add_number_array(&mut self, key: &str, values: &[f64]) -> &mut Self {
         let array = format!(
             "[{}]",
-            values.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", ")
+            values
+                .iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
         );
         self.fields.push((key.to_string(), array));
         self
@@ -237,7 +287,13 @@ impl JsonBuilder {
             "[{}]",
             values
                 .iter()
-                .map(|row| format!("[{}]", row.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", ")))
+                .map(|row| format!(
+                    "[{}]",
+                    row.iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ))
                 .collect::<Vec<_>>()
                 .join(", ")
         );
@@ -249,7 +305,11 @@ impl JsonBuilder {
     pub fn add_string_array(&mut self, key: &str, values: &[String]) -> &mut Self {
         let array = format!(
             "[{}]",
-            values.iter().map(|v| format!(r#""{}""#, Self::escape_json(v))).collect::<Vec<_>>().join(", ")
+            values
+                .iter()
+                .map(|v| format!(r#""{}""#, Self::escape_json(v)))
+                .collect::<Vec<_>>()
+                .join(", ")
         );
         self.fields.push((key.to_string(), array));
         self

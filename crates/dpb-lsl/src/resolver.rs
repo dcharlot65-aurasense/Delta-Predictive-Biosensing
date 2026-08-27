@@ -255,11 +255,7 @@ impl StreamWatcher {
         let removed_streams: Vec<StreamInfo> = self
             .known_streams
             .iter()
-            .filter(|k| {
-                !current
-                    .iter()
-                    .any(|s| s.source_id() == k.source_id())
-            })
+            .filter(|k| !current.iter().any(|s| s.source_id() == k.source_id()))
             .cloned()
             .collect();
 

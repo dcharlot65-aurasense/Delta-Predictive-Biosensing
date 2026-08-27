@@ -54,9 +54,8 @@ impl SpikingRNN {
         let normal_recurrent = Normal::new(0.0, std_recurrent).unwrap();
         let mut rng = rng();
 
-        let w_input = Array2::from_shape_fn((hidden_size, input_size), |_| {
-            normal_input.sample(&mut rng)
-        });
+        let w_input =
+            Array2::from_shape_fn((hidden_size, input_size), |_| normal_input.sample(&mut rng));
 
         let w_recurrent = Array2::from_shape_fn((hidden_size, hidden_size), |_| {
             normal_recurrent.sample(&mut rng)
@@ -246,9 +245,8 @@ impl SpikingLSTM {
         let normal = Normal::new(0.0, std).unwrap();
         let mut rng = rng();
 
-        let mut init_weights = |shape: (usize, usize)| {
-            Array2::from_shape_fn(shape, |_| normal.sample(&mut rng))
-        };
+        let mut init_weights =
+            |shape: (usize, usize)| Array2::from_shape_fn(shape, |_| normal.sample(&mut rng));
 
         Self {
             w_input_gate: init_weights((hidden_size, input_size)),
@@ -329,8 +327,11 @@ impl SpikingLayer for SpikingLSTM {
                 }
 
                 // Convert to spikes using neuron dynamics
-                let spikes = self.state[b].update_lif(&h_new.slice(s![b, ..]).to_owned(),
-                    &self.neuron_params, self.dt);
+                let spikes = self.state[b].update_lif(
+                    &h_new.slice(s![b, ..]).to_owned(),
+                    &self.neuron_params,
+                    self.dt,
+                );
                 output.slice_mut(s![b, t, ..]).assign(&spikes);
             }
 

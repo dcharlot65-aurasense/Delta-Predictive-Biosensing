@@ -29,7 +29,7 @@ impl PopulationTemplate for PressurePainThresholdTemplate {
     fn expected_value(&self, context: &Context) -> f64 {
         // PPT varies by site, age, and sex (trapezius reference site)
         let base = match context.sex.as_deref() {
-            Some("Male") | Some("male") => 350.0,    // Males: ~350 kPa
+            Some("Male") | Some("male") => 350.0,     // Males: ~350 kPa
             Some("Female") | Some("female") => 280.0, // Females: ~280 kPa
             _ => 315.0,
         };
@@ -115,10 +115,10 @@ pub struct PainThresholdConfig {
 impl Default for PainThresholdConfig {
     fn default() -> Self {
         Self {
-            pain_threshold: 4.0,   // Moderate pain threshold (4/10)
-            min_stimulus: 0.1,     // 10% stimulus minimum
-            min_interval: 0.5,     // 500ms minimum between events
-            hysteresis: 0.5,       // 0.5 point hysteresis
+            pain_threshold: 4.0, // Moderate pain threshold (4/10)
+            min_stimulus: 0.1,   // 10% stimulus minimum
+            min_interval: 0.5,   // 500ms minimum between events
+            hysteresis: 0.5,     // 0.5 point hysteresis
         }
     }
 }
@@ -239,10 +239,10 @@ pub struct TemporalSummationConfig {
 impl Default for TemporalSummationConfig {
     fn default() -> Self {
         Self {
-            num_stimuli: 10,          // Standard 10-pulse train
-            isi: 1.0,                 // 1 Hz stimulation
-            increase_threshold: 1.0,  // 1 point increase = significant
-            detection_window: 0.2,    // ±200ms window
+            num_stimuli: 10,         // Standard 10-pulse train
+            isi: 1.0,                // 1 Hz stimulation
+            increase_threshold: 1.0, // 1 point increase = significant
+            detection_window: 0.2,   // ±200ms window
         }
     }
 }
@@ -383,7 +383,7 @@ impl Default for CpmConfig {
             baseline_duration: 30.0,
             conditioning_duration: 60.0,
             post_duration: 30.0,
-            min_cpm_effect: 10.0,  // 10% minimum reduction
+            min_cpm_effect: 10.0, // 10% minimum reduction
         }
     }
 }
@@ -406,8 +406,7 @@ pub struct CpmEncoder;
 impl CpmEncoder {
     /// Create a new CPM encoder
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }
 

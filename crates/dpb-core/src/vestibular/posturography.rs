@@ -136,10 +136,7 @@ impl DynamicPosturography {
             .iter()
             .cloned()
             .fold(f64::NEG_INFINITY, f64::max);
-        let min_sway = sway_angles
-            .iter()
-            .cloned()
-            .fold(f64::INFINITY, f64::min);
+        let min_sway = sway_angles.iter().cloned().fold(f64::INFINITY, f64::min);
         let peak_to_peak = max_sway - min_sway;
 
         // Calculate equilibrium score
@@ -160,13 +157,19 @@ impl DynamicPosturography {
         }
 
         let sway_range = {
-            let max = sway_angles.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            let max = sway_angles
+                .iter()
+                .cloned()
+                .fold(f64::NEG_INFINITY, f64::max);
             let min = sway_angles.iter().cloned().fold(f64::INFINITY, f64::min);
             max - min
         };
 
         let shear_range = {
-            let max = shear_forces.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            let max = shear_forces
+                .iter()
+                .cloned()
+                .fold(f64::NEG_INFINITY, f64::max);
             let min = shear_forces.iter().cloned().fold(f64::INFINITY, f64::min);
             max - min
         };

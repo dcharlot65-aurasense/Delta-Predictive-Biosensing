@@ -40,8 +40,8 @@ use super::{
     Accelerator, AcceleratorBuffer, AcceleratorCapabilities, AcceleratorError,
     AcceleratorOperation, AcceleratorType, OperationType,
 };
-use std::sync::{atomic::AtomicU64, Mutex};
 use std::collections::HashMap;
+use std::sync::{Mutex, atomic::AtomicU64};
 
 /// IPU device configuration.
 #[cfg(feature = "graphcore-ipu")]
@@ -246,7 +246,7 @@ impl IpuAccelerator {
             supports_fp16: true,
             supports_bf16: false,
             supports_int8: true,
-            peak_tflops: 280.0, // FP16 peak for Bow-2000
+            peak_tflops: 280.0,             // FP16 peak for Bow-2000
             memory_bandwidth_gbps: 47000.0, // SRAM bandwidth
         }
     }
@@ -265,7 +265,11 @@ impl IpuAccelerator {
     pub fn compile(&self, graph: &mut IpuGraph) -> Result<(), AcceleratorError> {
         // In production: Engine::compile()
 
-        tracing::debug!("Compiling IPU graph '{}' with {} tensors", graph.name, graph.tensors.len());
+        tracing::debug!(
+            "Compiling IPU graph '{}' with {} tensors",
+            graph.name,
+            graph.tensors.len()
+        );
 
         graph.engine = Some(IpuEngine {
             handle: 1,
@@ -278,10 +282,10 @@ impl IpuAccelerator {
 
     /// Execute a compiled graph.
     pub fn run(&self, graph: &IpuGraph) -> Result<(), AcceleratorError> {
-        let engine = graph.engine.as_ref()
-            .ok_or_else(|| AcceleratorError::InvalidOperation(
-                "Graph not compiled".to_string()
-            ))?;
+        let engine = graph
+            .engine
+            .as_ref()
+            .ok_or_else(|| AcceleratorError::InvalidOperation("Graph not compiled".to_string()))?;
 
         // In production: engine.run()
         tracing::debug!("Running IPU engine {}", engine.handle);
@@ -328,14 +332,12 @@ impl IpuAccelerator {
         // Add compute program
         let program = IpuProgram {
             name: "encode".to_string(),
-            vertices: vec![
-                IpuVertex {
-                    codelet: "LevelCrossingVertex".to_string(),
-                    inputs: vec![0, 1], // signal, thresholds
-                    outputs: vec![2],   // spikes
-                    tiles: (0..self.device.num_tiles).collect(),
-                }
-            ],
+            vertices: vec![IpuVertex {
+                codelet: "LevelCrossingVertex".to_string(),
+                inputs: vec![0, 1], // signal, thresholds
+                outputs: vec![2],   // spikes
+                tiles: (0..self.device.num_tiles).collect(),
+            }],
         };
         graph.programs.push(program);
 
@@ -344,8 +346,8 @@ impl IpuAccelerator {
 
     /// Compute optimal tile mapping for a tensor.
     fn compute_tile_mapping(&self, num_elements: usize) -> Vec<u32> {
-        let elements_per_tile = (num_elements + self.device.num_tiles as usize - 1)
-            / self.device.num_tiles as usize;
+        let elements_per_tile =
+            (num_elements + self.device.num_tiles as usize - 1) / self.device.num_tiles as usize;
 
         (0..self.device.num_tiles)
             .flat_map(|tile| vec![tile; elements_per_tile])
@@ -360,7 +362,9 @@ impl IpuAccelerator {
 
     /// Estimate memory usage for a graph.
     pub fn estimate_memory(&self, graph: &IpuGraph) -> usize {
-        graph.tensors.iter()
+        graph
+            .tensors
+            .iter()
             .map(|t| {
                 let elements: usize = t.shape.iter().product();
                 elements * t.dtype.size_bytes()
@@ -384,34 +388,52 @@ impl Accelerator for IpuAccelerator {
     }
 
     fn allocate(&self, size_bytes: usize) -> Result<AcceleratorBuffer, AcceleratorError> {
-        let id = self.next_buffer_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let id = self
+            .next_buffer_id
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let num_floats = size_bytes / 4;
 
         let mut buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         buffers.insert(id, vec![0.0; num_floats]);
 
-        Ok(AcceleratorBuffer::new(id, size_bytes, AcceleratorType::GraphcoreIpu))
+        Ok(AcceleratorBuffer::new(
+            id,
+            size_bytes,
+            AcceleratorType::GraphcoreIpu,
+        ))
     }
 
-    fn copy_to_device(&self, buffer: &mut AcceleratorBuffer, data: &[f32]) -> Result<(), AcceleratorError> {
+    fn copy_to_device(
+        &self,
+        buffer: &mut AcceleratorBuffer,
+        data: &[f32],
+    ) -> Result<(), AcceleratorError> {
         let mut buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         if let Some(buf) = buffers.get_mut(&buffer.id) {
             let len = data.len().min(buf.len());
             buf[..len].copy_from_slice(&data[..len]);
             Ok(())
         } else {
-            Err(AcceleratorError::InvalidOperation("Buffer not found".to_string()))
+            Err(AcceleratorError::InvalidOperation(
+                "Buffer not found".to_string(),
+            ))
         }
     }
 
-    fn copy_from_device(&self, buffer: &AcceleratorBuffer, data: &mut [f32]) -> Result<(), AcceleratorError> {
+    fn copy_from_device(
+        &self,
+        buffer: &AcceleratorBuffer,
+        data: &mut [f32],
+    ) -> Result<(), AcceleratorError> {
         let buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         if let Some(buf) = buffers.get(&buffer.id) {
             let len = data.len().min(buf.len());
             data[..len].copy_from_slice(&buf[..len]);
             Ok(())
         } else {
-            Err(AcceleratorError::InvalidOperation("Buffer not found".to_string()))
+            Err(AcceleratorError::InvalidOperation(
+                "Buffer not found".to_string(),
+            ))
         }
     }
 
@@ -425,9 +447,10 @@ impl Accelerator for IpuAccelerator {
                 tracing::debug!("Execute delta modulation on IPU");
                 Ok(())
             }
-            _ => Err(AcceleratorError::Unsupported(
-                format!("Operation {:?} not supported on IPU", operation.op_type)
-            ))
+            _ => Err(AcceleratorError::Unsupported(format!(
+                "Operation {:?} not supported on IPU",
+                operation.op_type
+            ))),
         }
     }
 

@@ -12,14 +12,10 @@ pub mod grip;
 pub mod rfd;
 
 pub use grf::{
-    GrfGenerator, GrfConfig, GrfOutput, GrfGroundTruth,
-    GaitPhaseLabel, ForceEvent, PathologicalGrf,
+    ForceEvent, GaitPhaseLabel, GrfConfig, GrfGenerator, GrfGroundTruth, GrfOutput, PathologicalGrf,
 };
 pub use grip::{
-    GripGenerator, GripConfig, GripOutput, GripGroundTruth,
-    GripEvent, GripEventType, PathologicalGrip,
+    GripConfig, GripEvent, GripEventType, GripGenerator, GripGroundTruth, GripOutput,
+    PathologicalGrip,
 };
-pub use rfd::{
-    RfdGenerator, RfdConfig, RfdOutput, RfdGroundTruth,
-    RfdTaskType, PathologicalRfd,
-};
+pub use rfd::{PathologicalRfd, RfdConfig, RfdGenerator, RfdGroundTruth, RfdOutput, RfdTaskType};

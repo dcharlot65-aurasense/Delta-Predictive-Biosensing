@@ -14,19 +14,19 @@
 //! - Respiratory patterns
 
 pub mod als;
-pub mod ms;
-pub mod stroke;
-pub mod progression;
 pub mod medication;
+pub mod ms;
+pub mod progression;
+pub mod stroke;
 
-pub use als::{AlsModel, AlsStage, AlsFunctionalRating, AlsEmgSignature, AlsRespiratoryStatus};
-pub use ms::{MsModel, MsType, MsRelapse, MsSymptomProfile, EdssScore};
-pub use stroke::{StrokeModel, StrokeType, StrokeLocation, StrokeSeverity, RecoveryPhase};
-pub use progression::{DiseaseProgression, ProgressionRate, ProgressionPattern, TimePoint};
+pub use als::{AlsEmgSignature, AlsFunctionalRating, AlsModel, AlsRespiratoryStatus, AlsStage};
 pub use medication::{
-    Medication, MedicationClass, MedicationEffect, PolypharmacyProfile,
-    DrugInteraction, InteractionType, InteractionSeverity,
+    DrugInteraction, InteractionSeverity, InteractionType, Medication, MedicationClass,
+    MedicationEffect, PolypharmacyProfile,
 };
+pub use ms::{EdssScore, MsModel, MsRelapse, MsSymptomProfile, MsType};
+pub use progression::{DiseaseProgression, ProgressionPattern, ProgressionRate, TimePoint};
+pub use stroke::{RecoveryPhase, StrokeLocation, StrokeModel, StrokeSeverity, StrokeType};
 
 use serde::{Deserialize, Serialize};
 
@@ -131,7 +131,7 @@ impl SignalModulation {
     /// Create modulation for spasticity
     pub fn spasticity(severity: f64) -> Self {
         Self {
-            frequency_shift: severity * 10.0, // increased firing rate
+            frequency_shift: severity * 10.0,         // increased firing rate
             variability_factor: 1.0 - severity * 0.3, // more stereotyped
             ..Default::default()
         }

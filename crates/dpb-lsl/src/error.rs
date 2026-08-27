@@ -14,10 +14,7 @@ pub type Result<T> = std::result::Result<T, LslError>;
 pub enum LslError {
     /// LSL stream not found during resolution.
     #[error("Stream not found: {name} (timeout: {timeout_sec}s)")]
-    StreamNotFound {
-        name: String,
-        timeout_sec: f64,
-    },
+    StreamNotFound { name: String, timeout_sec: f64 },
 
     /// Connection to stream timed out.
     #[error("Connection timeout after {0}ms")]
@@ -29,17 +26,11 @@ pub enum LslError {
 
     /// Channel count mismatch between expected and actual.
     #[error("Channel mismatch: expected {expected}, got {actual}")]
-    ChannelMismatch {
-        expected: usize,
-        actual: usize,
-    },
+    ChannelMismatch { expected: usize, actual: usize },
 
     /// Sample rate mismatch.
     #[error("Sample rate mismatch: expected {expected}, got {actual}")]
-    SampleRateMismatch {
-        expected: f64,
-        actual: f64,
-    },
+    SampleRateMismatch { expected: f64, actual: f64 },
 
     /// Invalid stream configuration.
     #[error("Invalid configuration: {0}")]
@@ -75,10 +66,7 @@ pub enum LslError {
 
     /// Generic timeout error.
     #[error("Timeout during {operation} after {timeout_sec}s")]
-    Timeout {
-        operation: String,
-        timeout_sec: f64,
-    },
+    Timeout { operation: String, timeout_sec: f64 },
 
     /// Connection lost during operation.
     #[error("Connection lost: {0}")]
@@ -100,10 +88,7 @@ impl LslError {
 
     /// Check if this is a recoverable error.
     pub fn is_recoverable(&self) -> bool {
-        matches!(
-            self,
-            LslError::PullTimeout(_) | LslError::BufferOverflow(_)
-        )
+        matches!(self, LslError::PullTimeout(_) | LslError::BufferOverflow(_))
     }
 }
 

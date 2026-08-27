@@ -22,9 +22,9 @@
 //! let svg = timeline.to_svg();
 //! ```
 
+use crate::{Result, VizError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::{Result, VizError};
 
 /// Zoom levels for timeline visualization
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -144,12 +144,7 @@ impl TimelineEvent {
     }
 
     /// Create a weight update event
-    pub fn weight_update(
-        time_ms: f32,
-        from_neuron: usize,
-        to_neuron: usize,
-        delta: f32,
-    ) -> Self {
+    pub fn weight_update(time_ms: f32, from_neuron: usize, to_neuron: usize, delta: f32) -> Self {
         let mut event = Self::new(
             time_ms,
             EventType::WeightUpdate,
@@ -412,7 +407,9 @@ impl EventTimeline {
 
         // Grid lines and time labels
         if self.config.show_grid {
-            svg.push_str(r##"  <g stroke="#E0E0E0" stroke-width="0.5" font-size="10" fill="#666">"##);
+            svg.push_str(
+                r##"  <g stroke="#E0E0E0" stroke-width="0.5" font-size="10" fill="#666">"##,
+            );
             svg.push('\n');
 
             let tick_spacing = self.config.zoom_level.tick_spacing();
@@ -616,7 +613,13 @@ mod tests {
 
         let event = TimelineEvent::prediction(30.0, "class_0", 0.95);
         assert_eq!(event.event_type, EventType::Prediction);
-        assert!(event.metadata.get("confidence").unwrap().starts_with("0.95"));
+        assert!(
+            event
+                .metadata
+                .get("confidence")
+                .unwrap()
+                .starts_with("0.95")
+        );
 
         let event = TimelineEvent::epoch(40.0, 1);
         assert_eq!(event.event_type, EventType::Epoch);
@@ -630,12 +633,16 @@ mod tests {
     fn test_event_timeline_basic() {
         let mut timeline = EventTimeline::new(0.0, 1000.0);
 
-        assert!(timeline
-            .add_event(TimelineEvent::spike(100.0, 0, "Spike 1"))
-            .is_ok());
-        assert!(timeline
-            .add_event(TimelineEvent::spike(200.0, 1, "Spike 2"))
-            .is_ok());
+        assert!(
+            timeline
+                .add_event(TimelineEvent::spike(100.0, 0, "Spike 1"))
+                .is_ok()
+        );
+        assert!(
+            timeline
+                .add_event(TimelineEvent::spike(200.0, 1, "Spike 2"))
+                .is_ok()
+        );
 
         assert_eq!(timeline.event_count(), 2);
         assert_eq!(timeline.event_count_by_type(&EventType::Spike), 2);
@@ -646,14 +653,18 @@ mod tests {
         let mut timeline = EventTimeline::new(0.0, 1000.0);
 
         // Event before start time
-        assert!(timeline
-            .add_event(TimelineEvent::spike(-10.0, 0, "Too early"))
-            .is_err());
+        assert!(
+            timeline
+                .add_event(TimelineEvent::spike(-10.0, 0, "Too early"))
+                .is_err()
+        );
 
         // Event after end time
-        assert!(timeline
-            .add_event(TimelineEvent::spike(1100.0, 0, "Too late"))
-            .is_err());
+        assert!(
+            timeline
+                .add_event(TimelineEvent::spike(1100.0, 0, "Too late"))
+                .is_err()
+        );
     }
 
     #[test]

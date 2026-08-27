@@ -289,7 +289,10 @@ mod tests {
         let metadata = ModelMetadata::new();
         assert_eq!(metadata.name, "DPB Model");
         assert!(metadata.author.is_some());
-        assert_eq!(metadata.author.as_deref(), Some("AuraSense Tech Corporation"));
+        assert_eq!(
+            metadata.author.as_deref(),
+            Some("AuraSense Tech Corporation")
+        );
         assert!(metadata.license.is_some());
         assert!(!metadata.id.is_empty());
     }
@@ -355,8 +358,8 @@ mod tests {
 
     #[test]
     fn test_tensor_spec_with_description() {
-        let spec = TensorSpec::float32("input", vec![-1, 8, 256])
-            .with_description("Input EEG signal");
+        let spec =
+            TensorSpec::float32("input", vec![-1, 8, 256]).with_description("Input EEG signal");
 
         assert_eq!(spec.description, Some("Input EEG signal".to_string()));
     }
@@ -425,8 +428,7 @@ mod tests {
             final_loss: Some(0.001),
         };
 
-        let info = ModelInfo::new("delta", 4, 512.0)
-            .with_training(training.clone());
+        let info = ModelInfo::new("delta", 4, 512.0).with_training(training.clone());
 
         assert!(info.training.is_some());
         let t = info.training.unwrap();
@@ -444,8 +446,7 @@ mod tests {
             latency_ms: Some(1.5),
         };
 
-        let info = ModelInfo::new("temporal_contrast", 16, 1024.0)
-            .with_metrics(metrics.clone());
+        let info = ModelInfo::new("temporal_contrast", 16, 1024.0).with_metrics(metrics.clone());
 
         assert!(info.metrics.is_some());
         let m = info.metrics.unwrap();
@@ -467,8 +468,7 @@ mod tests {
 
     #[test]
     fn test_tensor_spec_serialization() {
-        let spec = TensorSpec::float32("input", vec![-1, 8, 256])
-            .with_description("EEG data");
+        let spec = TensorSpec::float32("input", vec![-1, 8, 256]).with_description("EEG data");
 
         let json = serde_json::to_string(&spec).unwrap();
         let deserialized: TensorSpec = serde_json::from_str(&json).unwrap();

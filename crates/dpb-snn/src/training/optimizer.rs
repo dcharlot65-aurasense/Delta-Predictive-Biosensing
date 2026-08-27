@@ -63,7 +63,8 @@ impl Optimizer for SGDOptimizer {
             }
 
             // Update velocity: v = momentum * v - lr * grad
-            self.velocity[i] = &self.velocity[i] * self.momentum - &effective_grad * self.learning_rate;
+            self.velocity[i] =
+                &self.velocity[i] * self.momentum - &effective_grad * self.learning_rate;
 
             // Update parameters: param = param + velocity
             **param += &self.velocity[i];
@@ -206,7 +207,8 @@ impl LRScheduler {
             }
             LRScheduler::ExponentialDecay { gamma } => initial_lr * gamma.powi(epoch as i32),
             LRScheduler::CosineAnnealing { t_max, eta_min } => {
-                let cos_term = (1.0 + (std::f32::consts::PI * epoch as f32 / *t_max as f32).cos()) / 2.0;
+                let cos_term =
+                    (1.0 + (std::f32::consts::PI * epoch as f32 / *t_max as f32).cos()) / 2.0;
                 eta_min + (initial_lr - eta_min) * cos_term
             }
         }

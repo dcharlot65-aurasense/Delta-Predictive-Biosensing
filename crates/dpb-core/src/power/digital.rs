@@ -23,9 +23,9 @@ impl Default for GpuEstimator {
     fn default() -> Self {
         // Models an NVIDIA Jetson-class edge GPU
         Self {
-            tdp_w: 15.0,        // 15W TDP
-            utilization: 0.7,   // 70% utilization
-            tflops: 0.5,        // 500 GFLOPS
+            tdp_w: 15.0,      // 15W TDP
+            utilization: 0.7, // 70% utilization
+            tflops: 0.5,      // 500 GFLOPS
         }
     }
 }
@@ -271,7 +271,8 @@ impl PowerEstimator for FpgaEstimator {
         let static_power_mw = self.static_power_w * 1000.0;
         let total_power_mw = dynamic_power_mw + static_power_mw;
 
-        let energy_per_inference_uj = (total_energy_j + self.static_power_w * inference_time_s) * 1e6;
+        let energy_per_inference_uj =
+            (total_energy_j + self.static_power_w * inference_time_s) * 1e6;
 
         let efficiency_tops_per_w = (ops_per_second / 1e12) / (total_power_mw / 1000.0);
 
@@ -364,8 +365,8 @@ impl PowerEstimator for AsicEstimator {
         let static_power_mw = self.static_power_mw;
         let total_power_mw = dynamic_power_mw + static_power_mw;
 
-        let energy_per_inference_uj = (total_dynamic_energy_j +
-            (static_power_mw / 1000.0) * inference_time_s) * 1e6;
+        let energy_per_inference_uj =
+            (total_dynamic_energy_j + (static_power_mw / 1000.0) * inference_time_s) * 1e6;
 
         let efficiency_tops_per_w = self.peak_tops / (total_power_mw / 1000.0);
 

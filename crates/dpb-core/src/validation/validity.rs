@@ -486,7 +486,10 @@ mod tests {
         let change = validity.sensitivity_to_change(&pre, &post);
 
         assert!(change.cohens_d > 2.0); // Large effect
-        assert_eq!(change.interpret_effect_size(), EffectSizeInterpretation::Large);
+        assert_eq!(
+            change.interpret_effect_size(),
+            EffectSizeInterpretation::Large
+        );
     }
 
     #[test]

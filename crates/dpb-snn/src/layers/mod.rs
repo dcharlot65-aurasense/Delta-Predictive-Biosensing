@@ -1,16 +1,16 @@
 //! Neural network layers for Spiking Neural Networks
 
-pub mod linear;
+pub mod attention;
 pub mod conv;
+pub mod linear;
 pub mod pool;
 pub mod recurrent;
-pub mod attention;
 
-pub use linear::SpikingLinear;
-pub use conv::{SpikingConv1d, SpikingConv2d};
-pub use pool::{SpikingSumPool2d, SpikingMaxPool2d};
-pub use recurrent::{SpikingRNN, SpikingLSTM};
 pub use attention::SpikingAttention;
+pub use conv::{SpikingConv1d, SpikingConv2d};
+pub use linear::SpikingLinear;
+pub use pool::{SpikingMaxPool2d, SpikingSumPool2d};
+pub use recurrent::{SpikingLSTM, SpikingRNN};
 
 use crate::{NeuronParams, SNNResult, SpikeTensor};
 use ndarray::{Array1, Array2};
@@ -96,8 +96,8 @@ impl NeuronState {
                 self.v_mem[i] = self.v_mem[i] * alpha_mem + self.i_syn[i] * (1.0 - alpha_mem);
 
                 // Check for spike
-                let threshold = params.v_threshold
-                    + self.threshold_adapt.as_ref().map(|a| a[i]).unwrap_or(0.0);
+                let threshold =
+                    params.v_threshold + self.threshold_adapt.as_ref().map(|a| a[i]).unwrap_or(0.0);
 
                 if self.v_mem[i] >= threshold {
                     spikes[i] = 1.0;

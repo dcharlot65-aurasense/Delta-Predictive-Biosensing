@@ -8,7 +8,7 @@
 //! - Arterial stiffness indices
 
 use crate::error::{DpbError, Result};
-use ndarray::{ArrayView1};
+use ndarray::ArrayView1;
 use serde::{Deserialize, Serialize};
 
 /// PPG pulse wave features
@@ -164,10 +164,7 @@ impl PpgAnalyzer {
 
     /// Calculate instantaneous heart rate from pulse intervals
     pub fn calculate_heart_rate(&self, pulse_intervals: &[f64]) -> Vec<f64> {
-        pulse_intervals
-            .iter()
-            .map(|pi| 60000.0 / pi)
-            .collect()
+        pulse_intervals.iter().map(|pi| 60000.0 / pi).collect()
     }
 
     /// Analyze pulse wave morphology for a single pulse
@@ -353,7 +350,11 @@ impl PpgAnalyzer {
         // Frequency domain (simplified using Welch's method approximation)
         let lf_power = self.estimate_band_power(pulse_intervals, 0.04, 0.15);
         let hf_power = self.estimate_band_power(pulse_intervals, 0.15, 0.4);
-        let lf_hf_ratio = if hf_power > 0.0 { lf_power / hf_power } else { 0.0 };
+        let lf_hf_ratio = if hf_power > 0.0 {
+            lf_power / hf_power
+        } else {
+            0.0
+        };
 
         Ok(PrvMetrics {
             mean_pi,
@@ -379,11 +380,8 @@ impl PpgAnalyzer {
 
         // Approximate: LF captures slower variations, HF captures faster
         let center_freq = (low_freq + high_freq) / 2.0;
-        let variance: f64 = intervals
-            .iter()
-            .map(|x| (x - mean).powi(2))
-            .sum::<f64>()
-            / intervals.len() as f64;
+        let variance: f64 =
+            intervals.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / intervals.len() as f64;
 
         // Weight by expected contribution at this frequency band
         variance * (1.0 - (center_freq - mean_rate * 0.1).abs().min(1.0))
@@ -394,11 +392,7 @@ impl PpgAnalyzer {
         let dc = signal.mean().unwrap_or(1.0);
         let ac = signal.std(0.0);
 
-        if dc > 0.0 {
-            (ac / dc) * 100.0
-        } else {
-            0.0
-        }
+        if dc > 0.0 { (ac / dc) * 100.0 } else { 0.0 }
     }
 
     /// Detect motion artifacts in PPG signal
@@ -519,7 +513,9 @@ mod tests {
 
     #[test]
     fn test_prv_metrics() {
-        let intervals: Vec<f64> = (0..50).map(|i| 800.0 + (i as f64 * 0.1).sin() * 50.0).collect();
+        let intervals: Vec<f64> = (0..50)
+            .map(|i| 800.0 + (i as f64 * 0.1).sin() * 50.0)
+            .collect();
         let analyzer = PpgAnalyzer::new(100.0);
 
         let prv = analyzer.calculate_prv(&intervals).unwrap();

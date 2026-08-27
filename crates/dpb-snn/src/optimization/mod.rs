@@ -11,6 +11,4 @@
 pub mod pruning;
 
 // Re-export commonly used types
-pub use pruning::{
-    NetworkPruner, PruningMask, PruningSchedule, PruningStats, PruningStrategy,
-};
+pub use pruning::{NetworkPruner, PruningMask, PruningSchedule, PruningStats, PruningStrategy};

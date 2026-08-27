@@ -120,7 +120,11 @@ pub fn lerp(a: f64, b: f64, t: f64) -> f64 {
 }
 
 /// Linear interpolation for arrays.
-pub fn interpolate_linear(x: ArrayView1<f64>, y: ArrayView1<f64>, x_new: ArrayView1<f64>) -> Result<Array1<f64>> {
+pub fn interpolate_linear(
+    x: ArrayView1<f64>,
+    y: ArrayView1<f64>,
+    x_new: ArrayView1<f64>,
+) -> Result<Array1<f64>> {
     if x.len() != y.len() {
         return Err(DpbError::InvalidDimensions(
             "x and y must have same length".to_string(),
@@ -160,7 +164,11 @@ pub fn interpolate_linear(x: ArrayView1<f64>, y: ArrayView1<f64>, x_new: ArrayVi
 }
 
 /// Cubic spline interpolation (simplified).
-pub fn interpolate_cubic_spline(x: ArrayView1<f64>, y: ArrayView1<f64>, x_new: ArrayView1<f64>) -> Result<Array1<f64>> {
+pub fn interpolate_cubic_spline(
+    x: ArrayView1<f64>,
+    y: ArrayView1<f64>,
+    x_new: ArrayView1<f64>,
+) -> Result<Array1<f64>> {
     // Simplified cubic interpolation using Catmull-Rom splines
     if x.len() != y.len() {
         return Err(DpbError::InvalidDimensions(
@@ -208,12 +216,10 @@ fn catmull_rom(p0: f64, p1: f64, p2: f64, p3: f64, t: f64) -> f64 {
     let t2 = t * t;
     let t3 = t2 * t;
 
-    0.5 * (
-        2.0 * p1 +
-        (-p0 + p2) * t +
-        (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2 +
-        (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3
-    )
+    0.5 * (2.0 * p1
+        + (-p0 + p2) * t
+        + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2
+        + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3)
 }
 
 /// Computes cumulative sum.

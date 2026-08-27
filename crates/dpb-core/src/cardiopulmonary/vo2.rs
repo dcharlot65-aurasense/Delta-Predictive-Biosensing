@@ -124,8 +124,7 @@ impl Vo2Estimator {
     pub fn bruce_treadmill(&self, time_minutes: f64) -> Vo2Prediction {
         // Foster et al. equations
         let vo2max = if self.is_male {
-            14.8 - (1.379 * time_minutes)
-                + (0.451 * time_minutes.powi(2))
+            14.8 - (1.379 * time_minutes) + (0.451 * time_minutes.powi(2))
                 - (0.012 * time_minutes.powi(3))
         } else {
             4.38 * time_minutes - 3.9
@@ -439,8 +438,14 @@ mod tests {
         // test pins the model's own behaviour and the doc comment on
         // `fitness_percentile` records that the absolute output is not
         // clinically calibrated.
-        assert_eq!(estimator.fitness_classification(50.0), FitnessLevel::Excellent);
-        assert_eq!(estimator.fitness_classification(30.0), FitnessLevel::VeryPoor);
+        assert_eq!(
+            estimator.fitness_classification(50.0),
+            FitnessLevel::Excellent
+        );
+        assert_eq!(
+            estimator.fitness_classification(30.0),
+            FitnessLevel::VeryPoor
+        );
 
         // The banding must be monotone in VO2max whatever the norms are.
         let ordered = [25.0, 35.0, 42.0, 47.0, 52.0, 60.0];
@@ -459,5 +464,4 @@ mod tests {
         let hr_max = estimator.predicted_hr_max();
         assert!((hr_max - 180.0).abs() < 1.0);
     }
-
 }

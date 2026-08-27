@@ -59,7 +59,7 @@ pub struct SpeechRateConfig {
     /// Analysis window length, in seconds.
     pub window_size: f64, // seconds
     /// Detection threshold, in syllables/second.
-    pub threshold: f32,    // syllables/second deviation
+    pub threshold: f32, // syllables/second deviation
 }
 
 impl Default for SpeechRateConfig {
@@ -90,10 +90,7 @@ impl SpeechRateEncoder {
         let threshold = 0.3;
 
         for i in 1..window.len() - 1 {
-            if window[i] > window[i - 1]
-                && window[i] > window[i + 1]
-                && window[i] > threshold
-            {
+            if window[i] > window[i - 1] && window[i] > window[i + 1] && window[i] > threshold {
                 peaks += 1;
             }
         }
@@ -171,8 +168,7 @@ pub struct PauseEncoder;
 impl PauseEncoder {
     /// Creates a new [`PauseEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn calculate_energy(&self, window: &[f32]) -> f32 {

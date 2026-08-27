@@ -46,10 +46,7 @@ pub enum ExportError {
 
     /// Version incompatibility.
     #[error("Version incompatible: expected {expected}, got {actual}")]
-    VersionMismatch {
-        expected: String,
-        actual: String,
-    },
+    VersionMismatch { expected: String, actual: String },
 
     /// Feature not enabled.
     #[error("Feature not enabled: {0}. Enable the '{0}' feature in Cargo.toml")]

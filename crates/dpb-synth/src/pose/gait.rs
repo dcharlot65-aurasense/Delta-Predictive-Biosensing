@@ -1,7 +1,7 @@
 //! Gait cycle and keypoint trajectory generators
 //! Based on Winter's biomechanics data
 
-use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth, GaitPhase};
+use crate::traits::{GaitPhase, GeneratedData, SpatialGroundTruth, SyntheticGenerator};
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
@@ -12,12 +12,12 @@ pub struct GaitCycleGenerator;
 
 #[derive(Debug, Clone)]
 pub struct GaitCycleParams {
-    pub duration: f64,         // seconds
-    pub frame_rate: f64,       // fps
-    pub cadence: f64,          // steps per minute
-    pub stride_length: f64,    // meters
-    pub step_width: f64,       // meters
-    pub height: f64,           // meters (subject height)
+    pub duration: f64,      // seconds
+    pub frame_rate: f64,    // fps
+    pub cadence: f64,       // steps per minute
+    pub stride_length: f64, // meters
+    pub step_width: f64,    // meters
+    pub height: f64,        // meters (subject height)
 }
 
 impl SyntheticGenerator for GaitCycleGenerator {
@@ -25,7 +25,11 @@ impl SyntheticGenerator for GaitCycleGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = GaitCycleParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -50,11 +54,7 @@ impl SyntheticGenerator for GaitCycleGenerator {
             let gait_phase = (t % cycle_duration) / cycle_duration; // 0-1
 
             // Determine gait phase
-            let phase_name = if gait_phase < 0.6 {
-                "stance"
-            } else {
-                "swing"
-            };
+            let phase_name = if gait_phase < 0.6 { "stance" } else { "swing" };
 
             gait_phases.push(GaitPhase {
                 frame,
@@ -87,9 +87,14 @@ impl SyntheticGenerator for GaitCycleGenerator {
             // Left knee (keypoint 25)
             let left_phase = (gait_phase + 0.5) % 1.0; // opposite phase
             let knee_angle_left = Self::knee_angle_profile(left_phase);
-            let knee_x_left = -params.step_width / 2.0 - thigh_length * knee_angle_left.to_radians().sin();
+            let knee_x_left =
+                -params.step_width / 2.0 - thigh_length * knee_angle_left.to_radians().sin();
             let knee_y_left = pelvis_y - thigh_length * knee_angle_left.to_radians().cos();
-            frame_keypoints[25] = [knee_x_left, knee_y_left, pelvis_z - thigh_length * (PI / 4.0).sin()];
+            frame_keypoints[25] = [
+                knee_x_left,
+                knee_y_left,
+                pelvis_z - thigh_length * (PI / 4.0).sin(),
+            ];
 
             // Right ankle (keypoint 28)
             let shank_length = params.height * 0.246;
@@ -103,9 +108,18 @@ impl SyntheticGenerator for GaitCycleGenerator {
             frame_keypoints[27] = [knee_x_left, ankle_y_left, frame_keypoints[25][2]];
 
             // Store joint angles
-            joint_angles.get_mut("knee_flexion").unwrap().push(knee_angle);
-            joint_angles.get_mut("hip_flexion").unwrap().push(Self::hip_angle_profile(right_phase));
-            joint_angles.get_mut("ankle_dorsiflexion").unwrap().push(ankle_angle);
+            joint_angles
+                .get_mut("knee_flexion")
+                .unwrap()
+                .push(knee_angle);
+            joint_angles
+                .get_mut("hip_flexion")
+                .unwrap()
+                .push(Self::hip_angle_profile(right_phase));
+            joint_angles
+                .get_mut("ankle_dorsiflexion")
+                .unwrap()
+                .push(ankle_angle);
 
             // Fill in upper body keypoints (simplified - roughly stationary)
             for (i_off, i_slot) in frame_keypoints[1..23].iter_mut().enumerate() {
@@ -122,29 +136,39 @@ impl SyntheticGenerator for GaitCycleGenerator {
             gait_phases,
         };
 
-        Ok(GeneratedData::new(keypoints, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            keypoints,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
         GaitCycleParams {
             duration: 10.0,
             frame_rate: 30.0,
-            cadence: 110.0,      // steps per minute
-            stride_length: 1.4,  // meters
-            step_width: 0.15,    // meters
-            height: 1.75,        // meters
+            cadence: 110.0,     // steps per minute
+            stride_length: 1.4, // meters
+            step_width: 0.15,   // meters
+            height: 1.75,       // meters
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.frame_rate <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("frame_rate must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "frame_rate must be positive".to_string(),
+            ));
         }
         if params.cadence <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("cadence must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "cadence must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -206,9 +230,9 @@ pub struct JointAngleParams {
     pub duration: f64,
     pub frame_rate: f64,
     pub joint_name: String,
-    pub angle_min: f64,  // degrees
-    pub angle_max: f64,  // degrees
-    pub frequency: f64,  // Hz
+    pub angle_min: f64, // degrees
+    pub angle_max: f64, // degrees
+    pub frequency: f64, // Hz
 }
 
 impl SyntheticGenerator for JointAngleTrajectoryGenerator {
@@ -216,7 +240,11 @@ impl SyntheticGenerator for JointAngleTrajectoryGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = JointAngleParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -230,8 +258,9 @@ impl SyntheticGenerator for JointAngleTrajectoryGenerator {
                 let t = i as f64 * dt;
                 let mid_angle = (params.angle_max + params.angle_min) / 2.0;
                 let amplitude = (params.angle_max - params.angle_min) / 2.0;
-                mid_angle + amplitude * (2.0 * PI * params.frequency * t).sin() +
-                    noise.sample(&mut rng)
+                mid_angle
+                    + amplitude * (2.0 * PI * params.frequency * t).sin()
+                    + noise.sample(&mut rng)
             })
             .collect();
 
@@ -260,7 +289,9 @@ impl SyntheticGenerator for JointAngleTrajectoryGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -271,10 +302,10 @@ pub struct PathologicalGaitGenerator;
 
 #[derive(Debug, Clone)]
 pub enum GaitPathology {
-    Parkinsonian,  // Shuffling, reduced arm swing, freezing
-    Ataxic,        // Wide-based, irregular
-    Hemiplegic,    // Asymmetric, circumduction
-    Antalgic,      // Pain-avoiding, reduced stance on affected side
+    Parkinsonian, // Shuffling, reduced arm swing, freezing
+    Ataxic,       // Wide-based, irregular
+    Hemiplegic,   // Asymmetric, circumduction
+    Antalgic,     // Pain-avoiding, reduced stance on affected side
 }
 
 #[derive(Debug, Clone)]
@@ -282,7 +313,7 @@ pub struct PathologicalGaitParams {
     pub duration: f64,
     pub frame_rate: f64,
     pub pathology: GaitPathology,
-    pub severity: f64,     // 0-1
+    pub severity: f64, // 0-1
     pub baseline_cadence: f64,
     pub height: f64,
 }
@@ -292,7 +323,11 @@ impl SyntheticGenerator for PathologicalGaitGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = PathologicalGaitParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -319,7 +354,8 @@ impl SyntheticGenerator for PathologicalGaitGenerator {
                         // Reduce forward progression
                         kp[2] *= 1.0 - params.severity * 0.5;
                         // Reduce vertical displacement
-                        kp[1] = params.height * 0.55 + (kp[1] - params.height * 0.55) * (1.0 - params.severity * 0.7);
+                        kp[1] = params.height * 0.55
+                            + (kp[1] - params.height * 0.55) * (1.0 - params.severity * 0.7);
                     }
                 }
             }
@@ -376,10 +412,14 @@ impl SyntheticGenerator for PathologicalGaitGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.severity < 0.0 || params.severity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("severity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "severity must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -400,7 +440,11 @@ impl SyntheticGenerator for KeypointTrajectoryGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = KeypointTrajectoryParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         // Delegate to GaitCycleGenerator
         let gait_gen = GaitCycleGenerator;
         gait_gen.generate(&params.gait_params, seed)
@@ -426,11 +470,11 @@ pub struct ArmSwingGenerator;
 pub struct ArmSwingParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub cadence: f64,           // steps per minute
-    pub amplitude: f64,         // degrees
-    pub symmetry: f64,          // 0-1 (1 = perfect symmetry)
-    pub phase: f64,             // 0-1 (relative to gait cycle)
-    pub height: f64,            // meters
+    pub cadence: f64,   // steps per minute
+    pub amplitude: f64, // degrees
+    pub symmetry: f64,  // 0-1 (1 = perfect symmetry)
+    pub phase: f64,     // 0-1 (relative to gait cycle)
+    pub height: f64,    // meters
 }
 
 impl SyntheticGenerator for ArmSwingGenerator {
@@ -438,7 +482,11 @@ impl SyntheticGenerator for ArmSwingGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = ArmSwingParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -477,7 +525,8 @@ impl SyntheticGenerator for ArmSwingGenerator {
             // Left arm swing (keypoints 11, 13, 15)
             let left_phase = (gait_phase + 0.5) % 1.0; // opposite phase
             let asymmetry_factor = 1.0 - (1.0 - params.symmetry) * 0.5;
-            let left_swing_angle = params.amplitude * asymmetry_factor * (2.0 * PI * left_phase).sin();
+            let left_swing_angle =
+                params.amplitude * asymmetry_factor * (2.0 * PI * left_phase).sin();
 
             frame_keypoints[11] = [-shoulder_width / 2.0, shoulder_height, 0.0]; // left shoulder
             frame_keypoints[13] = [
@@ -486,8 +535,14 @@ impl SyntheticGenerator for ArmSwingGenerator {
                 arm_length * 0.5 * left_swing_angle.to_radians().cos(),
             ]; // left elbow
 
-            joint_angles.get_mut("right_arm_swing").unwrap().push(right_swing_angle);
-            joint_angles.get_mut("left_arm_swing").unwrap().push(left_swing_angle);
+            joint_angles
+                .get_mut("right_arm_swing")
+                .unwrap()
+                .push(right_swing_angle);
+            joint_angles
+                .get_mut("left_arm_swing")
+                .unwrap()
+                .push(left_swing_angle);
 
             keypoints.push(frame_keypoints);
         }
@@ -498,7 +553,11 @@ impl SyntheticGenerator for ArmSwingGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(keypoints, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            keypoints,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -506,8 +565,8 @@ impl SyntheticGenerator for ArmSwingGenerator {
             duration: 10.0,
             frame_rate: 30.0,
             cadence: 110.0,
-            amplitude: 30.0,    // degrees
-            symmetry: 1.0,      // perfect symmetry
+            amplitude: 30.0, // degrees
+            symmetry: 1.0,   // perfect symmetry
             phase: 0.0,
             height: 1.75,
         }
@@ -515,10 +574,14 @@ impl SyntheticGenerator for ArmSwingGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.symmetry < 0.0 || params.symmetry > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("symmetry must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "symmetry must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -531,10 +594,10 @@ pub struct TrunkMotionGenerator;
 pub struct TrunkMotionParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub cadence: f64,           // steps per minute
-    pub sway_amplitude: f64,    // meters (lateral)
+    pub cadence: f64,            // steps per minute
+    pub sway_amplitude: f64,     // meters (lateral)
     pub rotation_amplitude: f64, // degrees
-    pub height: f64,            // meters
+    pub height: f64,             // meters
 }
 
 impl SyntheticGenerator for TrunkMotionGenerator {
@@ -542,7 +605,11 @@ impl SyntheticGenerator for TrunkMotionGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = TrunkMotionParams;
 
-    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        _seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -581,7 +648,10 @@ impl SyntheticGenerator for TrunkMotionGenerator {
             frame_keypoints[24] = [sway * 0.5 + 0.1, hip_height, 0.0];
 
             joint_angles.get_mut("trunk_sway").unwrap().push(sway);
-            joint_angles.get_mut("trunk_rotation").unwrap().push(rotation);
+            joint_angles
+                .get_mut("trunk_rotation")
+                .unwrap()
+                .push(rotation);
 
             keypoints.push(frame_keypoints);
         }
@@ -592,7 +662,11 @@ impl SyntheticGenerator for TrunkMotionGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(keypoints, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            keypoints,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -601,14 +675,16 @@ impl SyntheticGenerator for TrunkMotionGenerator {
             frame_rate: 30.0,
             cadence: 110.0,
             sway_amplitude: 0.03,    // 3 cm
-            rotation_amplitude: 5.0,  // degrees
+            rotation_amplitude: 5.0, // degrees
             height: 1.75,
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -621,8 +697,8 @@ pub struct AgeAdjustedGaitGenerator;
 pub struct AgeAdjustedGaitParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub age: f64,              // years (20-90)
-    pub height: f64,           // meters
+    pub age: f64,    // years (20-90)
+    pub height: f64, // meters
 }
 
 impl SyntheticGenerator for AgeAdjustedGaitGenerator {
@@ -630,7 +706,11 @@ impl SyntheticGenerator for AgeAdjustedGaitGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = AgeAdjustedGaitParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         // Age-related gait changes based on literature:
@@ -667,8 +747,12 @@ impl SyntheticGenerator for AgeAdjustedGaitGenerator {
         let mut result = gait_gen.generate(&gait_params, seed)?;
 
         // Add age-specific modifications
-        result.metadata.insert("age".to_string(), params.age.to_string());
-        result.metadata.insert("age_factor".to_string(), age_factor.to_string());
+        result
+            .metadata
+            .insert("age".to_string(), params.age.to_string());
+        result
+            .metadata
+            .insert("age_factor".to_string(), age_factor.to_string());
 
         Ok(result)
     }
@@ -684,10 +768,14 @@ impl SyntheticGenerator for AgeAdjustedGaitGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.age < 20.0 || params.age > 90.0 {
-            return Err(crate::GeneratorError::InvalidParameter("age must be 20-90".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "age must be 20-90".to_string(),
+            ));
         }
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -700,8 +788,8 @@ pub struct SpeedAdjustedGaitGenerator;
 pub struct SpeedAdjustedGaitParams {
     pub duration: f64,
     pub frame_rate: f64,
-    pub walking_speed: f64,    // m/s (0.5-2.0)
-    pub height: f64,           // meters
+    pub walking_speed: f64, // m/s (0.5-2.0)
+    pub height: f64,        // meters
 }
 
 impl SyntheticGenerator for SpeedAdjustedGaitGenerator {
@@ -709,7 +797,11 @@ impl SyntheticGenerator for SpeedAdjustedGaitGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = SpeedAdjustedGaitParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         // Speed-related gait adjustments:
@@ -721,11 +813,11 @@ impl SyntheticGenerator for SpeedAdjustedGaitGenerator {
 
         // Optimal cadence based on speed (empirical relationship)
         let cadence = if speed < 0.8 {
-            90.0 + (speed - 0.5) * 40.0  // 90-102 steps/min
+            90.0 + (speed - 0.5) * 40.0 // 90-102 steps/min
         } else if speed < 1.5 {
-            100.0 + (speed - 0.8) * 14.3  // 100-110 steps/min
+            100.0 + (speed - 0.8) * 14.3 // 100-110 steps/min
         } else {
-            110.0 + (speed - 1.5) * 20.0  // 110-120 steps/min
+            110.0 + (speed - 1.5) * 20.0 // 110-120 steps/min
         };
 
         let stride_length = (speed * 60.0) / cadence;
@@ -745,9 +837,15 @@ impl SyntheticGenerator for SpeedAdjustedGaitGenerator {
         let gait_gen = GaitCycleGenerator;
         let mut result = gait_gen.generate(&gait_params, seed)?;
 
-        result.metadata.insert("walking_speed".to_string(), speed.to_string());
-        result.metadata.insert("cadence".to_string(), cadence.to_string());
-        result.metadata.insert("stride_length".to_string(), stride_length.to_string());
+        result
+            .metadata
+            .insert("walking_speed".to_string(), speed.to_string());
+        result
+            .metadata
+            .insert("cadence".to_string(), cadence.to_string());
+        result
+            .metadata
+            .insert("stride_length".to_string(), stride_length.to_string());
 
         Ok(result)
     }
@@ -756,17 +854,21 @@ impl SyntheticGenerator for SpeedAdjustedGaitGenerator {
         SpeedAdjustedGaitParams {
             duration: 10.0,
             frame_rate: 30.0,
-            walking_speed: 1.3,  // m/s (normal)
+            walking_speed: 1.3, // m/s (normal)
             height: 1.75,
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.walking_speed < 0.5 || params.walking_speed > 2.0 {
-            return Err(crate::GeneratorError::InvalidParameter("walking_speed must be 0.5-2.0 m/s".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "walking_speed must be 0.5-2.0 m/s".to_string(),
+            ));
         }
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -781,7 +883,10 @@ mod tests {
         let generator = GaitCycleGenerator;
         let params = GaitCycleGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
         assert!(!result.ground_truth.gait_phases.is_empty());
     }
 
@@ -790,7 +895,10 @@ mod tests {
         let generator = PathologicalGaitGenerator;
         let params = PathologicalGaitGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -798,7 +906,10 @@ mod tests {
         let generator = ArmSwingGenerator;
         let params = ArmSwingGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -806,7 +917,10 @@ mod tests {
         let generator = TrunkMotionGenerator;
         let params = TrunkMotionGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -819,7 +933,10 @@ mod tests {
             height: 1.70,
         };
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 
     #[test]
@@ -832,6 +949,9 @@ mod tests {
             height: 1.75,
         };
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.frame_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.frame_rate) as usize
+        );
     }
 }

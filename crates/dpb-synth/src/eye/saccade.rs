@@ -1,6 +1,6 @@
 //! Saccade generators
 
-use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth, Event};
+use crate::traits::{Event, GeneratedData, SpatialGroundTruth, SyntheticGenerator};
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
@@ -21,7 +21,11 @@ impl SyntheticGenerator for MainSequenceSaccadeGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = MainSequenceSaccadeParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -74,7 +78,10 @@ impl SyntheticGenerator for MainSequenceSaccadeGenerator {
             let start_idx = (saccade_time * params.sampling_rate) as usize;
             let end_idx = ((saccade_time + duration_s) * params.sampling_rate) as usize;
 
-            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let i = start_idx + i_off;
                 let t_local = (i - start_idx) as f64 * dt;
                 let progress = t_local / duration_s;
@@ -84,8 +91,10 @@ impl SyntheticGenerator for MainSequenceSaccadeGenerator {
                 let position_progress = 1.0 / (1.0 + (-s).exp());
 
                 *i_slot = [
-                    current_position[0] + (target_position[0] - current_position[0]) * position_progress,
-                    current_position[1] + (target_position[1] - current_position[1]) * position_progress,
+                    current_position[0]
+                        + (target_position[0] - current_position[0]) * position_progress,
+                    current_position[1]
+                        + (target_position[1] - current_position[1]) * position_progress,
                 ];
             }
 
@@ -96,7 +105,8 @@ impl SyntheticGenerator for MainSequenceSaccadeGenerator {
                 for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
                     let i = end_idx + i_off;
                     if saccade_idx + 1 < saccade_times.len() {
-                        let next_saccade_idx = (saccade_times[saccade_idx + 1] * params.sampling_rate) as usize;
+                        let next_saccade_idx =
+                            (saccade_times[saccade_idx + 1] * params.sampling_rate) as usize;
                         if i >= next_saccade_idx {
                             break;
                         }
@@ -112,7 +122,11 @@ impl SyntheticGenerator for MainSequenceSaccadeGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -126,10 +140,14 @@ impl SyntheticGenerator for MainSequenceSaccadeGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.sampling_rate < 100.0 {
-            return Err(crate::GeneratorError::InvalidParameter("sampling_rate should be >= 100 Hz for eye tracking".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "sampling_rate should be >= 100 Hz for eye tracking".to_string(),
+            ));
         }
         Ok(())
     }
@@ -142,7 +160,7 @@ pub struct HypometricSaccadeGenerator;
 pub struct HypometricSaccadeParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub target_amplitude: f64,    // degrees
+    pub target_amplitude: f64,     // degrees
     pub gain: f64,                 // 0-1 (fraction of target reached)
     pub corrective_saccades: bool, // add corrective saccades
 }
@@ -152,7 +170,11 @@ impl SyntheticGenerator for HypometricSaccadeGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = HypometricSaccadeParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -160,7 +182,6 @@ impl SyntheticGenerator for HypometricSaccadeGenerator {
         let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut gaze_position = vec![[0.0, 0.0]; n_samples];
-        
 
         // Primary saccade at 1 second
         let saccade_time = 1.0;
@@ -173,7 +194,10 @@ impl SyntheticGenerator for HypometricSaccadeGenerator {
         let start_idx = (saccade_time * params.sampling_rate) as usize;
         let end_idx = ((saccade_time + duration_s) * params.sampling_rate) as usize;
 
-        for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+        for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)]
+            .iter_mut()
+            .enumerate()
+        {
             let i = start_idx + i_off;
             let t_local = (i - start_idx) as f64 * dt;
             let progress = (t_local / duration_s).min(1.0);
@@ -198,23 +222,27 @@ impl SyntheticGenerator for HypometricSaccadeGenerator {
             let corrective_duration = (2.2 * corrective_amplitude + 21.0) / 1000.0;
 
             let corr_start_idx = (corrective_time * params.sampling_rate) as usize;
-            let corr_end_idx = ((corrective_time + corrective_duration) * params.sampling_rate) as usize;
+            let corr_end_idx =
+                ((corrective_time + corrective_duration) * params.sampling_rate) as usize;
 
-            for (i_off, i_slot) in gaze_position[corr_start_idx..corr_end_idx.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[corr_start_idx..corr_end_idx.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let i = corr_start_idx + i_off;
                 let t_local = (i - corr_start_idx) as f64 * dt;
                 let progress = (t_local / corrective_duration).min(1.0);
                 let s = 10.0 * (progress - 0.5);
                 let position_progress = 1.0 / (1.0 + (-s).exp());
 
-                *i_slot = [
-                    reached_x + corrective_amplitude * position_progress,
-                    0.0,
-                ];
+                *i_slot = [reached_x + corrective_amplitude * position_progress, 0.0];
             }
 
             // Fill rest
-            for (i_off, i_slot) in gaze_position[corr_end_idx..n_samples].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[corr_end_idx..n_samples]
+                .iter_mut()
+                .enumerate()
+            {
                 let _i = corr_end_idx + i_off;
                 *i_slot = [target_x, 0.0];
             }
@@ -226,7 +254,11 @@ impl SyntheticGenerator for HypometricSaccadeGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -241,10 +273,14 @@ impl SyntheticGenerator for HypometricSaccadeGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.gain < 0.0 || params.gain > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("gain must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "gain must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -258,9 +294,9 @@ pub struct SaccadeLatencyParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub stimulus_times: Vec<f64>,
-    pub latency_mean: f64,    // ms (typically 200-250ms)
-    pub latency_std: f64,     // ms
-    pub amplitude: f64,       // degrees
+    pub latency_mean: f64, // ms (typically 200-250ms)
+    pub latency_std: f64,  // ms
+    pub amplitude: f64,    // degrees
 }
 
 impl SyntheticGenerator for SaccadeLatencyGenerator {
@@ -268,7 +304,11 @@ impl SyntheticGenerator for SaccadeLatencyGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = SaccadeLatencyParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -299,7 +339,10 @@ impl SyntheticGenerator for SaccadeLatencyGenerator {
             let start_idx = (saccade_time * params.sampling_rate) as usize;
             let end_idx = ((saccade_time + duration) * params.sampling_rate) as usize;
 
-            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let _i = start_idx + i_off;
                 *i_slot = [params.amplitude, 0.0];
             }
@@ -311,7 +354,11 @@ impl SyntheticGenerator for SaccadeLatencyGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -327,7 +374,9 @@ impl SyntheticGenerator for SaccadeLatencyGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -341,9 +390,9 @@ pub struct AntisaccadeParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub stimulus_times: Vec<f64>,
-    pub error_rate: f64,         // 0-1 (prosaccade errors)
-    pub latency_correct: f64,    // ms (longer for antisaccades)
-    pub latency_error: f64,      // ms (shorter for errors)
+    pub error_rate: f64,      // 0-1 (prosaccade errors)
+    pub latency_correct: f64, // ms (longer for antisaccades)
+    pub latency_error: f64,   // ms (shorter for errors)
     pub amplitude: f64,
 }
 
@@ -352,7 +401,11 @@ impl SyntheticGenerator for AntisaccadeGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = AntisaccadeParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -374,7 +427,10 @@ impl SyntheticGenerator for AntisaccadeGenerator {
             let start_idx = (saccade_time * params.sampling_rate) as usize;
             let end_idx = ((saccade_time + duration) * params.sampling_rate) as usize;
 
-            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let _i = start_idx + i_off;
                 *i_slot = [params.amplitude * direction, 0.0];
             }
@@ -386,7 +442,11 @@ impl SyntheticGenerator for AntisaccadeGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -403,10 +463,14 @@ impl SyntheticGenerator for AntisaccadeGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.error_rate < 0.0 || params.error_rate > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("error_rate must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "error_rate must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -419,8 +483,8 @@ pub struct HypermetricSaccadeGenerator;
 pub struct HypermetricSaccadeParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub target_amplitude: f64,   // degrees
-    pub gain: f64,                // >1.0 (overshooting)
+    pub target_amplitude: f64, // degrees
+    pub gain: f64,             // >1.0 (overshooting)
     pub corrective_saccades: bool,
 }
 
@@ -429,7 +493,11 @@ impl SyntheticGenerator for HypermetricSaccadeGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = HypermetricSaccadeParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -437,7 +505,6 @@ impl SyntheticGenerator for HypermetricSaccadeGenerator {
         let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut gaze_position = vec![[0.0, 0.0]; n_samples];
-        
 
         // Primary saccade at 1 second (overshoots target)
         let saccade_time = 1.0;
@@ -450,7 +517,10 @@ impl SyntheticGenerator for HypermetricSaccadeGenerator {
         let start_idx = (saccade_time * params.sampling_rate) as usize;
         let end_idx = ((saccade_time + duration_s) * params.sampling_rate) as usize;
 
-        for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+        for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)]
+            .iter_mut()
+            .enumerate()
+        {
             let i = start_idx + i_off;
             let t_local = (i - start_idx) as f64 * dt;
             let progress = (t_local / duration_s).min(1.0);
@@ -475,23 +545,27 @@ impl SyntheticGenerator for HypermetricSaccadeGenerator {
             let corrective_duration = (2.2 * corrective_amplitude + 21.0) / 1000.0;
 
             let corr_start_idx = (corrective_time * params.sampling_rate) as usize;
-            let corr_end_idx = ((corrective_time + corrective_duration) * params.sampling_rate) as usize;
+            let corr_end_idx =
+                ((corrective_time + corrective_duration) * params.sampling_rate) as usize;
 
-            for (i_off, i_slot) in gaze_position[corr_start_idx..corr_end_idx.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[corr_start_idx..corr_end_idx.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let i = corr_start_idx + i_off;
                 let t_local = (i - corr_start_idx) as f64 * dt;
                 let progress = (t_local / corrective_duration).min(1.0);
                 let s = 10.0 * (progress - 0.5);
                 let position_progress = 1.0 / (1.0 + (-s).exp());
 
-                *i_slot = [
-                    reached_x - corrective_amplitude * position_progress,
-                    0.0,
-                ];
+                *i_slot = [reached_x - corrective_amplitude * position_progress, 0.0];
             }
 
             // Fill rest
-            for (i_off, i_slot) in gaze_position[corr_end_idx..n_samples].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[corr_end_idx..n_samples]
+                .iter_mut()
+                .enumerate()
+            {
                 let _i = corr_end_idx + i_off;
                 *i_slot = [target_x, 0.0];
             }
@@ -503,7 +577,11 @@ impl SyntheticGenerator for HypermetricSaccadeGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -518,10 +596,14 @@ impl SyntheticGenerator for HypermetricSaccadeGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.gain <= 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("gain must be >1.0 for hypermetric".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "gain must be >1.0 for hypermetric".to_string(),
+            ));
         }
         Ok(())
     }
@@ -535,10 +617,10 @@ pub struct ExpressSaccadeParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub stimulus_times: Vec<f64>,
-    pub latency_mean: f64,    // ms (typically 80-120ms)
-    pub latency_std: f64,     // ms
-    pub amplitude: f64,       // degrees
-    pub gap_paradigm: bool,   // gap before stimulus onset
+    pub latency_mean: f64,  // ms (typically 80-120ms)
+    pub latency_std: f64,   // ms
+    pub amplitude: f64,     // degrees
+    pub gap_paradigm: bool, // gap before stimulus onset
 }
 
 impl SyntheticGenerator for ExpressSaccadeGenerator {
@@ -546,7 +628,11 @@ impl SyntheticGenerator for ExpressSaccadeGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = ExpressSaccadeParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -569,7 +655,10 @@ impl SyntheticGenerator for ExpressSaccadeGenerator {
                     let mut attrs = HashMap::new();
                     attrs.insert("stimulus_time".to_string(), *stim_time);
                     attrs.insert("latency".to_string(), latency * 1000.0);
-                    attrs.insert("gap_paradigm".to_string(), if params.gap_paradigm { 1.0 } else { 0.0 });
+                    attrs.insert(
+                        "gap_paradigm".to_string(),
+                        if params.gap_paradigm { 1.0 } else { 0.0 },
+                    );
                     attrs
                 },
             });
@@ -579,7 +668,10 @@ impl SyntheticGenerator for ExpressSaccadeGenerator {
             let start_idx = (saccade_time * params.sampling_rate) as usize;
             let end_idx = ((saccade_time + duration) * params.sampling_rate) as usize;
 
-            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let i = start_idx + i_off;
                 let t_local = (i - start_idx) as f64 * dt;
                 let progress = (t_local / duration).min(1.0);
@@ -603,7 +695,11 @@ impl SyntheticGenerator for ExpressSaccadeGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -620,10 +716,14 @@ impl SyntheticGenerator for ExpressSaccadeGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.latency_mean >= 100.0 {
-            return Err(crate::GeneratorError::InvalidParameter("latency_mean should be <100ms for express saccades".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "latency_mean should be <100ms for express saccades".to_string(),
+            ));
         }
         Ok(())
     }
@@ -648,7 +748,11 @@ impl SyntheticGenerator for DelayedSaccadeGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = DelayedSaccadeParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -684,7 +788,10 @@ impl SyntheticGenerator for DelayedSaccadeGenerator {
             let start_idx = (saccade_time * params.sampling_rate) as usize;
             let end_idx = ((saccade_time + duration) * params.sampling_rate) as usize;
 
-            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let i = start_idx + i_off;
                 let t_local = (i - start_idx) as f64 * dt;
                 let progress = (t_local / duration).min(1.0);
@@ -706,7 +813,11 @@ impl SyntheticGenerator for DelayedSaccadeGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -723,10 +834,14 @@ impl SyntheticGenerator for DelayedSaccadeGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.latency_mean < 300.0 {
-            return Err(crate::GeneratorError::InvalidParameter("latency_mean should be >=300ms for delayed saccades".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "latency_mean should be >=300ms for delayed saccades".to_string(),
+            ));
         }
         Ok(())
     }
@@ -739,11 +854,11 @@ pub struct CorrectiveSaccadeGenerator;
 pub struct CorrectiveSaccadeParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub target_amplitude: f64,        // degrees
-    pub primary_gain: f64,             // 0.7-0.9 (initial undershoot)
-    pub corrective_delay: f64,         // ms (typically 100-150ms)
-    pub num_corrections: usize,        // number of corrective saccades
-    pub correction_accuracy: f64,      // 0-1 (how well corrections work)
+    pub target_amplitude: f64,    // degrees
+    pub primary_gain: f64,        // 0.7-0.9 (initial undershoot)
+    pub corrective_delay: f64,    // ms (typically 100-150ms)
+    pub num_corrections: usize,   // number of corrective saccades
+    pub correction_accuracy: f64, // 0-1 (how well corrections work)
 }
 
 impl SyntheticGenerator for CorrectiveSaccadeGenerator {
@@ -751,7 +866,11 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = CorrectiveSaccadeParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -770,7 +889,10 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
         let start_idx = (primary_time * params.sampling_rate) as usize;
         let end_idx = ((primary_time + primary_duration) * params.sampling_rate) as usize;
 
-        for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+        for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)]
+            .iter_mut()
+            .enumerate()
+        {
             let i = start_idx + i_off;
             let t_local = (i - start_idx) as f64 * dt;
             let progress = (t_local / primary_duration).min(1.0);
@@ -794,7 +916,8 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
         }
 
         // Corrective saccades
-        let mut correction_time = primary_time + primary_duration + (params.corrective_delay / 1000.0);
+        let mut correction_time =
+            primary_time + primary_duration + (params.corrective_delay / 1000.0);
 
         for correction_num in 0..params.num_corrections {
             if correction_time >= params.duration - 0.5 {
@@ -810,9 +933,13 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
             let correction_duration = (2.2 * correction_amplitude.abs() + 21.0) / 1000.0;
 
             let corr_start_idx = (correction_time * params.sampling_rate) as usize;
-            let corr_end_idx = ((correction_time + correction_duration) * params.sampling_rate) as usize;
+            let corr_end_idx =
+                ((correction_time + correction_duration) * params.sampling_rate) as usize;
 
-            for (i_off, i_slot) in gaze_position[corr_start_idx..corr_end_idx.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[corr_start_idx..corr_end_idx.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let i = corr_start_idx + i_off;
                 let t_local = (i - corr_start_idx) as f64 * dt;
                 let progress = (t_local / correction_duration).min(1.0);
@@ -828,13 +955,19 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
                 amplitude: Some(correction_amplitude.abs()),
                 attributes: {
                     let mut attrs = HashMap::new();
-                    attrs.insert("remaining_error".to_string(), (params.target_amplitude - current_x).abs());
+                    attrs.insert(
+                        "remaining_error".to_string(),
+                        (params.target_amplitude - current_x).abs(),
+                    );
                     attrs
                 },
             });
 
             // Fill after this correction
-            for (i_off, i_slot) in gaze_position[corr_end_idx..n_samples].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[corr_end_idx..n_samples]
+                .iter_mut()
+                .enumerate()
+            {
                 let _i = corr_end_idx + i_off;
                 *i_slot = [current_x, 0.0];
             }
@@ -848,7 +981,11 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -865,10 +1002,14 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.primary_gain <= 0.0 || params.primary_gain >= 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("primary_gain must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "primary_gain must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -883,7 +1024,7 @@ pub struct SaccadeSequenceParams {
     pub sampling_rate: f64,
     pub target_positions: Vec<[f64; 2]>, // sequence of x,y positions
     pub fixation_durations: Vec<f64>,    // duration at each target (seconds)
-    pub saccade_accuracy: f64,            // 0-1 (spatial accuracy)
+    pub saccade_accuracy: f64,           // 0-1 (spatial accuracy)
 }
 
 impl SyntheticGenerator for SaccadeSequenceGenerator {
@@ -891,7 +1032,11 @@ impl SyntheticGenerator for SaccadeSequenceGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = SaccadeSequenceParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -928,7 +1073,10 @@ impl SyntheticGenerator for SaccadeSequenceGenerator {
             let end_idx = ((current_time + saccade_duration) * params.sampling_rate) as usize;
 
             // Generate saccade
-            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let i = start_idx + i_off;
                 let t_local = (i - start_idx) as f64 * dt;
                 let progress = (t_local / saccade_duration).min(1.0);
@@ -966,7 +1114,10 @@ impl SyntheticGenerator for SaccadeSequenceGenerator {
             let fix_start_idx = (current_time * params.sampling_rate) as usize;
             let fix_end_idx = ((current_time + fixation_duration) * params.sampling_rate) as usize;
 
-            for (i_off, i_slot) in gaze_position[fix_start_idx..fix_end_idx.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[fix_start_idx..fix_end_idx.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let _i = fix_start_idx + i_off;
                 *i_slot = current_pos;
             }
@@ -984,7 +1135,11 @@ impl SyntheticGenerator for SaccadeSequenceGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -1005,10 +1160,14 @@ impl SyntheticGenerator for SaccadeSequenceGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.target_positions.is_empty() {
-            return Err(crate::GeneratorError::InvalidParameter("target_positions cannot be empty".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "target_positions cannot be empty".to_string(),
+            ));
         }
         Ok(())
     }
@@ -1022,9 +1181,9 @@ pub struct MemoryGuidedSaccadeParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub target_positions: Vec<[f64; 2]>,
-    pub cue_times: Vec<f64>,           // when target is shown
-    pub delay_period: f64,             // seconds (memory delay)
-    pub memory_decay: f64,             // 0-1 per second (spatial accuracy loss)
+    pub cue_times: Vec<f64>, // when target is shown
+    pub delay_period: f64,   // seconds (memory delay)
+    pub memory_decay: f64,   // 0-1 per second (spatial accuracy loss)
 }
 
 impl SyntheticGenerator for MemoryGuidedSaccadeGenerator {
@@ -1032,7 +1191,11 @@ impl SyntheticGenerator for MemoryGuidedSaccadeGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = MemoryGuidedSaccadeParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -1070,17 +1233,17 @@ impl SyntheticGenerator for MemoryGuidedSaccadeGenerator {
             let end_idx = ((saccade_time + saccade_duration) * params.sampling_rate) as usize;
 
             // Generate saccade
-            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)]
+                .iter_mut()
+                .enumerate()
+            {
                 let i = start_idx + i_off;
                 let t_local = (i - start_idx) as f64 * dt;
                 let progress = (t_local / saccade_duration).min(1.0);
                 let s = 10.0 * (progress - 0.5);
                 let position_progress = 1.0 / (1.0 + (-s).exp());
 
-                *i_slot = [
-                    dx * position_progress,
-                    dy * position_progress,
-                ];
+                *i_slot = [dx * position_progress, dy * position_progress];
             }
 
             events.push(Event {
@@ -1091,9 +1254,12 @@ impl SyntheticGenerator for MemoryGuidedSaccadeGenerator {
                     let mut attrs = HashMap::new();
                     attrs.insert("cue_time".to_string(), cue_time);
                     attrs.insert("delay_period".to_string(), params.delay_period);
-                    attrs.insert("target_error".to_string(),
-                        ((remembered_target[0] - target_pos[0]).powi(2) +
-                         (remembered_target[1] - target_pos[1]).powi(2)).sqrt());
+                    attrs.insert(
+                        "target_error".to_string(),
+                        ((remembered_target[0] - target_pos[0]).powi(2)
+                            + (remembered_target[1] - target_pos[1]).powi(2))
+                        .sqrt(),
+                    );
                     attrs
                 },
             });
@@ -1111,19 +1277,18 @@ impl SyntheticGenerator for MemoryGuidedSaccadeGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(gaze_position, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            gaze_position,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
         MemoryGuidedSaccadeParams {
             duration: 20.0,
             sampling_rate: 500.0,
-            target_positions: vec![
-                [10.0, 0.0],
-                [0.0, 10.0],
-                [-10.0, 0.0],
-                [0.0, -10.0],
-            ],
+            target_positions: vec![[10.0, 0.0], [0.0, 10.0], [-10.0, 0.0], [0.0, -10.0]],
             cue_times: vec![1.0, 6.0, 11.0, 16.0],
             delay_period: 2.0,
             memory_decay: 0.5,
@@ -1132,10 +1297,14 @@ impl SyntheticGenerator for MemoryGuidedSaccadeGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.target_positions.len() != params.cue_times.len() {
-            return Err(crate::GeneratorError::InvalidParameter("target_positions and cue_times must have same length".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "target_positions and cue_times must have same length".to_string(),
+            ));
         }
         Ok(())
     }
@@ -1150,7 +1319,10 @@ mod tests {
         let generator = MainSequenceSaccadeGenerator;
         let params = MainSequenceSaccadeGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -1158,7 +1330,10 @@ mod tests {
         let generator = HypometricSaccadeGenerator;
         let params = HypometricSaccadeGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -1166,7 +1341,10 @@ mod tests {
         let generator = HypermetricSaccadeGenerator;
         let params = HypermetricSaccadeGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -1174,7 +1352,10 @@ mod tests {
         let generator = ExpressSaccadeGenerator;
         let params = ExpressSaccadeGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -1182,7 +1363,10 @@ mod tests {
         let generator = CorrectiveSaccadeGenerator;
         let params = CorrectiveSaccadeGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -1190,7 +1374,10 @@ mod tests {
         let generator = SaccadeSequenceGenerator;
         let params = SaccadeSequenceGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -1198,6 +1385,9 @@ mod tests {
         let generator = MemoryGuidedSaccadeGenerator;
         let params = MemoryGuidedSaccadeGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 }

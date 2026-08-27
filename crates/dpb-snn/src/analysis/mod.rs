@@ -3,61 +3,41 @@
 //! This module provides comprehensive tools for analyzing SNN training dynamics,
 //! detecting convergence, and comparing different training methods.
 
+mod comparison;
 mod convergence;
-mod learning_curves;
 mod gradient_analysis;
+mod learning_curves;
 mod spike_statistics;
 mod weight_analysis;
-mod comparison;
 
 pub use convergence::{
-    LossPlateauDetector,
-    AccuracyPlateauDetector,
-    EarlyStoppingAnalyzer,
-    ConvergenceRateAnalyzer,
-    OscillationDetector,
-    DivergenceDetector,
+    AccuracyPlateauDetector, ConvergenceRateAnalyzer, DivergenceDetector, EarlyStoppingAnalyzer,
+    LossPlateauDetector, OscillationDetector,
 };
 
 pub use learning_curves::{
-    LearningCurveSmoothed,
-    GeneralizationGapAnalyzer,
-    OverfittingDetector,
-    LearningRateAnalyzer,
-    BatchSizeAnalyzer,
-    EpochEfficiencyAnalyzer,
+    BatchSizeAnalyzer, EpochEfficiencyAnalyzer, GeneralizationGapAnalyzer, LearningCurveSmoothed,
+    LearningRateAnalyzer, OverfittingDetector,
 };
 
 pub use gradient_analysis::{
-    GradientNormTracker,
-    GradientFlowAnalyzer,
-    VanishingGradientDetector,
-    ExplodingGradientDetector,
-    SurrogateGradientAnalyzer,
+    ExplodingGradientDetector, GradientFlowAnalyzer, GradientNormTracker,
+    SurrogateGradientAnalyzer, VanishingGradientDetector,
 };
 
 pub use spike_statistics::{
-    SpikeRateTracker,
-    SparsityTracker,
-    SilentNeuronDetector,
-    SaturatedNeuronDetector,
+    SaturatedNeuronDetector, SilentNeuronDetector, SparsityTracker, SpikeRateTracker,
     TemporalDynamicsAnalyzer,
 };
 
 pub use weight_analysis::{
-    WeightDistributionTracker,
-    WeightMagnitudeTracker,
-    WeightSparsityTracker,
-    WeightUpdateTracker,
+    WeightDistributionTracker, WeightMagnitudeTracker, WeightSparsityTracker, WeightUpdateTracker,
 };
 
-pub use comparison::{
-    MethodComparisonAnalyzer,
-    HyperparameterSensitivityAnalyzer,
-};
+pub use comparison::{HyperparameterSensitivityAnalyzer, MethodComparisonAnalyzer};
 
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Core trait for all convergence analyzers
 pub trait ConvergenceAnalyzer: Send + Sync {

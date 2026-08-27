@@ -252,22 +252,25 @@ impl Demographics {
     pub fn matches(&self, filter: &DemographicsFilter) -> bool {
         // Age range
         if let Some((min, max)) = filter.age_range
-            && (self.age < min || self.age > max) {
-                return false;
-            }
+            && (self.age < min || self.age > max)
+        {
+            return false;
+        }
 
         // Sex
         if let Some(sex) = filter.sex
-            && self.sex != sex {
-                return false;
-            }
+            && self.sex != sex
+        {
+            return false;
+        }
 
         // Education years
         if let Some((min, max)) = filter.education_range
             && let Some(years) = self.education_years
-                && (years < min || years > max) {
-                    return false;
-                }
+            && (years < min || years > max)
+        {
+            return false;
+        }
 
         true
     }
@@ -367,7 +370,9 @@ impl DemographicsFilter {
         Self {
             age_range: Some((age_min, age_max)),
             sex: Some(demo.sex),
-            education_range: demo.education_years.map(|y| (y.saturating_sub(2), y.saturating_add(2))),
+            education_range: demo
+                .education_years
+                .map(|y| (y.saturating_sub(2), y.saturating_add(2))),
             ethnicity: demo.ethnicity,
             handedness: demo.handedness,
         }
@@ -392,9 +397,18 @@ mod tests {
 
     #[test]
     fn test_age_groups() {
-        assert_eq!(Demographics::new(25, Sex::Male).age_group(), AgeGroup::YoungAdult);
-        assert_eq!(Demographics::new(55, Sex::Female).age_group(), AgeGroup::LateAdult);
-        assert_eq!(Demographics::new(70, Sex::Male).age_group(), AgeGroup::YoungOld);
+        assert_eq!(
+            Demographics::new(25, Sex::Male).age_group(),
+            AgeGroup::YoungAdult
+        );
+        assert_eq!(
+            Demographics::new(55, Sex::Female).age_group(),
+            AgeGroup::LateAdult
+        );
+        assert_eq!(
+            Demographics::new(70, Sex::Male).age_group(),
+            AgeGroup::YoungOld
+        );
     }
 
     #[test]
@@ -409,8 +423,7 @@ mod tests {
 
     #[test]
     fn test_demographics_filter() {
-        let demo = Demographics::new(45, Sex::Female)
-            .with_education_years(16);
+        let demo = Demographics::new(45, Sex::Female).with_education_years(16);
 
         let filter = DemographicsFilter::age_sex(40, 50, Sex::Female);
         assert!(demo.matches(&filter));

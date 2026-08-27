@@ -9,14 +9,13 @@
 use dpb_core::SignalBuffer;
 use dpb_encoders::prelude::*;
 use dpb_snn::{
-    FeedforwardSNN, RecurrentSNN, ConvolutionalSNN, SpikeTensor,
-    SpikeRateDecoder, NeuronModel, NeuronParams, SNNConfig,
+    ConvolutionalSNN, FeedforwardSNN, NeuronModel, NeuronParams, RecurrentSNN, SNNConfig,
+    SpikeRateDecoder, SpikeTensor,
 };
 // `forward` and `decode` are trait methods.
 use dpb_snn::architectures::SNNArchitecture;
 use dpb_snn::decoders::Decoder;
 use std::time::Instant;
-
 
 #[test]
 fn test_encoder_throughput() {
@@ -44,7 +43,8 @@ fn test_encoder_throughput() {
 
     // Benchmark encoding
     let start = Instant::now();
-    let spike_train = encoder.encode(&signal_buffer, &config)
+    let spike_train = encoder
+        .encode(&signal_buffer, &config)
         .expect("Failed to encode");
     let duration = start.elapsed();
 
@@ -81,15 +81,15 @@ fn test_snn_inference_latency() {
         neuron_params: NeuronParams::default(),
     };
 
-    let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 16, 4], snn_config, true).expect("SNN");
+    let mut snn =
+        FeedforwardSNN::new(vec![num_channels, 32, 16, 4], snn_config, true).expect("SNN");
 
     // Warmup run
     let _ = snn.forward(&spike_tensor);
 
     // Benchmark inference
     let start = Instant::now();
-    let _output = snn.forward(&spike_tensor)
-        .expect("Failed to run SNN");
+    let _output = snn.forward(&spike_tensor).expect("Failed to run SNN");
     let duration = start.elapsed();
 
     let latency_ms = duration.as_secs_f64() * 1000.0;
@@ -102,9 +102,7 @@ fn test_snn_inference_latency() {
 
     println!(
         "SNN inference latency: {:.2}ms for {} timesteps ({} channels)",
-        latency_ms,
-        num_timesteps,
-        num_channels
+        latency_ms, num_timesteps, num_channels
     );
 }
 
@@ -125,8 +123,7 @@ fn test_decoder_latency() {
 
     // Benchmark decoding
     let start = Instant::now();
-    let decoded = decoder.decode(&spike_tensor)
-        .expect("Failed to decode");
+    let decoded = decoder.decode(&spike_tensor).expect("Failed to decode");
     let duration = start.elapsed();
 
     let latency_ms = duration.as_secs_f64() * 1000.0;
@@ -186,7 +183,8 @@ fn test_end_to_end_pipeline_latency() {
     let start = Instant::now();
 
     // Step 1: Encode
-    let spike_train = encoder.encode(&signal_buffer, &encoder_config)
+    let spike_train = encoder
+        .encode(&signal_buffer, &encoder_config)
         .expect("Failed to encode");
 
     // Step 2: Convert to tensor
@@ -194,16 +192,16 @@ fn test_end_to_end_pipeline_latency() {
     for event in &spike_train {
         let timestep = ((event.timestamp * 1000.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = (event.channel as usize) % num_channels;
-        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
+        spike_tensor
+            .set_spike(0, timestep, channel, event.magnitude)
+            .ok();
     }
 
     // Step 3: SNN inference
-    let output = snn.forward(&spike_tensor)
-        .expect("Failed to run SNN");
+    let output = snn.forward(&spike_tensor).expect("Failed to run SNN");
 
     // Step 4: Decode
-    let predictions = decoder.decode(&output)
-        .expect("Failed to decode");
+    let predictions = decoder.decode(&output).expect("Failed to decode");
 
     let total_duration = start.elapsed();
     let latency_ms = total_duration.as_secs_f64() * 1000.0;
@@ -245,8 +243,7 @@ fn test_batch_inference_throughput() {
 
         // Benchmark
         let start = Instant::now();
-        let _ = snn.forward(&spike_tensor)
-            .expect("Failed to run SNN");
+        let _ = snn.forward(&spike_tensor).expect("Failed to run SNN");
         let duration = start.elapsed();
 
         let latency_ms = duration.as_secs_f64() * 1000.0;
@@ -254,9 +251,7 @@ fn test_batch_inference_throughput() {
 
         println!(
             "Batch size {}: {:.2}ms latency, {:.1} samples/sec throughput",
-            batch_size,
-            latency_ms,
-            throughput
+            batch_size, latency_ms, throughput
         );
     }
 }
@@ -284,7 +279,8 @@ fn test_recurrent_snn_latency() {
 
     // Benchmark
     let start = Instant::now();
-    let _output = snn.forward(&spike_tensor)
+    let _output = snn
+        .forward(&spike_tensor)
         .expect("Failed to run recurrent SNN");
     let duration = start.elapsed();
 
@@ -292,8 +288,7 @@ fn test_recurrent_snn_latency() {
 
     println!(
         "Recurrent SNN latency: {:.2}ms for {} timesteps",
-        latency_ms,
-        num_timesteps
+        latency_ms, num_timesteps
     );
 }
 
@@ -320,7 +315,8 @@ fn test_convolutional_snn_latency() {
 
     // Benchmark
     let start = Instant::now();
-    let _output = snn.forward(&spike_tensor)
+    let _output = snn
+        .forward(&spike_tensor)
         .expect("Failed to run convolutional SNN");
     let duration = start.elapsed();
 
@@ -328,8 +324,7 @@ fn test_convolutional_snn_latency() {
 
     println!(
         "Convolutional SNN latency: {:.2}ms for {} timesteps",
-        latency_ms,
-        num_timesteps
+        latency_ms, num_timesteps
     );
 }
 
@@ -399,11 +394,11 @@ fn test_scalability_timesteps() {
         let mut snn_config = base_config.clone();
         snn_config.num_steps = num_timesteps;
 
-        let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 4], snn_config, true).expect("SNN");
+        let mut snn =
+            FeedforwardSNN::new(vec![num_channels, 32, 4], snn_config, true).expect("SNN");
 
         let start = Instant::now();
-        let _ = snn.forward(&spike_tensor)
-            .expect("Failed to run SNN");
+        let _ = snn.forward(&spike_tensor).expect("Failed to run SNN");
         let duration = start.elapsed();
 
         let latency_ms = duration.as_secs_f64() * 1000.0;

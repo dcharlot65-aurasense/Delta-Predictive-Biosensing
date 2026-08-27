@@ -187,10 +187,7 @@ impl WorldAudioGenerator {
     /// # Arguments
     /// * `python_script_path` - Path to generator.py (optional, uses default if None)
     /// * `python_executable` - Python executable name (default: "python3")
-    pub fn new(
-        python_script_path: Option<PathBuf>,
-        python_executable: Option<String>,
-    ) -> Self {
+    pub fn new(python_script_path: Option<PathBuf>, python_executable: Option<String>) -> Self {
         let script_path = python_script_path.unwrap_or_else(|| {
             // Default to tools/level3_audio/generator.py relative to crate root
             let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

@@ -12,9 +12,9 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::fs;
 
 /// Result type for video generation
 pub type VideoResult<T> = Result<T, VideoGeneratorError>;
@@ -51,22 +51,22 @@ pub enum VideoGeneratorError {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GaitVideoParams {
     pub duration_sec: f64,
-    pub cadence: f64,           // steps per minute
-    pub stride_length: f64,     // meters
-    pub velocity: f64,          // m/s
-    pub asymmetry: f64,         // 0-1
+    pub cadence: f64,            // steps per minute
+    pub stride_length: f64,      // meters
+    pub velocity: f64,           // m/s
+    pub asymmetry: f64,          // 0-1
     pub shuffling_severity: f64, // 0-1
     pub festination: bool,
     pub freezing_probability: f64, // 0-1
     pub arm_swing_amplitude: f64,  // radians
-    pub trunk_sway: f64,        // meters
+    pub trunk_sway: f64,           // meters
     pub fps: u32,
     pub resolution: (u32, u32),
-    pub camera_view: String,    // "side", "front", "oblique", "top"
+    pub camera_view: String, // "side", "front", "oblique", "top"
     pub output_path: String,
     pub ground_truth_path: String,
     pub seed: u64,
-    pub height: f64,            // meters
+    pub height: f64, // meters
     pub render: bool,
 }
 
@@ -99,11 +99,11 @@ impl Default for GaitVideoParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HandVideoParams {
     pub duration_sec: f64,
-    pub task: String,           // "rest", "tapping", "spiral", etc.
-    pub tremor_frequency: f64,  // Hz
-    pub tremor_amplitude: f64,  // meters
-    pub tapping_frequency: f64, // Hz
-    pub tapping_amplitude: f64, // meters
+    pub task: String,               // "rest", "tapping", "spiral", etc.
+    pub tremor_frequency: f64,      // Hz
+    pub tremor_amplitude: f64,      // meters
+    pub tapping_frequency: f64,     // Hz
+    pub tapping_amplitude: f64,     // meters
     pub bradykinesia_severity: f64, // 0-1
     pub dyskinesia_severity: f64,   // 0-1
     pub fps: u32,
@@ -141,12 +141,12 @@ impl Default for HandVideoParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TappingVideoParams {
     pub duration_sec: f64,
-    pub target_frequency: f64,      // Hz
-    pub amplitude_reduction: f64,   // 0-1
-    pub frequency_reduction: f64,   // 0-1
-    pub hesitations: u32,           // Number of freezing episodes
-    pub irregularity: f64,          // 0-1
-    pub fatigue_factor: f64,        // 0-1
+    pub target_frequency: f64,    // Hz
+    pub amplitude_reduction: f64, // 0-1
+    pub frequency_reduction: f64, // 0-1
+    pub hesitations: u32,         // Number of freezing episodes
+    pub irregularity: f64,        // 0-1
+    pub fatigue_factor: f64,      // 0-1
     pub fps: u32,
     pub resolution: (u32, u32),
     pub output_path: String,
@@ -187,7 +187,7 @@ pub struct VideoOutput {
 /// MediaPipe pose keypoint data (33 landmarks)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PoseGroundTruth {
-    pub keypoints: Vec<Vec<[f64; 3]>>,  // frames x 33 landmarks x [x, y, z]
+    pub keypoints: Vec<Vec<[f64; 3]>>, // frames x 33 landmarks x [x, y, z]
     pub format: String,
     pub num_frames: usize,
     pub num_landmarks: usize,
@@ -197,7 +197,7 @@ pub struct PoseGroundTruth {
 /// MediaPipe hand keypoint data (21 landmarks)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HandGroundTruth {
-    pub keypoints: Vec<Vec<[f64; 3]>>,  // frames x 21 landmarks x [x, y, z]
+    pub keypoints: Vec<Vec<[f64; 3]>>, // frames x 21 landmarks x [x, y, z]
     pub format: String,
     pub num_frames: usize,
     pub num_landmarks: usize,
@@ -251,10 +251,7 @@ impl Level3VideoGenerator {
 
     /// Check if Blender is available
     pub fn check_blender(&self) -> VideoResult<bool> {
-        match Command::new(&self.blender_path)
-            .arg("--version")
-            .output()
-        {
+        match Command::new(&self.blender_path).arg("--version").output() {
             Ok(output) => Ok(output.status.success()),
             Err(_) => Ok(false),
         }
@@ -265,9 +262,9 @@ impl Level3VideoGenerator {
         let output = Command::new(&self.blender_path)
             .arg("--version")
             .output()
-            .map_err(|_| VideoGeneratorError::BlenderNotFound(
-                self.blender_path.display().to_string()
-            ))?;
+            .map_err(|_| {
+                VideoGeneratorError::BlenderNotFound(self.blender_path.display().to_string())
+            })?;
 
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
@@ -297,7 +294,9 @@ impl Level3VideoGenerator {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(VideoGeneratorError::BlenderExecutionError(stderr.to_string()));
+            return Err(VideoGeneratorError::BlenderExecutionError(
+                stderr.to_string(),
+            ));
         }
 
         // Parse ground truth
@@ -311,7 +310,10 @@ impl Level3VideoGenerator {
         let mut metadata = HashMap::new();
         metadata.insert("generator".to_string(), "gait_generator.py".to_string());
         metadata.insert("cadence".to_string(), params.cadence.to_string());
-        metadata.insert("stride_length".to_string(), params.stride_length.to_string());
+        metadata.insert(
+            "stride_length".to_string(),
+            params.stride_length.to_string(),
+        );
 
         Ok(VideoOutput {
             video_path,
@@ -346,7 +348,9 @@ impl Level3VideoGenerator {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(VideoGeneratorError::BlenderExecutionError(stderr.to_string()));
+            return Err(VideoGeneratorError::BlenderExecutionError(
+                stderr.to_string(),
+            ));
         }
 
         let ground_truth_path = PathBuf::from(&params.ground_truth_path);
@@ -359,7 +363,10 @@ impl Level3VideoGenerator {
         let mut metadata = HashMap::new();
         metadata.insert("generator".to_string(), "hand_generator.py".to_string());
         metadata.insert("task".to_string(), params.task.clone());
-        metadata.insert("tremor_frequency".to_string(), params.tremor_frequency.to_string());
+        metadata.insert(
+            "tremor_frequency".to_string(),
+            params.tremor_frequency.to_string(),
+        );
 
         Ok(VideoOutput {
             video_path,
@@ -394,7 +401,9 @@ impl Level3VideoGenerator {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(VideoGeneratorError::BlenderExecutionError(stderr.to_string()));
+            return Err(VideoGeneratorError::BlenderExecutionError(
+                stderr.to_string(),
+            ));
         }
 
         let ground_truth_path = PathBuf::from(&params.ground_truth_path);
@@ -406,7 +415,10 @@ impl Level3VideoGenerator {
 
         let mut metadata = HashMap::new();
         metadata.insert("generator".to_string(), "tapping_generator.py".to_string());
-        metadata.insert("target_frequency".to_string(), params.target_frequency.to_string());
+        metadata.insert(
+            "target_frequency".to_string(),
+            params.target_frequency.to_string(),
+        );
 
         Ok(VideoOutput {
             video_path,
@@ -433,7 +445,10 @@ impl Level3VideoGenerator {
     }
 
     /// Load tapping ground truth from JSON file
-    pub fn load_tapping_ground_truth<P: AsRef<Path>>(&self, path: P) -> VideoResult<TappingGroundTruth> {
+    pub fn load_tapping_ground_truth<P: AsRef<Path>>(
+        &self,
+        path: P,
+    ) -> VideoResult<TappingGroundTruth> {
         let content = fs::read_to_string(path)
             .map_err(|e| VideoGeneratorError::OutputReadError(e.to_string()))?;
         let gt: TappingGroundTruth = serde_json::from_str(&content)?;
@@ -445,17 +460,17 @@ impl Level3VideoGenerator {
     fn validate_gait_params(&self, params: &GaitVideoParams) -> VideoResult<()> {
         if params.duration_sec <= 0.0 {
             return Err(VideoGeneratorError::InvalidParameter(
-                "duration_sec must be positive".to_string()
+                "duration_sec must be positive".to_string(),
             ));
         }
         if params.cadence <= 0.0 {
             return Err(VideoGeneratorError::InvalidParameter(
-                "cadence must be positive".to_string()
+                "cadence must be positive".to_string(),
             ));
         }
         if params.asymmetry < 0.0 || params.asymmetry > 1.0 {
             return Err(VideoGeneratorError::InvalidParameter(
-                "asymmetry must be 0-1".to_string()
+                "asymmetry must be 0-1".to_string(),
             ));
         }
         Ok(())
@@ -464,12 +479,12 @@ impl Level3VideoGenerator {
     fn validate_hand_params(&self, params: &HandVideoParams) -> VideoResult<()> {
         if params.duration_sec <= 0.0 {
             return Err(VideoGeneratorError::InvalidParameter(
-                "duration_sec must be positive".to_string()
+                "duration_sec must be positive".to_string(),
             ));
         }
         if params.tremor_frequency < 0.0 {
             return Err(VideoGeneratorError::InvalidParameter(
-                "tremor_frequency cannot be negative".to_string()
+                "tremor_frequency cannot be negative".to_string(),
             ));
         }
         Ok(())
@@ -478,12 +493,12 @@ impl Level3VideoGenerator {
     fn validate_tapping_params(&self, params: &TappingVideoParams) -> VideoResult<()> {
         if params.duration_sec <= 0.0 {
             return Err(VideoGeneratorError::InvalidParameter(
-                "duration_sec must be positive".to_string()
+                "duration_sec must be positive".to_string(),
             ));
         }
         if params.target_frequency <= 0.0 {
             return Err(VideoGeneratorError::InvalidParameter(
-                "target_frequency must be positive".to_string()
+                "target_frequency must be positive".to_string(),
             ));
         }
         Ok(())

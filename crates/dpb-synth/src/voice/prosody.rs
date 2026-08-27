@@ -1,6 +1,6 @@
 //! Prosody generators (speech rate, pauses, pitch contour)
 
-use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
+use crate::traits::{Event, GeneratedData, SyntheticGenerator, TimeSeriesGroundTruth};
 use ndarray::Array1;
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
@@ -13,7 +13,7 @@ pub struct SpeechRateGenerator;
 pub struct SpeechRateParams {
     pub duration: f64,
     pub syllables_per_second: f64, // typical 4-5 for normal, <3 for bradyphonic
-    pub variability: f64,           // 0-1
+    pub variability: f64,          // 0-1
 }
 
 impl SyntheticGenerator for SpeechRateGenerator {
@@ -21,7 +21,11 @@ impl SyntheticGenerator for SpeechRateGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = SpeechRateParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -71,13 +75,19 @@ impl SyntheticGenerator for SpeechRateGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.syllables_per_second <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("syllables_per_second must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "syllables_per_second must be positive".to_string(),
+            ));
         }
         if params.variability < 0.0 || params.variability > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("variability must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "variability must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -90,8 +100,8 @@ pub struct PauseGenerator;
 pub struct PauseParams {
     pub duration: f64,
     pub speech_segments: Vec<(f64, f64)>, // (start, end) of speech
-    pub pause_probability: f64,            // per second during speech
-    pub pause_duration_mean: f64,          // seconds
+    pub pause_probability: f64,           // per second during speech
+    pub pause_duration_mean: f64,         // seconds
     pub pause_duration_std: f64,
 }
 
@@ -100,11 +110,16 @@ impl SyntheticGenerator for PauseGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = PauseParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let duration_dist = Normal::new(params.pause_duration_mean, params.pause_duration_std).unwrap();
+        let duration_dist =
+            Normal::new(params.pause_duration_mean, params.pause_duration_std).unwrap();
 
         let mut pauses = Vec::new();
         let mut events = Vec::new();
@@ -142,11 +157,7 @@ impl SyntheticGenerator for PauseGenerator {
     fn default_params() -> Self::Parameters {
         PauseParams {
             duration: 60.0,
-            speech_segments: vec![
-                (0.0, 15.0),
-                (20.0, 40.0),
-                (45.0, 60.0),
-            ],
+            speech_segments: vec![(0.0, 15.0), (20.0, 40.0), (45.0, 60.0)],
             pause_probability: 0.3,
             pause_duration_mean: 0.5,
             pause_duration_std: 0.2,
@@ -155,10 +166,14 @@ impl SyntheticGenerator for PauseGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.pause_probability < 0.0 || params.pause_probability > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("pause_probability must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "pause_probability must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -190,7 +205,11 @@ impl SyntheticGenerator for PitchContourGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = PitchContourParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -237,7 +256,11 @@ impl SyntheticGenerator for PitchContourGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(f0_contour, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            f0_contour,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -252,10 +275,14 @@ impl SyntheticGenerator for PitchContourGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.baseline_f0 <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("baseline_f0 must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "baseline_f0 must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -267,7 +294,7 @@ pub struct FilledPauseGenerator;
 #[derive(Debug, Clone)]
 pub struct FilledPauseParams {
     pub duration: f64,
-    pub filled_pause_rate: f64, // filled pauses per minute
+    pub filled_pause_rate: f64,   // filled pauses per minute
     pub pause_duration_mean: f64, // seconds
     pub pause_duration_std: f64,
 }
@@ -277,11 +304,16 @@ impl SyntheticGenerator for FilledPauseGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = FilledPauseParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let duration_dist = Normal::new(params.pause_duration_mean, params.pause_duration_std).unwrap();
+        let duration_dist =
+            Normal::new(params.pause_duration_mean, params.pause_duration_std).unwrap();
 
         let num_pauses = ((params.duration / 60.0) * params.filled_pause_rate) as usize;
         let mut filled_pauses = Vec::new();
@@ -300,7 +332,10 @@ impl SyntheticGenerator for FilledPauseGenerator {
                 amplitude: Some(pause_duration),
                 attributes: {
                     let mut attrs = HashMap::new();
-                    attrs.insert("type".to_string(), if pause_type == "um" { 0.0 } else { 1.0 });
+                    attrs.insert(
+                        "type".to_string(),
+                        if pause_type == "um" { 0.0 } else { 1.0 },
+                    );
                     attrs
                 },
             });
@@ -332,10 +367,14 @@ impl SyntheticGenerator for FilledPauseGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.filled_pause_rate < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("filled_pause_rate must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "filled_pause_rate must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -349,7 +388,7 @@ pub struct PitchRangeParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub baseline_f0: f64,
-    pub pitch_range: f64,      // semitones (typical 12-24 for normal, <6 for monotone)
+    pub pitch_range: f64, // semitones (typical 12-24 for normal, <6 for monotone)
     pub declination_rate: f64, // semitones per second
 }
 
@@ -358,7 +397,11 @@ impl SyntheticGenerator for PitchRangeGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = PitchRangeParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -401,7 +444,11 @@ impl SyntheticGenerator for PitchRangeGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(f0_contour_array, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            f0_contour_array,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -416,10 +463,14 @@ impl SyntheticGenerator for PitchRangeGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.baseline_f0 <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("baseline_f0 must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "baseline_f0 must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -432,8 +483,8 @@ pub struct IntensityContourGenerator;
 pub struct IntensityContourParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub baseline_intensity: f64, // dB
-    pub intensity_range: f64,    // dB (typical 30-40 dB)
+    pub baseline_intensity: f64,    // dB
+    pub intensity_range: f64,       // dB (typical 30-40 dB)
     pub stress_positions: Vec<f64>, // times of stressed syllables
 }
 
@@ -442,7 +493,11 @@ impl SyntheticGenerator for IntensityContourGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = IntensityContourParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -463,8 +518,8 @@ impl SyntheticGenerator for IntensityContourGenerator {
                     let distance = (t - stress_time).abs();
                     if distance < 0.3 {
                         // Gaussian bump for stress
-                        let stress_boost = params.intensity_range * 0.3 *
-                            (-distance.powi(2) / 0.05).exp();
+                        let stress_boost =
+                            params.intensity_range * 0.3 * (-distance.powi(2) / 0.05).exp();
                         intensity += stress_boost;
                     }
                 }
@@ -482,7 +537,10 @@ impl SyntheticGenerator for IntensityContourGenerator {
         gt_params.insert("baseline_intensity".to_string(), params.baseline_intensity);
         gt_params.insert("intensity_range".to_string(), params.intensity_range);
         gt_params.insert("mean_intensity".to_string(), mean_intensity);
-        gt_params.insert("num_stresses".to_string(), params.stress_positions.len() as f64);
+        gt_params.insert(
+            "num_stresses".to_string(),
+            params.stress_positions.len() as f64,
+        );
 
         let ground_truth = TimeSeriesGroundTruth {
             parameters: gt_params,
@@ -490,7 +548,11 @@ impl SyntheticGenerator for IntensityContourGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(intensity_contour_array, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            intensity_contour_array,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -505,10 +567,14 @@ impl SyntheticGenerator for IntensityContourGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.baseline_intensity <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("baseline_intensity must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "baseline_intensity must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -519,17 +585,17 @@ pub struct RhythmGenerator;
 
 #[derive(Debug, Clone)]
 pub enum StressPattern {
-    Isochronous,  // evenly spaced (syllable-timed)
-    Metrical,     // alternating stress (stress-timed)
-    Irregular,    // irregular timing (dysrhythmic)
+    Isochronous, // evenly spaced (syllable-timed)
+    Metrical,    // alternating stress (stress-timed)
+    Irregular,   // irregular timing (dysrhythmic)
 }
 
 #[derive(Debug, Clone)]
 pub struct RhythmParams {
     pub duration: f64,
     pub pattern: StressPattern,
-    pub base_rate: f64,       // syllables per second
-    pub irregularity: f64,    // 0-1
+    pub base_rate: f64,    // syllables per second
+    pub irregularity: f64, // 0-1
 }
 
 impl SyntheticGenerator for RhythmGenerator {
@@ -537,7 +603,11 @@ impl SyntheticGenerator for RhythmGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = RhythmParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -560,7 +630,12 @@ impl SyntheticGenerator for RhythmGenerator {
 
             events.push(Event {
                 time: t,
-                event_type: if is_stressed { "stressed" } else { "unstressed" }.to_string(),
+                event_type: if is_stressed {
+                    "stressed"
+                } else {
+                    "unstressed"
+                }
+                .to_string(),
                 amplitude: if is_stressed { Some(1.0) } else { Some(0.0) },
                 attributes: HashMap::new(),
             });
@@ -599,13 +674,19 @@ impl SyntheticGenerator for RhythmGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.base_rate <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("base_rate must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "base_rate must be positive".to_string(),
+            ));
         }
         if params.irregularity < 0.0 || params.irregularity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("irregularity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "irregularity must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -645,7 +726,10 @@ mod tests {
         let generator = PitchContourGenerator;
         let params = PitchContourGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -661,7 +745,10 @@ mod tests {
         let generator = PitchRangeGenerator;
         let params = PitchRangeGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -669,7 +756,10 @@ mod tests {
         let generator = IntensityContourGenerator;
         let params = IntensityContourGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]

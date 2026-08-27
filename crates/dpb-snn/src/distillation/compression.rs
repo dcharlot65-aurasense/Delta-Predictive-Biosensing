@@ -78,7 +78,7 @@ impl ArchitectureSearch {
     ) -> SNNResult<Self> {
         if compression_ratio <= 0.0 || compression_ratio >= 1.0 {
             return Err(SNNError::InvalidConfig(
-                "Compression ratio must be between 0 and 1".to_string()
+                "Compression ratio must be between 0 and 1".to_string(),
             ));
         }
 
@@ -143,7 +143,10 @@ impl ArchitectureSearch {
 
         let teacher_params = self.compute_total_params(&self.teacher_layers);
         let input = self.teacher_layers[0];
-        let output = *self.teacher_layers.last().expect("non-empty, checked above");
+        let output = *self
+            .teacher_layers
+            .last()
+            .expect("non-empty, checked above");
         let interior: Vec<usize> = self.teacher_layers[1..num_layers - 1].to_vec();
         let n = interior.len();
 
@@ -157,9 +160,7 @@ impl ArchitectureSearch {
             // Keep every k-th interior layer, for each stride.
             (2..=n)
                 .map(|stride| {
-                    (0..n).fold(0u32, |m, i| {
-                        if i % stride != 0 { m | (1 << i) } else { m }
-                    })
+                    (0..n).fold(0u32, |m, i| if i % stride != 0 { m | (1 << i) } else { m })
                 })
                 .filter(|&m| m != 0)
                 .collect()
@@ -184,7 +185,8 @@ impl ArchitectureSearch {
 
     /// Generate candidates by reducing width
     fn generate_width_reduced_candidates(&mut self) {
-        let target_params = (self.compute_total_params(&self.teacher_layers) as f32 * self.compression_ratio) as usize;
+        let target_params = (self.compute_total_params(&self.teacher_layers) as f32
+            * self.compression_ratio) as usize;
 
         // Try different width reduction factors
         for factor in [0.25, 0.5, 0.75] {
@@ -219,23 +221,26 @@ impl ArchitectureSearch {
 
         // Medium network template
         let mid_size = ((input_size + output_size) / 2).max(1);
-        self.candidates.push(vec![input_size, mid_size, output_size]);
+        self.candidates
+            .push(vec![input_size, mid_size, output_size]);
 
         // Larger medium network
         let mid1 = ((input_size + mid_size) / 2).max(1);
         let mid2 = ((mid_size + output_size) / 2).max(1);
-        self.candidates.push(vec![input_size, mid1, mid_size, mid2, output_size]);
+        self.candidates
+            .push(vec![input_size, mid1, mid_size, mid2, output_size]);
     }
 
     /// Get best candidate architecture
     pub fn get_best_candidate(&self) -> SNNResult<Vec<usize>> {
         if self.candidates.is_empty() {
             return Err(SNNError::InvalidConfig(
-                "No candidate architectures found".to_string()
+                "No candidate architectures found".to_string(),
             ));
         }
 
-        let target_params = (self.compute_total_params(&self.teacher_layers) as f32 * self.compression_ratio) as usize;
+        let target_params = (self.compute_total_params(&self.teacher_layers) as f32
+            * self.compression_ratio) as usize;
 
         // Find candidate closest to target
         let mut best_candidate = &self.candidates[0];
@@ -303,7 +308,10 @@ impl LayerMerging {
 
         if in2 != out1 {
             return Err(SNNError::DimensionMismatch {
-                expected: format!("Second layer input ({}) should match first layer output ({})", in2, out1),
+                expected: format!(
+                    "Second layer input ({}) should match first layer output ({})",
+                    in2, out1
+                ),
                 actual: format!("Mismatch: {} != {}", in2, out1),
             });
         }
@@ -449,12 +457,8 @@ impl QuantizationAwareDistillation {
             self.min_val = -max_abs;
             self.max_val = max_abs;
         } else {
-            self.min_val = weights
-                .iter()
-                .fold(f32::MAX, |a, &b| a.min(b));
-            self.max_val = weights
-                .iter()
-                .fold(f32::MIN, |a, &b| a.max(b));
+            self.min_val = weights.iter().fold(f32::MAX, |a, &b| a.min(b));
+            self.max_val = weights.iter().fold(f32::MIN, |a, &b| a.max(b));
         }
     }
 }
@@ -545,11 +549,8 @@ mod tests {
     #[test]
     fn test_architecture_search_depth_reduction() {
         let teacher = vec![128, 256, 128, 64, 10];
-        let search = ArchitectureSearch::new(
-            teacher.clone(),
-            SearchStrategy::DepthReduction,
-            0.3,
-        ).unwrap();
+        let search =
+            ArchitectureSearch::new(teacher.clone(), SearchStrategy::DepthReduction, 0.3).unwrap();
 
         let candidates = search.get_all_candidates();
         assert!(!candidates.is_empty());
@@ -563,11 +564,8 @@ mod tests {
     #[test]
     fn test_architecture_search_width_reduction() {
         let teacher = vec![128, 256, 128, 64, 10];
-        let search = ArchitectureSearch::new(
-            teacher.clone(),
-            SearchStrategy::WidthReduction,
-            0.5,
-        ).unwrap();
+        let search =
+            ArchitectureSearch::new(teacher.clone(), SearchStrategy::WidthReduction, 0.5).unwrap();
 
         let candidates = search.get_all_candidates();
         assert!(!candidates.is_empty());
@@ -616,11 +614,13 @@ mod tests {
     fn test_quantization() {
         let mut qad = QuantizationAwareDistillation::new(8);
 
-        let weights = Array2::from_shape_vec((3, 4), vec![
-            0.1, 0.2, -0.3, 0.4,
-            -0.5, 0.6, 0.7, -0.8,
-            0.9, -1.0, 0.0, 0.5,
-        ]).unwrap();
+        let weights = Array2::from_shape_vec(
+            (3, 4),
+            vec![
+                0.1, 0.2, -0.3, 0.4, -0.5, 0.6, 0.7, -0.8, 0.9, -1.0, 0.0, 0.5,
+            ],
+        )
+        .unwrap();
 
         qad.update_range(&weights);
         let quantized = qad.quantize_weights(&weights);
@@ -635,10 +635,10 @@ mod tests {
     #[test]
     fn test_compression_metrics() {
         let metrics = CompressionMetrics::new(
-            10000,  // original size
-            3000,   // compressed size
-            95.0,   // original accuracy
-            93.5,   // compressed accuracy
+            10000, // original size
+            3000,  // compressed size
+            95.0,  // original accuracy
+            93.5,  // compressed accuracy
         );
 
         assert_eq!(metrics.compression_ratio, 0.3);

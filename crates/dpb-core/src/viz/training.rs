@@ -1,6 +1,9 @@
 //! Training progress visualization utilities.
 
-use super::{export::{JsonBuilder, SvgBuilder}, PlotConfig, Visualization};
+use super::{
+    PlotConfig, Visualization,
+    export::{JsonBuilder, SvgBuilder},
+};
 
 /// Learning curve showing loss/accuracy over epochs.
 pub struct LearningCurve {
@@ -145,18 +148,33 @@ impl Visualization for LearningCurve {
         let max_val = all_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
 
         // Plot metrics
-        self.plot_metric(&mut svg, &self.train_loss, margin, width, height, min_val, max_val, "#2563eb");
+        self.plot_metric(
+            &mut svg,
+            &self.train_loss,
+            margin,
+            width,
+            height,
+            min_val,
+            max_val,
+            "#2563eb",
+        );
 
         if let Some(ref val_loss) = self.val_loss {
-            self.plot_metric(&mut svg, val_loss, margin, width, height, min_val, max_val, "#dc2626");
+            self.plot_metric(
+                &mut svg, val_loss, margin, width, height, min_val, max_val, "#dc2626",
+            );
         }
 
         if let Some(ref train_acc) = self.train_acc {
-            self.plot_metric(&mut svg, train_acc, margin, width, height, min_val, max_val, "#16a34a");
+            self.plot_metric(
+                &mut svg, train_acc, margin, width, height, min_val, max_val, "#16a34a",
+            );
         }
 
         if let Some(ref val_acc) = self.val_acc {
-            self.plot_metric(&mut svg, val_acc, margin, width, height, min_val, max_val, "#ca8a04");
+            self.plot_metric(
+                &mut svg, val_acc, margin, width, height, min_val, max_val, "#ca8a04",
+            );
         }
 
         // Add legend if enabled
@@ -218,10 +236,12 @@ pub struct GradientFlowPlot {
 impl GradientFlowPlot {
     /// Creates a new gradient flow plot.
     pub fn new(gradients: Vec<Vec<f64>>) -> Self {
-        let num_layers = if gradients.is_empty() { 0 } else { gradients[0].len() };
-        let layer_names = (0..num_layers)
-            .map(|i| format!("Layer {}", i))
-            .collect();
+        let num_layers = if gradients.is_empty() {
+            0
+        } else {
+            gradients[0].len()
+        };
+        let layer_names = (0..num_layers).map(|i| format!("Layer {}", i)).collect();
         Self {
             gradients,
             layer_names,
@@ -298,7 +318,9 @@ impl Visualization for GradientFlowPlot {
             };
 
             let num_layers = self.gradients[0].len();
-            let colors_palette = ["#2563eb", "#dc2626", "#16a34a", "#ca8a04", "#9333ea", "#0891b2"];
+            let colors_palette = [
+                "#2563eb", "#dc2626", "#16a34a", "#ca8a04", "#9333ea", "#0891b2",
+            ];
 
             // Plot each layer's gradient over epochs
             for layer_idx in 0..num_layers {
@@ -307,7 +329,9 @@ impl Visualization for GradientFlowPlot {
                     .iter()
                     .enumerate()
                     .map(|(epoch, grads)| {
-                        let x = margin + (epoch as f32 / (self.gradients.len() - 1).max(1) as f32) * plot_width;
+                        let x = margin
+                            + (epoch as f32 / (self.gradients.len() - 1).max(1) as f32)
+                                * plot_width;
                         let grad = grads.get(layer_idx).copied().unwrap_or(0.0);
                         let log_grad = (grad.abs() + 1e-10).ln();
                         let normalized = ((log_grad - min_grad) / range) as f32;
@@ -344,7 +368,11 @@ impl Visualization for GradientFlowPlot {
             .add_int("num_epochs", self.gradients.len() as i64)
             .add_int(
                 "num_layers",
-                if self.gradients.is_empty() { 0 } else { self.gradients[0].len() as i64 },
+                if self.gradients.is_empty() {
+                    0
+                } else {
+                    self.gradients[0].len() as i64
+                },
             );
         json.build()
     }
@@ -430,7 +458,11 @@ impl Visualization for HyperparameterPlot {
             let min_metric = metrics.iter().cloned().fold(f64::INFINITY, f64::min);
             let max_metric = metrics.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
 
-            let hp_range = if (max_hp - min_hp).abs() < 1e-9 { 1.0 } else { max_hp - min_hp };
+            let hp_range = if (max_hp - min_hp).abs() < 1e-9 {
+                1.0
+            } else {
+                max_hp - min_hp
+            };
             let metric_range = if (max_metric - min_metric).abs() < 1e-9 {
                 1.0
             } else {
@@ -443,7 +475,9 @@ impl Visualization for HyperparameterPlot {
                 .iter()
                 .map(|(hp, metric)| {
                     let x = margin + (((hp - min_hp) / hp_range) as f32) * plot_width;
-                    let y = height - margin - (((metric - min_metric) / metric_range) as f32) * plot_height;
+                    let y = height
+                        - margin
+                        - (((metric - min_metric) / metric_range) as f32) * plot_height;
                     (x, y)
                 })
                 .collect();
@@ -460,9 +494,10 @@ impl Visualization for HyperparameterPlot {
                 .iter()
                 .enumerate()
                 .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-                && let Some((x, y)) = points.get(best_idx) {
-                    svg.circle(*x, *y, 7.0, "#16a34a");
-                }
+                && let Some((x, y)) = points.get(best_idx)
+            {
+                svg.circle(*x, *y, 7.0, "#16a34a");
+            }
         }
 
         svg.build()
@@ -528,17 +563,9 @@ mod tests {
 
     #[test]
     fn test_hyperparameter_plot() {
-        let results = vec![
-            (0.001, 0.85),
-            (0.01, 0.92),
-            (0.1, 0.88),
-            (1.0, 0.75),
-        ];
-        let plot = HyperparameterPlot::new(
-            results,
-            "Learning Rate".to_string(),
-            "Accuracy".to_string(),
-        );
+        let results = vec![(0.001, 0.85), (0.01, 0.92), (0.1, 0.88), (1.0, 0.75)];
+        let plot =
+            HyperparameterPlot::new(results, "Learning Rate".to_string(), "Accuracy".to_string());
         assert_eq!(plot.name(), "HyperparameterPlot");
 
         let svg = plot.render_svg();

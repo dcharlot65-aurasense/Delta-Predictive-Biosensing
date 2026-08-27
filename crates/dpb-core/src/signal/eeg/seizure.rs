@@ -135,10 +135,10 @@ impl SeizureDetector {
     pub fn new(sample_rate: f64) -> Self {
         Self {
             sample_rate,
-            spike_threshold: 50.0,        // μV
-            min_spike_duration_ms: 20.0,  // ms
-            max_spike_duration_ms: 200.0, // ms
-            min_seizure_duration: 3.0,    // seconds
+            spike_threshold: 50.0,                     // μV
+            min_spike_duration_ms: 20.0,               // ms
+            max_spike_duration_ms: 200.0,              // ms
+            min_seizure_duration: 3.0,                 // seconds
             window_size: (sample_rate * 2.0) as usize, // 2 second windows
             step_size: (sample_rate * 0.5) as usize,   // 0.5 second steps
         }
@@ -200,8 +200,10 @@ impl SeizureDetector {
                 if peak_val > self.spike_threshold {
                     // Check for slow wave following the spike
                     let slow_wave_window = usize::min(peak_idx + max_samples * 2, n);
-                    let has_slow_wave = (peak_idx + min_samples..slow_wave_window)
-                        .any(|j| signal[j] * signal[peak_idx] < 0.0 && signal[j].abs() > self.spike_threshold * 0.3);
+                    let has_slow_wave = (peak_idx + min_samples..slow_wave_window).any(|j| {
+                        signal[j] * signal[peak_idx] < 0.0
+                            && signal[j].abs() > self.spike_threshold * 0.3
+                    });
 
                     // Estimate duration
                     let mut duration_samples = 0;
@@ -222,7 +224,9 @@ impl SeizureDetector {
                     if has_slow_wave {
                         confidence += 0.2;
                     }
-                    if duration_ms >= self.min_spike_duration_ms && duration_ms <= self.max_spike_duration_ms {
+                    if duration_ms >= self.min_spike_duration_ms
+                        && duration_ms <= self.max_spike_duration_ms
+                    {
                         confidence += 0.2;
                     }
                     if peak_val > self.spike_threshold * 2.0 {
@@ -431,13 +435,22 @@ impl SeizureDetector {
         // Feature 3: Regularity (low coefficient of variation in peak intervals)
         let peaks = self.find_local_peaks(window);
         let regularity_score = if peaks.len() >= 3 {
-            let intervals: Vec<f64> = peaks.windows(2)
+            let intervals: Vec<f64> = peaks
+                .windows(2)
                 .map(|w| (w[1] - w[0]) as f64 / self.sample_rate)
                 .collect();
             let mean_interval = intervals.iter().sum::<f64>() / intervals.len() as f64;
-            let std_interval = (intervals.iter().map(|x| (x - mean_interval).powi(2)).sum::<f64>()
-                / intervals.len() as f64).sqrt();
-            let cv = if mean_interval > 0.0 { std_interval / mean_interval } else { 1.0 };
+            let std_interval = (intervals
+                .iter()
+                .map(|x| (x - mean_interval).powi(2))
+                .sum::<f64>()
+                / intervals.len() as f64)
+                .sqrt();
+            let cv = if mean_interval > 0.0 {
+                std_interval / mean_interval
+            } else {
+                1.0
+            };
             1.0 - cv.min(1.0)
         } else {
             0.0
@@ -448,10 +461,8 @@ impl SeizureDetector {
         let entropy_score = 1.0 - spectral_entropy.min(1.0);
 
         // Combine features
-        let ictal_score = 0.3 * rhythmic_ratio +
-                         0.2 * amp_score +
-                         0.25 * regularity_score +
-                         0.25 * entropy_score;
+        let ictal_score =
+            0.3 * rhythmic_ratio + 0.2 * amp_score + 0.25 * regularity_score + 0.25 * entropy_score;
 
         Ok(ictal_score.min(1.0))
     }
@@ -462,10 +473,7 @@ impl SeizureDetector {
         let threshold = signal.iter().map(|x| x.abs()).sum::<f64>() / signal.len() as f64;
 
         for i in 1..signal.len() - 1 {
-            if signal[i] > threshold
-                && signal[i] > signal[i - 1]
-                && signal[i] > signal[i + 1]
-            {
+            if signal[i] > threshold && signal[i] > signal[i - 1] && signal[i] > signal[i + 1] {
                 peaks.push(i);
             }
         }

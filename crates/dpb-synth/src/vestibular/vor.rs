@@ -128,7 +128,10 @@ pub enum VorPathology {
     /// Cerebellar dysfunction (gain/phase abnormalities)
     Cerebellar { gain_error: f64, phase_error: f64 },
     /// Vestibular neuritis (acute)
-    VestibularNeuritis { affected_side: bool, days_post_onset: f64 },
+    VestibularNeuritis {
+        affected_side: bool,
+        days_post_onset: f64,
+    },
 }
 
 /// VOR signal generator
@@ -336,11 +339,24 @@ impl VorGenerator {
         let n_samples = (duration * self.config.sample_rate) as usize;
 
         let (gain_left, gain_right, phase_error, asymmetry) = match pathology {
-            VorPathology::UnilateralLoss { affected_side, severity } => {
+            VorPathology::UnilateralLoss {
+                affected_side,
+                severity,
+            } => {
                 if affected_side {
-                    (self.config.normal_gain, self.config.normal_gain * (1.0 - severity), 0.0, severity * 100.0)
+                    (
+                        self.config.normal_gain,
+                        self.config.normal_gain * (1.0 - severity),
+                        0.0,
+                        severity * 100.0,
+                    )
                 } else {
-                    (self.config.normal_gain * (1.0 - severity), self.config.normal_gain, 0.0, -severity * 100.0)
+                    (
+                        self.config.normal_gain * (1.0 - severity),
+                        self.config.normal_gain,
+                        0.0,
+                        -severity * 100.0,
+                    )
                 }
             }
             VorPathology::BilateralLoss { severity } => {
@@ -352,18 +368,34 @@ impl VorGenerator {
                 let reduced = self.config.normal_gain * (1.0 - reduction);
                 (reduced, reduced, 5.0 * age_factor, 0.0)
             }
-            VorPathology::Cerebellar { gain_error, phase_error } => {
+            VorPathology::Cerebellar {
+                gain_error,
+                phase_error,
+            } => {
                 let gain = self.config.normal_gain * (1.0 + gain_error);
                 (gain, gain, phase_error, 0.0)
             }
-            VorPathology::VestibularNeuritis { affected_side, days_post_onset } => {
+            VorPathology::VestibularNeuritis {
+                affected_side,
+                days_post_onset,
+            } => {
                 // Recovery follows exponential time course
                 let recovery = 1.0 - (-days_post_onset / 30.0).exp();
                 let affected_gain = self.config.normal_gain * (0.2 + 0.7 * recovery);
                 if affected_side {
-                    (self.config.normal_gain, affected_gain, 0.0, (1.0 - recovery) * 50.0)
+                    (
+                        self.config.normal_gain,
+                        affected_gain,
+                        0.0,
+                        (1.0 - recovery) * 50.0,
+                    )
                 } else {
-                    (affected_gain, self.config.normal_gain, 0.0, -(1.0 - recovery) * 50.0)
+                    (
+                        affected_gain,
+                        self.config.normal_gain,
+                        0.0,
+                        -(1.0 - recovery) * 50.0,
+                    )
                 }
             }
         };
@@ -444,16 +476,17 @@ impl VorGenerator {
 
         // Determine affected gain based on pathology and direction
         let affected_gain = match pathology {
-            VorPathology::UnilateralLoss { affected_side, severity } => {
+            VorPathology::UnilateralLoss {
+                affected_side,
+                severity,
+            } => {
                 if (affected_side && rightward) || (!affected_side && !rightward) {
                     self.config.normal_gain * (1.0 - severity)
                 } else {
                     self.config.normal_gain
                 }
             }
-            VorPathology::BilateralLoss { severity } => {
-                self.config.normal_gain * (1.0 - severity)
-            }
+            VorPathology::BilateralLoss { severity } => self.config.normal_gain * (1.0 - severity),
             _ => self.config.normal_gain,
         };
 
@@ -510,7 +543,13 @@ impl VorGenerator {
                     // Is this covert (during impulse) or overt (after)?
                     let is_covert = trial_t < impulse_duration;
 
-                    if trial_catch_up_saccades.is_empty() || trial_t > trial_catch_up_saccades.last().map(|s: &CatchUpSaccade| s.onset_time / 1000.0 + 0.05).unwrap_or(0.0) {
+                    if trial_catch_up_saccades.is_empty()
+                        || trial_t
+                            > trial_catch_up_saccades
+                                .last()
+                                .map(|s: &CatchUpSaccade| s.onset_time / 1000.0 + 0.05)
+                                .unwrap_or(0.0)
+                    {
                         trial_catch_up_saccades.push(CatchUpSaccade {
                             onset_time: saccade_onset * 1000.0,
                             amplitude: saccade_amp.abs(),
@@ -522,7 +561,8 @@ impl VorGenerator {
                     }
 
                     // Saccade velocity contribution
-                    saccade_amp / saccade_duration * (-((trial_t - saccade_onset) / saccade_duration).powi(2)).exp()
+                    saccade_amp / saccade_duration
+                        * (-((trial_t - saccade_onset) / saccade_duration).powi(2)).exp()
                 } else {
                     0.0
                 };
@@ -553,8 +593,16 @@ impl VorGenerator {
         let ground_truth = VorGroundTruth {
             gain: VorGain {
                 overall: affected_gain,
-                leftward: if rightward { self.config.normal_gain } else { affected_gain },
-                rightward: if rightward { affected_gain } else { self.config.normal_gain },
+                leftward: if rightward {
+                    self.config.normal_gain
+                } else {
+                    affected_gain
+                },
+                rightward: if rightward {
+                    affected_gain
+                } else {
+                    self.config.normal_gain
+                },
                 frequency_gains: vec![],
             },
             phase: 0.0,

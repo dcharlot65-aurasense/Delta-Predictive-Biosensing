@@ -290,23 +290,29 @@ impl AndroidRuntime {
         }
 
         // Throttle during low battery and not charging
-        if self.battery_config.throttle_low_battery &&
-           self.battery_level < self.battery_config.low_battery_threshold &&
-           !self.is_charging {
+        if self.battery_config.throttle_low_battery
+            && self.battery_level < self.battery_config.low_battery_threshold
+            && !self.is_charging
+        {
             return true;
         }
 
         // Throttle during doze mode
-        if self.battery_config.respect_doze_mode &&
-           matches!(self.power_state, AndroidPowerState::LightDoze | AndroidPowerState::DeepDoze) {
+        if self.battery_config.respect_doze_mode
+            && matches!(
+                self.power_state,
+                AndroidPowerState::LightDoze | AndroidPowerState::DeepDoze
+            )
+        {
             return true;
         }
 
         // Throttle during severe thermal conditions
-        if matches!(self.thermal_state,
-            AndroidThermalState::Severe |
-            AndroidThermalState::Critical |
-            AndroidThermalState::Emergency
+        if matches!(
+            self.thermal_state,
+            AndroidThermalState::Severe
+                | AndroidThermalState::Critical
+                | AndroidThermalState::Emergency
         ) {
             return true;
         }
@@ -323,7 +329,10 @@ impl AndroidRuntime {
         }
 
         // Block during emergency thermal state
-        if matches!(self.thermal_state, AndroidThermalState::Emergency | AndroidThermalState::Shutdown) {
+        if matches!(
+            self.thermal_state,
+            AndroidThermalState::Emergency | AndroidThermalState::Shutdown
+        ) {
             return true;
         }
 
@@ -347,11 +356,7 @@ impl AndroidRuntime {
         }
 
         // Normal operation: up to 30 Hz
-        if self.is_charging {
-            30.0
-        } else {
-            20.0
-        }
+        if self.is_charging { 30.0 } else { 20.0 }
     }
 
     /// Get power state

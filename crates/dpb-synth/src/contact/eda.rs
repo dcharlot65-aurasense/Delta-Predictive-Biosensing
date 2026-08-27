@@ -1,9 +1,9 @@
 //! EDA (electrodermal activity) / GSR generators
 
-use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
+use crate::traits::{Event, GeneratedData, SyntheticGenerator, TimeSeriesGroundTruth};
 use ndarray::Array1;
 use rand::{RngExt, SeedableRng};
-use rand_distr::{Distribution, Normal, Exp};
+use rand_distr::{Distribution, Exp, Normal};
 use std::collections::HashMap;
 
 /// Tonic EDA (skin conductance level - SCL) generator
@@ -14,8 +14,8 @@ pub struct EdaTonicParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub baseline_scl: f64,    // microsiemens
-    pub drift_magnitude: f64,  // slow drift
-    pub drift_frequency: f64,  // Hz (very low, ~0.01)
+    pub drift_magnitude: f64, // slow drift
+    pub drift_frequency: f64, // Hz (very low, ~0.01)
 }
 
 impl SyntheticGenerator for EdaTonicGenerator {
@@ -23,7 +23,11 @@ impl SyntheticGenerator for EdaTonicGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = EdaTonicParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -37,11 +41,11 @@ impl SyntheticGenerator for EdaTonicGenerator {
             (0..n_samples)
                 .map(|i| {
                     let t = i as f64 * dt;
-                    let drift = params.drift_magnitude *
-                        (2.0 * std::f64::consts::PI * params.drift_frequency * t + phase).sin();
+                    let drift = params.drift_magnitude
+                        * (2.0 * std::f64::consts::PI * params.drift_frequency * t + phase).sin();
                     params.baseline_scl + drift + noise.sample(&mut rng)
                 })
-                .collect()
+                .collect(),
         );
 
         let mut gt_params = HashMap::new();
@@ -54,14 +58,18 @@ impl SyntheticGenerator for EdaTonicGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
         EdaTonicParams {
             duration: 60.0,
             sampling_rate: 10.0,
-            baseline_scl: 5.0,     // microsiemens
+            baseline_scl: 5.0, // microsiemens
             drift_magnitude: 0.5,
             drift_frequency: 0.01,
         }
@@ -69,13 +77,19 @@ impl SyntheticGenerator for EdaTonicGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.sampling_rate <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("sampling_rate must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "sampling_rate must be positive".to_string(),
+            ));
         }
         if params.baseline_scl < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("baseline_scl must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "baseline_scl must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -88,11 +102,11 @@ pub struct ScrEventGenerator;
 pub struct ScrEventParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub event_rate: f64,       // events per minute
-    pub amplitude_mean: f64,   // microsiemens
+    pub event_rate: f64,     // events per minute
+    pub amplitude_mean: f64, // microsiemens
     pub amplitude_std: f64,
-    pub rise_time: f64,        // seconds (tau1, typically 1-3s)
-    pub recovery_time: f64,    // seconds (tau2, typically 3-10s)
+    pub rise_time: f64,     // seconds (tau1, typically 1-3s)
+    pub recovery_time: f64, // seconds (tau2, typically 3-10s)
 }
 
 impl SyntheticGenerator for ScrEventGenerator {
@@ -100,7 +114,11 @@ impl SyntheticGenerator for ScrEventGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = ScrEventParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -140,9 +158,9 @@ impl SyntheticGenerator for ScrEventGenerator {
                 if t >= *event_time {
                     let delta_t = t - event_time;
                     // Bateman function: A * (exp(-t/tau2) - exp(-t/tau1))
-                    let scr = amplitude *
-                        ((-delta_t / params.recovery_time).exp() -
-                         (-delta_t / params.rise_time).exp());
+                    let scr = amplitude
+                        * ((-delta_t / params.recovery_time).exp()
+                            - (-delta_t / params.rise_time).exp());
                     *i_slot += scr;
                 }
             }
@@ -162,33 +180,45 @@ impl SyntheticGenerator for ScrEventGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
         ScrEventParams {
             duration: 60.0,
             sampling_rate: 10.0,
-            event_rate: 3.0,       // 3 SCRs per minute
-            amplitude_mean: 0.5,   // microsiemens
+            event_rate: 3.0,     // 3 SCRs per minute
+            amplitude_mean: 0.5, // microsiemens
             amplitude_std: 0.2,
-            rise_time: 1.5,        // seconds
-            recovery_time: 5.0,    // seconds
+            rise_time: 1.5,     // seconds
+            recovery_time: 5.0, // seconds
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.sampling_rate <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("sampling_rate must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "sampling_rate must be positive".to_string(),
+            ));
         }
         if params.rise_time <= 0.0 || params.recovery_time <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("time constants must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "time constants must be positive".to_string(),
+            ));
         }
         if params.rise_time >= params.recovery_time {
-            return Err(crate::GeneratorError::InvalidParameter("rise_time should be < recovery_time".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "rise_time should be < recovery_time".to_string(),
+            ));
         }
         Ok(())
     }
@@ -202,7 +232,7 @@ pub struct StimulusLockedScrParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub stimulus_times: Vec<f64>, // exact stimulus times
-    pub latency_mean: f64,         // mean SCR latency (1-3s)
+    pub latency_mean: f64,        // mean SCR latency (1-3s)
     pub latency_std: f64,
     pub amplitude_mean: f64,
     pub amplitude_std: f64,
@@ -216,7 +246,11 @@ impl SyntheticGenerator for StimulusLockedScrGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = StimulusLockedScrParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -256,9 +290,9 @@ impl SyntheticGenerator for StimulusLockedScrGenerator {
                 let t = i as f64 * dt;
                 if t >= scr_onset {
                     let delta_t = t - scr_onset;
-                    let scr = amplitude *
-                        ((-delta_t / params.recovery_time).exp() -
-                         (-delta_t / params.rise_time).exp());
+                    let scr = amplitude
+                        * ((-delta_t / params.recovery_time).exp()
+                            - (-delta_t / params.rise_time).exp());
                     *i_slot += scr;
                 }
             }
@@ -269,7 +303,10 @@ impl SyntheticGenerator for StimulusLockedScrGenerator {
         let mut gt_params = HashMap::new();
         gt_params.insert("latency_mean".to_string(), params.latency_mean);
         gt_params.insert("amplitude_mean".to_string(), params.amplitude_mean);
-        gt_params.insert("response_probability".to_string(), params.response_probability);
+        gt_params.insert(
+            "response_probability".to_string(),
+            params.response_probability,
+        );
 
         let ground_truth = TimeSeriesGroundTruth {
             parameters: gt_params,
@@ -277,7 +314,11 @@ impl SyntheticGenerator for StimulusLockedScrGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -297,10 +338,14 @@ impl SyntheticGenerator for StimulusLockedScrGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.response_probability < 0.0 || params.response_probability > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("response_probability must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "response_probability must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -311,9 +356,9 @@ pub struct ArousalStateGenerator;
 
 #[derive(Debug, Clone)]
 pub enum ArousalState {
-    Low,      // relaxed, drowsy
-    Medium,   // alert, baseline
-    High,     // stressed, aroused
+    Low,    // relaxed, drowsy
+    Medium, // alert, baseline
+    High,   // stressed, aroused
 }
 
 #[derive(Debug, Clone)]
@@ -321,7 +366,7 @@ pub struct ArousalStateParams {
     pub duration: f64,
     pub sampling_rate: f64,
     pub state_sequence: Vec<(f64, ArousalState)>, // (time, state)
-    pub transition_duration: f64, // seconds
+    pub transition_duration: f64,                 // seconds
 }
 
 impl SyntheticGenerator for ArousalStateGenerator {
@@ -329,7 +374,11 @@ impl SyntheticGenerator for ArousalStateGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = ArousalStateParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -382,7 +431,8 @@ impl SyntheticGenerator for ArousalStateGenerator {
         let ground_truth = TimeSeriesGroundTruth {
             parameters: HashMap::new(),
             events: Vec::new(),
-            segments: params.state_sequence
+            segments: params
+                .state_sequence
                 .windows(2)
                 .map(|w| crate::traits::Segment {
                     start: w[0].0,
@@ -392,7 +442,11 @@ impl SyntheticGenerator for ArousalStateGenerator {
                 .collect(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -410,10 +464,14 @@ impl SyntheticGenerator for ArousalStateGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.state_sequence.is_empty() {
-            return Err(crate::GeneratorError::InvalidParameter("state_sequence cannot be empty".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "state_sequence cannot be empty".to_string(),
+            ));
         }
         Ok(())
     }
@@ -426,11 +484,11 @@ pub struct EdaArtifactGenerator;
 pub struct EdaArtifactParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub movement_artifact_rate: f64,    // artifacts per minute
-    pub movement_amplitude: f64,        // microsiemens
-    pub movement_duration: f64,         // seconds
-    pub electrode_artifact_rate: f64,   // artifacts per minute
-    pub electrode_amplitude: f64,       // microsiemens (spikes)
+    pub movement_artifact_rate: f64,  // artifacts per minute
+    pub movement_amplitude: f64,      // microsiemens
+    pub movement_duration: f64,       // seconds
+    pub electrode_artifact_rate: f64, // artifacts per minute
+    pub electrode_amplitude: f64,     // microsiemens (spikes)
 }
 
 impl SyntheticGenerator for EdaArtifactGenerator {
@@ -438,7 +496,11 @@ impl SyntheticGenerator for EdaArtifactGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = EdaArtifactParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -452,7 +514,8 @@ impl SyntheticGenerator for EdaArtifactGenerator {
         let movement_exp = Exp::new(params.movement_artifact_rate / 60.0).unwrap();
         let mut t = movement_exp.sample(&mut rng);
         while t < params.duration {
-            let amp_dist = Normal::new(params.movement_amplitude, params.movement_amplitude * 0.3).unwrap();
+            let amp_dist =
+                Normal::new(params.movement_amplitude, params.movement_amplitude * 0.3).unwrap();
             let amplitude = amp_dist.sample(&mut rng).abs();
             let duration = params.movement_duration * rng.random_range(0.5..1.5);
 
@@ -485,7 +548,8 @@ impl SyntheticGenerator for EdaArtifactGenerator {
         let electrode_exp = Exp::new(params.electrode_artifact_rate / 60.0).unwrap();
         let mut t = electrode_exp.sample(&mut rng);
         while t < params.duration {
-            let amp_dist = Normal::new(params.electrode_amplitude, params.electrode_amplitude * 0.5).unwrap();
+            let amp_dist =
+                Normal::new(params.electrode_amplitude, params.electrode_amplitude * 0.5).unwrap();
             let amplitude = amp_dist.sample(&mut rng);
 
             events.push(Event {
@@ -513,8 +577,14 @@ impl SyntheticGenerator for EdaArtifactGenerator {
         let signal = Array1::from_vec(signal);
 
         let mut gt_params = HashMap::new();
-        gt_params.insert("movement_artifact_rate".to_string(), params.movement_artifact_rate);
-        gt_params.insert("electrode_artifact_rate".to_string(), params.electrode_artifact_rate);
+        gt_params.insert(
+            "movement_artifact_rate".to_string(),
+            params.movement_artifact_rate,
+        );
+        gt_params.insert(
+            "electrode_artifact_rate".to_string(),
+            params.electrode_artifact_rate,
+        );
 
         let ground_truth = TimeSeriesGroundTruth {
             parameters: gt_params,
@@ -522,27 +592,35 @@ impl SyntheticGenerator for EdaArtifactGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
         EdaArtifactParams {
             duration: 60.0,
             sampling_rate: 10.0,
-            movement_artifact_rate: 2.0,     // 2 per minute
-            movement_amplitude: 2.0,          // microsiemens
-            movement_duration: 3.0,           // seconds
-            electrode_artifact_rate: 1.0,     // 1 per minute
-            electrode_amplitude: 5.0,         // microsiemens (spikes)
+            movement_artifact_rate: 2.0,  // 2 per minute
+            movement_amplitude: 2.0,      // microsiemens
+            movement_duration: 3.0,       // seconds
+            electrode_artifact_rate: 1.0, // 1 per minute
+            electrode_amplitude: 5.0,     // microsiemens (spikes)
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.sampling_rate <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("sampling_rate must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "sampling_rate must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -557,7 +635,10 @@ mod tests {
         let generator = EdaTonicGenerator;
         let params = EdaTonicGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -565,7 +646,10 @@ mod tests {
         let generator = ScrEventGenerator;
         let params = ScrEventGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
         assert!(!result.ground_truth.events.is_empty());
     }
 
@@ -574,7 +658,10 @@ mod tests {
         let generator = StimulusLockedScrGenerator;
         let params = StimulusLockedScrGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -582,7 +669,10 @@ mod tests {
         let generator = ArousalStateGenerator;
         let params = ArousalStateGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
         assert!(!result.ground_truth.segments.is_empty());
     }
 
@@ -591,7 +681,10 @@ mod tests {
         let generator = EdaArtifactGenerator;
         let params = EdaArtifactGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
         assert!(!result.ground_truth.events.is_empty());
     }
 }

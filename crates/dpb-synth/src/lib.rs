@@ -156,70 +156,115 @@
 //! - [`FrequencyMask`]: Frequency masking
 //! - [`TimeMask`]: Time masking
 
-pub mod traits;
-pub mod streaming;
 pub mod contact;
-pub mod pose;
-pub mod hand;
 pub mod eye;
-pub mod voice;
-pub mod neural;
-pub mod multimodal;
+pub mod hand;
 pub mod level3;
 pub mod media;
+pub mod multimodal;
+pub mod neural;
+pub mod pose;
+pub mod streaming;
+pub mod traits;
+pub mod voice;
 
 // New biomechanical and clinical modules
-pub mod force;
 pub mod balance;
-pub mod vestibular;
-pub mod pain;
 pub mod cardiopulmonary;
 pub mod cognitive;
+pub mod force;
+pub mod pain;
 pub mod pathology;
+pub mod vestibular;
 
 // Augmentation and cohort modules
 pub mod augmentation;
 pub mod cohort;
 
-pub use traits::{SyntheticGenerator, GroundTruth, ParameterSpace};
 pub use augmentation::{
-    SignalAugmentation, AugmentationPipeline,
-    noise::{GaussianNoise, PinkNoise, BaselineWander, PowerlineNoise, MotionArtifact},
-    temporal::{TimeWarp, TimeShift, WindowCrop, Resample, RandomDropout},
-    spectral::{MagnitudeScale, FrequencyMask, TimeMask},
+    AugmentationPipeline, SignalAugmentation,
+    noise::{BaselineWander, GaussianNoise, MotionArtifact, PinkNoise, PowerlineNoise},
+    spectral::{FrequencyMask, MagnitudeScale, TimeMask},
+    temporal::{RandomDropout, Resample, TimeShift, TimeWarp, WindowCrop},
 };
-pub use cohort::{Sex, Demographics, VirtualPatient, CohortGenerator};
+pub use cohort::{CohortGenerator, Demographics, Sex, VirtualPatient};
 pub use streaming::{
-    StreamingGenerator, FrameStreamingGenerator,
-    RingBuffer, AtomicRingBuffer, MultiChannelBuffer,
-    StreamingConfig, StreamingStats,
-    // Contact biosignal streaming
-    StreamingEcg, StreamingEcgState, StreamingEcgParams,
-    StreamingTremor, StreamingTremorState, StreamingTremorParams,
-    StreamingPpg, StreamingPpgState, StreamingPpgParams,
-    StreamingEmg, StreamingEmgState, StreamingEmgParams,
-    StreamingEda, StreamingEdaState, StreamingEdaParams,
-    StreamingRespiratory, StreamingRespiratoryState, StreamingRespiratoryParams,
-    StreamingThermal, StreamingThermalState, StreamingThermalParams,
-    // Eye tracking streaming
-    StreamingGaze, StreamingGazeState, StreamingGazeParams, GazeSample,
-    // Frame-based streaming (pose, hand)
-    StreamingPose, StreamingPoseState, StreamingPoseParams, PoseFrame,
-    StreamingHand, StreamingHandState, StreamingHandParams, HandFrame, HandMotionType,
-    // rPPG (remote photoplethysmography) streaming
-    StreamingRppg, StreamingRppgState, StreamingRppgParams, RppgFrame,
+    AtomicRingBuffer,
     // Level 3 audio streaming
     AudioSample,
-    StreamingVowel, StreamingVowelState, StreamingVowelParams,
-    StreamingDdk, StreamingDdkState, StreamingDdkParams, DdkEvent,
     // Level 3 clinical pose/hand streaming
-    ClinicalGaitType, ClinicalPoseFrame,
-    StreamingClinicalPose, StreamingClinicalPoseState, StreamingClinicalPoseParams,
-    ClinicalHandTask, ClinicalHandFrame,
-    StreamingClinicalHand, StreamingClinicalHandState, StreamingClinicalHandParams,
+    ClinicalGaitType,
+    ClinicalHandFrame,
+    ClinicalHandTask,
+    ClinicalPoseFrame,
+    DdkEvent,
+    FrameStreamingGenerator,
+    GazeSample,
+    HandFrame,
+    HandMotionType,
+    MultiChannelBuffer,
+    MultiModalParams,
+    MultiModalSample,
+    MultiModalState,
     // Multi-modal streaming
-    MultiModalStreaming, MultiModalState, MultiModalParams, MultiModalSample,
+    MultiModalStreaming,
+    PoseFrame,
+    RingBuffer,
+    RppgFrame,
+    StreamingClinicalHand,
+    StreamingClinicalHandParams,
+    StreamingClinicalHandState,
+    StreamingClinicalPose,
+    StreamingClinicalPoseParams,
+    StreamingClinicalPoseState,
+    StreamingConfig,
+    StreamingDdk,
+    StreamingDdkParams,
+    StreamingDdkState,
+    // Contact biosignal streaming
+    StreamingEcg,
+    StreamingEcgParams,
+    StreamingEcgState,
+    StreamingEda,
+    StreamingEdaParams,
+    StreamingEdaState,
+    StreamingEmg,
+    StreamingEmgParams,
+    StreamingEmgState,
+    // Eye tracking streaming
+    StreamingGaze,
+    StreamingGazeParams,
+    StreamingGazeState,
+    StreamingGenerator,
+    StreamingHand,
+    StreamingHandParams,
+    StreamingHandState,
+    // Frame-based streaming (pose, hand)
+    StreamingPose,
+    StreamingPoseParams,
+    StreamingPoseState,
+    StreamingPpg,
+    StreamingPpgParams,
+    StreamingPpgState,
+    StreamingRespiratory,
+    StreamingRespiratoryParams,
+    StreamingRespiratoryState,
+    // rPPG (remote photoplethysmography) streaming
+    StreamingRppg,
+    StreamingRppgParams,
+    StreamingRppgState,
+    StreamingStats,
+    StreamingThermal,
+    StreamingThermalParams,
+    StreamingThermalState,
+    StreamingTremor,
+    StreamingTremorParams,
+    StreamingTremorState,
+    StreamingVowel,
+    StreamingVowelParams,
+    StreamingVowelState,
 };
+pub use traits::{GroundTruth, ParameterSpace, SyntheticGenerator};
 
 /// Common result type for generators
 pub type Result<T> = std::result::Result<T, GeneratorError>;
@@ -257,7 +302,9 @@ mod tests {
         use std::f64::consts::PI;
 
         let mut rng = ChaCha8Rng::seed_from_u64(42);
-        let signal: Vec<f64> = (0..1000).map(|i| (2.0 * PI * i as f64 / 50.0).sin()).collect();
+        let signal: Vec<f64> = (0..1000)
+            .map(|i| (2.0 * PI * i as f64 / 50.0).sin())
+            .collect();
 
         let pipeline = AugmentationPipeline::new()
             .add(GaussianNoise::new(20.0), 1.0)
@@ -266,7 +313,7 @@ mod tests {
         let augmented = pipeline.apply(&signal, &mut rng);
 
         assert_eq!(augmented.len(), signal.len());
-        assert_ne!(augmented, signal);  // Should be different due to augmentation
+        assert_ne!(augmented, signal); // Should be different due to augmentation
     }
 
     #[test]
@@ -371,5 +418,4 @@ mod tests {
             assert_eq!(categorize(bmi), expected, "BMI {bmi}");
         }
     }
-
 }

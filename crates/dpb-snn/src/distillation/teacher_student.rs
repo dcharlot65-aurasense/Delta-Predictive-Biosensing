@@ -56,17 +56,17 @@ impl DistillationConfig {
     pub fn validate(&self) -> SNNResult<()> {
         if self.temperature <= 0.0 {
             return Err(SNNError::InvalidConfig(
-                "Temperature must be positive".to_string()
+                "Temperature must be positive".to_string(),
             ));
         }
         if self.alpha < 0.0 || self.beta < 0.0 {
             return Err(SNNError::InvalidConfig(
-                "Loss weights must be non-negative".to_string()
+                "Loss weights must be non-negative".to_string(),
             ));
         }
         if (self.alpha + self.beta - 1.0).abs() > 1e-6 {
             return Err(SNNError::InvalidConfig(
-                "Alpha and beta should sum to 1.0".to_string()
+                "Alpha and beta should sum to 1.0".to_string(),
             ));
         }
         Ok(())
@@ -193,11 +193,7 @@ pub struct DistillationStats {
 
 impl<Teacher, Student> TeacherStudentFramework<Teacher, Student> {
     /// Create a new distillation framework
-    pub fn new(
-        teacher: Teacher,
-        student: Student,
-        config: DistillationConfig,
-    ) -> SNNResult<Self> {
+    pub fn new(teacher: Teacher, student: Student, config: DistillationConfig) -> SNNResult<Self> {
         config.validate()?;
 
         Ok(Self {
@@ -300,7 +296,7 @@ impl KnowledgeTransfer for DefaultKnowledgeTransfer {
     ) -> SNNResult<f32> {
         if teacher_features.len() != student_features.len() {
             return Err(SNNError::InvalidConfig(
-                "Number of teacher and student features must match".to_string()
+                "Number of teacher and student features must match".to_string(),
             ));
         }
 
@@ -324,7 +320,7 @@ impl KnowledgeTransfer for DefaultKnowledgeTransfer {
     ) -> SNNResult<f32> {
         if teacher_features.len() < 2 || student_features.len() < 2 {
             return Err(SNNError::InvalidConfig(
-                "Need at least 2 layers for relation-based distillation".to_string()
+                "Need at least 2 layers for relation-based distillation".to_string(),
             ));
         }
 
@@ -333,8 +329,10 @@ impl KnowledgeTransfer for DefaultKnowledgeTransfer {
 
         // Compute relationships between consecutive layers
         for i in 0..num_pairs {
-            let teacher_rel = compute_feature_relation(&teacher_features[i], &teacher_features[i + 1]);
-            let student_rel = compute_feature_relation(&student_features[i], &student_features[i + 1]);
+            let teacher_rel =
+                compute_feature_relation(&teacher_features[i], &teacher_features[i + 1]);
+            let student_rel =
+                compute_feature_relation(&student_features[i], &student_features[i + 1]);
 
             // MSE on relations
             let diff = &teacher_rel - &student_rel;
@@ -364,12 +362,16 @@ fn compute_feature_relation(features1: &Array2<f32>, features2: &Array2<f32>) ->
 
     for i in 0..n1 {
         let norm = features1.row(i).mapv(|x| x * x).sum().sqrt().max(1e-8);
-        norm1.row_mut(i).assign(&features1.row(i).mapv(|x| x / norm));
+        norm1
+            .row_mut(i)
+            .assign(&features1.row(i).mapv(|x| x / norm));
     }
 
     for i in 0..n2 {
         let norm = features2.row(i).mapv(|x| x * x).sum().sqrt().max(1e-8);
-        norm2.row_mut(i).assign(&features2.row(i).mapv(|x| x / norm));
+        norm2
+            .row_mut(i)
+            .assign(&features2.row(i).mapv(|x| x / norm));
     }
 
     // Compute pairwise similarities (simplified to diagonal)
@@ -411,10 +413,7 @@ mod tests {
 
     #[test]
     fn test_temperature_softmax() {
-        let logits = Array2::from_shape_vec((2, 3), vec![
-            1.0, 2.0, 3.0,
-            4.0, 5.0, 6.0,
-        ]).unwrap();
+        let logits = Array2::from_shape_vec((2, 3), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).unwrap();
 
         let softmax = temperature_softmax(&logits, 1.0);
 
@@ -438,28 +437,24 @@ mod tests {
         let softmax_high_temp = temperature_softmax(&logits, 4.0);
 
         // High temperature should produce more uniform distribution
-        let entropy_low = -softmax_low_temp.iter().map(|&p| {
-            if p > 1e-8 { p * p.ln() } else { 0.0 }
-        }).sum::<f32>();
+        let entropy_low = -softmax_low_temp
+            .iter()
+            .map(|&p| if p > 1e-8 { p * p.ln() } else { 0.0 })
+            .sum::<f32>();
 
-        let entropy_high = -softmax_high_temp.iter().map(|&p| {
-            if p > 1e-8 { p * p.ln() } else { 0.0 }
-        }).sum::<f32>();
+        let entropy_high = -softmax_high_temp
+            .iter()
+            .map(|&p| if p > 1e-8 { p * p.ln() } else { 0.0 })
+            .sum::<f32>();
 
         assert!(entropy_high > entropy_low);
     }
 
     #[test]
     fn test_kl_divergence_loss() {
-        let teacher = Array2::from_shape_vec((2, 3), vec![
-            0.7, 0.2, 0.1,
-            0.1, 0.8, 0.1,
-        ]).unwrap();
+        let teacher = Array2::from_shape_vec((2, 3), vec![0.7, 0.2, 0.1, 0.1, 0.8, 0.1]).unwrap();
 
-        let student = Array2::from_shape_vec((2, 3), vec![
-            0.6, 0.3, 0.1,
-            0.2, 0.7, 0.1,
-        ]).unwrap();
+        let student = Array2::from_shape_vec((2, 3), vec![0.6, 0.3, 0.1, 0.2, 0.7, 0.1]).unwrap();
 
         let loss = kl_divergence_loss(&teacher, &student, 1.0).unwrap();
         assert!(loss > 0.0);
@@ -468,10 +463,7 @@ mod tests {
 
     #[test]
     fn test_kl_divergence_identical() {
-        let probs = Array2::from_shape_vec((2, 3), vec![
-            0.7, 0.2, 0.1,
-            0.1, 0.8, 0.1,
-        ]).unwrap();
+        let probs = Array2::from_shape_vec((2, 3), vec![0.7, 0.2, 0.1, 0.1, 0.8, 0.1]).unwrap();
 
         let loss = kl_divergence_loss(&probs, &probs, 1.0).unwrap();
         assert!(loss.abs() < 1e-5); // Should be ~0 for identical distributions
@@ -528,7 +520,9 @@ mod tests {
             Array2::from_shape_vec((4, 10), vec![1.9; 40]).unwrap(),
         ];
 
-        let loss = transfer.transfer_features(&teacher_features, &student_features).unwrap();
+        let loss = transfer
+            .transfer_features(&teacher_features, &student_features)
+            .unwrap();
         assert!(loss > 0.0);
         assert!(loss.is_finite());
     }
@@ -547,7 +541,9 @@ mod tests {
             Array2::from_shape_vec((4, 10), vec![1.9; 40]).unwrap(),
         ];
 
-        let loss = transfer.transfer_relations(&teacher_features, &student_features).unwrap();
+        let loss = transfer
+            .transfer_relations(&teacher_features, &student_features)
+            .unwrap();
         assert!(loss >= 0.0);
         assert!(loss.is_finite());
     }

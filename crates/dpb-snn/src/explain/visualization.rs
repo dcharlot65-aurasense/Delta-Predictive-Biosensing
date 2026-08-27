@@ -89,7 +89,8 @@ impl ExplanationVisualizer {
 
             let mut data = vec![vec![0.0; n_time]; n_channels];
             for (ch, spatial_weight) in attention.spatial.attention_weights.iter().enumerate() {
-                for (t, temporal_weight) in attention.temporal.attention_weights.iter().enumerate() {
+                for (t, temporal_weight) in attention.temporal.attention_weights.iter().enumerate()
+                {
                     data[ch][t] = spatial_weight * temporal_weight;
                 }
             }
@@ -194,9 +195,7 @@ impl ExplanationVisualizer {
     }
 
     /// Generate neuron importance ranking
-    pub fn neuron_ranking(
-        importances: &[SpikeImportance],
-    ) -> Vec<(usize, usize, f64)> {
+    pub fn neuron_ranking(importances: &[SpikeImportance]) -> Vec<(usize, usize, f64)> {
         // Group by (layer, neuron_id)
         let mut neuron_scores: HashMap<(usize, usize), f64> = HashMap::new();
 
@@ -217,9 +216,7 @@ impl ExplanationVisualizer {
     }
 
     /// Generate layer contribution summary
-    pub fn layer_contributions(
-        importances: &[SpikeImportance],
-    ) -> Vec<(usize, f64, usize)> {
+    pub fn layer_contributions(importances: &[SpikeImportance]) -> Vec<(usize, f64, usize)> {
         // Group by layer
         let mut layer_data: HashMap<usize, (f64, usize)> = HashMap::new();
 
@@ -249,7 +246,11 @@ impl ExplanationVisualizer {
         let mut positive_features = Vec::new();
         let mut negative_features = Vec::new();
 
-        for (name, &value) in attribution.feature_names.iter().zip(&attribution.attribution_values) {
+        for (name, &value) in attribution
+            .feature_names
+            .iter()
+            .zip(&attribution.attribution_values)
+        {
             if value >= 0.0 {
                 positive_sum += value;
                 positive_features.push(format!("{}: {:.3}", name, value));
@@ -259,7 +260,12 @@ impl ExplanationVisualizer {
             }
         }
 
-        (positive_sum, negative_sum, positive_features, negative_features)
+        (
+            positive_sum,
+            negative_sum,
+            positive_features,
+            negative_features,
+        )
     }
 }
 
@@ -356,10 +362,7 @@ mod tests {
 
     #[test]
     fn test_heatmap_creation() {
-        let data = vec![
-            vec![1.0, 2.0, 3.0],
-            vec![4.0, 5.0, 6.0],
-        ];
+        let data = vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0]];
         let x_labels = vec!["t1".to_string(), "t2".to_string(), "t3".to_string()];
         let y_labels = vec!["ch1".to_string(), "ch2".to_string()];
 
@@ -378,10 +381,7 @@ mod tests {
 
     #[test]
     fn test_heatmap_value_range() {
-        let data = vec![
-            vec![1.0, 5.0, 3.0],
-            vec![2.0, 8.0, 4.0],
-        ];
+        let data = vec![vec![1.0, 5.0, 3.0], vec![2.0, 8.0, 4.0]];
         let heatmap = HeatmapData::new(
             data,
             vec![],
@@ -397,10 +397,7 @@ mod tests {
 
     #[test]
     fn test_heatmap_normalize() {
-        let data = vec![
-            vec![1.0, 5.0],
-            vec![3.0, 9.0],
-        ];
+        let data = vec![vec![1.0, 5.0], vec![3.0, 9.0]];
         let mut heatmap = HeatmapData::new(
             data,
             vec![],
@@ -448,10 +445,7 @@ mod tests {
 
     #[test]
     fn test_importance_raster() {
-        let spike_times = vec![
-            vec![10.0, 20.0],
-            vec![15.0, 25.0],
-        ];
+        let spike_times = vec![vec![10.0, 20.0], vec![15.0, 25.0]];
 
         let importances = vec![
             SpikeImportance::new(0, 0, 10.0, 0.8, 0.5),
@@ -605,5 +599,4 @@ mod tests {
             records[1]["importance"]
         );
     }
-
 }

@@ -3,9 +3,9 @@
 //! Handles different sampling rates and aligns events across time
 //! before fusion.
 
-use super::{FusionNetwork, FusionConfig, Modality, concatenate_spikes};
+use super::{FusionConfig, FusionNetwork, Modality, concatenate_spikes};
 use crate::layers::SpikingLayer;
-use crate::{SpikeTensor, SpikingLinear, SpikingRNN, SNNResult, SNNError, NeuronParams};
+use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor, SpikingLinear, SpikingRNN};
 use ndarray::{Array3, s};
 use std::collections::HashMap;
 
@@ -106,7 +106,8 @@ impl TemporalAlignmentSNN {
         let mut aligned = HashMap::new();
 
         // Find maximum time steps
-        let max_time = tensors.values()
+        let max_time = tensors
+            .values()
             .filter_map(|t| match &t.data {
                 crate::SpikeRepresentation::Dense(arr) => Some(arr.dim().1),
                 _ => None,
@@ -125,11 +126,17 @@ impl TemporalAlignmentSNN {
                         // Pad with zeros
                         let mut padded = Array3::<f32>::zeros((batch, max_time, features));
                         padded.slice_mut(s![.., 0..time, ..]).assign(arr);
-                        aligned.insert(*modality, SpikeTensor::from_dense(padded, tensor.requires_grad));
+                        aligned.insert(
+                            *modality,
+                            SpikeTensor::from_dense(padded, tensor.requires_grad),
+                        );
                     } else {
                         // Truncate
                         let truncated = arr.slice(s![.., 0..max_time, ..]).to_owned();
-                        aligned.insert(*modality, SpikeTensor::from_dense(truncated, tensor.requires_grad));
+                        aligned.insert(
+                            *modality,
+                            SpikeTensor::from_dense(truncated, tensor.requires_grad),
+                        );
                     }
                 }
                 _ => return Err(SNNError::InvalidConfig("Sparse not supported".to_string())),
@@ -177,14 +184,15 @@ impl FusionNetwork for TemporalAlignmentSNN {
                         crate::SpikeRepresentation::Dense(arr) => {
                             (arr.dim().0, arr.dim().1, self.config.hidden_size)
                         }
-                        _ => return Err(SNNError::InvalidConfig("Sparse not supported".to_string())),
+                        _ => {
+                            return Err(SNNError::InvalidConfig(
+                                "Sparse not supported".to_string(),
+                            ));
+                        }
                     },
                     None => return Err(SNNError::InvalidConfig("No aligned inputs".to_string())),
                 };
-                processed.push(SpikeTensor::from_dense(
-                    Array3::<f32>::zeros(shape),
-                    false,
-                ));
+                processed.push(SpikeTensor::from_dense(Array3::<f32>::zeros(shape), false));
             }
         }
 
@@ -208,20 +216,23 @@ impl FusionNetwork for TemporalAlignmentSNN {
 
         // Temporal processor parameters
         for processor in self.temporal_processors.values() {
-            total += processor.parameters().iter()
+            total += processor
+                .parameters()
+                .iter()
                 .map(|p| p.len())
                 .sum::<usize>();
         }
 
         // Alignment layer parameters
         for layer in &self.alignment_layers {
-            total += layer.parameters().iter()
-                .map(|p| p.len())
-                .sum::<usize>();
+            total += layer.parameters().iter().map(|p| p.len()).sum::<usize>();
         }
 
         // Fusion layer parameters
-        total += self.fusion_layer.parameters().iter()
+        total += self
+            .fusion_layer
+            .parameters()
+            .iter()
             .map(|p| p.len())
             .sum::<usize>();
 
@@ -260,10 +271,8 @@ mod tests {
             ..Default::default()
         };
 
-        let network = TemporalAlignmentSNN::new(
-            config,
-            AlignmentStrategy::RecurrentAlignment,
-        ).unwrap();
+        let network =
+            TemporalAlignmentSNN::new(config, AlignmentStrategy::RecurrentAlignment).unwrap();
         assert_eq!(network.name(), "TemporalAlignmentSNN");
         assert_eq!(network.temporal_processors().len(), 2);
     }
@@ -278,10 +287,8 @@ mod tests {
             ..Default::default()
         };
 
-        let mut network = TemporalAlignmentSNN::new(
-            config,
-            AlignmentStrategy::RecurrentAlignment,
-        ).unwrap();
+        let mut network =
+            TemporalAlignmentSNN::new(config, AlignmentStrategy::RecurrentAlignment).unwrap();
 
         let mut inputs = HashMap::new();
         inputs.insert(
@@ -313,10 +320,8 @@ mod tests {
             ..Default::default()
         };
 
-        let mut network = TemporalAlignmentSNN::new(
-            config,
-            AlignmentStrategy::RecurrentAlignment,
-        ).unwrap();
+        let mut network =
+            TemporalAlignmentSNN::new(config, AlignmentStrategy::RecurrentAlignment).unwrap();
 
         let mut inputs = HashMap::new();
         inputs.insert(
@@ -342,10 +347,8 @@ mod tests {
             ..Default::default()
         };
 
-        let mut network = TemporalAlignmentSNN::new(
-            config,
-            AlignmentStrategy::RecurrentAlignment,
-        ).unwrap();
+        let mut network =
+            TemporalAlignmentSNN::new(config, AlignmentStrategy::RecurrentAlignment).unwrap();
 
         let mut inputs = HashMap::new();
         inputs.insert(
@@ -367,10 +370,8 @@ mod tests {
             ..Default::default()
         };
 
-        let network = TemporalAlignmentSNN::new(
-            config,
-            AlignmentStrategy::RecurrentAlignment,
-        ).unwrap();
+        let network =
+            TemporalAlignmentSNN::new(config, AlignmentStrategy::RecurrentAlignment).unwrap();
         let num_params = network.num_parameters();
         assert!(num_params > 0);
     }

@@ -215,7 +215,12 @@ impl SpikeEvent {
     }
 
     /// Creates a new spike event with validation.
-    pub fn new_validated(timestamp: f64, channel: u32, polarity: i8, magnitude: f32) -> Result<Self> {
+    pub fn new_validated(
+        timestamp: f64,
+        channel: u32,
+        polarity: i8,
+        magnitude: f32,
+    ) -> Result<Self> {
         if polarity != -1 && polarity != 1 {
             return Err(DpbError::InvalidParameter(
                 "Polarity must be -1 or +1".to_string(),
@@ -676,10 +681,7 @@ mod tests {
 
     #[test]
     fn test_time_series() {
-        let data = vec![
-            vec![1.0, 2.0, 3.0],
-            vec![4.0, 5.0, 6.0],
-        ];
+        let data = vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0]];
         let ts = TimeSeries::new(data, 100.0).unwrap();
 
         assert_eq!(ts.num_channels(), 2);
@@ -696,9 +698,7 @@ mod tests {
 
     #[test]
     fn test_context() {
-        let mut ctx = Context::new()
-            .with_age(30.0)
-            .with_sex("M".to_string());
+        let mut ctx = Context::new().with_age(30.0).with_sex("M".to_string());
         ctx.add_medication("aspirin".to_string());
         ctx.set_environment("temperature".to_string(), 22.5);
 

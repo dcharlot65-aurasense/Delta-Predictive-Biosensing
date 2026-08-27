@@ -64,36 +64,35 @@
 //! # }
 //! ```
 
-pub mod loihi;
-pub mod spinnaker;
 pub mod brainscales;
 pub mod constraints;
+pub mod loihi;
 pub mod partitioning;
 pub mod quantization;
+pub mod spinnaker;
 
-pub use loihi::{
-    LoihiExporter, LoihiConfig, LoihiVersion, LoihiFramework,
-    LoihiCompartment, LoihiSynapse, LoihiCore, LoihiNetwork,
-};
-pub use spinnaker::{
-    SpiNNakerExporter, SpiNNakerConfig, SpiNNakerVersion,
-    SpiNNakerPopulation, SpiNNakerProjection, SpiNNakerNetwork,
-};
 pub use brainscales::{
-    BrainScaleSExporter, BrainScaleSConfig, BrainScaleSVersion,
-    BrainScaleSNeuron, BrainScaleSNetwork,
+    BrainScaleSConfig, BrainScaleSExporter, BrainScaleSNetwork, BrainScaleSNeuron,
+    BrainScaleSVersion,
 };
 pub use constraints::{
-    HardwareConstraints, NeuronConstraints, SynapseConstraints,
-    WeightBitDepth, DelayRange, SupportedNeuronModels,
+    DelayRange, HardwareConstraints, NeuronConstraints, SupportedNeuronModels, SynapseConstraints,
+    WeightBitDepth,
+};
+pub use loihi::{
+    LoihiCompartment, LoihiConfig, LoihiCore, LoihiExporter, LoihiFramework, LoihiNetwork,
+    LoihiSynapse, LoihiVersion,
 };
 pub use partitioning::{
-    NetworkPartitioner, PartitionStrategy, CoreAssignment,
-    PartitionResult, PartitionMetrics,
+    CoreAssignment, NetworkPartitioner, PartitionMetrics, PartitionResult, PartitionStrategy,
 };
 pub use quantization::{
-    WeightQuantizer, QuantizationScheme, QuantizationResult,
-    ThresholdQuantizer, TimeConstantQuantizer,
+    QuantizationResult, QuantizationScheme, ThresholdQuantizer, TimeConstantQuantizer,
+    WeightQuantizer,
+};
+pub use spinnaker::{
+    SpiNNakerConfig, SpiNNakerExporter, SpiNNakerNetwork, SpiNNakerPopulation, SpiNNakerProjection,
+    SpiNNakerVersion,
 };
 
 use crate::SNNResult;

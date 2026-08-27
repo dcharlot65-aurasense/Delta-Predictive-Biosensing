@@ -62,8 +62,8 @@ impl Default for EmgBurstConfig {
     fn default() -> Self {
         Self {
             threshold: 0.1,
-            min_duration: 0.05,  // 50 ms
-            min_rest: 0.1,       // 100 ms
+            min_duration: 0.05, // 50 ms
+            min_rest: 0.1,      // 100 ms
         }
     }
 }
@@ -74,8 +74,7 @@ pub struct EmgBurstEncoder;
 impl EmgBurstEncoder {
     /// Creates a new [`EmgBurstEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn calculate_rms(&self, window: &[f32]) -> f32 {
@@ -187,7 +186,8 @@ impl EventEncoder for EmgAmplitudeEncoder {
 
         for i in config.window_size..samples.len() {
             let window = &samples[i - config.window_size..i];
-            let rms: f32 = (window.iter().map(|&x| x * x).sum::<f32>() / window.len() as f32).sqrt();
+            let rms: f32 =
+                (window.iter().map(|&x| x * x).sum::<f32>() / window.len() as f32).sqrt();
 
             if rms > config.threshold {
                 let time = i as f64 * dt;
@@ -231,8 +231,7 @@ pub struct EmgFatigueEncoder;
 impl EmgFatigueEncoder {
     /// Creates a new [`EmgFatigueEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn estimate_median_frequency(&self, _window: &[f32], _sample_rate: f64) -> f32 {

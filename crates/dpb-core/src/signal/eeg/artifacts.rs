@@ -5,7 +5,7 @@
 
 use crate::error::{DpbError, Result};
 use crate::signal::filter::IirFilter;
-use ndarray::{Array1};
+use ndarray::Array1;
 use std::f64::consts::PI;
 
 /// Types of artifacts that can be detected in EEG signals.
@@ -155,11 +155,8 @@ pub fn detect_artifacts(
 
         let window = &eeg[i..end];
         let mean = window.iter().sum::<f64>() / window.len() as f64;
-        let variance = window
-            .iter()
-            .map(|&x| (x - mean).powi(2))
-            .sum::<f64>()
-            / window.len() as f64;
+        let variance =
+            window.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / window.len() as f64;
 
         if variance < flatline_threshold {
             artifacts.push(ArtifactSegment {
@@ -374,7 +371,9 @@ mod tests {
         let clean = vec![10.0; 100];
         let none = detect_artifacts(&clean, sample_rate, 100.0).unwrap();
         assert!(
-            !none.iter().any(|a| a.artifact_type == ArtifactType::Amplitude),
+            !none
+                .iter()
+                .any(|a| a.artifact_type == ArtifactType::Amplitude),
             "flagged an amplitude artifact in a flat 10 uV signal"
         );
     }
@@ -438,11 +437,8 @@ mod tests {
         assert!(mean.abs() < 1e-10);
 
         // Check that variance is very small (since we removed the linear component)
-        let variance = detrended
-            .iter()
-            .map(|&x| (x - mean).powi(2))
-            .sum::<f64>()
-            / detrended.len() as f64;
+        let variance =
+            detrended.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / detrended.len() as f64;
         assert!(variance < 1e-10);
     }
 

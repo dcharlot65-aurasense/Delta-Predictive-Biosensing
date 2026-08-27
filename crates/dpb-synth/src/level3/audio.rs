@@ -12,9 +12,9 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::fs;
 
 /// Result type for audio generation
 pub type AudioResult<T> = Result<T, AudioGeneratorError>;
@@ -60,23 +60,23 @@ pub enum AudioBackend {
 pub struct VoiceAudioParams {
     pub text: String,
     pub backend: AudioBackend,
-    pub voice: Option<String>,      // Voice name/ID (backend-specific)
-    pub speaking_rate: f64,         // words per minute (default: 150)
-    pub pitch_mean: f64,            // Hz (default: 120 for male, 220 for female)
-    pub pitch_std: f64,             // Hz (default: 20)
-    pub volume: f64,                // 0-1 (default: 0.8)
+    pub voice: Option<String>, // Voice name/ID (backend-specific)
+    pub speaking_rate: f64,    // words per minute (default: 150)
+    pub pitch_mean: f64,       // Hz (default: 120 for male, 220 for female)
+    pub pitch_std: f64,        // Hz (default: 20)
+    pub volume: f64,           // 0-1 (default: 0.8)
 
     // Pathological modifiers
-    pub hypophonia_severity: f64,   // 0-1, reduced volume
-    pub monotonicity: f64,          // 0-1, reduced pitch variation
-    pub dysarthria_severity: f64,   // 0-1, imprecise articulation
-    pub tremor_frequency: f64,      // Hz (4-6 Hz for PD voice tremor)
-    pub tremor_amplitude: f64,      // 0-1
+    pub hypophonia_severity: f64, // 0-1, reduced volume
+    pub monotonicity: f64,        // 0-1, reduced pitch variation
+    pub dysarthria_severity: f64, // 0-1, imprecise articulation
+    pub tremor_frequency: f64,    // Hz (4-6 Hz for PD voice tremor)
+    pub tremor_amplitude: f64,    // 0-1
 
     pub output_path: String,
     pub ground_truth_path: String,
-    pub sample_rate: u32,           // Hz (default: 16000)
-    pub format: String,             // "wav", "mp3"
+    pub sample_rate: u32, // Hz (default: 16000)
+    pub format: String,   // "wav", "mp3"
 }
 
 impl Default for VoiceAudioParams {
@@ -117,8 +117,8 @@ pub struct AudioOutput {
 pub struct VoiceGroundTruth {
     pub text: String,
     pub phonemes: Vec<PhonemeAnnotation>,
-    pub f0_contour: Vec<f64>,       // Fundamental frequency over time
-    pub f0_times: Vec<f64>,         // Time stamps for F0 values
+    pub f0_contour: Vec<f64>, // Fundamental frequency over time
+    pub f0_times: Vec<f64>,   // Time stamps for F0 values
     pub formants: Option<Vec<FormantFrame>>,
     pub duration_sec: f64,
     pub metadata: HashMap<String, String>,
@@ -136,9 +136,9 @@ pub struct PhonemeAnnotation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FormantFrame {
     pub time: f64,
-    pub f1: f64,  // First formant
-    pub f2: f64,  // Second formant
-    pub f3: f64,  // Third formant
+    pub f1: f64, // First formant
+    pub f2: f64, // Second formant
+    pub f3: f64, // Third formant
 }
 
 /// Main interface for Level 3 audio generation
@@ -178,10 +178,15 @@ impl Level3AudioGenerator {
         let mut cmd = Command::new(&self.espeak_path);
 
         // Basic parameters
-        cmd.arg("-w").arg(&params.output_path);  // Write to file
-        cmd.arg("-s").arg(self.calculate_espeak_speed(params.speaking_rate).to_string());
-        cmd.arg("-p").arg(self.calculate_espeak_pitch(params.pitch_mean).to_string());
-        cmd.arg("-a").arg(((params.volume * 100.0) as u32).to_string());
+        cmd.arg("-w").arg(&params.output_path); // Write to file
+        cmd.arg("-s").arg(
+            self.calculate_espeak_speed(params.speaking_rate)
+                .to_string(),
+        );
+        cmd.arg("-p")
+            .arg(self.calculate_espeak_pitch(params.pitch_mean).to_string());
+        cmd.arg("-a")
+            .arg(((params.volume * 100.0) as u32).to_string());
 
         // Voice selection
         if let Some(voice) = &params.voice {
@@ -192,7 +197,8 @@ impl Level3AudioGenerator {
         cmd.arg(&params.text);
 
         // Execute
-        let output = cmd.output()
+        let output = cmd
+            .output()
             .map_err(|_| AudioGeneratorError::ToolNotFound("espeak-ng".to_string()))?;
 
         if !output.status.success() {
@@ -208,7 +214,10 @@ impl Level3AudioGenerator {
         let mut metadata = HashMap::new();
         metadata.insert("backend".to_string(), "espeak-ng".to_string());
         metadata.insert("text".to_string(), params.text.clone());
-        metadata.insert("speaking_rate".to_string(), params.speaking_rate.to_string());
+        metadata.insert(
+            "speaking_rate".to_string(),
+            params.speaking_rate.to_string(),
+        );
 
         Ok(AudioOutput {
             audio_path: PathBuf::from(&params.output_path),
@@ -232,7 +241,8 @@ impl Level3AudioGenerator {
         let mut cmd = Command::new(&self.festival_path);
         cmd.arg("--batch").arg(&script_path);
 
-        let output = cmd.output()
+        let output = cmd
+            .output()
             .map_err(|_| AudioGeneratorError::ToolNotFound("festival".to_string()))?;
 
         if !output.status.success() {
@@ -251,7 +261,10 @@ impl Level3AudioGenerator {
         let mut metadata = HashMap::new();
         metadata.insert("backend".to_string(), "festival".to_string());
         metadata.insert("text".to_string(), params.text.clone());
-        metadata.insert("speaking_rate".to_string(), params.speaking_rate.to_string());
+        metadata.insert(
+            "speaking_rate".to_string(),
+            params.speaking_rate.to_string(),
+        );
 
         Ok(AudioOutput {
             audio_path: PathBuf::from(&params.output_path),
@@ -283,7 +296,8 @@ impl Level3AudioGenerator {
         let mut cmd = Command::new("praat");
         cmd.arg("--run").arg(&script_path);
 
-        let output = cmd.output()
+        let output = cmd
+            .output()
             .map_err(|_| AudioGeneratorError::ToolNotFound("praat".to_string()))?;
 
         if !output.status.success() {
@@ -305,7 +319,10 @@ impl Level3AudioGenerator {
         let mut metadata = HashMap::new();
         metadata.insert("backend".to_string(), "praat".to_string());
         metadata.insert("text".to_string(), params.text.clone());
-        metadata.insert("speaking_rate".to_string(), params.speaking_rate.to_string());
+        metadata.insert(
+            "speaking_rate".to_string(),
+            params.speaking_rate.to_string(),
+        );
         metadata.insert("pitch_modification".to_string(), "true".to_string());
 
         Ok(AudioOutput {
@@ -327,7 +344,10 @@ impl Level3AudioGenerator {
     }
 
     /// Load voice ground truth from JSON file
-    pub fn load_voice_ground_truth<P: AsRef<Path>>(&self, path: P) -> AudioResult<VoiceGroundTruth> {
+    pub fn load_voice_ground_truth<P: AsRef<Path>>(
+        &self,
+        path: P,
+    ) -> AudioResult<VoiceGroundTruth> {
         let content = fs::read_to_string(path)
             .map_err(|e| AudioGeneratorError::OutputReadError(e.to_string()))?;
         let gt: VoiceGroundTruth = serde_json::from_str(&content)?;
@@ -355,9 +375,7 @@ impl Level3AudioGenerator {
              (Parameter.set 'Duration_Stretch {:.3})\n\
              (set! default-f0-mean {})\n\
              (set! default-f0-std {})\n\n",
-            duration_stretch,
-            params.pitch_mean as i32,
-            params.pitch_std as i32
+            duration_stretch, params.pitch_mean as i32, params.pitch_std as i32
         ));
 
         // Apply pathological modifiers
@@ -386,23 +404,25 @@ impl Level3AudioGenerator {
              (utt.save.wave\n\
               (utt.synth (Utterance Text \"{}\"))\n\
               \"{}\" 'riff)\n",
-            escaped_text,
-            params.output_path
+            escaped_text, params.output_path
         ));
 
         Ok(script)
     }
 
     /// Create Praat script for acoustic modification
-    fn create_praat_script(&self, params: &VoiceAudioParams, input_path: &str) -> AudioResult<String> {
+    fn create_praat_script(
+        &self,
+        params: &VoiceAudioParams,
+        input_path: &str,
+    ) -> AudioResult<String> {
         let mut script = String::new();
 
         script.push_str(&format!(
             "# Praat script for acoustic modification\n\
              # Input: {}\n\
              # Output: {}\n\n",
-            input_path,
-            params.output_path
+            input_path, params.output_path
         ));
 
         // Read the sound file
@@ -417,7 +437,7 @@ impl Level3AudioGenerator {
         script.push_str(
             "# Extract pitch\n\
              To Manipulation: 0.01, 75, 600\n\
-             manipulation = selected(\"Manipulation\")\n\n"
+             manipulation = selected(\"Manipulation\")\n\n",
         );
 
         // Modify pitch
@@ -489,7 +509,7 @@ impl Level3AudioGenerator {
             "# Synthesize modified sound\n\
              selectObject: manipulation\n\
              Get resynthesis (overlap-add)\n\
-             modified_sound = selected(\"Sound\")\n\n"
+             modified_sound = selected(\"Sound\")\n\n",
         );
 
         // Apply volume/hypophonia
@@ -517,7 +537,10 @@ impl Level3AudioGenerator {
     }
 
     /// Generate ground truth for Praat-modified audio with formant data
-    fn generate_voice_ground_truth_praat(&self, params: &VoiceAudioParams) -> AudioResult<VoiceGroundTruth> {
+    fn generate_voice_ground_truth_praat(
+        &self,
+        params: &VoiceAudioParams,
+    ) -> AudioResult<VoiceGroundTruth> {
         let mut ground_truth = self.generate_voice_ground_truth(params)?;
 
         // Add formant information (simulated)
@@ -533,18 +556,21 @@ impl Level3AudioGenerator {
             let f2 = 1500.0 + 400.0 * (2.0 * std::f64::consts::PI * 3.0 * time).sin();
             let f3 = 2700.0 + 300.0 * (2.0 * std::f64::consts::PI * 4.0 * time).sin();
 
-            formants.push(FormantFrame {
-                time,
-                f1,
-                f2,
-                f3,
-            });
+            formants.push(FormantFrame { time, f1, f2, f3 });
         }
 
         ground_truth.formants = Some(formants);
-        ground_truth.metadata.insert("praat_modified".to_string(), "true".to_string());
-        ground_truth.metadata.insert("tremor_frequency".to_string(), params.tremor_frequency.to_string());
-        ground_truth.metadata.insert("tremor_amplitude".to_string(), params.tremor_amplitude.to_string());
+        ground_truth
+            .metadata
+            .insert("praat_modified".to_string(), "true".to_string());
+        ground_truth.metadata.insert(
+            "tremor_frequency".to_string(),
+            params.tremor_frequency.to_string(),
+        );
+        ground_truth.metadata.insert(
+            "tremor_amplitude".to_string(),
+            params.tremor_amplitude.to_string(),
+        );
 
         Ok(ground_truth)
     }
@@ -558,17 +584,18 @@ impl Level3AudioGenerator {
         (normalized * 99.0).clamp(0.0, 99.0) as u32
     }
 
-    fn generate_voice_ground_truth(&self, params: &VoiceAudioParams) -> AudioResult<VoiceGroundTruth> {
+    fn generate_voice_ground_truth(
+        &self,
+        params: &VoiceAudioParams,
+    ) -> AudioResult<VoiceGroundTruth> {
         let words = params.text.split_whitespace().count();
         let duration_sec = (words as f64 / params.speaking_rate) * 60.0;
 
-        let phonemes = vec![
-            PhonemeAnnotation {
-                phoneme: "START".to_string(),
-                start_time: 0.0,
-                end_time: 0.0,
-            }
-        ];
+        let phonemes = vec![PhonemeAnnotation {
+            phoneme: "START".to_string(),
+            start_time: 0.0,
+            end_time: 0.0,
+        }];
 
         let num_f0_points = (duration_sec * 100.0) as usize;
         let mut f0_contour = Vec::with_capacity(num_f0_points);
@@ -578,8 +605,8 @@ impl Level3AudioGenerator {
             let t = i as f64 / 100.0;
             f0_times.push(t);
 
-            let f0 = params.pitch_mean +
-                     params.pitch_std * (2.0 * std::f64::consts::PI * 3.0 * t).sin();
+            let f0 =
+                params.pitch_mean + params.pitch_std * (2.0 * std::f64::consts::PI * 3.0 * t).sin();
 
             let f0_modified = if params.monotonicity > 0.0 {
                 params.pitch_mean + (f0 - params.pitch_mean) * (1.0 - params.monotonicity)
@@ -591,7 +618,10 @@ impl Level3AudioGenerator {
         }
 
         let mut metadata = HashMap::new();
-        metadata.insert("hypophonia_severity".to_string(), params.hypophonia_severity.to_string());
+        metadata.insert(
+            "hypophonia_severity".to_string(),
+            params.hypophonia_severity.to_string(),
+        );
         metadata.insert("monotonicity".to_string(), params.monotonicity.to_string());
 
         Ok(VoiceGroundTruth {
@@ -608,17 +638,17 @@ impl Level3AudioGenerator {
     fn validate_voice_params(&self, params: &VoiceAudioParams) -> AudioResult<()> {
         if params.text.is_empty() {
             return Err(AudioGeneratorError::InvalidParameter(
-                "text cannot be empty".to_string()
+                "text cannot be empty".to_string(),
             ));
         }
         if params.speaking_rate <= 0.0 {
             return Err(AudioGeneratorError::InvalidParameter(
-                "speaking_rate must be positive".to_string()
+                "speaking_rate must be positive".to_string(),
             ));
         }
         if params.volume < 0.0 || params.volume > 1.0 {
             return Err(AudioGeneratorError::InvalidParameter(
-                "volume must be 0-1".to_string()
+                "volume must be 0-1".to_string(),
             ));
         }
         Ok(())
@@ -721,7 +751,9 @@ mod tests {
             ..Default::default()
         };
 
-        let script = generator.create_praat_script(&params, "/tmp/input.wav").unwrap();
+        let script = generator
+            .create_praat_script(&params, "/tmp/input.wav")
+            .unwrap();
 
         // Verify script contains key Praat commands
         assert!(script.contains("Read from file"));
@@ -742,7 +774,9 @@ mod tests {
             ..Default::default()
         };
 
-        let script = generator.create_praat_script(&params, "/tmp/input.wav").unwrap();
+        let script = generator
+            .create_praat_script(&params, "/tmp/input.wav")
+            .unwrap();
 
         assert!(script.contains("Apply tremor"));
         assert!(script.contains("Add periodic modulation"));
@@ -757,7 +791,9 @@ mod tests {
             ..Default::default()
         };
 
-        let script = generator.create_praat_script(&params, "/tmp/input.wav").unwrap();
+        let script = generator
+            .create_praat_script(&params, "/tmp/input.wav")
+            .unwrap();
 
         assert!(script.contains("Apply monotonicity"));
         assert!(script.contains("Flatten"));
@@ -768,7 +804,9 @@ mod tests {
         let generator = Level3AudioGenerator::new();
         let params = VoiceAudioParams::default();
 
-        let ground_truth = generator.generate_voice_ground_truth_praat(&params).unwrap();
+        let ground_truth = generator
+            .generate_voice_ground_truth_praat(&params)
+            .unwrap();
 
         // Verify formants are present
         assert!(ground_truth.formants.is_some());
@@ -783,7 +821,10 @@ mod tests {
         }
 
         // Verify metadata
-        assert_eq!(ground_truth.metadata.get("praat_modified"), Some(&"true".to_string()));
+        assert_eq!(
+            ground_truth.metadata.get("praat_modified"),
+            Some(&"true".to_string())
+        );
     }
 
     #[test]
@@ -863,7 +904,9 @@ mod tests {
             ..Default::default()
         };
 
-        let script = generator.create_praat_script(&params, "/tmp/input.wav").unwrap();
+        let script = generator
+            .create_praat_script(&params, "/tmp/input.wav")
+            .unwrap();
 
         assert!(script.contains("Scale intensity"));
     }

@@ -3,9 +3,9 @@
 //! Each modality has its own dedicated SNN. Outputs are combined via
 //! voting, averaging, or learned weights.
 
-use super::{FusionNetwork, FusionConfig, Modality, average_spikes};
-use crate::{SpikeTensor, SpikingLinear, SNNResult, SNNError, NeuronParams};
+use super::{FusionConfig, FusionNetwork, Modality, average_spikes};
 use crate::layers::SpikingLayer;
+use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor, SpikingLinear};
 use ndarray::Array3;
 use std::collections::HashMap;
 
@@ -75,9 +75,8 @@ impl LateFusionSNN {
 
         // Initialize equal weights
         let weight = 1.0 / config.modalities.len() as f32;
-        let modality_weights: HashMap<_, _> = config.modalities.iter()
-            .map(|m| (*m, weight))
-            .collect();
+        let modality_weights: HashMap<_, _> =
+            config.modalities.iter().map(|m| (*m, weight)).collect();
 
         // Optional fusion layer for learned combination
         let fusion_layer = match strategy {
@@ -144,15 +143,15 @@ impl FusionNetwork for LateFusionSNN {
         }
 
         if modality_outputs.is_empty() {
-            return Err(SNNError::InvalidConfig("No modality inputs provided".to_string()));
+            return Err(SNNError::InvalidConfig(
+                "No modality inputs provided".to_string(),
+            ));
         }
 
         // Combine modality outputs based on strategy
         match self.fusion_strategy {
             LateFusionStrategy::Average => {
-                let refs: Vec<&SpikeTensor> = modality_outputs.iter()
-                    .map(|(_, t)| t)
-                    .collect();
+                let refs: Vec<&SpikeTensor> = modality_outputs.iter().map(|(_, t)| t).collect();
                 average_spikes(&refs)
             }
             LateFusionStrategy::WeightedAverage => {
@@ -171,7 +170,11 @@ impl FusionNetwork for LateFusionSNN {
                         crate::SpikeRepresentation::Dense(arr) => {
                             weighted_sum = weighted_sum + arr * *weight;
                         }
-                        _ => return Err(SNNError::InvalidConfig("Sparse not supported".to_string())),
+                        _ => {
+                            return Err(SNNError::InvalidConfig(
+                                "Sparse not supported".to_string(),
+                            ));
+                        }
                     }
                 }
 
@@ -192,7 +195,11 @@ impl FusionNetwork for LateFusionSNN {
                                 .and(arr)
                                 .map_collect(|&a, &b| a.max(b));
                         }
-                        _ => return Err(SNNError::InvalidConfig("Sparse not supported".to_string())),
+                        _ => {
+                            return Err(SNNError::InvalidConfig(
+                                "Sparse not supported".to_string(),
+                            ));
+                        }
                     }
                 }
 
@@ -205,19 +212,14 @@ impl FusionNetwork for LateFusionSNN {
         let mut total = 0;
 
         for layers in self.modality_networks.values() {
-            total += layers.iter()
-                .map(|layer| {
-                    layer.parameters().iter()
-                        .map(|p| p.len())
-                        .sum::<usize>()
-                })
+            total += layers
+                .iter()
+                .map(|layer| layer.parameters().iter().map(|p| p.len()).sum::<usize>())
                 .sum::<usize>();
         }
 
         if let Some(fusion) = &self.fusion_layer {
-            total += fusion.parameters().iter()
-                .map(|p| p.len())
-                .sum::<usize>();
+            total += fusion.parameters().iter().map(|p| p.len()).sum::<usize>();
         }
 
         total
@@ -236,7 +238,7 @@ impl FusionNetwork for LateFusionSNN {
     }
 
     fn handles_missing_modalities(&self) -> bool {
-        true  // Late fusion can handle missing modalities
+        true // Late fusion can handle missing modalities
     }
 }
 

@@ -59,14 +59,14 @@ pub struct SaccadeOnsetConfig {
     /// Velocity above which an event is emitted, in deg/s.
     pub velocity_threshold: f32, // deg/s
     /// Shortest event accepted, in seconds.
-    pub min_duration: f64,        // seconds
+    pub min_duration: f64, // seconds
 }
 
 impl Default for SaccadeOnsetConfig {
     fn default() -> Self {
         Self {
             velocity_threshold: 30.0, // 30 deg/s
-            min_duration: 0.02,        // 20 ms
+            min_duration: 0.02,       // 20 ms
         }
     }
 }
@@ -77,8 +77,7 @@ pub struct SaccadeOnsetEncoder;
 impl SaccadeOnsetEncoder {
     /// Creates a new [`SaccadeOnsetEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }
 
@@ -159,8 +158,7 @@ pub struct SaccadeMainSequenceEncoder;
 impl SaccadeMainSequenceEncoder {
     /// Creates a new [`SaccadeMainSequenceEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn expected_peak_velocity(&self, amplitude: f32) -> f32 {
@@ -198,12 +196,7 @@ impl EventEncoder for SaccadeMainSequenceEncoder {
                 let deviation = ((actual_vel - expected_vel) / expected_vel).abs();
 
                 if deviation > config.deviation_threshold {
-                    events.push(SpikeEvent::new(
-                        saccade.timestamp,
-                        0,
-                        1,
-                        deviation,
-                    ));
+                    events.push(SpikeEvent::new(saccade.timestamp, 0, 1, deviation));
                 }
             }
         }
@@ -273,10 +266,9 @@ impl EventEncoder for SaccadeLatencyEncoder {
 
         for &stimulus_time in &config.stimulus_times {
             // Find first saccade after stimulus
-            if let Some(saccade) = saccades
-                .iter()
-                .find(|s| s.timestamp > stimulus_time && s.timestamp < stimulus_time + config.max_latency)
-            {
+            if let Some(saccade) = saccades.iter().find(|s| {
+                s.timestamp > stimulus_time && s.timestamp < stimulus_time + config.max_latency
+            }) {
                 let latency = saccade.timestamp - stimulus_time;
                 let deviation = (latency - expected_latency).abs();
 
@@ -300,7 +292,6 @@ impl EventEncoder for SaccadeLatencyEncoder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     #[test]
     fn test_saccade_velocity_template() {

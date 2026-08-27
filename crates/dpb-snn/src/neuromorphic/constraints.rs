@@ -3,9 +3,9 @@
 //! Defines hardware-specific constraints including neuron counts, synapse limits,
 //! weight precision, delay ranges, and supported neuron models.
 
+use crate::NeuronModel;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use crate::NeuronModel;
 
 /// Complete hardware constraints for a neuromorphic platform
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,7 +62,7 @@ impl HardwareConstraints {
         Self {
             neuron: NeuronConstraints {
                 max_neurons_per_core: 1024,
-                max_neurons_total: 1_048_576, // 1024 cores (8 chips)
+                max_neurons_total: 1_048_576,   // 1024 cores (8 chips)
                 max_compartments_per_neuron: 8, // Multi-compartment support
                 supports_adaptation: true,
             },
@@ -98,7 +98,7 @@ impl HardwareConstraints {
     pub fn spinnaker_constraints() -> Self {
         Self {
             neuron: NeuronConstraints {
-                max_neurons_per_core: 256, // Typical, not hard limit
+                max_neurons_per_core: 256,    // Typical, not hard limit
                 max_neurons_total: 1_000_000, // 48-chip board
                 max_compartments_per_neuron: 1,
                 supports_adaptation: true,
@@ -362,10 +362,16 @@ impl DelayRange {
     /// Validate a delay value
     pub fn validate(&self, delay: usize) -> Result<(), String> {
         if delay < self.min_delay {
-            return Err(format!("Delay {} is below minimum {}", delay, self.min_delay));
+            return Err(format!(
+                "Delay {} is below minimum {}",
+                delay, self.min_delay
+            ));
         }
         if delay > self.max_delay {
-            return Err(format!("Delay {} exceeds maximum {}", delay, self.max_delay));
+            return Err(format!(
+                "Delay {} exceeds maximum {}",
+                delay, self.max_delay
+            ));
         }
         if self.delay_resolution > 1 && !delay.is_multiple_of(self.delay_resolution) {
             return Err(format!(
@@ -478,7 +484,9 @@ mod tests {
         // Loihi 2 has more neurons and synapses
         assert!(loihi2.neuron.max_neurons_total > loihi1.neuron.max_neurons_total);
         assert!(loihi2.synapse.max_fanin > loihi1.synapse.max_fanin);
-        assert!(loihi2.neuron.max_compartments_per_neuron > loihi1.neuron.max_compartments_per_neuron);
+        assert!(
+            loihi2.neuron.max_compartments_per_neuron > loihi1.neuron.max_compartments_per_neuron
+        );
     }
 
     #[test]
@@ -489,9 +497,11 @@ mod tests {
         assert!(constraints.validate_network(1000, 10000, 100).is_ok());
 
         // Too many neurons
-        assert!(constraints
-            .validate_network(200_000, 1_000_000, 100)
-            .is_err());
+        assert!(
+            constraints
+                .validate_network(200_000, 1_000_000, 100)
+                .is_err()
+        );
 
         // Too large fanin
         assert!(constraints.validate_network(1000, 10000, 5000).is_err());

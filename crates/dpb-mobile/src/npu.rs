@@ -144,13 +144,13 @@ impl NpuBackend {
     pub fn peak_tops(&self) -> f32 {
         match self {
             NpuBackend::Cpu => 0.1,
-            NpuBackend::QualcommHexagon => 4.0,      // HVX
-            NpuBackend::QualcommHtp => 15.0,         // Snapdragon 8 Gen 2
-            NpuBackend::ArmEthosU55 => 0.5,          // 256 MAC @ 500MHz
-            NpuBackend::ArmEthosU65 => 1.0,          // 512 MAC @ 500MHz
-            NpuBackend::AppleAne => 17.0,            // M1/M2 Neural Engine
-            NpuBackend::SamsungNpu => 10.0,          // Exynos 2200
-            NpuBackend::MediaTekApu => 6.0,          // Dimensity 9000
+            NpuBackend::QualcommHexagon => 4.0, // HVX
+            NpuBackend::QualcommHtp => 15.0,    // Snapdragon 8 Gen 2
+            NpuBackend::ArmEthosU55 => 0.5,     // 256 MAC @ 500MHz
+            NpuBackend::ArmEthosU65 => 1.0,     // 512 MAC @ 500MHz
+            NpuBackend::AppleAne => 17.0,       // M1/M2 Neural Engine
+            NpuBackend::SamsungNpu => 10.0,     // Exynos 2200
+            NpuBackend::MediaTekApu => 6.0,     // Dimensity 9000
         }
     }
 }
@@ -473,7 +473,11 @@ pub struct HexagonEncoder {
 
 impl HexagonEncoder {
     /// Create new Hexagon encoder.
-    pub fn new(config: HexagonConfig, threshold: f32, num_channels: usize) -> Result<Self, NpuError> {
+    pub fn new(
+        config: HexagonConfig,
+        threshold: f32,
+        num_channels: usize,
+    ) -> Result<Self, NpuError> {
         Ok(Self {
             config,
             threshold,
@@ -544,7 +548,11 @@ pub struct EthosUEncoder {
 
 impl EthosUEncoder {
     /// Create new Ethos-U encoder.
-    pub fn new(config: EthosUConfig, threshold: f32, num_channels: usize) -> Result<Self, NpuError> {
+    pub fn new(
+        config: EthosUConfig,
+        threshold: f32,
+        num_channels: usize,
+    ) -> Result<Self, NpuError> {
         Ok(Self {
             config,
             threshold,
@@ -679,14 +687,17 @@ mod tests {
         // The signal below is single-channel, so the config must say so; the
         // default is 32 channels, under which five samples are not even one
         // complete frame.
-        let config = NpuConfig { num_channels: 1, ..NpuConfig::default() };
+        let config = NpuConfig {
+            num_channels: 1,
+            ..NpuConfig::default()
+        };
         let mut encoder = NpuEncoder::new(NpuBackend::Cpu, config, 0.1).unwrap();
 
         let signal = vec![0.0, 0.05, 0.15, 0.1, 0.05]; // 5 samples, 1 channel
         let spikes = encoder.encode(&signal).unwrap();
 
         assert_eq!(spikes.len(), 5);
-        assert_eq!(spikes[2], 1);  // Crossing at sample 2
+        assert_eq!(spikes[2], 1); // Crossing at sample 2
     }
 
     #[test]
@@ -738,12 +749,14 @@ mod tests {
     /// A signal that is not a whole number of frames is an error, not silence.
     #[test]
     fn test_encode_rejects_partial_frame() {
-        let config = NpuConfig { num_channels: 4, ..NpuConfig::default() };
+        let config = NpuConfig {
+            num_channels: 4,
+            ..NpuConfig::default()
+        };
         let mut encoder = NpuEncoder::new(NpuBackend::Cpu, config, 0.1).unwrap();
 
         // Six samples across four channels is one frame and a half.
         assert!(encoder.encode(&[0.0; 6]).is_err());
         assert!(encoder.encode(&[0.0; 8]).is_ok());
     }
-
 }

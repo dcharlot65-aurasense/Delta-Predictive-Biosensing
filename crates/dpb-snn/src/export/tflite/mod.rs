@@ -36,20 +36,20 @@
 //! ```
 
 pub mod exporter;
-pub mod operators;
-pub mod tensors;
-pub mod quantization;
 pub mod flatbuffer;
 pub mod metadata;
+pub mod operators;
+pub mod quantization;
+pub mod tensors;
 pub mod validation;
 
-pub use exporter::{TFLiteExporter, TFLiteConfig, TFLiteExportResult};
-pub use operators::{TFLiteOperator, BuiltinOperator, CustomOperator, OperatorVersion};
-pub use tensors::{TFLiteTensor, TensorType, TensorShape, QuantizationParams};
+pub use exporter::{TFLiteConfig, TFLiteExportResult, TFLiteExporter};
+pub use flatbuffer::{BufferManager, FlatBufferBuilder, SubgraphBuilder};
+pub use metadata::{ModelDescription, TFLiteMetadata, TensorMetadata};
+pub use operators::{BuiltinOperator, CustomOperator, OperatorVersion, TFLiteOperator};
 pub use quantization::{
-    QuantizationConfig, QuantizationMode, QuantizationStrategy,
-    PostTrainingQuantizer, QuantizationAwareTraining,
+    PostTrainingQuantizer, QuantizationAwareTraining, QuantizationConfig, QuantizationMode,
+    QuantizationStrategy,
 };
-pub use flatbuffer::{FlatBufferBuilder, SubgraphBuilder, BufferManager};
-pub use metadata::{TFLiteMetadata, ModelDescription, TensorMetadata};
-pub use validation::{TFLiteValidator, ValidationResult, CompatibilityWarning};
+pub use tensors::{QuantizationParams, TFLiteTensor, TensorShape, TensorType};
+pub use validation::{CompatibilityWarning, TFLiteValidator, ValidationResult};

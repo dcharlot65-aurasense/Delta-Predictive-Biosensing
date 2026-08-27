@@ -337,7 +337,9 @@ impl IosPerformanceMonitor {
             return 0.0;
         }
 
-        let dropped = self.frame_times.iter()
+        let dropped = self
+            .frame_times
+            .iter()
             .filter(|&&t| t > self.target_frame_time_ms)
             .count();
 

@@ -79,8 +79,7 @@ pub enum StyleTransferError {
 }
 
 /// Pre-defined style types
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum StyleType {
     /// Realistic human appearance from motion capture
     #[default]
@@ -110,7 +109,6 @@ pub enum StyleType {
     /// Custom style from user-provided image
     Custom,
 }
-
 
 impl StyleType {
     /// Get the built-in style image filename
@@ -174,8 +172,7 @@ impl StyleType {
 }
 
 /// Neural network architecture for style transfer
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum StyleNetwork {
     /// VGG19 (Gatys et al. original)
     #[default]
@@ -187,7 +184,6 @@ pub enum StyleNetwork {
     /// AdaIN (Adaptive Instance Normalization)
     AdaIn,
 }
-
 
 /// Parameters for style transfer
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -376,17 +372,15 @@ impl StyleTransferRenderer {
     /// Get the style image path for the current style type
     fn get_style_image_path(&self) -> StyleResult<PathBuf> {
         match self.params.style_type {
-            StyleType::Custom => {
-                self.params.custom_style_path.clone()
-                    .ok_or_else(|| StyleTransferError::StyleImageNotFound(
-                        PathBuf::from("No custom style path provided")
-                    ))
-            }
+            StyleType::Custom => self.params.custom_style_path.clone().ok_or_else(|| {
+                StyleTransferError::StyleImageNotFound(PathBuf::from(
+                    "No custom style path provided",
+                ))
+            }),
             _ => {
-                let filename = self.params.style_type.style_image_name()
-                    .ok_or_else(|| StyleTransferError::StyleImageNotFound(
-                        PathBuf::from("Unknown style type")
-                    ))?;
+                let filename = self.params.style_type.style_image_name().ok_or_else(|| {
+                    StyleTransferError::StyleImageNotFound(PathBuf::from("Unknown style type"))
+                })?;
                 Ok(self.params.style_images_dir.join(filename))
             }
         }
@@ -404,7 +398,9 @@ impl StyleTransferRenderer {
         }
 
         if !content_path.exists() {
-            return Err(StyleTransferError::ContentImageNotFound(content_path.to_path_buf()));
+            return Err(StyleTransferError::ContentImageNotFound(
+                content_path.to_path_buf(),
+            ));
         }
 
         let style_path = self.get_style_image_path()?;
@@ -430,11 +426,7 @@ impl StyleTransferRenderer {
         let params_json = serde_json::to_string(&transfer_params)?;
 
         let output = Command::new(&self.params.python_path)
-            .args([
-                script_path.to_str().unwrap(),
-                "--params",
-                &params_json,
-            ])
+            .args([script_path.to_str().unwrap(), "--params", &params_json])
             .output()
             .map_err(|e| StyleTransferError::TransferError(e.to_string()))?;
 
@@ -445,8 +437,8 @@ impl StyleTransferRenderer {
 
         // Parse output
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result: StyleTransferOutput = serde_json::from_str(&stdout)
-            .unwrap_or_else(|_| StyleTransferOutput {
+        let result: StyleTransferOutput =
+            serde_json::from_str(&stdout).unwrap_or_else(|_| StyleTransferOutput {
                 output_path: output_path.to_path_buf(),
                 content_loss: 0.0,
                 style_loss: 0.0,
@@ -510,11 +502,7 @@ impl StyleTransferRenderer {
         let params_json = serde_json::to_string(&transfer_params)?;
 
         let output = Command::new(&self.params.python_path)
-            .args([
-                script_path.to_str().unwrap(),
-                "--params",
-                &params_json,
-            ])
+            .args([script_path.to_str().unwrap(), "--params", &params_json])
             .output()
             .map_err(|e| StyleTransferError::TransferError(e.to_string()))?;
 
@@ -524,13 +512,13 @@ impl StyleTransferRenderer {
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result: StyleTransferOutput = serde_json::from_str(&stdout)
-            .unwrap_or_else(|_| StyleTransferOutput {
+        let result: StyleTransferOutput =
+            serde_json::from_str(&stdout).unwrap_or_else(|_| StyleTransferOutput {
                 output_path: output_path.to_path_buf(),
                 content_loss: 0.0,
                 style_loss: 0.0,
                 total_loss: 0.0,
-                iterations: 1,  // Fast transfer is single-pass
+                iterations: 1, // Fast transfer is single-pass
                 processing_time: 0.0,
                 metadata: HashMap::new(),
             });
@@ -548,7 +536,7 @@ impl StyleTransferRenderer {
     ) -> StyleResult<StyleTransferOutput> {
         if style_paths.len() != style_weights.len() {
             return Err(StyleTransferError::TransferError(
-                "Style paths and weights must have same length".to_string()
+                "Style paths and weights must have same length".to_string(),
             ));
         }
 
@@ -570,11 +558,7 @@ impl StyleTransferRenderer {
         let params_json = serde_json::to_string(&transfer_params)?;
 
         let output = Command::new(&self.params.python_path)
-            .args([
-                script_path.to_str().unwrap(),
-                "--params",
-                &params_json,
-            ])
+            .args([script_path.to_str().unwrap(), "--params", &params_json])
             .output()
             .map_err(|e| StyleTransferError::TransferError(e.to_string()))?;
 
@@ -584,8 +568,8 @@ impl StyleTransferRenderer {
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result: StyleTransferOutput = serde_json::from_str(&stdout)
-            .unwrap_or_else(|_| StyleTransferOutput {
+        let result: StyleTransferOutput =
+            serde_json::from_str(&stdout).unwrap_or_else(|_| StyleTransferOutput {
                 output_path: output_path.to_path_buf(),
                 content_loss: 0.0,
                 style_loss: 0.0,
@@ -891,7 +875,8 @@ def main():
 
 if __name__ == "__main__":
     main()
-"#.to_string()
+"#
+    .to_string()
 }
 
 /// Generate simple image filters as an alternative to neural style transfer
@@ -906,7 +891,8 @@ pub mod filters {
 
         for (x, y, pixel) in img.enumerate_pixels() {
             // Convert to grayscale
-            let gray = (0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32) as u8;
+            let gray =
+                (0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32) as u8;
             // Invert
             let inverted = 255 - gray;
             output.put_pixel(x, y, Rgb([inverted, inverted, inverted]));
@@ -922,7 +908,9 @@ pub mod filters {
 
         for (x, y, pixel) in img.enumerate_pixels() {
             // Convert to grayscale intensity
-            let intensity = (0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32) / 255.0;
+            let intensity =
+                (0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32)
+                    / 255.0;
 
             // Map to thermal colormap (blue -> cyan -> green -> yellow -> red -> white)
             let (r, g, b) = if intensity < 0.2 {
@@ -942,11 +930,11 @@ pub mod filters {
                 (1.0, t, t)
             };
 
-            output.put_pixel(x, y, Rgb([
-                (r * 255.0) as u8,
-                (g * 255.0) as u8,
-                (b * 255.0) as u8,
-            ]));
+            output.put_pixel(
+                x,
+                y,
+                Rgb([(r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8]),
+            );
         }
 
         output
@@ -969,7 +957,9 @@ pub mod filters {
                 for ky in 0..3 {
                     for kx in 0..3 {
                         let px = img.get_pixel(x + kx - 1, y + ky - 1);
-                        let gray = (0.299 * px[0] as f32 + 0.587 * px[1] as f32 + 0.114 * px[2] as f32) as i32;
+                        let gray = (0.299 * px[0] as f32
+                            + 0.587 * px[1] as f32
+                            + 0.114 * px[2] as f32) as i32;
 
                         gx += gray * sobel_x[ky as usize][kx as usize];
                         gy += gray * sobel_y[ky as usize][kx as usize];
@@ -1014,7 +1004,8 @@ pub mod filters {
         let mut output = ImageBuffer::new(width, height);
 
         for (x, y, pixel) in img.enumerate_pixels() {
-            let gray = (0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32) as u8;
+            let gray =
+                (0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32) as u8;
 
             let value = if gray > threshold { 255 } else { 0 };
             output.put_pixel(x, y, Rgb([value, value, value]));

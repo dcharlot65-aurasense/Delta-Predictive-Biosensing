@@ -10,14 +10,13 @@
 use dpb_core::SignalBuffer;
 use dpb_encoders::prelude::*;
 use dpb_snn::{
-    SpikingTransformer, SpikeTensor, SpikeRateDecoder,
-    NeuronModel, NeuronParams, SNNConfig,
+    NeuronModel, NeuronParams, SNNConfig, SpikeRateDecoder, SpikeTensor, SpikingTransformer,
 };
 // `forward` and `decode` are trait methods.
 use dpb_snn::architectures::SNNArchitecture;
 use dpb_snn::decoders::Decoder;
-use dpb_synth::voice::phonation::{SustainedVowelGenerator, SustainedVowelParams};
 use dpb_synth::traits::SyntheticGenerator;
+use dpb_synth::voice::phonation::{SustainedVowelGenerator, SustainedVowelParams};
 
 use super::utils::*;
 
@@ -31,15 +30,16 @@ fn test_voice_pipeline_sustained_vowel() {
         sampling_rate: 16000.0,
         fundamental_frequency: f0,
         vowel_formants: vec![
-            (730.0, 100.0),   // F1
-            (1090.0, 150.0),  // F2
-            (2440.0, 200.0),  // F3
+            (730.0, 100.0),  // F1
+            (1090.0, 150.0), // F2
+            (2440.0, 200.0), // F3
         ],
         amplitude: 0.5,
     };
 
     let generator = SustainedVowelGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate vowel");
 
     // Verify ground truth
@@ -65,7 +65,8 @@ fn test_voice_pipeline_sustained_vowel() {
         mode: LevelCrossingMode::FixedLevel,
     };
 
-    let spike_train = encoder.encode(&signal, &encoder_config)
+    let spike_train = encoder
+        .encode(&signal, &encoder_config)
         .expect("Failed to encode voice signal");
 
     // Step 4: Verify encoding produced spikes
@@ -99,7 +100,9 @@ fn test_voice_pipeline_sustained_vowel() {
     for event in &spike_train {
         let timestep = ((event.timestamp * 1000.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = (event.channel as usize) % num_channels;
-        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
+        spike_tensor
+            .set_spike(0, timestep, channel, event.magnitude)
+            .ok();
     }
 
     // Step 6: Create and run SNN with attention
@@ -112,12 +115,14 @@ fn test_voice_pipeline_sustained_vowel() {
 
     // (input_size, d_model, num_heads, num_blocks, output_size, config)
     let mut snn = SpikingTransformer::new(num_channels, 64, 4, 2, 4, snn_config.clone());
-    let output_spikes = snn.forward(&spike_tensor)
+    let output_spikes = snn
+        .forward(&spike_tensor)
         .expect("Failed to run SNN forward pass");
 
     // Step 7: Decode output
     let decoder = SpikeRateDecoder::new(4, None, false);
-    let decoded = decoder.decode(&output_spikes)
+    let decoded = decoder
+        .decode(&output_spikes)
         .expect("Failed to decode SNN output");
 
     // Step 8: Validate output shape
@@ -155,22 +160,24 @@ fn test_voice_pipeline_f0_variations() {
             duration: 2.0,
             sampling_rate: 16000.0,
             fundamental_frequency: f0,
-            vowel_formants: vec![
-                (730.0, 100.0),
-                (1090.0, 150.0),
-                (2440.0, 200.0),
-            ],
+            vowel_formants: vec![(730.0, 100.0), (1090.0, 150.0), (2440.0, 200.0)],
             amplitude: 0.5,
         };
 
         let generator = SustainedVowelGenerator;
-        let generated = generator.generate(&params, TEST_SEED)
+        let generated = generator
+            .generate(&params, TEST_SEED)
             .expect("Failed to generate vowel");
 
         let gt_f0 = generated.ground_truth.parameters.get("f0").unwrap();
         assert_approx_eq(*gt_f0, f0, &format!("{} F0", label));
 
-        println!("{}: F0 = {:.1} Hz, {} samples", label, f0, generated.signal.len());
+        println!(
+            "{}: F0 = {:.1} Hz, {} samples",
+            label,
+            f0,
+            generated.signal.len()
+        );
     }
 }
 
@@ -193,7 +200,8 @@ fn test_voice_formant_encoding() {
         };
 
         let generator = SustainedVowelGenerator;
-        let generated = generator.generate(&params, TEST_SEED)
+        let generated = generator
+            .generate(&params, TEST_SEED)
             .expect("Failed to generate vowel");
 
         // Verify formants in ground truth
@@ -220,16 +228,13 @@ fn test_voice_signal_duration() {
             duration,
             sampling_rate: 16000.0,
             fundamental_frequency: 120.0,
-            vowel_formants: vec![
-                (730.0, 100.0),
-                (1090.0, 150.0),
-                (2440.0, 200.0),
-            ],
+            vowel_formants: vec![(730.0, 100.0), (1090.0, 150.0), (2440.0, 200.0)],
             amplitude: 0.5,
         };
 
         let generator = SustainedVowelGenerator;
-        let generated = generator.generate(&params, TEST_SEED)
+        let generated = generator
+            .generate(&params, TEST_SEED)
             .expect("Failed to generate vowel");
 
         let expected_samples = (duration * params.sampling_rate) as usize;
@@ -257,30 +262,28 @@ fn test_voice_reproducibility() {
         duration: 2.0,
         sampling_rate: 16000.0,
         fundamental_frequency: 120.0,
-        vowel_formants: vec![
-            (730.0, 100.0),
-            (1090.0, 150.0),
-            (2440.0, 200.0),
-        ],
+        vowel_formants: vec![(730.0, 100.0), (1090.0, 150.0), (2440.0, 200.0)],
         amplitude: 0.5,
     };
 
     let generator = SustainedVowelGenerator;
 
-    let gen1 = generator.generate(&params, TEST_SEED)
+    let gen1 = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate (run 1)");
-    let gen2 = generator.generate(&params, TEST_SEED)
+    let gen2 = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate (run 2)");
 
-    assert_eq!(gen1.signal.len(), gen2.signal.len(), "Signal lengths should match");
+    assert_eq!(
+        gen1.signal.len(),
+        gen2.signal.len(),
+        "Signal lengths should match"
+    );
 
     // First 100 samples should be identical
     for i in 0..100 {
-        assert_approx_eq(
-            gen1.signal[i],
-            gen2.signal[i],
-            &format!("Sample {}", i)
-        );
+        assert_approx_eq(gen1.signal[i], gen2.signal[i], &format!("Sample {}", i));
     }
 }
 
@@ -291,21 +294,24 @@ fn test_voice_harmonic_content() {
         duration: 2.0,
         sampling_rate: 16000.0,
         fundamental_frequency: 120.0,
-        vowel_formants: vec![
-            (730.0, 100.0),
-            (1090.0, 150.0),
-            (2440.0, 200.0),
-        ],
+        vowel_formants: vec![(730.0, 100.0), (1090.0, 150.0), (2440.0, 200.0)],
         amplitude: 1.0,
     };
 
     let generator = SustainedVowelGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate vowel");
 
     // Verify signal is not constant
-    let max_val = generated.signal.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-    let min_val = generated.signal.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+    let max_val = generated
+        .signal
+        .iter()
+        .fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+    let min_val = generated
+        .signal
+        .iter()
+        .fold(f64::INFINITY, |a, &b| a.min(b));
 
     assert!(
         max_val > min_val + 0.1,
@@ -335,7 +341,6 @@ fn test_voice_harmonic_content() {
 
     println!(
         "Voice signal: {} zero crossings (expected ~{})",
-        zero_crossings,
-        expected_crossings
+        zero_crossings, expected_crossings
     );
 }

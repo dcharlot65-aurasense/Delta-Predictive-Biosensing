@@ -66,37 +66,33 @@
 //! # }
 //! ```
 
-pub mod teacher_student;
-pub mod losses;
-pub mod spike_distillation;
 pub mod compression;
+pub mod losses;
 pub mod self_distillation;
+pub mod spike_distillation;
+pub mod teacher_student;
 
 // Re-export main types
-pub use teacher_student::{
-    TeacherStudentFramework, TeacherModel, StudentModel,
-    DistillationConfig, DistillationMode, KnowledgeTransfer,
+pub use compression::{
+    ArchitectureSearch, ChannelPruningGuided, CompressionConfig, CompressionMetrics, LayerMerging,
+    QuantizationAwareDistillation, SearchStrategy,
 };
 pub use losses::{
-    DistillationLoss, KLDivergenceLoss, MSELoss, CosineSimLoss,
-    HintLoss, AttentionTransferLoss, CombinedDistillationLoss,
-    LossWeights,
-};
-pub use spike_distillation::{
-    SpikePatternDistillation, SpikeRateDistillation,
-    MembranePotentialDistillation, SynapticWeightTransfer,
-    TemporalCreditAssignment, SpikeDistillationConfig,
-};
-pub use compression::{
-    ArchitectureSearch, LayerMerging, ChannelPruningGuided,
-    QuantizationAwareDistillation, CompressionMetrics,
-    CompressionConfig, SearchStrategy,
+    AttentionTransferLoss, CombinedDistillationLoss, CosineSimLoss, DistillationLoss, HintLoss,
+    KLDivergenceLoss, LossWeights, MSELoss,
 };
 pub use self_distillation::{
-    SelfDistillation, BornAgainNetworks, ProgressiveDistillation,
-    SelfDistillationConfig, ProgressiveConfig,
+    BornAgainNetworks, ProgressiveConfig, ProgressiveDistillation, SelfDistillation,
+    SelfDistillationConfig,
 };
-
+pub use spike_distillation::{
+    MembranePotentialDistillation, SpikeDistillationConfig, SpikePatternDistillation,
+    SpikeRateDistillation, SynapticWeightTransfer, TemporalCreditAssignment,
+};
+pub use teacher_student::{
+    DistillationConfig, DistillationMode, KnowledgeTransfer, StudentModel, TeacherModel,
+    TeacherStudentFramework,
+};
 
 #[cfg(test)]
 mod tests {

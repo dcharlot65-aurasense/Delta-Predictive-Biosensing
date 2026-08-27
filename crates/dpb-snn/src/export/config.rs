@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -15,12 +15,7 @@ pub struct LayerConfig {
 
 impl LayerConfig {
     /// Create a new layer configuration
-    pub fn new(
-        name: String,
-        layer_type: LayerType,
-        input_size: usize,
-        output_size: usize,
-    ) -> Self {
+    pub fn new(name: String, layer_type: LayerType, input_size: usize, output_size: usize) -> Self {
         Self {
             name,
             layer_type,
@@ -59,7 +54,11 @@ impl LayerConfig {
 
         // Validate layer-specific constraints
         match &self.layer_type {
-            LayerType::SpikingConv1d { kernel_size, stride, padding: _ } => {
+            LayerType::SpikingConv1d {
+                kernel_size,
+                stride,
+                padding: _,
+            } => {
                 if *kernel_size == 0 {
                     return Err(format!("Layer '{}' has zero kernel size", self.name));
                 }
@@ -67,7 +66,11 @@ impl LayerConfig {
                     return Err(format!("Layer '{}' has zero stride", self.name));
                 }
             }
-            LayerType::SpikingConv2d { kernel_size, stride, padding: _ } => {
+            LayerType::SpikingConv2d {
+                kernel_size,
+                stride,
+                padding: _,
+            } => {
                 if kernel_size.0 == 0 || kernel_size.1 == 0 {
                     return Err(format!("Layer '{}' has zero kernel size", self.name));
                 }
@@ -75,13 +78,12 @@ impl LayerConfig {
                     return Err(format!("Layer '{}' has zero stride", self.name));
                 }
             }
-            LayerType::Dropout { rate }
-                if (*rate < 0.0 || *rate >= 1.0) => {
-                    return Err(format!(
-                        "Layer '{}' has invalid dropout rate: {}",
-                        self.name, rate
-                    ));
-                }
+            LayerType::Dropout { rate } if (*rate < 0.0 || *rate >= 1.0) => {
+                return Err(format!(
+                    "Layer '{}' has invalid dropout rate: {}",
+                    self.name, rate
+                ));
+            }
             _ => {}
         }
 
@@ -92,26 +94,26 @@ impl LayerConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LayerType {
     SpikingLinear,
-    SpikingConv1d { 
-        kernel_size: usize, 
-        stride: usize, 
-        padding: usize 
+    SpikingConv1d {
+        kernel_size: usize,
+        stride: usize,
+        padding: usize,
     },
-    SpikingConv2d { 
-        kernel_size: (usize, usize), 
-        stride: (usize, usize), 
-        padding: (usize, usize) 
+    SpikingConv2d {
+        kernel_size: (usize, usize),
+        stride: (usize, usize),
+        padding: (usize, usize),
     },
     SpikingRecurrent,
-    Encoder { 
-        encoder_type: String 
+    Encoder {
+        encoder_type: String,
     },
-    Decoder { 
-        decoder_type: String 
+    Decoder {
+        decoder_type: String,
     },
     BatchNorm,
-    Dropout { 
-        rate: f64 
+    Dropout {
+        rate: f64,
     },
 }
 
@@ -195,14 +197,12 @@ impl ModelConfig {
 
     /// Serialize to JSON
     pub fn to_json(&self) -> String {
-        serde_json::to_string_pretty(self)
-            .unwrap_or_else(|_| "{}".to_string())
+        serde_json::to_string_pretty(self).unwrap_or_else(|_| "{}".to_string())
     }
 
     /// Deserialize from JSON
     pub fn from_json(json: &str) -> Result<Self, String> {
-        serde_json::from_str(json)
-            .map_err(|e| format!("Failed to parse JSON: {}", e))
+        serde_json::from_str(json).map_err(|e| format!("Failed to parse JSON: {}", e))
     }
 
     /// Validate the entire model configuration
@@ -250,9 +250,10 @@ impl ModelConfig {
 
         // Validate sample rate if present
         if let Some(rate) = self.sample_rate
-            && rate <= 0.0 {
-                errors.push(format!("Sample rate must be positive: {}", rate));
-            }
+            && rate <= 0.0
+        {
+            errors.push(format!("Sample rate must be positive: {}", rate));
+        }
 
         // Validate layer connections
         if self.layers.len() > 1 {
@@ -270,7 +271,10 @@ impl ModelConfig {
                 if !skip_validation && current_output != next_input {
                     errors.push(format!(
                         "Layer dimension mismatch: layer {} output ({}) != layer {} input ({})",
-                        i, current_output, i + 1, next_input
+                        i,
+                        current_output,
+                        i + 1,
+                        next_input
                     ));
                 }
             }
@@ -358,14 +362,12 @@ impl ExportMetadata {
 
     /// Serialize to JSON
     pub fn to_json(&self) -> String {
-        serde_json::to_string_pretty(self)
-            .unwrap_or_else(|_| "{}".to_string())
+        serde_json::to_string_pretty(self).unwrap_or_else(|_| "{}".to_string())
     }
 
     /// Deserialize from JSON
     pub fn from_json(json: &str) -> Result<Self, String> {
-        serde_json::from_str(json)
-            .map_err(|e| format!("Failed to parse JSON: {}", e))
+        serde_json::from_str(json).map_err(|e| format!("Failed to parse JSON: {}", e))
     }
 
     /// Get current timestamp as ISO 8601 string
@@ -386,12 +388,7 @@ mod tests {
 
     #[test]
     fn test_layer_config_creation() {
-        let layer = LayerConfig::new(
-            "test_layer".to_string(),
-            LayerType::SpikingLinear,
-            128,
-            64,
-        );
+        let layer = LayerConfig::new("test_layer".to_string(), LayerType::SpikingLinear, 128, 64);
 
         assert_eq!(layer.name, "test_layer");
         assert_eq!(layer.input_size, 128);
@@ -401,48 +398,29 @@ mod tests {
 
     #[test]
     fn test_layer_config_with_activation() {
-        let layer = LayerConfig::new(
-            "test".to_string(),
-            LayerType::SpikingLinear,
-            128,
-            64,
-        ).with_activation("relu".to_string());
+        let layer = LayerConfig::new("test".to_string(), LayerType::SpikingLinear, 128, 64)
+            .with_activation("relu".to_string());
 
         assert_eq!(layer.activation, Some("relu".to_string()));
     }
 
     #[test]
     fn test_layer_config_validation_success() {
-        let layer = LayerConfig::new(
-            "test".to_string(),
-            LayerType::SpikingLinear,
-            128,
-            64,
-        );
+        let layer = LayerConfig::new("test".to_string(), LayerType::SpikingLinear, 128, 64);
 
         assert!(layer.validate().is_ok());
     }
 
     #[test]
     fn test_layer_config_validation_empty_name() {
-        let layer = LayerConfig::new(
-            "".to_string(),
-            LayerType::SpikingLinear,
-            128,
-            64,
-        );
+        let layer = LayerConfig::new("".to_string(), LayerType::SpikingLinear, 128, 64);
 
         assert!(layer.validate().is_err());
     }
 
     #[test]
     fn test_layer_config_validation_zero_input() {
-        let layer = LayerConfig::new(
-            "test".to_string(),
-            LayerType::SpikingLinear,
-            0,
-            64,
-        );
+        let layer = LayerConfig::new("test".to_string(), LayerType::SpikingLinear, 0, 64);
 
         assert!(layer.validate().is_err());
     }
@@ -488,12 +466,7 @@ mod tests {
     #[test]
     fn test_model_config_add_layer() {
         let mut config = ModelConfig::new("test_model");
-        let layer = LayerConfig::new(
-            "layer1".to_string(),
-            LayerType::SpikingLinear,
-            128,
-            64,
-        );
+        let layer = LayerConfig::new("layer1".to_string(), LayerType::SpikingLinear, 128, 64);
 
         config.add_layer(layer);
 
@@ -517,12 +490,7 @@ mod tests {
             .with_input_shape(vec![128])
             .with_output_shape(vec![10]);
 
-        let layer = LayerConfig::new(
-            "layer1".to_string(),
-            LayerType::SpikingLinear,
-            128,
-            10,
-        );
+        let layer = LayerConfig::new("layer1".to_string(), LayerType::SpikingLinear, 128, 10);
         config.add_layer(layer);
 
         assert!(config.validate().is_ok());
@@ -544,7 +512,7 @@ mod tests {
         config.add_layer(LayerConfig::new(
             "layer2".to_string(),
             LayerType::SpikingLinear,
-            32,  // Mismatch: should be 64
+            32, // Mismatch: should be 64
             10,
         ));
 
@@ -600,8 +568,7 @@ mod tests {
 
     #[test]
     fn test_export_metadata_json_roundtrip() {
-        let metadata = ExportMetadata::new("test_model", "onnx")
-            .with_shapes(vec![128], vec![10]);
+        let metadata = ExportMetadata::new("test_model", "onnx").with_shapes(vec![128], vec![10]);
 
         let json = metadata.to_json();
         let loaded = ExportMetadata::from_json(&json).unwrap();
@@ -614,12 +581,12 @@ mod tests {
     fn test_layer_type_display() {
         assert_eq!(LayerType::SpikingLinear.to_string(), "SpikingLinear");
         assert_eq!(
-            LayerType::Encoder { encoder_type: "rate".to_string() }.to_string(),
+            LayerType::Encoder {
+                encoder_type: "rate".to_string()
+            }
+            .to_string(),
             "Encoder(rate)"
         );
-        assert_eq!(
-            LayerType::Dropout { rate: 0.5 }.to_string(),
-            "Dropout(0.5)"
-        );
+        assert_eq!(LayerType::Dropout { rate: 0.5 }.to_string(), "Dropout(0.5)");
     }
 }

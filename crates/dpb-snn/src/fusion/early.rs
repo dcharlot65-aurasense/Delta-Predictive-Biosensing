@@ -3,9 +3,9 @@
 //! This is the simplest fusion approach where spike trains from all modalities
 //! are concatenated and processed by a single shared SNN.
 
-use super::{FusionNetwork, FusionConfig, Modality, concatenate_spikes};
-use crate::{SpikeTensor, SpikingLinear, SNNResult, SNNError, NeuronParams};
+use super::{FusionConfig, FusionNetwork, Modality, concatenate_spikes};
 use crate::layers::SpikingLayer;
+use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor, SpikingLinear};
 use std::collections::HashMap;
 
 /// Early fusion network that concatenates all modality spike trains
@@ -23,11 +23,13 @@ impl EarlyFusionSNN {
     /// Create a new early fusion network
     pub fn new(config: FusionConfig) -> SNNResult<Self> {
         let neuron_params = NeuronParams::default();
-        let dt = 1.0;  // Default time step
-        let adaptive = false;  // Non-adaptive neurons by default
+        let dt = 1.0; // Default time step
+        let adaptive = false; // Non-adaptive neurons by default
 
         // Calculate input size (sum of all modality dimensions)
-        let input_size: usize = config.modalities.iter()
+        let input_size: usize = config
+            .modalities
+            .iter()
             .map(|m| m.default_feature_dim())
             .sum();
 
@@ -45,7 +47,7 @@ impl EarlyFusionSNN {
             layers.push(SpikingLinear::new(
                 prev_size,
                 next_size,
-                true,  // use_bias
+                true, // use_bias
                 neuron_params.clone(),
                 dt,
                 adaptive,
@@ -80,14 +82,18 @@ impl FusionNetwork for EarlyFusionSNN {
         // Validate all modalities are present
         for modality in &self.config.modalities {
             if !inputs.contains_key(modality) {
-                return Err(SNNError::InvalidConfig(
-                    format!("Missing modality: {:?}", modality)
-                ));
+                return Err(SNNError::InvalidConfig(format!(
+                    "Missing modality: {:?}",
+                    modality
+                )));
             }
         }
 
         // Concatenate all spike trains
-        let spike_refs: Vec<&SpikeTensor> = self.config.modalities.iter()
+        let spike_refs: Vec<&SpikeTensor> = self
+            .config
+            .modalities
+            .iter()
             .filter_map(|m| inputs.get(m))
             .collect();
 
@@ -102,12 +108,9 @@ impl FusionNetwork for EarlyFusionSNN {
     }
 
     fn num_parameters(&self) -> usize {
-        self.layers.iter()
-            .map(|layer| {
-                layer.parameters().iter()
-                    .map(|p| p.len())
-                    .sum::<usize>()
-            })
+        self.layers
+            .iter()
+            .map(|layer| layer.parameters().iter().map(|p| p.len()).sum::<usize>())
             .sum()
     }
 
@@ -118,7 +121,7 @@ impl FusionNetwork for EarlyFusionSNN {
     }
 
     fn handles_missing_modalities(&self) -> bool {
-        false  // Early fusion requires all modalities
+        false // Early fusion requires all modalities
     }
 
     fn required_modalities(&self) -> Vec<Modality> {
@@ -172,9 +175,9 @@ mod tests {
 
         match output.data {
             crate::SpikeRepresentation::Dense(arr) => {
-                assert_eq!(arr.dim().0, 1);  // batch
+                assert_eq!(arr.dim().0, 1); // batch
                 assert_eq!(arr.dim().1, 10); // time
-                assert_eq!(arr.dim().2, 5);  // output features
+                assert_eq!(arr.dim().2, 5); // output features
             }
             _ => panic!("Expected dense output"),
         }

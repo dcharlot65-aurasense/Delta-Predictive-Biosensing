@@ -228,9 +228,10 @@ impl GeriatricReference {
 
         // Check sex (None means applies to both)
         if let Some(ref_sex) = self.sex
-            && ref_sex != sex {
-                return false;
-            }
+            && ref_sex != sex
+        {
+            return false;
+        }
 
         true
     }
@@ -347,12 +348,14 @@ impl GeriatricNormativeDb {
             "gait_velocity".to_string(),
             GeriatricAgeGroup::YoungOld,
             Some(Sex::Male),
-            1.15, 0.20,
-        ).with_frailty_adjustments(vec![
-            FrailtyAdjustment::new(0.05, 1.0),   // Robust
-            FrailtyAdjustment::new(0.15, 0.90),  // Pre-frail
-            FrailtyAdjustment::new(0.30, 0.75),  // Frail
-            FrailtyAdjustment::new(0.50, 0.60),  // Severely frail
+            1.15,
+            0.20,
+        )
+        .with_frailty_adjustments(vec![
+            FrailtyAdjustment::new(0.05, 1.0),  // Robust
+            FrailtyAdjustment::new(0.15, 0.90), // Pre-frail
+            FrailtyAdjustment::new(0.30, 0.75), // Frail
+            FrailtyAdjustment::new(0.50, 0.60), // Severely frail
         ]);
         self.add_reference(gait_velocity_young_old_male);
 
@@ -360,8 +363,10 @@ impl GeriatricNormativeDb {
             "gait_velocity".to_string(),
             GeriatricAgeGroup::YoungOld,
             Some(Sex::Female),
-            1.10, 0.18,
-        ).with_frailty_adjustments(vec![
+            1.10,
+            0.18,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.05, 1.0),
             FrailtyAdjustment::new(0.15, 0.90),
             FrailtyAdjustment::new(0.30, 0.75),
@@ -373,8 +378,10 @@ impl GeriatricNormativeDb {
             "gait_velocity".to_string(),
             GeriatricAgeGroup::MiddleOld,
             Some(Sex::Male),
-            1.05, 0.22,
-        ).with_frailty_adjustments(vec![
+            1.05,
+            0.22,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.10, 1.0),
             FrailtyAdjustment::new(0.20, 0.85),
             FrailtyAdjustment::new(0.35, 0.70),
@@ -386,8 +393,10 @@ impl GeriatricNormativeDb {
             "gait_velocity".to_string(),
             GeriatricAgeGroup::MiddleOld,
             Some(Sex::Female),
-            0.98, 0.20,
-        ).with_frailty_adjustments(vec![
+            0.98,
+            0.20,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.10, 1.0),
             FrailtyAdjustment::new(0.20, 0.85),
             FrailtyAdjustment::new(0.35, 0.70),
@@ -399,8 +408,10 @@ impl GeriatricNormativeDb {
             "gait_velocity".to_string(),
             GeriatricAgeGroup::OldOld,
             None,
-            0.85, 0.25,
-        ).with_frailty_adjustments(vec![
+            0.85,
+            0.25,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.15, 1.0),
             FrailtyAdjustment::new(0.28, 0.80),
             FrailtyAdjustment::new(0.42, 0.65),
@@ -412,8 +423,10 @@ impl GeriatricNormativeDb {
             "gait_velocity".to_string(),
             GeriatricAgeGroup::Oldest,
             None,
-            0.70, 0.28,
-        ).with_frailty_adjustments(vec![
+            0.70,
+            0.28,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.20, 1.0),
             FrailtyAdjustment::new(0.35, 0.75),
             FrailtyAdjustment::new(0.50, 0.60),
@@ -427,8 +440,10 @@ impl GeriatricNormativeDb {
             "grip_strength".to_string(),
             GeriatricAgeGroup::YoungOld,
             Some(Sex::Male),
-            38.0, 9.5,
-        ).with_frailty_adjustments(vec![
+            38.0,
+            9.5,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.05, 1.0),
             FrailtyAdjustment::new(0.15, 0.85),
             FrailtyAdjustment::new(0.30, 0.70),
@@ -440,8 +455,10 @@ impl GeriatricNormativeDb {
             "grip_strength".to_string(),
             GeriatricAgeGroup::YoungOld,
             Some(Sex::Female),
-            23.0, 5.5,
-        ).with_frailty_adjustments(vec![
+            23.0,
+            5.5,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.05, 1.0),
             FrailtyAdjustment::new(0.15, 0.85),
             FrailtyAdjustment::new(0.30, 0.70),
@@ -453,8 +470,10 @@ impl GeriatricNormativeDb {
             "grip_strength".to_string(),
             GeriatricAgeGroup::MiddleOld,
             Some(Sex::Male),
-            33.0, 9.0,
-        ).with_frailty_adjustments(vec![
+            33.0,
+            9.0,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.10, 1.0),
             FrailtyAdjustment::new(0.20, 0.80),
             FrailtyAdjustment::new(0.35, 0.65),
@@ -465,8 +484,10 @@ impl GeriatricNormativeDb {
             "grip_strength".to_string(),
             GeriatricAgeGroup::MiddleOld,
             Some(Sex::Female),
-            20.0, 5.0,
-        ).with_frailty_adjustments(vec![
+            20.0,
+            5.0,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.10, 1.0),
             FrailtyAdjustment::new(0.20, 0.80),
             FrailtyAdjustment::new(0.35, 0.65),
@@ -477,8 +498,10 @@ impl GeriatricNormativeDb {
             "grip_strength".to_string(),
             GeriatricAgeGroup::OldOld,
             None,
-            22.0, 7.0,
-        ).with_frailty_adjustments(vec![
+            22.0,
+            7.0,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.15, 1.0),
             FrailtyAdjustment::new(0.28, 0.75),
             FrailtyAdjustment::new(0.42, 0.60),
@@ -489,7 +512,8 @@ impl GeriatricNormativeDb {
             "grip_strength".to_string(),
             GeriatricAgeGroup::Oldest,
             None,
-            18.0, 6.0,
+            18.0,
+            6.0,
         );
         self.add_reference(grip_oldest);
 
@@ -500,8 +524,10 @@ impl GeriatricNormativeDb {
             "hrv_sdnn".to_string(),
             GeriatricAgeGroup::YoungOld,
             None,
-            80.0, 28.0,
-        ).with_frailty_adjustments(vec![
+            80.0,
+            28.0,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.05, 1.0),
             FrailtyAdjustment::new(0.15, 0.85),
             FrailtyAdjustment::new(0.30, 0.70),
@@ -512,8 +538,10 @@ impl GeriatricNormativeDb {
             "hrv_sdnn".to_string(),
             GeriatricAgeGroup::MiddleOld,
             None,
-            65.0, 25.0,
-        ).with_frailty_adjustments(vec![
+            65.0,
+            25.0,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.10, 1.0),
             FrailtyAdjustment::new(0.20, 0.80),
             FrailtyAdjustment::new(0.35, 0.65),
@@ -524,8 +552,10 @@ impl GeriatricNormativeDb {
             "hrv_sdnn".to_string(),
             GeriatricAgeGroup::OldOld,
             None,
-            50.0, 20.0,
-        ).with_frailty_adjustments(vec![
+            50.0,
+            20.0,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.15, 1.0),
             FrailtyAdjustment::new(0.28, 0.75),
             FrailtyAdjustment::new(0.42, 0.60),
@@ -536,7 +566,8 @@ impl GeriatricNormativeDb {
             "hrv_sdnn".to_string(),
             GeriatricAgeGroup::Oldest,
             None,
-            40.0, 18.0,
+            40.0,
+            18.0,
         );
         self.add_reference(hrv_oldest);
 
@@ -547,10 +578,12 @@ impl GeriatricNormativeDb {
             "timed_up_and_go".to_string(),
             GeriatricAgeGroup::YoungOld,
             None,
-            9.0, 2.0,
-        ).with_frailty_adjustments(vec![
+            9.0,
+            2.0,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.05, 1.0),
-            FrailtyAdjustment::new(0.15, 1.20),  // Frailty increases time
+            FrailtyAdjustment::new(0.15, 1.20), // Frailty increases time
             FrailtyAdjustment::new(0.30, 1.50),
             FrailtyAdjustment::new(0.50, 2.0),
         ]);
@@ -560,8 +593,10 @@ impl GeriatricNormativeDb {
             "timed_up_and_go".to_string(),
             GeriatricAgeGroup::MiddleOld,
             None,
-            10.5, 2.5,
-        ).with_frailty_adjustments(vec![
+            10.5,
+            2.5,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.10, 1.0),
             FrailtyAdjustment::new(0.20, 1.25),
             FrailtyAdjustment::new(0.35, 1.60),
@@ -573,8 +608,10 @@ impl GeriatricNormativeDb {
             "timed_up_and_go".to_string(),
             GeriatricAgeGroup::OldOld,
             None,
-            12.5, 3.5,
-        ).with_frailty_adjustments(vec![
+            12.5,
+            3.5,
+        )
+        .with_frailty_adjustments(vec![
             FrailtyAdjustment::new(0.15, 1.0),
             FrailtyAdjustment::new(0.28, 1.35),
             FrailtyAdjustment::new(0.42, 1.80),
@@ -585,7 +622,8 @@ impl GeriatricNormativeDb {
             "timed_up_and_go".to_string(),
             GeriatricAgeGroup::Oldest,
             None,
-            15.0, 5.0,
+            15.0,
+            5.0,
         );
         self.add_reference(tug_oldest);
     }
@@ -654,7 +692,10 @@ mod tests {
         assert_eq!(FrailtyCategory::from_index(0.05), FrailtyCategory::Robust);
         assert_eq!(FrailtyCategory::from_index(0.15), FrailtyCategory::PreFrail);
         assert_eq!(FrailtyCategory::from_index(0.30), FrailtyCategory::Frail);
-        assert_eq!(FrailtyCategory::from_index(0.50), FrailtyCategory::SeverelyFrail);
+        assert_eq!(
+            FrailtyCategory::from_index(0.50),
+            FrailtyCategory::SeverelyFrail
+        );
     }
 
     #[test]

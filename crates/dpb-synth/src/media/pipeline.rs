@@ -34,14 +34,14 @@
 //! ```
 
 use super::{
-    MediaError, Result, MotionBackend, VideoBackend, AudioBackend,
-    MediaGroundTruth, TremorGroundTruth, GaitGroundTruth, SeverityScores, TremorType,
-    mujoco::{self, MuJoCoSimulator, MuJoCoConfig, MotionTrajectory},
-    opensim::{self, OpenSimBridge, OpenSimConfig, MedicationState},
-    blender::{self, BlenderRenderer, BlenderConfig},
-    ltx_video::{LTXVideoGenerator, DiffusionConfig, VideoPrompt},
-    chatterbox::{ChatterboxTTS, ChatterboxConfig, VoiceConfig, PathologicalVoiceParams},
-    mediapipe::{MediaPipeExtractor, MediaPipeConfig},
+    AudioBackend, GaitGroundTruth, MediaError, MediaGroundTruth, MotionBackend, Result,
+    SeverityScores, TremorGroundTruth, TremorType, VideoBackend,
+    blender::{self, BlenderConfig, BlenderRenderer},
+    chatterbox::{ChatterboxConfig, ChatterboxTTS, PathologicalVoiceParams, VoiceConfig},
+    ltx_video::{DiffusionConfig, LTXVideoGenerator, VideoPrompt},
+    mediapipe::{MediaPipeConfig, MediaPipeExtractor},
+    mujoco::{self, MotionTrajectory, MuJoCoConfig, MuJoCoSimulator},
+    opensim::{self, MedicationState, OpenSimBridge, OpenSimConfig},
 };
 use std::path::{Path, PathBuf};
 
@@ -223,7 +223,7 @@ pub enum Side {
 pub enum Task {
     /// Walking task
     Walk {
-        distance: f32, // meters
+        distance: f32,      // meters
         speed: Option<f32>, // m/s, None for natural
     },
     /// Standing balance
@@ -231,7 +231,10 @@ pub enum Task {
     /// Finger tapping
     FingerTap { hand: Side, duration: f64 },
     /// Hand movements (e.g., pronation-supination)
-    HandMovement { movement_type: String, duration: f64 },
+    HandMovement {
+        movement_type: String,
+        duration: f64,
+    },
     /// Speech task
     Speech { text: String },
     /// Sustained vowel
@@ -457,7 +460,8 @@ impl MediaPipeline {
         let audio_path = if let Some(ref text) = scenario.voice_text {
             Some(self.synthesize_audio(scenario, text, &scenario_dir)?)
         } else {
-            self.synthesize_audio_for_tasks(scenario, &scenario_dir).ok()
+            self.synthesize_audio_for_tasks(scenario, &scenario_dir)
+                .ok()
         };
         let audio_time = audio_start.elapsed().as_secs_f64();
 
@@ -517,7 +521,7 @@ impl MediaPipeline {
                 if let Some(ref mujoco) = self.mujoco {
                     let trajectory = mujoco.simulate_gait(
                         &gait_params,
-                        mujoco::MusculoskeletalModel::SimpleHumanoid
+                        mujoco::MusculoskeletalModel::SimpleHumanoid,
                     )?;
                     Ok(MotionSimulationResult {
                         trajectory: Some(trajectory),
@@ -533,7 +537,7 @@ impl MediaPipeline {
                     let result = opensim.simulate_gait(
                         opensim::GaitModel::Gait2392,
                         scenario.duration,
-                        pathology.as_ref()
+                        pathology.as_ref(),
                     )?;
                     Ok(MotionSimulationResult {
                         trajectory: Some(self.opensim_to_trajectory(&result)),
@@ -543,9 +547,7 @@ impl MediaPipeline {
                     self.simulate_procedural_motion(scenario)
                 }
             }
-            MotionBackend::Procedural => {
-                self.simulate_procedural_motion(scenario)
-            }
+            MotionBackend::Procedural => self.simulate_procedural_motion(scenario),
             MotionBackend::PyBullet | MotionBackend::SMPLX => {
                 // Fall back to procedural for now - PyBullet and SMPL-X
                 // integration is available via their direct modules
@@ -580,16 +582,20 @@ impl MediaPipeline {
         // Adjust for tasks
         for task in &scenario.tasks {
             if let Task::Walk { speed, .. } = task
-                && let Some(s) = speed {
-                    params.speed = *s as f64;
-                }
+                && let Some(s) = speed
+            {
+                params.speed = *s as f64;
+            }
         }
 
         params
     }
 
     /// Convert scenario to tremor parameters
-    fn scenario_to_tremor_params(&self, scenario: &SyntheticScenario) -> Option<mujoco::TremorSimParams> {
+    fn scenario_to_tremor_params(
+        &self,
+        scenario: &SyntheticScenario,
+    ) -> Option<mujoco::TremorSimParams> {
         match &scenario.condition {
             Condition::Parkinsons(pd) if pd.tremor_severity > 0.1 => {
                 Some(mujoco::TremorSimParams {
@@ -601,22 +607,23 @@ impl MediaPipeline {
                     ..Default::default()
                 })
             }
-            Condition::EssentialTremor(et) => {
-                Some(mujoco::TremorSimParams {
-                    frequency: et.frequency as f64,
-                    amplitude: et.amplitude as f64 * 0.1,
-                    tremor_type: TremorType::Action,
-                    affected_joints: et.affected_limbs.clone(),
-                    duration: scenario.duration,
-                    ..Default::default()
-                })
-            }
+            Condition::EssentialTremor(et) => Some(mujoco::TremorSimParams {
+                frequency: et.frequency as f64,
+                amplitude: et.amplitude as f64 * 0.1,
+                tremor_type: TremorType::Action,
+                affected_joints: et.affected_limbs.clone(),
+                duration: scenario.duration,
+                ..Default::default()
+            }),
             _ => None,
         }
     }
 
     /// Convert scenario to OpenSim pathology params
-    fn scenario_to_pathology(&self, scenario: &SyntheticScenario) -> Option<opensim::PathologyParams> {
+    fn scenario_to_pathology(
+        &self,
+        scenario: &SyntheticScenario,
+    ) -> Option<opensim::PathologyParams> {
         match &scenario.condition {
             Condition::Parkinsons(pd) => {
                 let mut symptoms = Vec::new();
@@ -660,7 +667,10 @@ impl MediaPipeline {
     }
 
     /// Simulate procedural motion (fallback)
-    fn simulate_procedural_motion(&self, scenario: &SyntheticScenario) -> Result<MotionSimulationResult> {
+    fn simulate_procedural_motion(
+        &self,
+        scenario: &SyntheticScenario,
+    ) -> Result<MotionSimulationResult> {
         // Generate simple sinusoidal joint angles
         let num_frames = (scenario.duration * self.config.fps as f64) as usize;
         let mut times = Vec::with_capacity(num_frames);
@@ -673,16 +683,16 @@ impl MediaPipeline {
             // Simple walking pattern
             let phase = t * 2.0 * std::f64::consts::PI; // 1 Hz gait cycle
             let angles = vec![
-                0.4 * phase.sin(),      // hip_l
-                0.4 * (phase + std::f64::consts::PI).sin(), // hip_r
-                0.6 * phase.sin().max(0.0), // knee_l
+                0.4 * phase.sin(),                                   // hip_l
+                0.4 * (phase + std::f64::consts::PI).sin(),          // hip_r
+                0.6 * phase.sin().max(0.0),                          // knee_l
                 0.6 * (phase + std::f64::consts::PI).sin().max(0.0), // knee_r
-                0.2 * (phase + 0.5).sin(), // ankle_l
-                0.2 * (phase + std::f64::consts::PI + 0.5).sin(), // ankle_r
-                0.3 * (phase + std::f64::consts::PI).sin(), // shoulder_l (contralateral)
-                0.3 * phase.sin(), // shoulder_r
-                0.0, // elbow_l
-                0.0, // elbow_r
+                0.2 * (phase + 0.5).sin(),                           // ankle_l
+                0.2 * (phase + std::f64::consts::PI + 0.5).sin(),    // ankle_r
+                0.3 * (phase + std::f64::consts::PI).sin(),          // shoulder_l (contralateral)
+                0.3 * phase.sin(),                                   // shoulder_r
+                0.0,                                                 // elbow_l
+                0.0,                                                 // elbow_r
             ];
             joint_angles.push(angles);
         }
@@ -704,7 +714,9 @@ impl MediaPipeline {
     fn opensim_to_trajectory(&self, result: &opensim::GaitSimulationResult) -> MotionTrajectory {
         MotionTrajectory {
             times: result.times.clone(),
-            joint_angles: result.joint_angles.values()
+            joint_angles: result
+                .joint_angles
+                .values()
                 .next()
                 .map(|v| v.iter().map(|a| vec![*a]).collect())
                 .unwrap_or_default(),
@@ -724,7 +736,9 @@ impl MediaPipeline {
     ) -> Result<Vec<PathBuf>> {
         let mut paths = Vec::new();
 
-        let trajectory = motion.trajectory.as_ref()
+        let trajectory = motion
+            .trajectory
+            .as_ref()
             .ok_or_else(|| MediaError::InvalidConfig("No motion data".to_string()))?;
 
         for (i, angle) in scenario.camera_angles.iter().enumerate() {
@@ -736,7 +750,7 @@ impl MediaPipeline {
                         let result = blender.render_motion(
                             trajectory,
                             blender::HumanModel::StickFigure,
-                            &output_name
+                            &output_name,
                         )?;
                         paths.push(result.video_path);
                     }
@@ -809,20 +823,25 @@ impl MediaPipeline {
             _ => "person",
         };
 
-        let task_desc = scenario.tasks.first().map(|t| match t {
-            Task::Walk { .. } => "walking",
-            Task::Stand { .. } => "standing",
-            Task::FingerTap { .. } => "finger tapping",
-            Task::Speech { .. } => "speaking",
-            _ => "moving",
-        }).unwrap_or("walking");
+        let task_desc = scenario
+            .tasks
+            .first()
+            .map(|t| match t {
+                Task::Walk { .. } => "walking",
+                Task::Stand { .. } => "standing",
+                Task::FingerTap { .. } => "finger tapping",
+                Task::Speech { .. } => "speaking",
+                _ => "moving",
+            })
+            .unwrap_or("walking");
 
         VideoPrompt::text(format!(
             "A {} {}, {}, clinical room, white background, \
              full body visible, neutral lighting, medical examination, \
              smooth continuous motion, high quality",
             condition_desc, task_desc, view
-        )).with_negative("blurry, distorted, multiple people, partial body, cartoon")
+        ))
+        .with_negative("blurry, distorted, multiple people, partial body, cartoon")
     }
 
     /// Render simple 2D skeleton video using matplotlib
@@ -830,8 +849,8 @@ impl MediaPipeline {
     /// This generates a video showing a 2D stick figure representation of the motion
     /// trajectory. Uses forward kinematics to convert joint angles to 2D positions.
     fn render_skeleton_2d(&self, trajectory: &MotionTrajectory, path: &Path) -> Result<()> {
-        use std::process::Command;
         use std::io::Write;
+        use std::process::Command;
 
         // Create temp directory for frames
         let temp_dir = std::env::temp_dir().join(format!("skeleton2d_{}", std::process::id()));
@@ -879,7 +898,8 @@ impl MediaPipeline {
         let (width, height) = self.config.video_resolution;
         let fps = self.config.fps;
 
-        Ok(format!(r#"#!/usr/bin/env python3
+        Ok(format!(
+            r#"#!/usr/bin/env python3
 """
 2D Skeleton Renderer for Motion Trajectory
 Generated by DPB MediaPipeline
@@ -1120,10 +1140,13 @@ if __name__ == '__main__':
             return "[]".to_string();
         }
 
-        let frames: Vec<String> = angles.iter().map(|frame| {
-            let values: Vec<String> = frame.iter().map(|v| format!("{:.6}", v)).collect();
-            format!("[{}]", values.join(", "))
-        }).collect();
+        let frames: Vec<String> = angles
+            .iter()
+            .map(|frame| {
+                let values: Vec<String> = frame.iter().map(|v| format!("{:.6}", v)).collect();
+                format!("[{}]", values.join(", "))
+            })
+            .collect();
 
         format!("[{}]", frames.join(", "))
     }
@@ -1136,12 +1159,17 @@ if __name__ == '__main__':
         let output = Command::new("ffmpeg")
             .args([
                 "-y",
-                "-f", "lavfi",
-                "-i", &format!("color=c=gray:s={}x{}:d=1",
-                    self.config.video_resolution.0,
-                    self.config.video_resolution.1),
-                "-c:v", "libx264",
-                "-pix_fmt", "yuv420p",
+                "-f",
+                "lavfi",
+                "-i",
+                &format!(
+                    "color=c=gray:s={}x{}:d=1",
+                    self.config.video_resolution.0, self.config.video_resolution.1
+                ),
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
                 path.to_str().unwrap_or("output.mp4"),
             ])
             .output();
@@ -1215,7 +1243,9 @@ if __name__ == '__main__':
             }
         }
 
-        Err(MediaError::InvalidConfig("No audio tasks in scenario".to_string()))
+        Err(MediaError::InvalidConfig(
+            "No audio tasks in scenario".to_string(),
+        ))
     }
 
     /// Create ground truth from scenario and motion
@@ -1230,7 +1260,10 @@ if __name__ == '__main__':
             gt.timestamps = trajectory.times.clone();
 
             // Convert to gait ground truth
-            let has_walk_task = scenario.tasks.iter().any(|t| matches!(t, Task::Walk { .. }));
+            let has_walk_task = scenario
+                .tasks
+                .iter()
+                .any(|t| matches!(t, Task::Walk { .. }));
             if has_walk_task {
                 gt.gait = Some(self.create_gait_ground_truth(scenario, trajectory));
             }
@@ -1307,7 +1340,9 @@ if __name__ == '__main__':
         video_path: &Path,
         ground_truth: &MediaGroundTruth,
     ) -> Result<ValidationResult> {
-        let mediapipe = self.mediapipe.as_ref()
+        let mediapipe = self
+            .mediapipe
+            .as_ref()
             .ok_or_else(|| MediaError::ToolNotFound {
                 tool: "mediapipe".to_string(),
                 install_url: "pip install mediapipe".to_string(),
@@ -1323,8 +1358,12 @@ if __name__ == '__main__':
             let extracted_gait = mediapipe.compute_gait_parameters(&extraction.poses)?;
 
             Some(GaitValidation {
-                stride_length_error: ((extracted_gait.stride_length - gait_gt.stride_length) / gait_gt.stride_length).abs() * 100.0,
-                cadence_error: ((extracted_gait.cadence - gait_gt.cadence) / gait_gt.cadence).abs() * 100.0,
+                stride_length_error: ((extracted_gait.stride_length - gait_gt.stride_length)
+                    / gait_gt.stride_length)
+                    .abs()
+                    * 100.0,
+                cadence_error: ((extracted_gait.cadence - gait_gt.cadence) / gait_gt.cadence).abs()
+                    * 100.0,
                 speed_error: ((extracted_gait.speed - gait_gt.speed) / gait_gt.speed).abs() * 100.0,
             })
         } else {
@@ -1334,7 +1373,7 @@ if __name__ == '__main__':
         Ok(ValidationResult {
             pose_detection_rate,
             mean_position_error: 0.0, // Would need pixel-level comparison
-            angle_correlation: 0.0, // Would need joint angle extraction
+            angle_correlation: 0.0,   // Would need joint angle extraction
             gait_accuracy,
         })
     }
@@ -1355,10 +1394,18 @@ if __name__ == '__main__':
             severity,
             duration: 10.0,
             tasks: vec![
-                Task::Walk { distance: 10.0, speed: None },
-                Task::FingerTap { hand: Side::Right, duration: 5.0 },
+                Task::Walk {
+                    distance: 10.0,
+                    speed: None,
+                },
+                Task::FingerTap {
+                    hand: Side::Right,
+                    duration: 5.0,
+                },
             ],
-            voice_text: Some("The rainbow is a division of white light into many beautiful colors.".to_string()),
+            voice_text: Some(
+                "The rainbow is a division of white light into many beautiful colors.".to_string(),
+            ),
             camera_angles: vec![CameraAngle::Side, CameraAngle::HandCloseUp],
             subject: SubjectProfile::default(),
         }
@@ -1371,9 +1418,10 @@ if __name__ == '__main__':
             condition: Condition::Healthy,
             severity: 0.0,
             duration: 10.0,
-            tasks: vec![
-                Task::Walk { distance: 10.0, speed: Some(1.2) },
-            ],
+            tasks: vec![Task::Walk {
+                distance: 10.0,
+                speed: Some(1.2),
+            }],
             voice_text: None,
             camera_angles: vec![CameraAngle::Side],
             subject: SubjectProfile::default(),
@@ -1486,8 +1534,7 @@ mod tests {
 
     #[test]
     fn test_skeleton2d_config() {
-        let config = PipelineConfig::default()
-            .with_video_backend(VideoBackend::Skeleton2D);
+        let config = PipelineConfig::default().with_video_backend(VideoBackend::Skeleton2D);
 
         assert_eq!(config.video_backend, VideoBackend::Skeleton2D);
     }
@@ -1502,10 +1549,7 @@ mod tests {
     #[test]
     fn test_joint_angles_to_json_with_data() {
         let pipeline = MediaPipeline::new(PipelineConfig::default()).unwrap();
-        let angles = vec![
-            vec![0.1, 0.2, 0.3],
-            vec![0.4, 0.5, 0.6],
-        ];
+        let angles = vec![vec![0.1, 0.2, 0.3], vec![0.4, 0.5, 0.6]];
         let json = pipeline.joint_angles_to_json(&angles);
         assert!(json.contains("0.100000"));
         assert!(json.contains("0.400000"));
@@ -1515,17 +1559,12 @@ mod tests {
 
     #[test]
     fn test_skeleton2d_script_generation() {
-        let config = PipelineConfig::default()
-            .with_video_backend(VideoBackend::Skeleton2D);
+        let config = PipelineConfig::default().with_video_backend(VideoBackend::Skeleton2D);
         let pipeline = MediaPipeline::new(config).unwrap();
 
         let trajectory = MotionTrajectory {
             times: vec![0.0, 0.033, 0.066],
-            joint_angles: vec![
-                vec![0.0; 14],
-                vec![0.1; 14],
-                vec![0.0; 14],
-            ],
+            joint_angles: vec![vec![0.0; 14], vec![0.1; 14], vec![0.0; 14]],
             joint_velocities: vec![],
             end_effector_positions: vec![],
             ground_forces: vec![],
@@ -1564,7 +1603,9 @@ mod tests {
         let temp_dir = std::path::Path::new("/tmp/test");
         let output_path = std::path::Path::new("/tmp/test/output.mp4");
 
-        let script = pipeline.create_skeleton2d_script(&trajectory, temp_dir, output_path).unwrap();
+        let script = pipeline
+            .create_skeleton2d_script(&trajectory, temp_dir, output_path)
+            .unwrap();
 
         // Check for body part definitions
         assert!(script.contains("pelvis"));
@@ -1598,7 +1639,9 @@ mod tests {
         let temp_dir = std::path::Path::new("/tmp/test");
         let output_path = std::path::Path::new("/tmp/test/output.mp4");
 
-        let script = pipeline.create_skeleton2d_script(&trajectory, temp_dir, output_path).unwrap();
+        let script = pipeline
+            .create_skeleton2d_script(&trajectory, temp_dir, output_path)
+            .unwrap();
 
         assert!(script.contains("WIDTH = 1280"));
         assert!(script.contains("HEIGHT = 720"));

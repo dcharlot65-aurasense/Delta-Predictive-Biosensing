@@ -39,7 +39,7 @@
 //! - MediaPipe Solutions: https://developers.google.com/mediapipe/solutions
 //! - MediaPipe Tasks: https://developers.google.com/mediapipe/solutions/guide
 
-use super::{MediaError, Result, GaitGroundTruth};
+use super::{GaitGroundTruth, MediaError, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -222,11 +222,10 @@ impl MediaPipeExtractor {
             }
         }
 
-        let python_path = which::which("python3")
-            .map_err(|_| MediaError::ToolNotFound {
-                tool: "python3".to_string(),
-                install_url: "https://www.python.org/downloads/".to_string(),
-            })?;
+        let python_path = which::which("python3").map_err(|_| MediaError::ToolNotFound {
+            tool: "python3".to_string(),
+            install_url: "https://www.python.org/downloads/".to_string(),
+        })?;
 
         std::fs::create_dir_all(&config.output_dir)?;
 
@@ -253,7 +252,8 @@ impl MediaPipeExtractor {
 
     /// Extract poses from image
     pub fn extract_from_image(&self, image_path: &Path) -> Result<PoseEstimate> {
-        let script = format!(r#"
+        let script = format!(
+            r#"
 import mediapipe as mp
 import cv2
 import json
@@ -317,7 +317,8 @@ pose.close()
             .map_err(|e| MediaError::ExecutionFailed(e.to_string()))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result_line = stdout.lines()
+        let result_line = stdout
+            .lines()
             .find(|l| l.starts_with("RESULT_JSON:"))
             .ok_or_else(|| MediaError::SerializationError("No result".to_string()))?;
 
@@ -334,7 +335,8 @@ pose.close()
 
     /// Generate extraction script
     fn generate_extraction_script(&self, video_path: &Path) -> Result<String> {
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import mediapipe as mp
 import cv2
 import json
@@ -509,7 +511,11 @@ print(f'RESULT_FILE:{{output_path}}')
             enable_hands = self.config.enable_hands,
             enable_face = self.config.enable_face,
             video_path = video_path.display(),
-            output_path = self.config.output_dir.join("extraction_result.json").display(),
+            output_path = self
+                .config
+                .output_dir
+                .join("extraction_result.json")
+                .display(),
         ))
     }
 
@@ -531,7 +537,8 @@ print(f'RESULT_FILE:{{output_path}}')
 
         // Get result file path from stdout
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result_line = stdout.lines()
+        let result_line = stdout
+            .lines()
             .find(|l| l.starts_with("RESULT_FILE:"))
             .ok_or_else(|| MediaError::SerializationError("No result file".to_string()))?;
 
@@ -541,15 +548,18 @@ print(f'RESULT_FILE:{{output_path}}')
             .map_err(|e| MediaError::SerializationError(e.to_string()))?;
 
         // Parse results
-        let poses: Vec<PoseEstimate> = data["poses"].as_array()
+        let poses: Vec<PoseEstimate> = data["poses"]
+            .as_array()
             .map(|arr| arr.iter().map(|p| self.parse_pose_estimate(p)).collect())
             .unwrap_or_default();
 
-        let hands: Vec<HandLandmarks> = data["hands"].as_array()
+        let hands: Vec<HandLandmarks> = data["hands"]
+            .as_array()
             .map(|arr| arr.iter().map(|h| self.parse_hand_landmarks(h)).collect())
             .unwrap_or_default();
 
-        let faces: Vec<FaceMesh> = data["faces"].as_array()
+        let faces: Vec<FaceMesh> = data["faces"]
+            .as_array()
             .map(|arr| arr.iter().map(|f| self.parse_face_mesh(f)).collect())
             .unwrap_or_default();
 
@@ -567,22 +577,31 @@ print(f'RESULT_FILE:{{output_path}}')
 
     /// Parse pose estimate from JSON
     fn parse_pose_estimate(&self, data: &serde_json::Value) -> PoseEstimate {
-        let landmarks: Vec<Landmark3D> = data["landmarks"].as_array()
-            .map(|arr| arr.iter().map(|l| Landmark3D {
-                x: l["x"].as_f64().unwrap_or(0.0) as f32,
-                y: l["y"].as_f64().unwrap_or(0.0) as f32,
-                z: l["z"].as_f64().unwrap_or(0.0) as f32,
-                visibility: l["visibility"].as_f64().unwrap_or(0.0) as f32,
-            }).collect())
+        let landmarks: Vec<Landmark3D> = data["landmarks"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .map(|l| Landmark3D {
+                        x: l["x"].as_f64().unwrap_or(0.0) as f32,
+                        y: l["y"].as_f64().unwrap_or(0.0) as f32,
+                        z: l["z"].as_f64().unwrap_or(0.0) as f32,
+                        visibility: l["visibility"].as_f64().unwrap_or(0.0) as f32,
+                    })
+                    .collect()
+            })
             .unwrap_or_default();
 
-        let world_landmarks: Option<Vec<Landmark3D>> = data["world_landmarks"].as_array()
-            .map(|arr| arr.iter().map(|l| Landmark3D {
-                x: l["x"].as_f64().unwrap_or(0.0) as f32,
-                y: l["y"].as_f64().unwrap_or(0.0) as f32,
-                z: l["z"].as_f64().unwrap_or(0.0) as f32,
-                visibility: l["visibility"].as_f64().unwrap_or(0.0) as f32,
-            }).collect());
+        let world_landmarks: Option<Vec<Landmark3D>> =
+            data["world_landmarks"].as_array().map(|arr| {
+                arr.iter()
+                    .map(|l| Landmark3D {
+                        x: l["x"].as_f64().unwrap_or(0.0) as f32,
+                        y: l["y"].as_f64().unwrap_or(0.0) as f32,
+                        z: l["z"].as_f64().unwrap_or(0.0) as f32,
+                        visibility: l["visibility"].as_f64().unwrap_or(0.0) as f32,
+                    })
+                    .collect()
+            });
 
         PoseEstimate {
             frame: data["frame"].as_u64().unwrap_or(0) as u32,
@@ -598,12 +617,14 @@ print(f'RESULT_FILE:{{output_path}}')
     fn parse_hand_landmarks(&self, data: &serde_json::Value) -> HandLandmarks {
         let parse_hand = |hand_data: &serde_json::Value| -> Option<Vec<Landmark3D>> {
             hand_data.as_array().map(|arr| {
-                arr.iter().map(|l| Landmark3D {
-                    x: l["x"].as_f64().unwrap_or(0.0) as f32,
-                    y: l["y"].as_f64().unwrap_or(0.0) as f32,
-                    z: l["z"].as_f64().unwrap_or(0.0) as f32,
-                    visibility: l["visibility"].as_f64().unwrap_or(1.0) as f32,
-                }).collect()
+                arr.iter()
+                    .map(|l| Landmark3D {
+                        x: l["x"].as_f64().unwrap_or(0.0) as f32,
+                        y: l["y"].as_f64().unwrap_or(0.0) as f32,
+                        z: l["z"].as_f64().unwrap_or(0.0) as f32,
+                        visibility: l["visibility"].as_f64().unwrap_or(1.0) as f32,
+                    })
+                    .collect()
             })
         };
 
@@ -618,13 +639,18 @@ print(f'RESULT_FILE:{{output_path}}')
 
     /// Parse face mesh from JSON
     fn parse_face_mesh(&self, data: &serde_json::Value) -> FaceMesh {
-        let landmarks: Vec<Landmark3D> = data["landmarks"].as_array()
-            .map(|arr| arr.iter().map(|l| Landmark3D {
-                x: l["x"].as_f64().unwrap_or(0.0) as f32,
-                y: l["y"].as_f64().unwrap_or(0.0) as f32,
-                z: l["z"].as_f64().unwrap_or(0.0) as f32,
-                visibility: l["visibility"].as_f64().unwrap_or(1.0) as f32,
-            }).collect())
+        let landmarks: Vec<Landmark3D> = data["landmarks"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .map(|l| Landmark3D {
+                        x: l["x"].as_f64().unwrap_or(0.0) as f32,
+                        y: l["y"].as_f64().unwrap_or(0.0) as f32,
+                        z: l["z"].as_f64().unwrap_or(0.0) as f32,
+                        visibility: l["visibility"].as_f64().unwrap_or(1.0) as f32,
+                    })
+                    .collect()
+            })
             .unwrap_or_default();
 
         FaceMesh {
@@ -642,12 +668,15 @@ print(f'RESULT_FILE:{{output_path}}')
         }
 
         // Get world landmarks for metric measurements
-        let world_poses: Vec<_> = poses.iter()
+        let world_poses: Vec<_> = poses
+            .iter()
             .filter_map(|p| p.world_landmarks.as_ref())
             .collect();
 
         if world_poses.is_empty() {
-            return Err(MediaError::InvalidConfig("No world landmarks available".to_string()));
+            return Err(MediaError::InvalidConfig(
+                "No world landmarks available".to_string(),
+            ));
         }
 
         // Analyze ankle positions for gait
@@ -670,18 +699,20 @@ print(f'RESULT_FILE:{{output_path}}')
             let left_forward = left_ankle.y > right_ankle.y;
 
             if let Some(prev_left_forward) = last_left_forward
-                && left_forward != prev_left_forward {
-                    // Step detected
-                    let stride = ((left_ankle.x - right_ankle.x).powi(2) +
-                                  (left_ankle.y - right_ankle.y).powi(2)).sqrt();
-                    stride_lengths.push(stride);
+                && left_forward != prev_left_forward
+            {
+                // Step detected
+                let stride = ((left_ankle.x - right_ankle.x).powi(2)
+                    + (left_ankle.y - right_ankle.y).powi(2))
+                .sqrt();
+                stride_lengths.push(stride);
 
-                    let timestamp = poses.get(i).map(|p| p.timestamp).unwrap_or(0.0);
-                    if last_step_time > 0.0 {
-                        step_times.push(timestamp - last_step_time);
-                    }
-                    last_step_time = timestamp;
+                let timestamp = poses.get(i).map(|p| p.timestamp).unwrap_or(0.0);
+                if last_step_time > 0.0 {
+                    step_times.push(timestamp - last_step_time);
                 }
+                last_step_time = timestamp;
+            }
             last_left_forward = Some(left_forward);
         }
 
@@ -728,7 +759,7 @@ print(f'RESULT_FILE:{{output_path}}')
             cadence,
             speed,
             double_support_fraction: 0.3, // Default estimate
-            step_width: 0.1, // Would need frontal view
+            step_width: 0.1,              // Would need frontal view
             arm_swing_asymmetry,
             festination: cadence > 140.0 && avg_stride < 0.4,
             freezing_episodes: Vec::new(), // Would need velocity analysis
@@ -802,7 +833,10 @@ impl HolisticExtractor {
     /// Create a new Holistic extractor
     pub fn new(config: HolisticConfig) -> Result<Self> {
         let check = Command::new("python3")
-            .args(["-c", "import mediapipe as mp; mp.solutions.holistic; print('ok')"])
+            .args([
+                "-c",
+                "import mediapipe as mp; mp.solutions.holistic; print('ok')",
+            ])
             .output();
 
         match check {
@@ -815,15 +849,17 @@ impl HolisticExtractor {
             }
         }
 
-        let python_path = which::which("python3")
-            .map_err(|_| MediaError::ToolNotFound {
-                tool: "python3".to_string(),
-                install_url: "https://www.python.org/downloads/".to_string(),
-            })?;
+        let python_path = which::which("python3").map_err(|_| MediaError::ToolNotFound {
+            tool: "python3".to_string(),
+            install_url: "https://www.python.org/downloads/".to_string(),
+        })?;
 
         std::fs::create_dir_all(&config.output_dir)?;
 
-        Ok(Self { config, python_path })
+        Ok(Self {
+            config,
+            python_path,
+        })
     }
 
     /// Process video with holistic model
@@ -833,7 +869,8 @@ impl HolisticExtractor {
     }
 
     fn generate_script(&self, video_path: &Path) -> Result<String> {
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import mediapipe as mp
 import cv2
 import json
@@ -935,7 +972,8 @@ print('RESULT_JSON:' + json.dumps(results_list))
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result_line = stdout.lines()
+        let result_line = stdout
+            .lines()
             .find(|l| l.starts_with("RESULT_JSON:"))
             .ok_or_else(|| MediaError::SerializationError("No result".to_string()))?;
 
@@ -949,12 +987,14 @@ print('RESULT_JSON:' + json.dumps(results_list))
     fn parse_frame(&self, data: &serde_json::Value) -> HolisticResult {
         let parse_landmarks = |arr: &serde_json::Value| -> Option<Vec<Landmark3D>> {
             arr.as_array().map(|a| {
-                a.iter().map(|l| Landmark3D {
-                    x: l["x"].as_f64().unwrap_or(0.0) as f32,
-                    y: l["y"].as_f64().unwrap_or(0.0) as f32,
-                    z: l["z"].as_f64().unwrap_or(0.0) as f32,
-                    visibility: l["visibility"].as_f64().unwrap_or(1.0) as f32,
-                }).collect()
+                a.iter()
+                    .map(|l| Landmark3D {
+                        x: l["x"].as_f64().unwrap_or(0.0) as f32,
+                        y: l["y"].as_f64().unwrap_or(0.0) as f32,
+                        z: l["z"].as_f64().unwrap_or(0.0) as f32,
+                        visibility: l["visibility"].as_f64().unwrap_or(1.0) as f32,
+                    })
+                    .collect()
             })
         };
 
@@ -1074,15 +1114,17 @@ impl GestureCategory {
 impl GestureRecognizer {
     /// Create a new Gesture Recognizer
     pub fn new(config: GestureConfig) -> Result<Self> {
-        let python_path = which::which("python3")
-            .map_err(|_| MediaError::ToolNotFound {
-                tool: "python3".to_string(),
-                install_url: "https://www.python.org/downloads/".to_string(),
-            })?;
+        let python_path = which::which("python3").map_err(|_| MediaError::ToolNotFound {
+            tool: "python3".to_string(),
+            install_url: "https://www.python.org/downloads/".to_string(),
+        })?;
 
         std::fs::create_dir_all(&config.output_dir)?;
 
-        Ok(Self { config, python_path })
+        Ok(Self {
+            config,
+            python_path,
+        })
     }
 
     /// Recognize gestures from video
@@ -1092,7 +1134,8 @@ impl GestureRecognizer {
     }
 
     fn generate_script(&self, video_path: &Path) -> Result<String> {
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import mediapipe as mp
 import cv2
 import json
@@ -1193,7 +1236,8 @@ print('RESULT_JSON:' + json.dumps(results_list))
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result_line = stdout.lines()
+        let result_line = stdout
+            .lines()
             .find(|l| l.starts_with("RESULT_JSON:"))
             .ok_or_else(|| MediaError::SerializationError("No result".to_string()))?;
 
@@ -1205,24 +1249,41 @@ print('RESULT_JSON:' + json.dumps(results_list))
     }
 
     fn parse_frame(&self, data: &serde_json::Value) -> GestureResult {
-        let gestures = data["gestures"].as_array()
-            .map(|arr| arr.iter().map(|g| DetectedGesture {
-                category: g["category"].as_str().unwrap_or("None").to_string(),
-                score: g["score"].as_f64().unwrap_or(0.0) as f32,
-                hand_index: g["hand_index"].as_u64().unwrap_or(0) as u8,
-                handedness: g["handedness"].as_str().unwrap_or("Unknown").to_string(),
-            }).collect())
+        let gestures = data["gestures"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .map(|g| DetectedGesture {
+                        category: g["category"].as_str().unwrap_or("None").to_string(),
+                        score: g["score"].as_f64().unwrap_or(0.0) as f32,
+                        hand_index: g["hand_index"].as_u64().unwrap_or(0) as u8,
+                        handedness: g["handedness"].as_str().unwrap_or("Unknown").to_string(),
+                    })
+                    .collect()
+            })
             .unwrap_or_default();
 
-        let hand_landmarks = data["hand_landmarks"].as_array()
-            .map(|hands| hands.iter().map(|h| {
-                h.as_array().map(|lms| lms.iter().map(|l| Landmark3D {
-                    x: l["x"].as_f64().unwrap_or(0.0) as f32,
-                    y: l["y"].as_f64().unwrap_or(0.0) as f32,
-                    z: l["z"].as_f64().unwrap_or(0.0) as f32,
-                    visibility: 1.0,
-                }).collect()).unwrap_or_default()
-            }).collect())
+        let hand_landmarks = data["hand_landmarks"]
+            .as_array()
+            .map(|hands| {
+                hands
+                    .iter()
+                    .map(|h| {
+                        h.as_array()
+                            .map(|lms| {
+                                lms.iter()
+                                    .map(|l| Landmark3D {
+                                        x: l["x"].as_f64().unwrap_or(0.0) as f32,
+                                        y: l["y"].as_f64().unwrap_or(0.0) as f32,
+                                        z: l["z"].as_f64().unwrap_or(0.0) as f32,
+                                        visibility: 1.0,
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or_default()
+                    })
+                    .collect()
+            })
             .unwrap_or_default();
 
         GestureResult {
@@ -1362,11 +1423,17 @@ impl FaceBlendshapes {
     /// Low scores may indicate hypomimia (reduced facial expression)
     pub fn expressiveness_score(&self) -> f32 {
         let values = [
-            self.eye_blink_left, self.eye_blink_right,
-            self.brow_inner_up, self.brow_down_left, self.brow_down_right,
-            self.mouth_smile_left, self.mouth_smile_right,
-            self.mouth_frown_left, self.mouth_frown_right,
-            self.cheek_puff, self.jaw_open,
+            self.eye_blink_left,
+            self.eye_blink_right,
+            self.brow_inner_up,
+            self.brow_down_left,
+            self.brow_down_right,
+            self.mouth_smile_left,
+            self.mouth_smile_right,
+            self.mouth_frown_left,
+            self.mouth_frown_right,
+            self.cheek_puff,
+            self.jaw_open,
         ];
 
         let sum: f32 = values.iter().map(|v| v.abs()).sum();
@@ -1398,15 +1465,17 @@ impl FaceBlendshapes {
 impl FaceLandmarker {
     /// Create a new Face Landmarker
     pub fn new(config: FaceLandmarkerConfig) -> Result<Self> {
-        let python_path = which::which("python3")
-            .map_err(|_| MediaError::ToolNotFound {
-                tool: "python3".to_string(),
-                install_url: "https://www.python.org/downloads/".to_string(),
-            })?;
+        let python_path = which::which("python3").map_err(|_| MediaError::ToolNotFound {
+            tool: "python3".to_string(),
+            install_url: "https://www.python.org/downloads/".to_string(),
+        })?;
 
         std::fs::create_dir_all(&config.output_dir)?;
 
-        Ok(Self { config, python_path })
+        Ok(Self {
+            config,
+            python_path,
+        })
     }
 
     /// Process video for face landmarks and blendshapes
@@ -1416,7 +1485,8 @@ impl FaceLandmarker {
     }
 
     fn generate_script(&self, video_path: &Path) -> Result<String> {
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import mediapipe as mp
 import cv2
 import json
@@ -1516,7 +1586,8 @@ print('RESULT_JSON:' + json.dumps(results_list))
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result_line = stdout.lines()
+        let result_line = stdout
+            .lines()
             .find(|l| l.starts_with("RESULT_JSON:"))
             .ok_or_else(|| MediaError::SerializationError("No result".to_string()))?;
 
@@ -1528,19 +1599,23 @@ print('RESULT_JSON:' + json.dumps(results_list))
     }
 
     fn parse_frame(&self, data: &serde_json::Value) -> FaceLandmarkerResult {
-        let landmarks = data["landmarks"].as_array()
-            .map(|arr| arr.iter().map(|l| Landmark3D {
-                x: l["x"].as_f64().unwrap_or(0.0) as f32,
-                y: l["y"].as_f64().unwrap_or(0.0) as f32,
-                z: l["z"].as_f64().unwrap_or(0.0) as f32,
-                visibility: 1.0,
-            }).collect())
+        let landmarks = data["landmarks"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .map(|l| Landmark3D {
+                        x: l["x"].as_f64().unwrap_or(0.0) as f32,
+                        y: l["y"].as_f64().unwrap_or(0.0) as f32,
+                        z: l["z"].as_f64().unwrap_or(0.0) as f32,
+                        visibility: 1.0,
+                    })
+                    .collect()
+            })
             .unwrap_or_default();
 
         let blendshapes = data["blendshapes"].as_object().map(|bs| {
-            let get = |key: &str| -> f32 {
-                bs.get(key).and_then(|v| v.as_f64()).unwrap_or(0.0) as f32
-            };
+            let get =
+                |key: &str| -> f32 { bs.get(key).and_then(|v| v.as_f64()).unwrap_or(0.0) as f32 };
 
             FaceBlendshapes {
                 eye_blink_left: get("eyeBlinkLeft"),
@@ -1671,15 +1746,17 @@ pub struct SegmentationResult {
 impl ImageSegmenter {
     /// Create a new Image Segmenter
     pub fn new(config: SegmenterConfig) -> Result<Self> {
-        let python_path = which::which("python3")
-            .map_err(|_| MediaError::ToolNotFound {
-                tool: "python3".to_string(),
-                install_url: "https://www.python.org/downloads/".to_string(),
-            })?;
+        let python_path = which::which("python3").map_err(|_| MediaError::ToolNotFound {
+            tool: "python3".to_string(),
+            install_url: "https://www.python.org/downloads/".to_string(),
+        })?;
 
         std::fs::create_dir_all(&config.output_dir)?;
 
-        Ok(Self { config, python_path })
+        Ok(Self {
+            config,
+            python_path,
+        })
     }
 
     /// Segment video frames
@@ -1690,15 +1767,19 @@ impl ImageSegmenter {
 
     fn generate_script(&self, video_path: &Path) -> Result<String> {
         let model_url = match self.config.model_type {
-            SegmentationModel::SelfieSegmenter =>
-                "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite",
-            SegmentationModel::DeepLabV3 =>
-                "https://storage.googleapis.com/mediapipe-models/image_segmenter/deeplab_v3/float32/1/deeplab_v3.tflite",
-            SegmentationModel::HairSegmenter =>
-                "https://storage.googleapis.com/mediapipe-models/image_segmenter/hair_segmenter/float32/latest/hair_segmenter.tflite",
+            SegmentationModel::SelfieSegmenter => {
+                "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite"
+            }
+            SegmentationModel::DeepLabV3 => {
+                "https://storage.googleapis.com/mediapipe-models/image_segmenter/deeplab_v3/float32/1/deeplab_v3.tflite"
+            }
+            SegmentationModel::HairSegmenter => {
+                "https://storage.googleapis.com/mediapipe-models/image_segmenter/hair_segmenter/float32/latest/hair_segmenter.tflite"
+            }
         };
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import mediapipe as mp
 import cv2
 import json
@@ -1794,7 +1875,8 @@ print('RESULT_JSON:' + json.dumps(results_list[:100]))  # Limit output size
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result_line = stdout.lines()
+        let result_line = stdout
+            .lines()
             .find(|l| l.starts_with("RESULT_JSON:"))
             .ok_or_else(|| MediaError::SerializationError("No result".to_string()))?;
 
@@ -1802,16 +1884,19 @@ print('RESULT_JSON:' + json.dumps(results_list[:100]))  # Limit output size
         let data: Vec<serde_json::Value> = serde_json::from_str(json_str)
             .map_err(|e| MediaError::SerializationError(e.to_string()))?;
 
-        Ok(data.iter().map(|f| SegmentationResult {
-            frame: f["frame"].as_u64().unwrap_or(0) as u32,
-            timestamp: f["timestamp"].as_f64().unwrap_or(0.0),
-            category_mask: None, // Would need to parse arrays
-            confidence_mask: None,
-            dimensions: (
-                f["dimensions"][0].as_u64().unwrap_or(640) as u32,
-                f["dimensions"][1].as_u64().unwrap_or(480) as u32,
-            ),
-        }).collect())
+        Ok(data
+            .iter()
+            .map(|f| SegmentationResult {
+                frame: f["frame"].as_u64().unwrap_or(0) as u32,
+                timestamp: f["timestamp"].as_f64().unwrap_or(0.0),
+                category_mask: None, // Would need to parse arrays
+                confidence_mask: None,
+                dimensions: (
+                    f["dimensions"][0].as_u64().unwrap_or(640) as u32,
+                    f["dimensions"][1].as_u64().unwrap_or(480) as u32,
+                ),
+            })
+            .collect())
     }
 }
 
@@ -1914,15 +1999,17 @@ impl BiosignalAudioCategory {
 impl AudioClassifier {
     /// Create a new Audio Classifier
     pub fn new(config: AudioClassifierConfig) -> Result<Self> {
-        let python_path = which::which("python3")
-            .map_err(|_| MediaError::ToolNotFound {
-                tool: "python3".to_string(),
-                install_url: "https://www.python.org/downloads/".to_string(),
-            })?;
+        let python_path = which::which("python3").map_err(|_| MediaError::ToolNotFound {
+            tool: "python3".to_string(),
+            install_url: "https://www.python.org/downloads/".to_string(),
+        })?;
 
         std::fs::create_dir_all(&config.output_dir)?;
 
-        Ok(Self { config, python_path })
+        Ok(Self {
+            config,
+            python_path,
+        })
     }
 
     /// Classify audio from file
@@ -1938,7 +2025,8 @@ impl AudioClassifier {
     }
 
     fn generate_script(&self, audio_path: &Path) -> Result<String> {
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import json
 import urllib.request
 import os
@@ -2016,7 +2104,8 @@ print('RESULT_JSON:' + json.dumps(results_list))
     }
 
     fn generate_embedding_script(&self, audio_path: &Path) -> Result<String> {
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import json
 import urllib.request
 import os
@@ -2083,7 +2172,8 @@ print('RESULT_JSON:' + json.dumps(embeddings))
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result_line = stdout.lines()
+        let result_line = stdout
+            .lines()
             .find(|l| l.starts_with("RESULT_JSON:"))
             .ok_or_else(|| MediaError::SerializationError("No result".to_string()))?;
 
@@ -2091,21 +2181,29 @@ print('RESULT_JSON:' + json.dumps(embeddings))
         let data: Vec<serde_json::Value> = serde_json::from_str(json_str)
             .map_err(|e| MediaError::SerializationError(e.to_string()))?;
 
-        Ok(data.iter().map(|r| {
-            let classifications = r["classifications"].as_array()
-                .map(|arr| arr.iter().map(|c| AudioCategory {
-                    category: c["category"].as_str().unwrap_or("Unknown").to_string(),
-                    score: c["score"].as_f64().unwrap_or(0.0) as f32,
-                    index: c["index"].as_u64().unwrap_or(0) as u32,
-                }).collect())
-                .unwrap_or_default();
+        Ok(data
+            .iter()
+            .map(|r| {
+                let classifications = r["classifications"]
+                    .as_array()
+                    .map(|arr| {
+                        arr.iter()
+                            .map(|c| AudioCategory {
+                                category: c["category"].as_str().unwrap_or("Unknown").to_string(),
+                                score: c["score"].as_f64().unwrap_or(0.0) as f32,
+                                index: c["index"].as_u64().unwrap_or(0) as u32,
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default();
 
-            AudioClassificationResult {
-                timestamp: r["timestamp"].as_f64().unwrap_or(0.0),
-                duration: r["duration"].as_f64().unwrap_or(0.975),
-                classifications,
-            }
-        }).collect())
+                AudioClassificationResult {
+                    timestamp: r["timestamp"].as_f64().unwrap_or(0.0),
+                    duration: r["duration"].as_f64().unwrap_or(0.975),
+                    classifications,
+                }
+            })
+            .collect())
     }
 
     fn run_embedding_script(&self, script: &str) -> Result<Vec<Vec<f32>>> {
@@ -2124,7 +2222,8 @@ print('RESULT_JSON:' + json.dumps(embeddings))
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result_line = stdout.lines()
+        let result_line = stdout
+            .lines()
             .find(|l| l.starts_with("RESULT_JSON:"))
             .ok_or_else(|| MediaError::SerializationError("No result".to_string()))?;
 
@@ -2132,7 +2231,8 @@ print('RESULT_JSON:' + json.dumps(embeddings))
         let data: Vec<Vec<f64>> = serde_json::from_str(json_str)
             .map_err(|e| MediaError::SerializationError(e.to_string()))?;
 
-        Ok(data.iter()
+        Ok(data
+            .iter()
             .map(|emb| emb.iter().map(|v| *v as f32).collect())
             .collect())
     }
@@ -2174,10 +2274,7 @@ pub mod biosignal_analysis {
     }
 
     /// Detect tremor from hand landmark sequence
-    pub fn detect_hand_tremor(
-        landmarks: &[Vec<Landmark3D>],
-        sample_rate: f32,
-    ) -> TremorAnalysis {
+    pub fn detect_hand_tremor(landmarks: &[Vec<Landmark3D>], sample_rate: f32) -> TremorAnalysis {
         if landmarks.is_empty() || landmarks[0].is_empty() {
             return TremorAnalysis {
                 frequency: None,
@@ -2190,10 +2287,9 @@ pub mod biosignal_analysis {
 
         // Extract index fingertip trajectory (landmark 8)
         let fingertip_idx = 8;
-        let trajectory: Vec<(f32, f32, f32)> = landmarks.iter()
-            .filter_map(|frame| {
-                frame.get(fingertip_idx).map(|l| (l.x, l.y, l.z))
-            })
+        let trajectory: Vec<(f32, f32, f32)> = landmarks
+            .iter()
+            .filter_map(|frame| frame.get(fingertip_idx).map(|l| (l.x, l.y, l.z)))
             .collect();
 
         if trajectory.len() < 10 {
@@ -2207,7 +2303,8 @@ pub mod biosignal_analysis {
         }
 
         // Compute velocity magnitude
-        let velocities: Vec<f32> = trajectory.windows(2)
+        let velocities: Vec<f32> = trajectory
+            .windows(2)
             .map(|w| {
                 let dx = w[1].0 - w[0].0;
                 let dy = w[1].1 - w[0].1;
@@ -2218,19 +2315,17 @@ pub mod biosignal_analysis {
 
         // Estimate amplitude from velocity variance
         let mean_vel: f32 = velocities.iter().sum::<f32>() / velocities.len() as f32;
-        let variance: f32 = velocities.iter()
+        let variance: f32 = velocities
+            .iter()
             .map(|v| (v - mean_vel).powi(2))
-            .sum::<f32>() / velocities.len() as f32;
+            .sum::<f32>()
+            / velocities.len() as f32;
         let amplitude = variance.sqrt();
 
         // Simple frequency estimation via zero crossings
-        let detrended: Vec<f32> = velocities.iter()
-            .map(|v| v - mean_vel)
-            .collect();
+        let detrended: Vec<f32> = velocities.iter().map(|v| v - mean_vel).collect();
 
-        let zero_crossings = detrended.windows(2)
-            .filter(|w| w[0] * w[1] < 0.0)
-            .count();
+        let zero_crossings = detrended.windows(2).filter(|w| w[0] * w[1] < 0.0).count();
 
         let duration = trajectory.len() as f32 / sample_rate;
         let frequency = if duration > 0.5 {
@@ -2318,15 +2413,12 @@ pub mod biosignal_analysis {
         };
 
         // Calculate coefficient of variation for inter-blink intervals
-        let intervals: Vec<f64> = blink_times.windows(2)
-            .map(|w| w[1] - w[0])
-            .collect();
+        let intervals: Vec<f64> = blink_times.windows(2).map(|w| w[1] - w[0]).collect();
 
         let regularity_cv = if intervals.len() > 1 {
             let mean = intervals.iter().sum::<f64>() / intervals.len() as f64;
-            let variance = intervals.iter()
-                .map(|i| (i - mean).powi(2))
-                .sum::<f64>() / intervals.len() as f64;
+            let variance =
+                intervals.iter().map(|i| (i - mean).powi(2)).sum::<f64>() / intervals.len() as f64;
             (variance.sqrt() / mean) as f32
         } else {
             0.0
@@ -2372,24 +2464,27 @@ pub mod biosignal_analysis {
         }
 
         // Calculate mean expressiveness
-        let expressiveness: f32 = blendshapes.iter()
+        let expressiveness: f32 = blendshapes
+            .iter()
             .map(|bs| bs.expressiveness_score())
-            .sum::<f32>() / blendshapes.len() as f32;
+            .sum::<f32>()
+            / blendshapes.len() as f32;
 
         // Calculate mean smile asymmetry
-        let smile_asymmetry: f32 = blendshapes.iter()
+        let smile_asymmetry: f32 = blendshapes
+            .iter()
             .map(|bs| bs.smile_asymmetry())
-            .sum::<f32>() / blendshapes.len() as f32;
+            .sum::<f32>()
+            / blendshapes.len() as f32;
 
         // Count significant expressions (threshold > 0.3)
-        let expression_count = blendshapes.iter()
+        let expression_count = blendshapes
+            .iter()
             .filter(|bs| bs.expressiveness_score() > 0.3)
             .count() as u32;
 
         // Check blink rate
-        let blinks = blendshapes.iter()
-            .filter(|bs| bs.is_blinking(0.5))
-            .count();
+        let blinks = blendshapes.iter().filter(|bs| bs.is_blinking(0.5)).count();
         let blink_rate = if duration_seconds > 0.0 {
             (blinks as f64 / duration_seconds * 60.0) as f32
         } else {
@@ -2437,11 +2532,10 @@ pub mod biosignal_analysis {
         let mut speech_start = 0.0;
 
         for result in classifications {
-            let is_speech = result.classifications.iter()
-                .any(|c| {
-                    let lower = c.category.to_lowercase();
-                    (lower.contains("speech") || lower.contains("talk")) && c.score > 0.3
-                });
+            let is_speech = result.classifications.iter().any(|c| {
+                let lower = c.category.to_lowercase();
+                (lower.contains("speech") || lower.contains("talk")) && c.score > 0.3
+            });
 
             if is_speech && !in_speech {
                 in_speech = true;
@@ -2453,16 +2547,14 @@ pub mod biosignal_analysis {
         }
 
         // Close final segment if still in speech
-        if in_speech
-            && let Some(last) = classifications.last() {
-                speech_segments.push((speech_start, last.timestamp + last.duration));
-            }
+        if in_speech && let Some(last) = classifications.last() {
+            speech_segments.push((speech_start, last.timestamp + last.duration));
+        }
 
-        let total_speech_duration: f64 = speech_segments.iter()
-            .map(|(s, e)| e - s)
-            .sum();
+        let total_speech_duration: f64 = speech_segments.iter().map(|(s, e)| e - s).sum();
 
-        let total_duration = classifications.last()
+        let total_duration = classifications
+            .last()
             .map(|c| c.timestamp + c.duration)
             .unwrap_or(0.0);
 

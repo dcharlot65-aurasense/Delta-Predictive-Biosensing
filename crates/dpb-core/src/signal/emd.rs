@@ -163,10 +163,7 @@ impl CubicSpline {
             coefficients.push((a, b, c, d));
         }
 
-        Ok(Self {
-            x,
-            coefficients,
-        })
+        Ok(Self { x, coefficients })
     }
 
     fn solve_for_second_derivatives(
@@ -191,8 +188,8 @@ impl CubicSpline {
                     let mut z = vec![0.0; n + 1];
 
                     for i in 1..n {
-                        alpha[i] = 3.0 / h[i] * (y[i + 1] - y[i])
-                            - 3.0 / h[i - 1] * (y[i] - y[i - 1]);
+                        alpha[i] =
+                            3.0 / h[i] * (y[i + 1] - y[i]) - 3.0 / h[i - 1] * (y[i] - y[i - 1]);
                     }
 
                     l[0] = 1.0;
@@ -227,8 +224,7 @@ impl CubicSpline {
                 alpha[n] = 3.0 * (right_slope - (y[n] - y[n - 1]) / h[n - 1]);
 
                 for i in 1..n {
-                    alpha[i] =
-                        3.0 / h[i] * (y[i + 1] - y[i]) - 3.0 / h[i - 1] * (y[i] - y[i - 1]);
+                    alpha[i] = 3.0 / h[i] * (y[i + 1] - y[i]) - 3.0 / h[i - 1] * (y[i] - y[i - 1]);
                 }
 
                 l[0] = 2.0 * h[0];
@@ -318,11 +314,7 @@ fn find_minima(signal: &[f64]) -> Vec<usize> {
 }
 
 /// Computes the envelope through extrema using cubic spline interpolation.
-fn compute_envelope(
-    signal: &[f64],
-    extrema: &[usize],
-    _is_upper: bool,
-) -> Result<Vec<f64>> {
+fn compute_envelope(signal: &[f64], extrema: &[usize], _is_upper: bool) -> Result<Vec<f64>> {
     if extrema.is_empty() {
         // No extrema: return constant signal at mean
         let mean = signal.iter().sum::<f64>() / signal.len() as f64;
@@ -613,7 +605,9 @@ impl Emd {
     /// Decomposes a signal into IMFs.
     pub fn decompose(&mut self, signal: &Array1<f64>) -> Result<ImfSet> {
         if signal.is_empty() {
-            return Err(DpbError::InvalidParameter("Signal cannot be empty".to_string()));
+            return Err(DpbError::InvalidParameter(
+                "Signal cannot be empty".to_string(),
+            ));
         }
 
         let signal_vec = signal.to_vec();
@@ -818,7 +812,9 @@ impl Eemd {
     /// Decomposes a signal using ensemble averaging.
     pub fn decompose(&mut self, signal: &Array1<f64>) -> Result<ImfSet> {
         if signal.is_empty() {
-            return Err(DpbError::InvalidParameter("Signal cannot be empty".to_string()));
+            return Err(DpbError::InvalidParameter(
+                "Signal cannot be empty".to_string(),
+            ));
         }
 
         let signal_vec = signal.to_vec();
@@ -847,12 +843,7 @@ impl Eemd {
         self.average_imfs(&all_imfs)
     }
 
-    fn decompose_with_noise(
-        &self,
-        signal: &[f64],
-        noise_std: f64,
-        seed: u64,
-    ) -> Result<ImfSet> {
+    fn decompose_with_noise(&self, signal: &[f64], noise_std: f64, seed: u64) -> Result<ImfSet> {
         // Add white noise
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let normal = Normal::new(0.0, noise_std).unwrap();
@@ -955,7 +946,9 @@ impl Ceemdan {
     /// Decomposes a signal using CEEMDAN.
     pub fn decompose(&mut self, signal: &Array1<f64>) -> Result<ImfSet> {
         if signal.is_empty() {
-            return Err(DpbError::InvalidParameter("Signal cannot be empty".to_string()));
+            return Err(DpbError::InvalidParameter(
+                "Signal cannot be empty".to_string(),
+            ));
         }
 
         let signal_vec = signal.to_vec();
@@ -986,9 +979,10 @@ impl Ceemdan {
 
                 let mut emd = Emd::new(self.config.emd_config.clone());
                 if let Ok(imf_set) = emd.decompose(&Array1::from_vec(noisy_residue))
-                    && !imf_set.imfs.is_empty() {
-                        ensemble_imfs.push(imf_set.imfs[0].data.to_vec());
-                    }
+                    && !imf_set.imfs.is_empty()
+                {
+                    ensemble_imfs.push(imf_set.imfs[0].data.to_vec());
+                }
             }
 
             if ensemble_imfs.is_empty() {
@@ -1023,11 +1017,7 @@ impl Ceemdan {
         Ok(ImfSet::new(imfs, Array1::from_vec(residue)))
     }
 
-    fn precompute_noise_modes(
-        &self,
-        n: usize,
-        noise_std: f64,
-    ) -> Result<Vec<Vec<Vec<f64>>>> {
+    fn precompute_noise_modes(&self, n: usize, noise_std: f64) -> Result<Vec<Vec<Vec<f64>>>> {
         let mut all_noise_modes = Vec::new();
 
         for e in 0..self.config.num_ensembles {
@@ -1114,7 +1104,9 @@ impl Vmd {
     /// complex optimization in the frequency domain.
     pub fn decompose(&mut self, signal: &Array1<f64>) -> Result<ImfSet> {
         if signal.is_empty() {
-            return Err(DpbError::InvalidParameter("Signal cannot be empty".to_string()));
+            return Err(DpbError::InvalidParameter(
+                "Signal cannot be empty".to_string(),
+            ));
         }
 
         // This is a placeholder for a full VMD implementation
@@ -1171,7 +1163,9 @@ impl HilbertHuangTransform {
     /// Computes the Hilbert-Huang spectrum.
     pub fn compute(&mut self, signal: &Array1<f64>, sample_rate: f64) -> Result<HilbertSpectrum> {
         if signal.is_empty() {
-            return Err(DpbError::InvalidParameter("Signal cannot be empty".to_string()));
+            return Err(DpbError::InvalidParameter(
+                "Signal cannot be empty".to_string(),
+            ));
         }
 
         // Decompose signal using EMD
@@ -1511,15 +1505,18 @@ mod tests {
         // Test Hilbert-Huang Transform on chirp
         let mut hht = HilbertHuangTransform::new(EmdConfig::default());
         let spectrum = hht
-            .compute(&Array1::from_vec(
-                (0..n)
-                    .map(|i| {
-                        let t = i as f64 / sample_rate;
-                        let phase = 2.0 * PI * (10.0 * t + 20.0 * t * t);
-                        phase.sin()
-                    })
-                    .collect(),
-            ), sample_rate)
+            .compute(
+                &Array1::from_vec(
+                    (0..n)
+                        .map(|i| {
+                            let t = i as f64 / sample_rate;
+                            let phase = 2.0 * PI * (10.0 * t + 20.0 * t * t);
+                            phase.sin()
+                        })
+                        .collect(),
+                ),
+                sample_rate,
+            )
             .unwrap();
 
         assert!(spectrum.num_imfs >= 1);

@@ -6,9 +6,7 @@ use pyo3::prelude::*;
 
 /// Convert PyArray1 to ndarray Array1
 #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
-pub fn pyarray1_to_array1<T>(
-    py_array: PyReadonlyArray1<T>,
-) -> Array1<T>
+pub fn pyarray1_to_array1<T>(py_array: PyReadonlyArray1<T>) -> Array1<T>
 where
     T: numpy::Element + Clone,
 {
@@ -17,9 +15,7 @@ where
 
 /// Convert PyArray2 to ndarray Array2
 #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
-pub fn pyarray2_to_array2<T>(
-    py_array: PyReadonlyArray2<T>,
-) -> Array2<T>
+pub fn pyarray2_to_array2<T>(py_array: PyReadonlyArray2<T>) -> Array2<T>
 where
     T: numpy::Element + Clone,
 {
@@ -205,11 +201,7 @@ pub fn resample(data: ArrayView1<f32>, target_len: usize) -> Array1<f32> {
 
 /// Compute sliding windows from 1D array
 #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
-pub fn sliding_windows(
-    data: ArrayView1<f32>,
-    window_size: usize,
-    stride: usize,
-) -> Array2<f32> {
+pub fn sliding_windows(data: ArrayView1<f32>, window_size: usize, stride: usize) -> Array2<f32> {
     let n = data.len();
     if window_size > n || stride == 0 {
         return Array2::zeros((0, window_size));

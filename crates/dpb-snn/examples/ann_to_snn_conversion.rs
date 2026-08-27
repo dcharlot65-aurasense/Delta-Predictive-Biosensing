@@ -40,16 +40,16 @@ fn main() {
     }
 
     println!("Calibration Data:");
-    println!("  {} samples of shape {:?}\n", sample_data.len(), sample_data[0].shape);
+    println!(
+        "  {} samples of shape {:?}\n",
+        sample_data.len(),
+        sample_data[0].shape
+    );
 
     // Example 1: Default conversion
     println!("1. Default Conversion (Data-based normalization):");
-    let (_norm_weights1, _norm_biases1, converter1) = convert_model_to_snn(
-        weights.clone(),
-        biases.clone(),
-        &sample_data,
-        None,
-    );
+    let (_norm_weights1, _norm_biases1, converter1) =
+        convert_model_to_snn(weights.clone(), biases.clone(), &sample_data, None);
 
     println!("{}", converter1.conversion_report());
 
@@ -64,12 +64,8 @@ fn main() {
         clip_negative_weights: false,
     };
 
-    let (_norm_weights2, _norm_biases2, converter2) = convert_model_to_snn(
-        weights.clone(),
-        biases.clone(),
-        &sample_data,
-        Some(config2),
-    );
+    let (_norm_weights2, _norm_biases2, converter2) =
+        convert_model_to_snn(weights.clone(), biases.clone(), &sample_data, Some(config2));
 
     println!("{}", converter2.conversion_report());
 
@@ -84,12 +80,8 @@ fn main() {
         clip_negative_weights: true,
     };
 
-    let (_norm_weights3, _norm_biases3, converter3) = convert_model_to_snn(
-        weights.clone(),
-        biases.clone(),
-        &sample_data,
-        Some(config3),
-    );
+    let (_norm_weights3, _norm_biases3, converter3) =
+        convert_model_to_snn(weights.clone(), biases.clone(), &sample_data, Some(config3));
 
     println!("{}", converter3.conversion_report());
 
@@ -118,10 +110,7 @@ fn main() {
 
     // Example 5: Activation to spike conversion
     println!("\n5. Activation to Spike Conversion:");
-    let activation = Tensor::from_vec(
-        vec![0.0, 0.25, 0.5, 0.75, 1.0, 1.5],
-        vec![6]
-    );
+    let activation = Tensor::from_vec(vec![0.0, 0.25, 0.5, 0.75, 1.0, 1.5], vec![6]);
 
     let converter = ANNToSNNConverter::new();
     let spikes = converter.convert_activation_to_spikes(&activation);
@@ -141,16 +130,15 @@ fn main() {
             clip_negative_weights: false,
         };
 
-        let (_, _, converter) = convert_model_to_snn(
-            weights.clone(),
-            biases.clone(),
-            &sample_data,
-            Some(config),
-        );
+        let (_, _, converter) =
+            convert_model_to_snn(weights.clone(), biases.clone(), &sample_data, Some(config));
 
         let est_loss = converter.estimate_accuracy_loss(weights.len());
-        println!("  {} timesteps: estimated accuracy loss = {:.2}%",
-                 num_steps, est_loss * 100.0);
+        println!(
+            "  {} timesteps: estimated accuracy loss = {:.2}%",
+            num_steps,
+            est_loss * 100.0
+        );
     }
 
     // Summary

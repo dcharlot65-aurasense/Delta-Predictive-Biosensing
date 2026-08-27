@@ -132,7 +132,8 @@ impl Stft {
             }
 
             let frame = signal.slice(ndarray::s![start..end]);
-            let windowed: Array1<f64> = frame.iter()
+            let windowed: Array1<f64> = frame
+                .iter()
                 .zip(self.window.iter())
                 .map(|(s, w)| s * w)
                 .collect();
@@ -190,24 +191,22 @@ pub fn create_window(size: usize, window_type: WindowType) -> Result<Array1<f64>
 
     let window: Vec<f64> = match window_type {
         WindowType::Rectangular => vec![1.0; size],
-        WindowType::Hann => {
-            (0..size)
-                .map(|i| 0.5 * (1.0 - (2.0 * std::f64::consts::PI * i as f64 / (size - 1) as f64).cos()))
-                .collect()
-        }
-        WindowType::Hamming => {
-            (0..size)
-                .map(|i| 0.54 - 0.46 * (2.0 * std::f64::consts::PI * i as f64 / (size - 1) as f64).cos())
-                .collect()
-        }
-        WindowType::Blackman => {
-            (0..size)
-                .map(|i| {
-                    let angle = 2.0 * std::f64::consts::PI * i as f64 / (size - 1) as f64;
-                    0.42 - 0.5 * angle.cos() + 0.08 * (2.0 * angle).cos()
-                })
-                .collect()
-        }
+        WindowType::Hann => (0..size)
+            .map(|i| {
+                0.5 * (1.0 - (2.0 * std::f64::consts::PI * i as f64 / (size - 1) as f64).cos())
+            })
+            .collect(),
+        WindowType::Hamming => (0..size)
+            .map(|i| {
+                0.54 - 0.46 * (2.0 * std::f64::consts::PI * i as f64 / (size - 1) as f64).cos()
+            })
+            .collect(),
+        WindowType::Blackman => (0..size)
+            .map(|i| {
+                let angle = 2.0 * std::f64::consts::PI * i as f64 / (size - 1) as f64;
+                0.42 - 0.5 * angle.cos() + 0.08 * (2.0 * angle).cos()
+            })
+            .collect(),
         WindowType::Kaiser => {
             // Simplified Kaiser window (beta = 5)
             create_kaiser_window(size, 5.0)
@@ -254,7 +253,12 @@ pub fn fft_frequencies(n: usize, sample_rate: f64) -> Array1<f64> {
 }
 
 /// Computes time bins for STFT output.
-pub fn stft_times(signal_len: usize, fft_size: usize, hop_size: usize, sample_rate: f64) -> Array1<f64> {
+pub fn stft_times(
+    signal_len: usize,
+    fft_size: usize,
+    hop_size: usize,
+    sample_rate: f64,
+) -> Array1<f64> {
     let num_frames = (signal_len - fft_size) / hop_size + 1;
     Array1::from_shape_fn(num_frames, |i| (i * hop_size) as f64 / sample_rate)
 }

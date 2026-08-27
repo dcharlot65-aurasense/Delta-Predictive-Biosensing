@@ -131,12 +131,7 @@ impl EventEncoder for KeypointDeviationEncoder {
 
                 if distance > config.threshold {
                     let time = frame_idx as f64 * dt;
-                    events.push(SpikeEvent::new(
-                        time,
-                        keypoint_idx as u32,
-                        1,
-                        distance,
-                    ));
+                    events.push(SpikeEvent::new(time, keypoint_idx as u32, 1, distance));
                 }
             }
         }
@@ -180,8 +175,7 @@ pub struct JointAngleEncoder;
 impl JointAngleEncoder {
     /// Creates a new [`JointAngleEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn calculate_angle(&self, p1: (f32, f32), p2: (f32, f32), p3: (f32, f32)) -> f32 {
@@ -293,8 +287,7 @@ pub struct BodySwayEncoder;
 impl BodySwayEncoder {
     /// Creates a new [`BodySwayEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn calculate_sway(&self, positions: &[(f32, f32)]) -> f32 {

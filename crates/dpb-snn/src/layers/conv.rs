@@ -2,7 +2,7 @@
 
 use super::{NeuronState, SpikingLayer};
 use crate::{NeuronParams, SNNResult, SpikeTensor};
-use ndarray::{s, Array1, Array2, Array3, Array4};
+use ndarray::{Array1, Array2, Array3, Array4, s};
 use rand::rng;
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
@@ -127,7 +127,8 @@ impl SpikingConv2d {
                                     let iw = ow * self.stride.1 + kw;
 
                                     if ih < in_h && iw < in_w {
-                                        sum += input[[b, ic, ih, iw]] * self.kernel[[oc, ic, kh, kw]];
+                                        sum +=
+                                            input[[b, ic, ih, iw]] * self.kernel[[oc, ic, kh, kw]];
                                     }
                                 }
                             }
@@ -184,7 +185,8 @@ impl SpikingLayer for SpikingConv2d {
 
                 // Simplified: just apply linear transformation for each output channel
                 for oc in 0..output_size {
-                    let kernel_slice: ndarray::ArrayView1<f32> = self.kernel.slice(s![oc, .., 0, 0]);
+                    let kernel_slice: ndarray::ArrayView1<f32> =
+                        self.kernel.slice(s![oc, .., 0, 0]);
                     let synaptic: f32 = kernel_slice.dot(&input_t);
                     output[[b, t, oc]] = synaptic;
                 }
@@ -268,10 +270,9 @@ impl SpikingConv1d {
         let normal = Normal::new(0.0, std_dev).unwrap();
         let mut rng = rng();
 
-        let kernel = Array3::from_shape_fn(
-            (out_channels, in_channels, kernel_size),
-            |_| normal.sample(&mut rng),
-        );
+        let kernel = Array3::from_shape_fn((out_channels, in_channels, kernel_size), |_| {
+            normal.sample(&mut rng)
+        });
 
         let bias = if use_bias {
             Some(Array1::zeros(out_channels))
@@ -363,7 +364,17 @@ impl SpikingLayer for SpikingConv1d {
 
 impl Default for SpikingConv2d {
     fn default() -> Self {
-        Self::new(1, 1, (3, 3), (1, 1), (0, 0), false, NeuronParams::default(), 1.0, false)
+        Self::new(
+            1,
+            1,
+            (3, 3),
+            (1, 1),
+            (0, 0),
+            false,
+            NeuronParams::default(),
+            1.0,
+            false,
+        )
     }
 }
 
@@ -395,33 +406,14 @@ mod tests {
 
     #[test]
     fn test_conv1d_creation() {
-        let layer = SpikingConv1d::new(
-            8,
-            16,
-            3,
-            1,
-            1,
-            true,
-            NeuronParams::default(),
-            1.0,
-            false,
-        );
+        let layer = SpikingConv1d::new(8, 16, 3, 1, 1, true, NeuronParams::default(), 1.0, false);
         assert_eq!(layer.kernel.shape(), &[16, 8, 3]);
     }
 
     #[test]
     fn test_conv1d_forward() {
-        let mut layer = SpikingConv1d::new(
-            8,
-            16,
-            3,
-            1,
-            0,
-            false,
-            NeuronParams::default(),
-            1.0,
-            false,
-        );
+        let mut layer =
+            SpikingConv1d::new(8, 16, 3, 1, 0, false, NeuronParams::default(), 1.0, false);
         let input = SpikeTensor::zeros(2, 10, 8, false);
         let output = layer.forward(&input).unwrap();
         assert_eq!(output.shape(), (2, 10, 16));

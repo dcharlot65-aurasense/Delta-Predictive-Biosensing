@@ -33,20 +33,20 @@ impl PartitionStrategy {
     /// Get memory efficiency score (0.0 to 1.0)
     pub fn memory_efficiency(&self) -> f32 {
         match self {
-            Self::DataParallel => 0.5,  // Each worker has full model
-            Self::ModelParallel => 0.9, // Model split across workers
+            Self::DataParallel => 0.5,     // Each worker has full model
+            Self::ModelParallel => 0.9,    // Model split across workers
             Self::PipelineParallel => 0.8, // Model staged across workers
-            Self::Hybrid => 0.7,        // Balanced approach
+            Self::Hybrid => 0.7,           // Balanced approach
         }
     }
 
     /// Get communication overhead score (0.0 to 1.0, higher = more overhead)
     pub fn communication_overhead(&self) -> f32 {
         match self {
-            Self::DataParallel => 0.3,  // Only gradients
-            Self::ModelParallel => 0.7, // Activations and gradients
+            Self::DataParallel => 0.3,     // Only gradients
+            Self::ModelParallel => 0.7,    // Activations and gradients
             Self::PipelineParallel => 0.5, // Sequential communication
-            Self::Hybrid => 0.6,        // Combined overhead
+            Self::Hybrid => 0.6,           // Combined overhead
         }
     }
 }
@@ -201,8 +201,7 @@ impl ModelParallel {
 
     /// Check if layer is local to this worker
     pub fn is_local_layer(&self, layer_idx: usize) -> bool {
-        layer_idx < self.layer_assignments.len()
-            && self.layer_assignments[layer_idx] == self.rank
+        layer_idx < self.layer_assignments.len() && self.layer_assignments[layer_idx] == self.rank
     }
 
     /// Get worker for given layer

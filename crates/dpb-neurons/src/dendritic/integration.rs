@@ -215,8 +215,8 @@ impl NonlinearDendrites {
             ca_channels,
             nmda_receptors,
             voltages: vec![-70.0; num_compartments],
-            spike_threshold: -30.0,  // Ca spike threshold
-            nmda_threshold: -45.0,   // NMDA plateau threshold
+            spike_threshold: -30.0, // Ca spike threshold
+            nmda_threshold: -45.0,  // NMDA plateau threshold
             dendritic_spike: false,
             nmda_spike: false,
         }
@@ -440,14 +440,12 @@ mod tests {
 
     #[test]
     fn test_attenuation_modes() {
-        let exp_integration = PassiveIntegration::new(200.0)
-            .with_mode(AttenuationMode::Exponential);
+        let exp_integration =
+            PassiveIntegration::new(200.0).with_mode(AttenuationMode::Exponential);
 
-        let rall_integration = PassiveIntegration::new(200.0)
-            .with_mode(AttenuationMode::Rall);
+        let rall_integration = PassiveIntegration::new(200.0).with_mode(AttenuationMode::Rall);
 
-        let no_integration = PassiveIntegration::new(200.0)
-            .with_mode(AttenuationMode::None);
+        let no_integration = PassiveIntegration::new(200.0).with_mode(AttenuationMode::None);
 
         let inputs = vec![1.0];
         let distances = vec![300.0];

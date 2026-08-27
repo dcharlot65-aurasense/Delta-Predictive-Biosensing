@@ -103,7 +103,8 @@ impl AdhdEyeTracking {
         }
 
         // Classify saccades by direction
-        let progressive: Vec<&Saccade> = saccades.iter().filter(|s| s.amplitude_deg > 0.0).collect();
+        let progressive: Vec<&Saccade> =
+            saccades.iter().filter(|s| s.amplitude_deg > 0.0).collect();
         let regressive: Vec<&Saccade> = saccades.iter().filter(|s| s.amplitude_deg < 0.0).collect();
 
         let regression_rate = if !saccades.is_empty() {
@@ -130,10 +131,7 @@ impl AdhdEyeTracking {
         };
 
         // Detect line return saccades (large leftward movements)
-        let line_returns = saccades
-            .iter()
-            .filter(|s| s.amplitude_deg < -10.0)
-            .count();
+        let line_returns = saccades.iter().filter(|s| s.amplitude_deg < -10.0).count();
 
         ReadingSaccadeMetrics {
             n_saccades: saccades.len(),
@@ -220,8 +218,8 @@ impl AdhdEyeTracking {
     fn calculate_attention_stability(&self, stability: &FixationStability) -> f64 {
         // Lower variability and higher duration = better stability
         let duration_factor = stability.mean_fixation_duration_ms / 300.0; // Normalize to ~300ms
-        let variability_factor =
-            1.0 - (stability.fixation_duration_variability_ms / stability.mean_fixation_duration_ms)
+        let variability_factor = 1.0
+            - (stability.fixation_duration_variability_ms / stability.mean_fixation_duration_ms)
                 .min(1.0);
 
         ((duration_factor + variability_factor) / 2.0 * 100.0).clamp(0.0, 100.0)
@@ -333,7 +331,11 @@ impl AdhdEyeTracking {
     }
 
     /// Detect microsaccades within fixations
-    fn detect_microsaccades(&self, fixations: &[Fixation], gaze: &[GazePoint]) -> Vec<Microsaccade> {
+    fn detect_microsaccades(
+        &self,
+        fixations: &[Fixation],
+        gaze: &[GazePoint],
+    ) -> Vec<Microsaccade> {
         let mut microsaccades = Vec::new();
         let velocity_threshold = 10.0; // Lower threshold for microsaccades
 

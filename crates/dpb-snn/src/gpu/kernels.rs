@@ -345,12 +345,7 @@ impl LaunchConfig {
     }
 
     /// Create launch config for 2D problem
-    pub fn for_2d(
-        num_rows: usize,
-        num_cols: usize,
-        block_rows: usize,
-        block_cols: usize,
-    ) -> Self {
+    pub fn for_2d(num_rows: usize, num_cols: usize, block_rows: usize, block_cols: usize) -> Self {
         let grid_rows = (num_rows + block_rows - 1) / block_rows;
         let grid_cols = (num_cols + block_cols - 1) / block_cols;
 

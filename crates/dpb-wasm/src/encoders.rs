@@ -1,8 +1,8 @@
 //! Spike encoders for WebAssembly
 
-use wasm_bindgen::prelude::*;
+use crate::spiketrain::{SpikeEvent, WasmSpikeTrain};
 use crate::timeseries::WasmTimeSeries;
-use crate::spiketrain::{WasmSpikeTrain, SpikeEvent};
+use wasm_bindgen::prelude::*;
 
 /// Level Crossing Encoder for browser use.
 ///
@@ -202,9 +202,7 @@ impl WasmDeltaEncoder {
         let mut spike_train = WasmSpikeTrain::new(num_channels as u32)?;
 
         // Reference values per channel (start at first sample)
-        let mut references: Vec<f32> = (0..num_channels)
-            .map(|ch| data[ch])
-            .collect();
+        let mut references: Vec<f32> = (0..num_channels).map(|ch| data[ch]).collect();
 
         for s in 1..num_samples {
             let time = s as f64 / sample_rate;

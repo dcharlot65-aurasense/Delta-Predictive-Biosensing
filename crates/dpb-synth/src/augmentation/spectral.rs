@@ -50,7 +50,10 @@ impl FrequencyMask {
     /// * `max_width_hz` - Maximum width of each masked band
     pub fn new(max_masks: usize, max_width_hz: f64) -> Self {
         assert!(max_width_hz > 0.0);
-        Self { max_masks, max_width_hz }
+        Self {
+            max_masks,
+            max_width_hz,
+        }
     }
 
     fn apply_fft_mask(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
@@ -62,15 +65,13 @@ impl FrequencyMask {
         let ifft = planner.plan_fft_inverse(n);
 
         // Convert to complex
-        let mut buffer: Vec<Complex<f64>> = signal.iter()
-            .map(|&x| Complex::new(x, 0.0))
-            .collect();
+        let mut buffer: Vec<Complex<f64>> = signal.iter().map(|&x| Complex::new(x, 0.0)).collect();
 
         // Forward FFT
         fft.process(&mut buffer);
 
         // Apply frequency masks
-        let fs = 250.0;  // Assumed sampling rate
+        let fs = 250.0; // Assumed sampling rate
         let freq_resolution = fs / n as f64;
         let num_masks = random_usize_range(rng, 1, self.max_masks);
 
@@ -99,9 +100,7 @@ impl FrequencyMask {
         ifft.process(&mut buffer);
 
         // Extract real part and normalize
-        buffer.iter()
-            .map(|c| c.re / n as f64)
-            .collect()
+        buffer.iter().map(|c| c.re / n as f64).collect()
     }
 }
 
@@ -134,7 +133,10 @@ impl TimeMask {
     /// * `max_masks` - Maximum number of time windows to mask
     /// * `max_width_samples` - Maximum width of each masked window
     pub fn new(max_masks: usize, max_width_samples: usize) -> Self {
-        Self { max_masks, max_width_samples }
+        Self {
+            max_masks,
+            max_width_samples,
+        }
     }
 }
 
@@ -184,7 +186,9 @@ mod tests {
     use std::f64::consts::PI;
 
     fn create_test_signal() -> Vec<f64> {
-        (0..1000).map(|i| (2.0 * PI * i as f64 / 50.0).sin()).collect()
+        (0..1000)
+            .map(|i| (2.0 * PI * i as f64 / 50.0).sin())
+            .collect()
     }
 
     #[test]
@@ -201,14 +205,14 @@ mod tests {
         let orig_power: f64 = signal.iter().map(|x| x * x).sum();
         let aug_power: f64 = augmented.iter().map(|x| x * x).sum();
 
-        assert!((aug_power / orig_power - 1.0).abs() > 0.01);  // Should differ by > 1%
+        assert!((aug_power / orig_power - 1.0).abs() > 0.01); // Should differ by > 1%
     }
 
     #[test]
     fn test_magnitude_scale_range() {
         let mut rng = ChaCha8Rng::seed_from_u64(42);
         let signal = create_test_signal();
-        let aug = MagnitudeScale::new((2.0, 2.0));  // Exact scaling
+        let aug = MagnitudeScale::new((2.0, 2.0)); // Exact scaling
 
         let augmented = aug.augment(&signal, &mut rng);
 
@@ -248,7 +252,7 @@ mod tests {
 
         let augmented = aug.augment(&signal, &mut rng);
 
-        assert_eq!(augmented, signal);  // No masking
+        assert_eq!(augmented, signal); // No masking
     }
 
     #[test]
@@ -274,7 +278,7 @@ mod tests {
 
         let augmented = aug.augment(&signal, &mut rng);
 
-        assert_eq!(augmented, signal);  // No masking
+        assert_eq!(augmented, signal); // No masking
     }
 
     #[test]
@@ -285,7 +289,7 @@ mod tests {
 
         let augmented = aug.augment(&signal, &mut rng);
 
-        assert_eq!(augmented, signal);  // No masking
+        assert_eq!(augmented, signal); // No masking
     }
 
     #[test]

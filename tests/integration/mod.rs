@@ -3,17 +3,17 @@
 //! These tests validate full pipelines from signal generation through encoding,
 //! SNN processing, and decoding to final predictions.
 
+pub mod cross_crate;
 pub mod ecg_pipeline;
+pub mod encoder_accuracy;
+pub mod full_pipeline_integration;
 pub mod gait_pipeline;
-pub mod tremor_pipeline;
-pub mod voice_pipeline;
+pub mod inference_latency;
 pub mod multimodal_pipeline;
 pub mod synthetic_validation;
-pub mod encoder_accuracy;
 pub mod training_loop;
-pub mod inference_latency;
-pub mod cross_crate;
-pub mod full_pipeline_integration;
+pub mod tremor_pipeline;
+pub mod voice_pipeline;
 
 /// Common test utilities
 pub mod utils {
@@ -29,8 +29,8 @@ pub mod utils {
     /// Assert two values are approximately equal
     pub fn assert_approx_eq(actual: f64, expected: f64, context: &str) {
         assert!(
-            (actual - expected).abs() <= ABSOLUTE_TOL ||
-            ((actual - expected).abs() / expected.abs()) <= RELATIVE_TOL,
+            (actual - expected).abs() <= ABSOLUTE_TOL
+                || ((actual - expected).abs() / expected.abs()) <= RELATIVE_TOL,
             "Failed: {} - expected {}, got {}, diff {}",
             context,
             expected,

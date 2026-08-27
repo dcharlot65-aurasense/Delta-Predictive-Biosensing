@@ -22,7 +22,11 @@ pub trait SyntheticGenerator {
     ///
     /// # Returns
     /// Tuple of (generated signal, ground truth)
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>>;
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>>;
 
     /// Get default parameters
     fn default_params() -> Self::Parameters;
@@ -193,8 +197,8 @@ impl GroundTruth for SpatialGroundTruth {}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GaitPhase {
     pub frame: usize,
-    pub phase: f64,  // 0.0 = heel strike, 1.0 = next heel strike
-    pub phase_name: String,  // "stance", "swing", etc.
+    pub phase: f64,         // 0.0 = heel strike, 1.0 = next heel strike
+    pub phase_name: String, // "stance", "swing", etc.
 }
 
 #[cfg(test)]
@@ -221,7 +225,8 @@ mod tests {
                 segments: Vec::new(),
             },
             100.0,
-        ).with_metadata("test".to_string(), "value".to_string());
+        )
+        .with_metadata("test".to_string(), "value".to_string());
 
         assert_eq!(data.metadata.get("test").unwrap(), "value");
     }

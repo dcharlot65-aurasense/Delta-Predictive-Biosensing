@@ -1,6 +1,6 @@
 //! Pose noise and artifact generators
 
-use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
+use crate::traits::{GeneratedData, SpatialGroundTruth, SyntheticGenerator};
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
@@ -11,7 +11,7 @@ pub struct KeypointJitterGenerator;
 #[derive(Debug, Clone)]
 pub struct KeypointJitterParams {
     pub keypoints: Vec<Vec<[f64; 3]>>, // input keypoints
-    pub jitter_std: f64,                // standard deviation of jitter
+    pub jitter_std: f64,               // standard deviation of jitter
     pub frame_rate: f64,
 }
 
@@ -20,16 +20,22 @@ impl SyntheticGenerator for KeypointJitterGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = KeypointJitterParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let noise = Normal::new(0.0, params.jitter_std).unwrap();
 
-        let noisy_keypoints: Vec<Vec<[f64; 3]>> = params.keypoints
+        let noisy_keypoints: Vec<Vec<[f64; 3]>> = params
+            .keypoints
             .iter()
             .map(|frame| {
-                frame.iter()
+                frame
+                    .iter()
                     .map(|kp| {
                         [
                             kp[0] + noise.sample(&mut rng),
@@ -47,7 +53,11 @@ impl SyntheticGenerator for KeypointJitterGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(noisy_keypoints, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            noisy_keypoints,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -60,10 +70,14 @@ impl SyntheticGenerator for KeypointJitterGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.keypoints.is_empty() {
-            return Err(crate::GeneratorError::InvalidParameter("keypoints cannot be empty".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "keypoints cannot be empty".to_string(),
+            ));
         }
         if params.jitter_std < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("jitter_std must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "jitter_std must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -85,15 +99,21 @@ impl SyntheticGenerator for OcclusionGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = OcclusionParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
-        let occluded_keypoints: Vec<Vec<[f64; 3]>> = params.keypoints
+        let occluded_keypoints: Vec<Vec<[f64; 3]>> = params
+            .keypoints
             .iter()
             .map(|frame| {
-                frame.iter()
+                frame
+                    .iter()
                     .map(|kp| {
                         if rng.random::<f64>() < params.occlusion_probability {
                             [params.occlusion_value; 3]
@@ -111,7 +131,11 @@ impl SyntheticGenerator for OcclusionGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(occluded_keypoints, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            occluded_keypoints,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -125,10 +149,14 @@ impl SyntheticGenerator for OcclusionGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.keypoints.is_empty() {
-            return Err(crate::GeneratorError::InvalidParameter("keypoints cannot be empty".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "keypoints cannot be empty".to_string(),
+            ));
         }
         if params.occlusion_probability < 0.0 || params.occlusion_probability > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("occlusion_probability must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "occlusion_probability must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -140,7 +168,7 @@ pub struct TrackingDropoutGenerator;
 #[derive(Debug, Clone)]
 pub struct TrackingDropoutParams {
     pub keypoints: Vec<Vec<[f64; 3]>>,
-    pub dropout_probability: f64,   // per frame
+    pub dropout_probability: f64, // per frame
     pub frame_rate: f64,
 }
 
@@ -149,12 +177,17 @@ impl SyntheticGenerator for TrackingDropoutGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = TrackingDropoutParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
-        let frames_with_dropout: Vec<Option<Vec<[f64; 3]>>> = params.keypoints
+        let frames_with_dropout: Vec<Option<Vec<[f64; 3]>>> = params
+            .keypoints
             .iter()
             .map(|frame| {
                 if rng.random::<f64>() < params.dropout_probability {
@@ -171,7 +204,11 @@ impl SyntheticGenerator for TrackingDropoutGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(frames_with_dropout, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            frames_with_dropout,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -184,10 +221,14 @@ impl SyntheticGenerator for TrackingDropoutGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.keypoints.is_empty() {
-            return Err(crate::GeneratorError::InvalidParameter("keypoints cannot be empty".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "keypoints cannot be empty".to_string(),
+            ));
         }
         if params.dropout_probability < 0.0 || params.dropout_probability > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("dropout_probability must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "dropout_probability must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -199,8 +240,8 @@ pub struct IdSwitchGenerator;
 #[derive(Debug, Clone)]
 pub struct IdSwitchParams {
     pub keypoints: Vec<Vec<[f64; 3]>>,
-    pub switch_probability: f64,    // per frame
-    pub num_persons: usize,          // number of tracked persons
+    pub switch_probability: f64, // per frame
+    pub num_persons: usize,      // number of tracked persons
     pub frame_rate: f64,
 }
 
@@ -209,27 +250,29 @@ impl SyntheticGenerator for IdSwitchGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = IdSwitchParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let mut current_ids: Vec<usize> = (0..params.num_persons).collect();
 
-        let frames_with_ids: Vec<Vec<(usize, Vec<[f64; 3]>)>> = params.keypoints
+        let frames_with_ids: Vec<Vec<(usize, Vec<[f64; 3]>)>> = params
+            .keypoints
             .iter()
             .map(|frame| {
                 // Randomly swap IDs
-                if rng.random::<f64>() < params.switch_probability
-                    && params.num_persons >= 2 {
-                        let idx1 = rng.random_range(0..params.num_persons);
-                        let idx2 = rng.random_range(0..params.num_persons);
-                        current_ids.swap(idx1, idx2);
-                    }
+                if rng.random::<f64>() < params.switch_probability && params.num_persons >= 2 {
+                    let idx1 = rng.random_range(0..params.num_persons);
+                    let idx2 = rng.random_range(0..params.num_persons);
+                    current_ids.swap(idx1, idx2);
+                }
 
                 // Assign keypoints to IDs (simplified - same keypoints with different IDs)
-                current_ids.iter()
-                    .map(|&id| (id, frame.clone()))
-                    .collect()
+                current_ids.iter().map(|&id| (id, frame.clone())).collect()
             })
             .collect();
 
@@ -239,7 +282,11 @@ impl SyntheticGenerator for IdSwitchGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(frames_with_ids, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            frames_with_ids,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -253,10 +300,14 @@ impl SyntheticGenerator for IdSwitchGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.switch_probability < 0.0 || params.switch_probability > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("switch_probability must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "switch_probability must be 0-1".to_string(),
+            ));
         }
         if params.num_persons < 1 {
-            return Err(crate::GeneratorError::InvalidParameter("num_persons must be >= 1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "num_persons must be >= 1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -268,7 +319,7 @@ pub struct DepthAmbiguityGenerator;
 #[derive(Debug, Clone)]
 pub struct DepthAmbiguityParams {
     pub keypoints: Vec<Vec<[f64; 3]>>,
-    pub ambiguity_strength: f64,    // 0-1 (depth compression)
+    pub ambiguity_strength: f64, // 0-1 (depth compression)
     pub frame_rate: f64,
 }
 
@@ -277,22 +328,29 @@ impl SyntheticGenerator for DepthAmbiguityGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = DepthAmbiguityParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let noise = Normal::new(0.0, 0.01 * params.ambiguity_strength).unwrap();
 
         // Compress depth (Z) dimension and add uncertainty
-        let ambiguous_keypoints: Vec<Vec<[f64; 3]>> = params.keypoints
+        let ambiguous_keypoints: Vec<Vec<[f64; 3]>> = params
+            .keypoints
             .iter()
             .map(|frame| {
-                frame.iter()
+                frame
+                    .iter()
                     .map(|kp| {
                         [
                             kp[0] + noise.sample(&mut rng),
                             kp[1] + noise.sample(&mut rng),
-                            kp[2] * (1.0 - params.ambiguity_strength * 0.5) + noise.sample(&mut rng),
+                            kp[2] * (1.0 - params.ambiguity_strength * 0.5)
+                                + noise.sample(&mut rng),
                         ]
                     })
                     .collect()
@@ -305,7 +363,11 @@ impl SyntheticGenerator for DepthAmbiguityGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(ambiguous_keypoints, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            ambiguous_keypoints,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -318,7 +380,9 @@ impl SyntheticGenerator for DepthAmbiguityGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.ambiguity_strength < 0.0 || params.ambiguity_strength > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("ambiguity_strength must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "ambiguity_strength must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -330,10 +394,10 @@ pub struct CameraMotionGenerator;
 #[derive(Debug, Clone)]
 pub struct CameraMotionParams {
     pub keypoints: Vec<Vec<[f64; 3]>>,
-    pub pan_amplitude: f64,         // meters (lateral movement)
-    pub tilt_amplitude: f64,        // meters (vertical movement)
-    pub zoom_range: (f64, f64),     // (min, max) scale factors
-    pub motion_frequency: f64,      // Hz
+    pub pan_amplitude: f64,     // meters (lateral movement)
+    pub tilt_amplitude: f64,    // meters (vertical movement)
+    pub zoom_range: (f64, f64), // (min, max) scale factors
+    pub motion_frequency: f64,  // Hz
     pub frame_rate: f64,
 }
 
@@ -342,12 +406,17 @@ impl SyntheticGenerator for CameraMotionGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = CameraMotionParams;
 
-    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        _seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         use std::f64::consts::PI;
 
-        let moved_keypoints: Vec<Vec<[f64; 3]>> = params.keypoints
+        let moved_keypoints: Vec<Vec<[f64; 3]>> = params
+            .keypoints
             .iter()
             .enumerate()
             .map(|(frame_idx, frame)| {
@@ -357,21 +426,18 @@ impl SyntheticGenerator for CameraMotionGenerator {
                 let pan = params.pan_amplitude * (2.0 * PI * params.motion_frequency * t).sin();
 
                 // Tilt (Y-axis shift)
-                let tilt = params.tilt_amplitude * (2.0 * PI * params.motion_frequency * t * 0.7).cos();
+                let tilt =
+                    params.tilt_amplitude * (2.0 * PI * params.motion_frequency * t * 0.7).cos();
 
                 // Zoom (scale)
                 let zoom_mid = (params.zoom_range.0 + params.zoom_range.1) / 2.0;
                 let zoom_amp = (params.zoom_range.1 - params.zoom_range.0) / 2.0;
-                let zoom = zoom_mid + zoom_amp * (2.0 * PI * params.motion_frequency * t * 0.3).sin();
+                let zoom =
+                    zoom_mid + zoom_amp * (2.0 * PI * params.motion_frequency * t * 0.3).sin();
 
-                frame.iter()
-                    .map(|kp| {
-                        [
-                            kp[0] * zoom + pan,
-                            kp[1] * zoom + tilt,
-                            kp[2] * zoom,
-                        ]
-                    })
+                frame
+                    .iter()
+                    .map(|kp| [kp[0] * zoom + pan, kp[1] * zoom + tilt, kp[2] * zoom])
                     .collect()
             })
             .collect();
@@ -382,7 +448,11 @@ impl SyntheticGenerator for CameraMotionGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(moved_keypoints, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            moved_keypoints,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -391,14 +461,16 @@ impl SyntheticGenerator for CameraMotionGenerator {
             pan_amplitude: 0.05,
             tilt_amplitude: 0.03,
             zoom_range: (0.95, 1.05),
-            motion_frequency: 0.1,  // Hz (slow drift)
+            motion_frequency: 0.1, // Hz (slow drift)
             frame_rate: 30.0,
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.zoom_range.0 >= params.zoom_range.1 {
-            return Err(crate::GeneratorError::InvalidParameter("zoom_range min must be < max".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "zoom_range min must be < max".to_string(),
+            ));
         }
         Ok(())
     }
@@ -421,17 +493,23 @@ impl SyntheticGenerator for LightingVariationGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = LightingVariationParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
-        let keypoints_with_confidence: Vec<Vec<([f64; 3], f64)>> = params.keypoints
+        let keypoints_with_confidence: Vec<Vec<([f64; 3], f64)>> = params
+            .keypoints
             .iter()
             .enumerate()
             .map(|(frame_idx, frame)| {
                 // Random illumination variation
-                let illumination_factor = 1.0 - rng.random_range(0.0..1.0) * params.illumination_variation;
+                let illumination_factor =
+                    1.0 - rng.random_range(0.0..1.0) * params.illumination_variation;
 
                 // Shadow events
                 let in_shadow = rng.random_range(0.0..1.0) < params.shadow_probability;
@@ -444,7 +522,8 @@ impl SyntheticGenerator for LightingVariationGenerator {
                     &vec![0.9; frame.len()]
                 };
 
-                frame.iter()
+                frame
+                    .iter()
                     .enumerate()
                     .map(|(kp_idx, kp)| {
                         let base_conf = if kp_idx < base_confidences.len() {
@@ -452,7 +531,8 @@ impl SyntheticGenerator for LightingVariationGenerator {
                         } else {
                             0.9
                         };
-                        let adjusted_conf = (base_conf * illumination_factor * shadow_factor).clamp(0.0, 1.0);
+                        let adjusted_conf =
+                            (base_conf * illumination_factor * shadow_factor).clamp(0.0, 1.0);
                         (*kp, adjusted_conf)
                     })
                     .collect()
@@ -465,7 +545,11 @@ impl SyntheticGenerator for LightingVariationGenerator {
             gait_phases: Vec::new(),
         };
 
-        Ok(GeneratedData::new(keypoints_with_confidence, ground_truth, params.frame_rate))
+        Ok(GeneratedData::new(
+            keypoints_with_confidence,
+            ground_truth,
+            params.frame_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -482,10 +566,14 @@ impl SyntheticGenerator for LightingVariationGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.illumination_variation < 0.0 || params.illumination_variation > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("illumination_variation must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "illumination_variation must be 0-1".to_string(),
+            ));
         }
         if params.shadow_probability < 0.0 || params.shadow_probability > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("shadow_probability must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "shadow_probability must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -498,7 +586,7 @@ pub struct FrameRateVariationGenerator;
 pub struct FrameRateVariationParams {
     pub keypoints: Vec<Vec<[f64; 3]>>,
     pub source_fps: f64,
-    pub target_fps: f64,            // 15, 30, 60 fps
+    pub target_fps: f64, // 15, 30, 60 fps
     pub frame_rate: f64,
 }
 
@@ -507,7 +595,11 @@ impl SyntheticGenerator for FrameRateVariationGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = FrameRateVariationParams;
 
-    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        _seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         // Resample to target frame rate
@@ -534,8 +626,12 @@ impl SyntheticGenerator for FrameRateVariationGenerator {
         };
 
         let mut result = GeneratedData::new(resampled_keypoints, ground_truth, params.target_fps);
-        result.metadata.insert("source_fps".to_string(), params.source_fps.to_string());
-        result.metadata.insert("target_fps".to_string(), params.target_fps.to_string());
+        result
+            .metadata
+            .insert("source_fps".to_string(), params.source_fps.to_string());
+        result
+            .metadata
+            .insert("target_fps".to_string(), params.target_fps.to_string());
 
         Ok(result)
     }
@@ -551,7 +647,9 @@ impl SyntheticGenerator for FrameRateVariationGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.source_fps <= 0.0 || params.target_fps <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("fps values must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "fps values must be positive".to_string(),
+            ));
         }
         Ok(())
     }

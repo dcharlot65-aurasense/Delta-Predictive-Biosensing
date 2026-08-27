@@ -1,7 +1,7 @@
 //! Mobile inference runtime optimized for low memory footprint and battery efficiency.
 
-use serde::{Deserialize, Serialize};
 use crate::model::MobileModel;
+use serde::{Deserialize, Serialize};
 
 /// Mobile runtime error types
 #[derive(Debug, Clone, thiserror::Error)]
@@ -140,11 +140,11 @@ impl MobileRuntime {
         // Validate model fits in memory budget
         let estimated_memory = self.estimate_memory_usage(&model);
         if estimated_memory > self.config.max_memory_mb * 1024 * 1024 {
-            return Err(RuntimeError::AllocationFailed(
-                format!("Model requires {} MB, but budget is {} MB",
-                    estimated_memory / 1024 / 1024,
-                    self.config.max_memory_mb)
-            ));
+            return Err(RuntimeError::AllocationFailed(format!(
+                "Model requires {} MB, but budget is {} MB",
+                estimated_memory / 1024 / 1024,
+                self.config.max_memory_mb
+            )));
         }
 
         // Allocate buffers based on model dimensions
@@ -155,7 +155,8 @@ impl MobileRuntime {
         self.output_buffer = vec![0.0; output_size * self.config.batch_size];
 
         // Allocate intermediate buffers for each layer
-        self.intermediate_buffers = model.layer_sizes()
+        self.intermediate_buffers = model
+            .layer_sizes()
             .iter()
             .map(|&size| vec![0.0; size * self.config.batch_size])
             .collect();
@@ -173,8 +174,7 @@ impl MobileRuntime {
 
     /// Perform inference on input data
     pub fn infer(&mut self, input: &[f32]) -> Result<Vec<f32>, RuntimeError> {
-        let model = self.model.as_ref()
-            .ok_or(RuntimeError::ModelNotLoaded)?;
+        let model = self.model.as_ref().ok_or(RuntimeError::ModelNotLoaded)?;
 
         // Validate input dimensions
         let expected_input_size = model.input_dim() * self.config.batch_size;
@@ -202,8 +202,7 @@ impl MobileRuntime {
 
     /// Perform in-place inference (more efficient, no allocation)
     pub fn infer_inplace(&mut self, input: &[f32], output: &mut [f32]) -> Result<(), RuntimeError> {
-        let model = self.model.as_ref()
-            .ok_or(RuntimeError::ModelNotLoaded)?;
+        let model = self.model.as_ref().ok_or(RuntimeError::ModelNotLoaded)?;
 
         // Validate input dimensions
         let expected_input_size = model.input_dim() * self.config.batch_size;
@@ -240,8 +239,7 @@ impl MobileRuntime {
 
     /// Internal inference implementation
     fn infer_internal(&mut self) -> Result<(), RuntimeError> {
-        let model = self.model.as_ref()
-            .ok_or(RuntimeError::ModelNotLoaded)?;
+        let model = self.model.as_ref().ok_or(RuntimeError::ModelNotLoaded)?;
 
         // Simple forward pass through the model
         // In a real implementation, this would call into dpb-snn for SNN inference
@@ -277,7 +275,8 @@ impl MobileRuntime {
         if !layer_sizes.is_empty() {
             let final_idx = layer_sizes.len() - 1;
             let final_size = layer_sizes[final_idx];
-            self.output_buffer[..final_size].copy_from_slice(&self.intermediate_buffers[final_idx][..final_size]);
+            self.output_buffer[..final_size]
+                .copy_from_slice(&self.intermediate_buffers[final_idx][..final_size]);
         }
 
         Ok(())
@@ -432,7 +431,6 @@ impl RuntimeBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     #[test]
     fn test_runtime_config_default() {

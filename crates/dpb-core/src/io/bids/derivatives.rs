@@ -165,9 +165,10 @@ impl PipelineDescription {
     /// Set the code URL for the pipeline
     pub fn with_code_url(mut self, url: impl Into<String>) -> Self {
         if let Some(ref mut generated) = self.generated_by
-            && let Some(pipeline) = generated.first_mut() {
-                pipeline.code_url = Some(url.into());
-            }
+            && let Some(pipeline) = generated.first_mut()
+        {
+            pipeline.code_url = Some(url.into());
+        }
         self
     }
 
@@ -183,9 +184,10 @@ impl PipelineDescription {
         };
 
         if let Some(ref mut generated) = self.generated_by
-            && let Some(pipeline) = generated.first_mut() {
-                pipeline.container = Some(container);
-            }
+            && let Some(pipeline) = generated.first_mut()
+        {
+            pipeline.container = Some(container);
+        }
         self
     }
 }
@@ -254,12 +256,8 @@ impl DerivativesDataset {
         fs::create_dir_all(&root).map_err(DpbError::Io)?;
 
         // Create description
-        let description = PipelineDescription::new(
-            name.into(),
-            "1.8.0",
-            pipeline_name.into(),
-            version.into(),
-        );
+        let description =
+            PipelineDescription::new(name.into(), "1.8.0", pipeline_name.into(), version.into());
 
         // Write dataset_description.json
         let desc_path = root.join("dataset_description.json");
@@ -314,12 +312,7 @@ impl DerivativesDataset {
     }
 
     /// Get path for a modality within a session
-    pub fn modality_path(
-        &self,
-        subject_id: &str,
-        session_id: &str,
-        modality: &str,
-    ) -> PathBuf {
+    pub fn modality_path(&self, subject_id: &str, session_id: &str, modality: &str) -> PathBuf {
         self.session_path(subject_id, session_id).join(modality)
     }
 
@@ -390,12 +383,7 @@ mod tests {
 
     #[test]
     fn test_pipeline_description_new() {
-        let desc = PipelineDescription::new(
-            "Preprocessed Data",
-            "1.8.0",
-            "DPB Pipeline",
-            "1.0.0",
-        );
+        let desc = PipelineDescription::new("Preprocessed Data", "1.8.0", "DPB Pipeline", "1.0.0");
 
         assert_eq!(desc.name, "Preprocessed Data");
         assert_eq!(desc.bids_version, "1.8.0");
@@ -408,15 +396,10 @@ mod tests {
 
     #[test]
     fn test_pipeline_description_builder() {
-        let desc = PipelineDescription::new(
-            "Preprocessed Data",
-            "1.8.0",
-            "DPB Pipeline",
-            "1.0.0",
-        )
-        .with_description("Filtered and artifact-removed EEG data")
-        .with_code_url("https://github.com/example/dpb")
-        .with_container("docker", "dpb:latest");
+        let desc = PipelineDescription::new("Preprocessed Data", "1.8.0", "DPB Pipeline", "1.0.0")
+            .with_description("Filtered and artifact-removed EEG data")
+            .with_code_url("https://github.com/example/dpb")
+            .with_container("docker", "dpb:latest");
 
         assert_eq!(
             desc.dataset_description,
@@ -436,12 +419,8 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let deriv_path = temp_dir.path().join("derivatives").join("preprocessed");
 
-        let dataset = DerivativesDataset::create(
-            &deriv_path,
-            "Preprocessed EEG",
-            "1.0.0",
-            "DPB Pipeline",
-        )?;
+        let dataset =
+            DerivativesDataset::create(&deriv_path, "Preprocessed EEG", "1.0.0", "DPB Pipeline")?;
 
         assert!(deriv_path.join("dataset_description.json").exists());
         assert!(deriv_path.join("README").exists());
@@ -470,12 +449,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let deriv_path = temp_dir.path().join("derivatives").join("preprocessed");
 
-        let dataset = DerivativesDataset::create(
-            &deriv_path,
-            "Test",
-            "1.0.0",
-            "Pipeline",
-        )?;
+        let dataset = DerivativesDataset::create(&deriv_path, "Test", "1.0.0", "Pipeline")?;
 
         let eeg_path = dataset.create_path("01", Some("baseline"), "eeg")?;
         assert!(eeg_path.exists());
@@ -489,24 +463,13 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let deriv_path = temp_dir.path().join("derivatives").join("preprocessed");
 
-        let dataset = DerivativesDataset::create(
-            &deriv_path,
-            "Test",
-            "1.0.0",
-            "Pipeline",
-        )?;
+        let dataset = DerivativesDataset::create(&deriv_path, "Test", "1.0.0", "Pipeline")?;
 
         let output_path = deriv_path.join("test_data.edf");
         let sources = vec!["sub-01_ses-01_task-rest_eeg.edf".to_string()];
         let mut params = HashMap::new();
-        params.insert(
-            "high_pass".to_string(),
-            serde_json::json!(0.5),
-        );
-        params.insert(
-            "low_pass".to_string(),
-            serde_json::json!(40.0),
-        );
+        params.insert("high_pass".to_string(), serde_json::json!(0.5));
+        params.insert("low_pass".to_string(), serde_json::json!(40.0));
 
         dataset.write_provenance(&output_path, sources, params)?;
 

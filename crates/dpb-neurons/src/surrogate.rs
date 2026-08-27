@@ -11,11 +11,7 @@ use std::f32::consts::PI;
 pub trait SurrogateGradient: Send + Sync {
     /// Forward pass - typically Heaviside step function.
     fn forward(&self, x: f32) -> f32 {
-        if x >= 0.0 {
-            1.0
-        } else {
-            0.0
-        }
+        if x >= 0.0 { 1.0 } else { 0.0 }
     }
 
     /// Backward pass - smooth gradient approximation.
@@ -226,11 +222,7 @@ impl StraightThroughEstimator {
 
 impl SurrogateGradient for StraightThroughEstimator {
     fn backward(&self, x: f32) -> f32 {
-        if x.abs() < self.threshold {
-            1.0
-        } else {
-            0.0
-        }
+        if x.abs() < self.threshold { 1.0 } else { 0.0 }
     }
 
     fn name(&self) -> &'static str {

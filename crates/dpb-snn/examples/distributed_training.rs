@@ -10,11 +10,11 @@
 
 #[cfg(feature = "distributed")]
 use dpb_snn::distributed::{
-    coordinator::{AggregationStrategy, TrainingCoordinator},
-    partitioning::{DataParallel, ModelParallel, PipelineParallel},
-    fault_tolerance::{HeartbeatMonitor, CheckpointManager},
-    metrics::DistributedMetrics,
     DistributedBackend, DistributedConfig, DistributedRuntime,
+    coordinator::{AggregationStrategy, TrainingCoordinator},
+    fault_tolerance::{CheckpointManager, HeartbeatMonitor},
+    metrics::DistributedMetrics,
+    partitioning::{DataParallel, ModelParallel, PipelineParallel},
 };
 
 #[cfg(feature = "distributed")]
@@ -40,10 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 2. Setup training coordinator
     println!("2. Setting up training coordinator...");
-    let coordinator = TrainingCoordinator::new(
-        runtime.clone(),
-        AggregationStrategy::AllReduce,
-    );
+    let coordinator = TrainingCoordinator::new(runtime.clone(), AggregationStrategy::AllReduce);
     println!("   ✓ Aggregation strategy: AllReduce");
     println!("   ✓ Synchronous training enabled\n");
 
@@ -51,9 +48,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("3. Configuring data parallelism...");
     let mut data_parallel = DataParallel::from_runtime(&runtime);
     data_parallel.set_batch_size(128)?;
-    println!("   ✓ Global batch size: {}", data_parallel.global_batch_size());
-    println!("   ✓ Local batch size: {}", data_parallel.local_batch_size());
-    println!("   ✓ Scaled learning rate: {:.6}\n", data_parallel.scaled_learning_rate(0.001));
+    println!(
+        "   ✓ Global batch size: {}",
+        data_parallel.global_batch_size()
+    );
+    println!(
+        "   ✓ Local batch size: {}",
+        data_parallel.local_batch_size()
+    );
+    println!(
+        "   ✓ Scaled learning rate: {:.6}\n",
+        data_parallel.scaled_learning_rate(0.001)
+    );
 
     // 4. Setup fault tolerance
     println!("4. Setting up fault tolerance...");
@@ -94,7 +100,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             metrics.record_step(data_parallel.local_batch_size(), compute_time, comm_time);
 
             if step % 2 == 0 {
-                println!("     Step {}: throughput = {:.2} samples/sec",
+                println!(
+                    "     Step {}: throughput = {:.2} samples/sec",
                     step,
                     metrics.current_throughput()
                 );
@@ -123,9 +130,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 8. Additional metrics
     println!("\n8. Advanced Metrics:");
-    println!("   Communication overhead: {:.2}%", metrics.communication_overhead() * 100.0);
-    println!("   Scaling efficiency: {:.2}%", metrics.scaling_efficiency() * 100.0);
-    println!("   Load balance score: {:.2}/1.0", metrics.load_balance_score());
+    println!(
+        "   Communication overhead: {:.2}%",
+        metrics.communication_overhead() * 100.0
+    );
+    println!(
+        "   Scaling efficiency: {:.2}%",
+        metrics.scaling_efficiency() * 100.0
+    );
+    println!(
+        "   Load balance score: {:.2}/1.0",
+        metrics.load_balance_score()
+    );
 
     // Detect stragglers (slow workers)
     let stragglers = metrics.detect_stragglers(0.2); // 20% threshold
@@ -137,11 +153,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 9. Fault tolerance status
     println!("\n9. Fault Tolerance Status:");
-    println!("   Healthy workers: {}/{}", heartbeat_monitor.healthy_count(), runtime.world_size());
-    println!("   Checkpoints available: {}", checkpoint_manager.list_checkpoints().len());
+    println!(
+        "   Healthy workers: {}/{}",
+        heartbeat_monitor.healthy_count(),
+        runtime.world_size()
+    );
+    println!(
+        "   Checkpoints available: {}",
+        checkpoint_manager.list_checkpoints().len()
+    );
 
     if let Some(latest) = checkpoint_manager.latest_checkpoint() {
-        println!("   Latest checkpoint: epoch {}, step {}", latest.epoch, latest.step);
+        println!(
+            "   Latest checkpoint: epoch {}, step {}",
+            latest.epoch, latest.step
+        );
     }
 
     // 10. Demonstrate different partitioning strategies
@@ -169,7 +195,9 @@ fn step_count(epoch: usize) -> usize {
 }
 
 #[cfg(feature = "distributed")]
-fn demonstrate_partitioning_strategies(runtime: &DistributedRuntime) -> Result<(), Box<dyn std::error::Error>> {
+fn demonstrate_partitioning_strategies(
+    runtime: &DistributedRuntime,
+) -> Result<(), Box<dyn std::error::Error>> {
     println!("   a) Data Parallel:");
     let mut dp = DataParallel::from_runtime(runtime);
     dp.set_batch_size(256)?;
@@ -191,7 +219,9 @@ fn demonstrate_partitioning_strategies(runtime: &DistributedRuntime) -> Result<(
 }
 
 #[cfg(feature = "distributed")]
-fn demonstrate_aggregation_strategies(runtime: &DistributedRuntime) -> Result<(), Box<dyn std::error::Error>> {
+fn demonstrate_aggregation_strategies(
+    runtime: &DistributedRuntime,
+) -> Result<(), Box<dyn std::error::Error>> {
     let strategies = vec![
         AggregationStrategy::AllReduce,
         AggregationStrategy::AsyncSGD,
@@ -203,8 +233,14 @@ fn demonstrate_aggregation_strategies(runtime: &DistributedRuntime) -> Result<()
     for (i, strategy) in strategies.iter().enumerate() {
         println!("   {}) {:?}:", (b'a' + i as u8) as char, strategy);
         println!("      - Synchronous: {}", strategy.is_synchronous());
-        println!("      - Communication: {}", strategy.communication_pattern());
-        println!("      - Needs coordinator: {}", strategy.needs_coordinator());
+        println!(
+            "      - Communication: {}",
+            strategy.communication_pattern()
+        );
+        println!(
+            "      - Needs coordinator: {}",
+            strategy.needs_coordinator()
+        );
     }
 
     Ok(())

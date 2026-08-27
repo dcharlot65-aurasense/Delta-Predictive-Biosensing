@@ -39,19 +39,14 @@
 //! ```
 
 use super::{Backend, GpuBuffer, GpuDevice, GpuError, GpuResult};
-use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "metal")]
 use metal::{
-    Device as MtlDevice,
-    MTLResourceOptions,
-    CommandQueue as MtlCommandQueue,
-    CommandBuffer as MtlCommandBuffer,
-    ComputeCommandEncoder as MtlComputeEncoder,
-    ComputePipelineState as MtlPipeline,
-    Library as MtlLibrary,
-    Buffer as MtlBuffer,
+    Buffer as MtlBuffer, CommandBuffer as MtlCommandBuffer, CommandQueue as MtlCommandQueue,
+    ComputeCommandEncoder as MtlComputeEncoder, ComputePipelineState as MtlPipeline,
+    Device as MtlDevice, Library as MtlLibrary, MTLResourceOptions,
 };
 
 /// Check if Metal is available on this system
@@ -81,7 +76,9 @@ pub fn list_metal_devices() -> GpuResult<Vec<(u32, String)>> {
     }
     #[cfg(not(feature = "metal"))]
     {
-        Err(GpuError::BackendNotAvailable("Metal feature not enabled".to_string()))
+        Err(GpuError::BackendNotAvailable(
+            "Metal feature not enabled".to_string(),
+        ))
     }
 }
 
@@ -106,8 +103,9 @@ impl MetalDevice {
         {
             let devices = MtlDevice::all();
             let mtl_device = if device_id == 0 {
-                MtlDevice::system_default()
-                    .ok_or_else(|| GpuError::BackendNotAvailable("No Metal device found".to_string()))?
+                MtlDevice::system_default().ok_or_else(|| {
+                    GpuError::BackendNotAvailable("No Metal device found".to_string())
+                })?
             } else {
                 devices
                     .get(device_id as usize)
@@ -129,7 +127,9 @@ impl MetalDevice {
         }
         #[cfg(not(feature = "metal"))]
         {
-            Err(GpuError::BackendNotAvailable("Metal feature not enabled".to_string()))
+            Err(GpuError::BackendNotAvailable(
+                "Metal feature not enabled".to_string(),
+            ))
         }
     }
 
@@ -143,15 +143,20 @@ impl MetalDevice {
 
     #[cfg(not(feature = "metal"))]
     pub fn create_command_queue(&self) -> GpuResult<Arc<MetalCommandQueue>> {
-        Err(GpuError::BackendNotAvailable("Metal feature not enabled".to_string()))
+        Err(GpuError::BackendNotAvailable(
+            "Metal feature not enabled".to_string(),
+        ))
     }
 
     /// Load Metal shader library from source
     #[cfg(feature = "metal")]
     pub fn load_library(&mut self, source: &str) -> GpuResult<()> {
-        let library = self.mtl_device
+        let library = self
+            .mtl_device
             .new_library_with_source(source, &metal::CompileOptions::new())
-            .map_err(|e| GpuError::BackendError(format!("Failed to compile Metal library: {}", e)))?;
+            .map_err(|e| {
+                GpuError::BackendError(format!("Failed to compile Metal library: {}", e))
+            })?;
         self.library = Some(library);
         Ok(())
     }
@@ -165,14 +170,17 @@ impl MetalDevice {
             return Ok(pipeline.clone());
         }
 
-        let library = self.library.as_ref()
+        let library = self
+            .library
+            .as_ref()
             .ok_or_else(|| GpuError::BackendError("No shader library loaded".to_string()))?;
 
-        let function = library
-            .get_function(function_name, None)
-            .map_err(|e| GpuError::BackendError(format!("Function {} not found: {}", function_name, e)))?;
+        let function = library.get_function(function_name, None).map_err(|e| {
+            GpuError::BackendError(format!("Function {} not found: {}", function_name, e))
+        })?;
 
-        let pipeline = self.mtl_device
+        let pipeline = self
+            .mtl_device
             .new_compute_pipeline_state_with_function(&function)
             .map_err(|e| GpuError::BackendError(format!("Failed to create pipeline: {}", e)))?;
 
@@ -217,8 +225,16 @@ impl MetalDevice {
             }
 
             // Set constants
-            encoder.set_bytes(3, std::mem::size_of::<f32>() as u64, &dt as *const f32 as *const _);
-            encoder.set_bytes(4, std::mem::size_of::<f32>() as u64, &threshold as *const f32 as *const _);
+            encoder.set_bytes(
+                3,
+                std::mem::size_of::<f32>() as u64,
+                &dt as *const f32 as *const _,
+            );
+            encoder.set_bytes(
+                4,
+                std::mem::size_of::<f32>() as u64,
+                &threshold as *const f32 as *const _,
+            );
 
             let threads_per_group = 256;
             let num_groups = (num_neurons + threads_per_group - 1) / threads_per_group;
@@ -244,7 +260,9 @@ impl MetalDevice {
         _threshold: f32,
         _command_buffer: &MetalCommandBuffer,
     ) -> GpuResult<()> {
-        Err(GpuError::BackendNotAvailable("Metal not available".to_string()))
+        Err(GpuError::BackendNotAvailable(
+            "Metal not available".to_string(),
+        ))
     }
 
     /// Launch STDP weight update kernel
@@ -289,9 +307,21 @@ impl MetalDevice {
             }
 
             // Set constants
-            encoder.set_bytes(4, std::mem::size_of::<f32>() as u64, &learning_rate as *const f32 as *const _);
-            encoder.set_bytes(5, std::mem::size_of::<f32>() as u64, &tau_plus as *const f32 as *const _);
-            encoder.set_bytes(6, std::mem::size_of::<f32>() as u64, &tau_minus as *const f32 as *const _);
+            encoder.set_bytes(
+                4,
+                std::mem::size_of::<f32>() as u64,
+                &learning_rate as *const f32 as *const _,
+            );
+            encoder.set_bytes(
+                5,
+                std::mem::size_of::<f32>() as u64,
+                &tau_plus as *const f32 as *const _,
+            );
+            encoder.set_bytes(
+                6,
+                std::mem::size_of::<f32>() as u64,
+                &tau_minus as *const f32 as *const _,
+            );
 
             let threads_per_group = 256;
             let num_groups = (num_synapses + threads_per_group - 1) / threads_per_group;
@@ -319,7 +349,9 @@ impl MetalDevice {
         _tau_minus: f32,
         _command_buffer: &MetalCommandBuffer,
     ) -> GpuResult<()> {
-        Err(GpuError::BackendNotAvailable("Metal not available".to_string()))
+        Err(GpuError::BackendNotAvailable(
+            "Metal not available".to_string(),
+        ))
     }
 
     /// Launch sparse matrix-vector multiplication
@@ -373,7 +405,9 @@ impl MetalDevice {
         _num_rows: usize,
         _command_buffer: &MetalCommandBuffer,
     ) -> GpuResult<()> {
-        Err(GpuError::BackendNotAvailable("Metal not available".to_string()))
+        Err(GpuError::BackendNotAvailable(
+            "Metal not available".to_string(),
+        ))
     }
 
     /// Launch reduction kernel
@@ -409,7 +443,11 @@ impl MetalDevice {
             }
 
             let n = num_elements as u32;
-            encoder.set_bytes(2, std::mem::size_of::<u32>() as u64, &n as *const u32 as *const _);
+            encoder.set_bytes(
+                2,
+                std::mem::size_of::<u32>() as u64,
+                &n as *const u32 as *const _,
+            );
 
             let threads_per_group = 256;
             let num_groups = (num_elements + threads_per_group - 1) / threads_per_group;
@@ -433,7 +471,9 @@ impl MetalDevice {
         _reduction_op: ReductionOp,
         _command_buffer: &MetalCommandBuffer,
     ) -> GpuResult<()> {
-        Err(GpuError::BackendNotAvailable("Metal not available".to_string()))
+        Err(GpuError::BackendNotAvailable(
+            "Metal not available".to_string(),
+        ))
     }
 }
 
@@ -454,7 +494,9 @@ impl GpuDevice for MetalDevice {
         }
         #[cfg(not(feature = "metal"))]
         {
-            Err(GpuError::BackendNotAvailable("Metal not available".to_string()))
+            Err(GpuError::BackendNotAvailable(
+                "Metal not available".to_string(),
+            ))
         }
     }
 
@@ -522,7 +564,9 @@ impl GpuDevice for MetalDevice {
                 src.as_any().downcast_ref::<MetalBuffer>(),
                 dst.as_any().downcast_ref::<MetalBuffer>(),
             ) {
-                if let (Some(ref src_mtl), Some(ref dst_mtl)) = (&s_buf.mtl_buffer, &d_buf.mtl_buffer) {
+                if let (Some(ref src_mtl), Some(ref dst_mtl)) =
+                    (&s_buf.mtl_buffer, &d_buf.mtl_buffer)
+                {
                     // Use blit encoder for device-to-device copy
                     let cmd_buf = self.command_queue.new_command_buffer();
                     if let Some(encoder) = cmd_buf.new_blit_command_encoder() {
@@ -611,7 +655,9 @@ impl MetalCommandQueue {
 
     #[cfg(not(feature = "metal"))]
     pub fn create_command_buffer(&self) -> GpuResult<MetalCommandBuffer> {
-        Err(GpuError::BackendNotAvailable("Metal not available".to_string()))
+        Err(GpuError::BackendNotAvailable(
+            "Metal not available".to_string(),
+        ))
     }
 }
 
@@ -631,7 +677,9 @@ impl MetalCommandBuffer {
 
     #[cfg(not(feature = "metal"))]
     pub fn commit(&self) -> GpuResult<()> {
-        Err(GpuError::BackendNotAvailable("Metal not available".to_string()))
+        Err(GpuError::BackendNotAvailable(
+            "Metal not available".to_string(),
+        ))
     }
 
     /// Wait for command buffer to complete
@@ -643,7 +691,9 @@ impl MetalCommandBuffer {
 
     #[cfg(not(feature = "metal"))]
     pub fn wait_until_completed(&self) -> GpuResult<()> {
-        Err(GpuError::BackendNotAvailable("Metal not available".to_string()))
+        Err(GpuError::BackendNotAvailable(
+            "Metal not available".to_string(),
+        ))
     }
 }
 
@@ -668,10 +718,7 @@ impl MetalBuffer {
     #[cfg(feature = "metal")]
     fn new(device: &MtlDevice, size: usize, device_id: u32) -> GpuResult<Self> {
         // Use shared storage mode for unified memory on Apple Silicon
-        let mtl_buffer = device.new_buffer(
-            size as u64,
-            MTLResourceOptions::StorageModeShared,
-        );
+        let mtl_buffer = device.new_buffer(size as u64, MTLResourceOptions::StorageModeShared);
 
         Ok(MetalBuffer {
             size,
@@ -682,7 +729,9 @@ impl MetalBuffer {
 
     #[cfg(not(feature = "metal"))]
     fn new(_size: usize, _device_id: u32) -> GpuResult<Self> {
-        Err(GpuError::BackendNotAvailable("Metal not available".to_string()))
+        Err(GpuError::BackendNotAvailable(
+            "Metal not available".to_string(),
+        ))
     }
 }
 
@@ -757,7 +806,9 @@ impl MetalMemoryPool {
 
     #[cfg(not(feature = "metal"))]
     fn allocate(&mut self, _size: usize, _device_id: u32) -> GpuResult<Arc<dyn GpuBuffer>> {
-        Err(GpuError::BackendNotAvailable("Metal not available".to_string()))
+        Err(GpuError::BackendNotAvailable(
+            "Metal not available".to_string(),
+        ))
     }
 
     #[allow(dead_code)]

@@ -1,9 +1,9 @@
 //! Aggregation strategies for federated learning.
 
 use crate::{
+    FederatedError, Result,
     config::AggregationStrategy,
     model::{ModelUpdate, ParameterDelta, Tensor},
-    FederatedError, Result,
 };
 use std::collections::HashMap;
 
@@ -63,9 +63,10 @@ impl Aggregator for FedAvg {
             let tensors: Vec<(&Tensor, f32)> = updates
                 .iter()
                 .filter_map(|u| {
-                    u.delta.changes.get(name).map(|t| {
-                        (t, u.num_samples as f32 / total_samples as f32)
-                    })
+                    u.delta
+                        .changes
+                        .get(name)
+                        .map(|t| (t, u.num_samples as f32 / total_samples as f32))
                 })
                 .collect();
 

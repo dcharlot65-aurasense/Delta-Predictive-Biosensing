@@ -511,30 +511,26 @@ impl XdfFile {
 
                     let value = match stream.info.channel_format {
                         ChannelFormat::Float32 => {
-                            let v = f32::from_le_bytes(
-                                data[offset..offset + 4].try_into().unwrap(),
-                            );
+                            let v =
+                                f32::from_le_bytes(data[offset..offset + 4].try_into().unwrap());
                             offset += 4;
                             v as f64
                         }
                         ChannelFormat::Float64 => {
-                            let v = f64::from_le_bytes(
-                                data[offset..offset + 8].try_into().unwrap(),
-                            );
+                            let v =
+                                f64::from_le_bytes(data[offset..offset + 8].try_into().unwrap());
                             offset += 8;
                             v
                         }
                         ChannelFormat::Int16 => {
-                            let v = i16::from_le_bytes(
-                                data[offset..offset + 2].try_into().unwrap(),
-                            );
+                            let v =
+                                i16::from_le_bytes(data[offset..offset + 2].try_into().unwrap());
                             offset += 2;
                             v as f64
                         }
                         ChannelFormat::Int32 => {
-                            let v = i32::from_le_bytes(
-                                data[offset..offset + 4].try_into().unwrap(),
-                            );
+                            let v =
+                                i32::from_le_bytes(data[offset..offset + 4].try_into().unwrap());
                             offset += 4;
                             v as f64
                         }
@@ -670,7 +666,11 @@ impl XdfWriter {
         let header_xml = format!(
             "<info><name>{}</name><type>{}</type><channel_count>{}</channel_count>\
              <nominal_srate>{}</nominal_srate><channel_format>{:?}</channel_format></info>",
-            info.name, info.stream_type, info.channel_count, info.nominal_srate, info.channel_format
+            info.name,
+            info.stream_type,
+            info.channel_count,
+            info.nominal_srate,
+            info.channel_format
         );
 
         let chunk_data_len = 4 + header_xml.len();
@@ -787,12 +787,7 @@ mod tests {
 
     #[test]
     fn test_marker_stream() {
-        let info = XdfStreamInfo::new(
-            "Events".to_string(),
-            "Markers".to_string(),
-            1,
-            0.0,
-        );
+        let info = XdfStreamInfo::new("Events".to_string(), "Markers".to_string(), 1, 0.0);
 
         assert!(info.is_marker_stream());
         assert!(!info.is_regular_stream());

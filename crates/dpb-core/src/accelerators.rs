@@ -145,10 +145,18 @@ pub trait Accelerator: Send + Sync {
     fn allocate(&self, size_bytes: usize) -> Result<AcceleratorBuffer, AcceleratorError>;
 
     /// Copy data to accelerator.
-    fn copy_to_device(&self, buffer: &mut AcceleratorBuffer, data: &[f32]) -> Result<(), AcceleratorError>;
+    fn copy_to_device(
+        &self,
+        buffer: &mut AcceleratorBuffer,
+        data: &[f32],
+    ) -> Result<(), AcceleratorError>;
 
     /// Copy data from accelerator.
-    fn copy_from_device(&self, buffer: &AcceleratorBuffer, data: &mut [f32]) -> Result<(), AcceleratorError>;
+    fn copy_from_device(
+        &self,
+        buffer: &AcceleratorBuffer,
+        data: &mut [f32],
+    ) -> Result<(), AcceleratorError>;
 
     /// Execute a compute operation.
     fn execute(&self, operation: &AcceleratorOperation) -> Result<(), AcceleratorError>;
@@ -277,8 +285,15 @@ impl fmt::Display for AcceleratorError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AcceleratorError::NotAvailable(msg) => write!(f, "Accelerator not available: {}", msg),
-            AcceleratorError::OutOfMemory { requested, available } => {
-                write!(f, "Out of memory: requested {} bytes, {} available", requested, available)
+            AcceleratorError::OutOfMemory {
+                requested,
+                available,
+            } => {
+                write!(
+                    f,
+                    "Out of memory: requested {} bytes, {} available",
+                    requested, available
+                )
             }
             AcceleratorError::InvalidOperation(msg) => write!(f, "Invalid operation: {}", msg),
             AcceleratorError::DriverError(msg) => write!(f, "Driver error: {}", msg),
@@ -313,7 +328,16 @@ impl CpuAccelerator {
         Self {
             capabilities: AcceleratorCapabilities {
                 accelerator_type: accel_type,
-                name: format!("CPU {}", if has_avx512 { "(AVX-512)" } else if has_avx2 { "(AVX2)" } else { "" }),
+                name: format!(
+                    "CPU {}",
+                    if has_avx512 {
+                        "(AVX-512)"
+                    } else if has_avx2 {
+                        "(AVX2)"
+                    } else {
+                        ""
+                    }
+                ),
                 memory_bytes: get_system_memory(),
                 compute_units: num_cpus(),
                 max_workgroup_size: 1,
@@ -349,34 +373,52 @@ impl Accelerator for CpuAccelerator {
     }
 
     fn allocate(&self, size_bytes: usize) -> Result<AcceleratorBuffer, AcceleratorError> {
-        let id = self.next_buffer_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let id = self
+            .next_buffer_id
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let num_floats = size_bytes / 4;
 
         let mut buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         buffers.insert(id, vec![0.0; num_floats]);
 
-        Ok(AcceleratorBuffer::new(id, size_bytes, self.capabilities.accelerator_type))
+        Ok(AcceleratorBuffer::new(
+            id,
+            size_bytes,
+            self.capabilities.accelerator_type,
+        ))
     }
 
-    fn copy_to_device(&self, buffer: &mut AcceleratorBuffer, data: &[f32]) -> Result<(), AcceleratorError> {
+    fn copy_to_device(
+        &self,
+        buffer: &mut AcceleratorBuffer,
+        data: &[f32],
+    ) -> Result<(), AcceleratorError> {
         let mut buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         if let Some(buf) = buffers.get_mut(&buffer.id) {
             let len = data.len().min(buf.len());
             buf[..len].copy_from_slice(&data[..len]);
             Ok(())
         } else {
-            Err(AcceleratorError::InvalidOperation("Buffer not found".to_string()))
+            Err(AcceleratorError::InvalidOperation(
+                "Buffer not found".to_string(),
+            ))
         }
     }
 
-    fn copy_from_device(&self, buffer: &AcceleratorBuffer, data: &mut [f32]) -> Result<(), AcceleratorError> {
+    fn copy_from_device(
+        &self,
+        buffer: &AcceleratorBuffer,
+        data: &mut [f32],
+    ) -> Result<(), AcceleratorError> {
         let buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         if let Some(buf) = buffers.get(&buffer.id) {
             let len = data.len().min(buf.len());
             data[..len].copy_from_slice(&buf[..len]);
             Ok(())
         } else {
-            Err(AcceleratorError::InvalidOperation("Buffer not found".to_string()))
+            Err(AcceleratorError::InvalidOperation(
+                "Buffer not found".to_string(),
+            ))
         }
     }
 
@@ -386,13 +428,18 @@ impl Accelerator for CpuAccelerator {
         match operation.op_type {
             OperationType::LevelCrossing => {
                 // Get input and output buffers
-                let input_id = operation.inputs.first()
-                    .ok_or_else(|| AcceleratorError::InvalidOperation("No input buffer".to_string()))?;
-                let output_id = operation.outputs.first()
-                    .ok_or_else(|| AcceleratorError::InvalidOperation("No output buffer".to_string()))?;
+                let input_id = operation.inputs.first().ok_or_else(|| {
+                    AcceleratorError::InvalidOperation("No input buffer".to_string())
+                })?;
+                let output_id = operation.outputs.first().ok_or_else(|| {
+                    AcceleratorError::InvalidOperation("No output buffer".to_string())
+                })?;
 
-                let input = buffers.get(input_id)
-                    .ok_or_else(|| AcceleratorError::InvalidOperation("Input buffer not found".to_string()))?
+                let input = buffers
+                    .get(input_id)
+                    .ok_or_else(|| {
+                        AcceleratorError::InvalidOperation("Input buffer not found".to_string())
+                    })?
                     .clone();
 
                 let num_channels = operation.params.num_channels;
@@ -418,9 +465,10 @@ impl Accelerator for CpuAccelerator {
                 }
             }
             _ => {
-                return Err(AcceleratorError::Unsupported(
-                    format!("Operation {:?} not implemented", operation.op_type)
-                ));
+                return Err(AcceleratorError::Unsupported(format!(
+                    "Operation {:?} not implemented",
+                    operation.op_type
+                )));
             }
         }
 
@@ -550,9 +598,10 @@ mod tests {
         let accelerators = detect_accelerators();
         assert!(!accelerators.is_empty());
         // Should at least have CPU
-        assert!(accelerators.iter().any(|a|
-            matches!(a.accelerator_type(), AcceleratorType::Cpu | AcceleratorType::CpuSimd)
-        ));
+        assert!(accelerators.iter().any(|a| matches!(
+            a.accelerator_type(),
+            AcceleratorType::Cpu | AcceleratorType::CpuSimd
+        )));
     }
 
     #[test]
@@ -564,7 +613,10 @@ mod tests {
     #[test]
     fn test_accelerator_type_display() {
         assert_eq!(format!("{}", AcceleratorType::IntelGaudi), "Intel Gaudi");
-        assert_eq!(format!("{}", AcceleratorType::GraphcoreIpu), "Graphcore IPU");
+        assert_eq!(
+            format!("{}", AcceleratorType::GraphcoreIpu),
+            "Graphcore IPU"
+        );
     }
 
     #[test]

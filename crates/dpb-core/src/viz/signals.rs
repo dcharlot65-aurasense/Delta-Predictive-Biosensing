@@ -1,6 +1,9 @@
 //! Signal visualization utilities.
 
-use super::{colors, export::{JsonBuilder, SvgBuilder}, PlotConfig, Visualization};
+use super::{
+    PlotConfig, Visualization, colors,
+    export::{JsonBuilder, SvgBuilder},
+};
 
 /// Time series waveform plot.
 pub struct SignalPlot {
@@ -88,7 +91,10 @@ impl Visualization for SignalPlot {
         let mut json = JsonBuilder::new();
         json.add_string("type", "SignalPlot")
             .add_number("sample_rate", self.sample_rate)
-            .add_number_array("data", &self.data.iter().map(|&x| x as f64).collect::<Vec<_>>())
+            .add_number_array(
+                "data",
+                &self.data.iter().map(|&x| x as f64).collect::<Vec<_>>(),
+            )
             .add_int("num_samples", self.data.len() as i64);
         json.build()
     }
@@ -197,7 +203,14 @@ impl Visualization for SpectrogramPlot {
             .add_number("sample_rate", self.sample_rate)
             .add_number_array_2d("data", &data_2d)
             .add_int("time_bins", self.data.len() as i64)
-            .add_int("freq_bins", if self.data.is_empty() { 0 } else { self.data[0].len() as i64 });
+            .add_int(
+                "freq_bins",
+                if self.data.is_empty() {
+                    0
+                } else {
+                    self.data[0].len() as i64
+                },
+            );
         json.build()
     }
 
@@ -229,7 +242,11 @@ impl MultiChannelPlot {
     }
 
     /// Creates a new multi-channel plot with channel names.
-    pub fn with_names(channels: Vec<Vec<f32>>, sample_rate: f64, channel_names: Vec<String>) -> Self {
+    pub fn with_names(
+        channels: Vec<Vec<f32>>,
+        sample_rate: f64,
+        channel_names: Vec<String>,
+    ) -> Self {
         Self {
             channels,
             sample_rate,
@@ -279,7 +296,9 @@ impl Visualization for MultiChannelPlot {
         svg.axes(margin, &self.config);
 
         // Plot channels
-        let colors_palette = ["#2563eb", "#dc2626", "#16a34a", "#ca8a04", "#9333ea", "#0891b2"];
+        let colors_palette = [
+            "#2563eb", "#dc2626", "#16a34a", "#ca8a04", "#9333ea", "#0891b2",
+        ];
 
         for (ch_idx, channel) in self.channels.iter().enumerate() {
             if !channel.is_empty() {
@@ -472,7 +491,10 @@ impl Visualization for AnnotatedSignalPlot {
 
         json.add_string("type", "AnnotatedSignalPlot")
             .add_number("sample_rate", self.sample_rate)
-            .add_number_array("data", &self.data.iter().map(|&x| x as f64).collect::<Vec<_>>())
+            .add_number_array(
+                "data",
+                &self.data.iter().map(|&x| x as f64).collect::<Vec<_>>(),
+            )
             .add_raw("events", &events_json);
         json.build()
     }
@@ -521,10 +543,7 @@ mod tests {
 
     #[test]
     fn test_multi_channel_plot() {
-        let channels = vec![
-            vec![0.0, 1.0, 0.5],
-            vec![1.0, 0.5, 0.0],
-        ];
+        let channels = vec![vec![0.0, 1.0, 0.5], vec![1.0, 0.5, 0.0]];
         let plot = MultiChannelPlot::new(channels, 1000.0);
         assert_eq!(plot.name(), "MultiChannelPlot");
 

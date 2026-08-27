@@ -1,6 +1,6 @@
 //! Articulation generators (vowel space, formant transitions, consonant precision)
 
-use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
+use crate::traits::{Event, GeneratedData, SyntheticGenerator, TimeSeriesGroundTruth};
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
@@ -17,9 +17,9 @@ pub struct VowelSpaceParams {
 
 #[derive(Debug, Clone)]
 pub enum VowelType {
-    CornerVowels,  // /i/, /a/, /u/ (maximum contrast)
-    AllVowels,     // Full vowel space
-    Reduced,       // Centralized vowels (schwa region)
+    CornerVowels, // /i/, /a/, /u/ (maximum contrast)
+    AllVowels,    // Full vowel space
+    Reduced,      // Centralized vowels (schwa region)
 }
 
 impl SyntheticGenerator for VowelSpaceGenerator {
@@ -27,7 +27,11 @@ impl SyntheticGenerator for VowelSpaceGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = VowelSpaceParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -35,21 +39,21 @@ impl SyntheticGenerator for VowelSpaceGenerator {
         // Canonical formant values for vowels (adult male averages)
         let canonical_vowels = match params.vowel_type {
             VowelType::CornerVowels => vec![
-                (270.0, 2290.0),  // /i/ (high front)
-                (730.0, 1090.0),  // /a/ (low central)
-                (300.0, 870.0),   // /u/ (high back)
+                (270.0, 2290.0), // /i/ (high front)
+                (730.0, 1090.0), // /a/ (low central)
+                (300.0, 870.0),  // /u/ (high back)
             ],
             VowelType::AllVowels => vec![
-                (270.0, 2290.0),  // /i/
-                (390.0, 1990.0),  // /e/
-                (610.0, 1900.0),  // /ɛ/
-                (730.0, 1090.0),  // /a/
-                (570.0, 840.0),   // /ɔ/
-                (440.0, 1020.0),  // /o/
-                (300.0, 870.0),   // /u/
+                (270.0, 2290.0), // /i/
+                (390.0, 1990.0), // /e/
+                (610.0, 1900.0), // /ɛ/
+                (730.0, 1090.0), // /a/
+                (570.0, 840.0),  // /ɔ/
+                (440.0, 1020.0), // /o/
+                (300.0, 870.0),  // /u/
             ],
             VowelType::Reduced => vec![
-                (500.0, 1500.0),  // schwa region
+                (500.0, 1500.0), // schwa region
                 (480.0, 1450.0),
                 (520.0, 1550.0),
             ],
@@ -60,7 +64,9 @@ impl SyntheticGenerator for VowelSpaceGenerator {
 
         for _ in 0..params.num_vowels {
             // Select random canonical vowel
-            let &(f1_base, f2_base) = canonical_vowels.get(rng.random_range(0..canonical_vowels.len())).unwrap();
+            let &(f1_base, f2_base) = canonical_vowels
+                .get(rng.random_range(0..canonical_vowels.len()))
+                .unwrap();
 
             // Add variability
             let f1 = (f1_base + noise_dist.sample(&mut rng)).max(200.0);
@@ -73,10 +79,10 @@ impl SyntheticGenerator for VowelSpaceGenerator {
         let f1_values: Vec<f64> = vowel_points.iter().map(|(f1, _)| *f1).collect();
         let f2_values: Vec<f64> = vowel_points.iter().map(|(_, f2)| *f2).collect();
 
-        let f1_range = f1_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max) -
-                       f1_values.iter().cloned().fold(f64::INFINITY, f64::min);
-        let f2_range = f2_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max) -
-                       f2_values.iter().cloned().fold(f64::INFINITY, f64::min);
+        let f1_range = f1_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max)
+            - f1_values.iter().cloned().fold(f64::INFINITY, f64::min);
+        let f2_range = f2_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max)
+            - f2_values.iter().cloned().fold(f64::INFINITY, f64::min);
         let vowel_space_area = f1_range * f2_range;
 
         let mut gt_params = HashMap::new();
@@ -103,10 +109,14 @@ impl SyntheticGenerator for VowelSpaceGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.num_vowels == 0 {
-            return Err(crate::GeneratorError::InvalidParameter("num_vowels must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "num_vowels must be positive".to_string(),
+            ));
         }
         if params.variability < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("variability must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "variability must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -129,7 +139,11 @@ impl SyntheticGenerator for VowelCentralizationGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = VowelCentralizationParams;
 
-    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        _seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -144,8 +158,10 @@ impl SyntheticGenerator for VowelCentralizationGenerator {
             let progress = i as f64 / n_samples as f64;
 
             // Linear interpolation towards schwa
-            let f1 = params.initial_f1 + params.centralization_degree * progress * (schwa_f1 - params.initial_f1);
-            let f2 = params.initial_f2 + params.centralization_degree * progress * (schwa_f2 - params.initial_f2);
+            let f1 = params.initial_f1
+                + params.centralization_degree * progress * (schwa_f1 - params.initial_f1);
+            let f2 = params.initial_f2
+                + params.centralization_degree * progress * (schwa_f2 - params.initial_f2);
 
             trajectory.push((f1, f2));
         }
@@ -158,7 +174,10 @@ impl SyntheticGenerator for VowelCentralizationGenerator {
         gt_params.insert("initial_f2".to_string(), params.initial_f2);
         gt_params.insert("final_f1".to_string(), final_f1);
         gt_params.insert("final_f2".to_string(), final_f2);
-        gt_params.insert("centralization_degree".to_string(), params.centralization_degree);
+        gt_params.insert(
+            "centralization_degree".to_string(),
+            params.centralization_degree,
+        );
 
         let ground_truth = TimeSeriesGroundTruth {
             parameters: gt_params,
@@ -166,14 +185,18 @@ impl SyntheticGenerator for VowelCentralizationGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(trajectory, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            trajectory,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
         VowelCentralizationParams {
             duration: 0.5,
             sampling_rate: 100.0,
-            initial_f1: 730.0,  // /a/
+            initial_f1: 730.0, // /a/
             initial_f2: 1090.0,
             centralization_degree: 0.7,
         }
@@ -181,10 +204,14 @@ impl SyntheticGenerator for VowelCentralizationGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.centralization_degree < 0.0 || params.centralization_degree > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("centralization_degree must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "centralization_degree must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -199,8 +226,8 @@ pub struct FormantTransitionParams {
     pub sampling_rate: f64,
     pub start_formants: Vec<f64>, // F1, F2, F3
     pub end_formants: Vec<f64>,
-    pub transition_rate: f64,   // 0-1 (1 = instantaneous, 0 = slow)
-    pub smoothness: f64,        // 0-1 (1 = smooth, 0 = abrupt)
+    pub transition_rate: f64, // 0-1 (1 = instantaneous, 0 = slow)
+    pub smoothness: f64,      // 0-1 (1 = smooth, 0 = abrupt)
 }
 
 impl SyntheticGenerator for FormantTransitionGenerator {
@@ -208,7 +235,11 @@ impl SyntheticGenerator for FormantTransitionGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = FormantTransitionParams;
 
-    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        _seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -256,15 +287,19 @@ impl SyntheticGenerator for FormantTransitionGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(trajectory, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            trajectory,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
         FormantTransitionParams {
             duration: 0.15,
             sampling_rate: 1000.0,
-            start_formants: vec![270.0, 2290.0, 3010.0],  // /i/
-            end_formants: vec![730.0, 1090.0, 2440.0],    // /a/
+            start_formants: vec![270.0, 2290.0, 3010.0], // /i/
+            end_formants: vec![730.0, 1090.0, 2440.0],   // /a/
             transition_rate: 0.7,
             smoothness: 0.8,
         }
@@ -272,16 +307,24 @@ impl SyntheticGenerator for FormantTransitionGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.start_formants.len() != params.end_formants.len() {
-            return Err(crate::GeneratorError::InvalidParameter("start and end formants must have same length".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "start and end formants must have same length".to_string(),
+            ));
         }
         if params.transition_rate < 0.0 || params.transition_rate > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("transition_rate must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "transition_rate must be 0-1".to_string(),
+            ));
         }
         if params.smoothness < 0.0 || params.smoothness > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("smoothness must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "smoothness must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -303,7 +346,11 @@ impl SyntheticGenerator for DiadochokinesisGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = DiadochokinesisParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -337,11 +384,16 @@ impl SyntheticGenerator for DiadochokinesisGenerator {
         let actual_rate = syllable_events.len() as f64 / params.duration;
 
         // Calculate regularity (coefficient of variation)
-        let intervals: Vec<f64> = syllable_events.windows(2)
+        let intervals: Vec<f64> = syllable_events
+            .windows(2)
             .map(|w| w[1].0 - w[0].0)
             .collect();
         let mean_interval = intervals.iter().sum::<f64>() / intervals.len() as f64;
-        let variance = intervals.iter().map(|&i| (i - mean_interval).powi(2)).sum::<f64>() / intervals.len() as f64;
+        let variance = intervals
+            .iter()
+            .map(|&i| (i - mean_interval).powi(2))
+            .sum::<f64>()
+            / intervals.len() as f64;
         let cv = variance.sqrt() / mean_interval;
 
         let mut gt_params = HashMap::new();
@@ -370,16 +422,24 @@ impl SyntheticGenerator for DiadochokinesisGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.syllable_sequence.is_empty() {
-            return Err(crate::GeneratorError::InvalidParameter("syllable_sequence cannot be empty".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "syllable_sequence cannot be empty".to_string(),
+            ));
         }
         if params.target_rate <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("target_rate must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "target_rate must be positive".to_string(),
+            ));
         }
         if params.regularity < 0.0 || params.regularity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("regularity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "regularity must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -391,15 +451,15 @@ pub struct ConsonantPrecisionGenerator;
 #[derive(Debug, Clone)]
 pub struct ConsonantPrecisionParams {
     pub num_consonants: usize,
-    pub precision: f64,       // 0-1 (1 = perfect, 0 = imprecise)
+    pub precision: f64, // 0-1 (1 = perfect, 0 = imprecise)
     pub consonant_type: ConsonantClass,
 }
 
 #[derive(Debug, Clone)]
 pub enum ConsonantClass {
-    Plosives,    // /p/, /t/, /k/
-    Fricatives,  // /f/, /s/, /ʃ/
-    Affricates,  // /tʃ/, /dʒ/
+    Plosives,   // /p/, /t/, /k/
+    Fricatives, // /f/, /s/, /ʃ/
+    Affricates, // /tʃ/, /dʒ/
 }
 
 impl SyntheticGenerator for ConsonantPrecisionGenerator {
@@ -407,16 +467,20 @@ impl SyntheticGenerator for ConsonantPrecisionGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = ConsonantPrecisionParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         // Define target features for consonant types
         let (target_burst_duration, target_frication_intensity) = match params.consonant_type {
-            ConsonantClass::Plosives => (15.0, 0.0),      // short burst, no frication
-            ConsonantClass::Fricatives => (0.0, 70.0),    // no burst, high frication
-            ConsonantClass::Affricates => (10.0, 60.0),   // burst + frication
+            ConsonantClass::Plosives => (15.0, 0.0), // short burst, no frication
+            ConsonantClass::Fricatives => (0.0, 70.0), // no burst, high frication
+            ConsonantClass::Affricates => (10.0, 60.0), // burst + frication
         };
 
         let imprecision = 1.0 - params.precision;
@@ -427,10 +491,12 @@ impl SyntheticGenerator for ConsonantPrecisionGenerator {
 
         for _ in 0..params.num_consonants {
             let burst_duration = (target_burst_duration + burst_noise.sample(&mut rng)).max(0.0);
-            let frication_intensity = (target_frication_intensity + frication_noise.sample(&mut rng)).max(0.0);
+            let frication_intensity =
+                (target_frication_intensity + frication_noise.sample(&mut rng)).max(0.0);
 
             // Closure duration also affected by precision
-            let closure_duration = 50.0 + (1.0 - params.precision) * 30.0 * rng.random_range(-1.0..1.0);
+            let closure_duration =
+                50.0 + (1.0 - params.precision) * 30.0 * rng.random_range(-1.0..1.0);
 
             consonant_features.push(ConsonantFeatures {
                 burst_duration,
@@ -440,8 +506,18 @@ impl SyntheticGenerator for ConsonantPrecisionGenerator {
         }
 
         // Calculate precision metrics
-        let burst_cv = Self::coefficient_of_variation(&consonant_features.iter().map(|c| c.burst_duration).collect::<Vec<_>>());
-        let frication_cv = Self::coefficient_of_variation(&consonant_features.iter().map(|c| c.frication_intensity).collect::<Vec<_>>());
+        let burst_cv = Self::coefficient_of_variation(
+            &consonant_features
+                .iter()
+                .map(|c| c.burst_duration)
+                .collect::<Vec<_>>(),
+        );
+        let frication_cv = Self::coefficient_of_variation(
+            &consonant_features
+                .iter()
+                .map(|c| c.frication_intensity)
+                .collect::<Vec<_>>(),
+        );
 
         let mut gt_params = HashMap::new();
         gt_params.insert("target_precision".to_string(), params.precision);
@@ -467,10 +543,14 @@ impl SyntheticGenerator for ConsonantPrecisionGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.num_consonants == 0 {
-            return Err(crate::GeneratorError::InvalidParameter("num_consonants must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "num_consonants must be positive".to_string(),
+            ));
         }
         if params.precision < 0.0 || params.precision > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("precision must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "precision must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -485,7 +565,8 @@ impl ConsonantPrecisionGenerator {
         if mean == 0.0 {
             return 0.0;
         }
-        let variance = values.iter().map(|&v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
+        let variance =
+            values.iter().map(|&v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
         variance.sqrt() / mean
     }
 }
@@ -514,7 +595,10 @@ mod tests {
         let generator = VowelCentralizationGenerator;
         let params = VowelCentralizationGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -522,7 +606,10 @@ mod tests {
         let generator = FormantTransitionGenerator;
         let params = FormantTransitionGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]

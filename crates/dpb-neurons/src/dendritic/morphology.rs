@@ -263,10 +263,7 @@ impl MorphologyData {
         let mut children_map: HashMap<i32, Vec<usize>> = HashMap::new();
         for point in &self.points {
             if point.parent >= 0 {
-                children_map
-                    .entry(point.parent)
-                    .or_default()
-                    .push(point.id);
+                children_map.entry(point.parent).or_default().push(point.id);
             }
         }
 
@@ -341,8 +338,10 @@ impl DendriticTree {
 
         for (idx, point) in morphology.points.iter().enumerate() {
             let length = if point.parent >= 0 {
-                if let Some(parent) =
-                    morphology.points.iter().find(|p| p.id == point.parent as usize)
+                if let Some(parent) = morphology
+                    .points
+                    .iter()
+                    .find(|p| p.id == point.parent as usize)
                 {
                     point.distance_to(parent)
                 } else {

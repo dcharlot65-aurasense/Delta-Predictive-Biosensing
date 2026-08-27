@@ -120,11 +120,8 @@ impl ContinuousPerformanceTest {
 
         let rt_variability = if hit_rts.len() > 1 {
             let mean = hit_rt;
-            let variance = hit_rts
-                .iter()
-                .map(|&rt| (rt - mean).powi(2))
-                .sum::<f64>()
-                / hit_rts.len() as f64;
+            let variance =
+                hit_rts.iter().map(|&rt| (rt - mean).powi(2)).sum::<f64>() / hit_rts.len() as f64;
             variance.sqrt()
         } else {
             0.0
@@ -276,13 +273,14 @@ impl StroopTask {
             let is_correct = response.response.to_lowercase() == trial.color.to_lowercase();
 
             if let Some(rt) = response.response_time
-                && is_correct {
-                    match trial.condition {
-                        StroopCondition::Congruent => congruent_rts.push(rt),
-                        StroopCondition::Incongruent => incongruent_rts.push(rt),
-                        StroopCondition::Neutral => neutral_rts.push(rt),
-                    }
+                && is_correct
+            {
+                match trial.condition {
+                    StroopCondition::Congruent => congruent_rts.push(rt),
+                    StroopCondition::Incongruent => incongruent_rts.push(rt),
+                    StroopCondition::Neutral => neutral_rts.push(rt),
                 }
+            }
 
             if !is_correct {
                 let idx = match trial.condition {
@@ -479,7 +477,10 @@ mod tests {
     fn test_trail_making_sequences() {
         let tmt_a = TrailMakingTest::new(TrailPart::A, 10);
         let seq_a = tmt_a.generate_sequence();
-        assert_eq!(seq_a, vec!["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]);
+        assert_eq!(
+            seq_a,
+            vec!["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+        );
 
         let tmt_b = TrailMakingTest::new(TrailPart::B, 8);
         let seq_b = tmt_b.generate_sequence();

@@ -75,8 +75,7 @@ pub struct TapOnsetEncoder;
 impl TapOnsetEncoder {
     /// Creates a new [`TapOnsetEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }
 
@@ -243,8 +242,8 @@ impl EventEncoder for TapFrequencyEncoder {
         // Calculate frequency over windows
         for i in config.window_size..taps.len() {
             let window_taps = &taps[i - config.window_size..i];
-            let duration = window_taps.last().unwrap().timestamp
-                - window_taps.first().unwrap().timestamp;
+            let duration =
+                window_taps.last().unwrap().timestamp - window_taps.first().unwrap().timestamp;
 
             if duration > 0.0 {
                 let frequency = window_taps.len() as f64 / duration;
@@ -342,7 +341,6 @@ impl EventEncoder for TapDecrementEncoder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     #[test]
     fn test_tapping_frequency_template() {

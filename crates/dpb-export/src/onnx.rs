@@ -88,7 +88,7 @@ impl OnnxExporter {
         // Define input: [batch_size, channels, sequence_length]
         model.add_input(OnnxTensor {
             name: "input".to_string(),
-            elem_type: 1, // FLOAT
+            elem_type: 1,                                    // FLOAT
             shape: vec![-1, params.num_channels as i64, -1], // Dynamic batch and sequence
         });
 
@@ -204,9 +204,17 @@ impl OnnxExporter {
     /// A spike wherever the sample-to-sample change leaves the +/- threshold
     /// band. Comparing the raw sample against the threshold instead would be a
     /// level *detector*, which is a different thing.
-    fn add_level_crossing_nodes(&self, model: &mut OnnxModel, params: &EncoderParams) -> Result<()> {
+    fn add_level_crossing_nodes(
+        &self,
+        model: &mut OnnxModel,
+        params: &EncoderParams,
+    ) -> Result<()> {
         let threshold = params.thresholds.first().copied().unwrap_or(0.1);
-        model.add_initializer(OnnxInitializer::float("threshold", vec![1], vec![threshold]));
+        model.add_initializer(OnnxInitializer::float(
+            "threshold",
+            vec![1],
+            vec![threshold],
+        ));
         model.add_initializer(OnnxInitializer::float(
             "neg_threshold",
             vec![1],
@@ -239,10 +247,7 @@ impl OnnxExporter {
         model.add_node(OnnxNode {
             name: "combine_crossings".to_string(),
             op_type: "Or".to_string(),
-            inputs: vec![
-                "above_threshold".to_string(),
-                "below_threshold".to_string(),
-            ],
+            inputs: vec!["above_threshold".to_string(), "below_threshold".to_string()],
             outputs: vec!["crossings".to_string()],
             attributes: vec![],
         });
@@ -297,10 +302,7 @@ impl OnnxExporter {
         model.add_node(OnnxNode {
             name: "apply_mask".to_string(),
             op_type: "Mul".to_string(),
-            inputs: vec![
-                "spike_mask_float".to_string(),
-                "spike_polarity".to_string(),
-            ],
+            inputs: vec!["spike_mask_float".to_string(), "spike_polarity".to_string()],
             outputs: vec!["spikes".to_string()],
             attributes: vec![],
         });
@@ -397,14 +399,19 @@ pub struct OnnxExporter {
 #[cfg(not(feature = "onnx"))]
 impl OnnxExporter {
     pub fn new(metadata: ModelMetadata) -> Self {
-        Self { _metadata: metadata }
+        Self {
+            _metadata: metadata,
+        }
     }
 
-    pub fn export<E: ExportableEncoder>(&self, _path: impl AsRef<Path>, _encoder: &E) -> Result<()> {
+    pub fn export<E: ExportableEncoder>(
+        &self,
+        _path: impl AsRef<Path>,
+        _encoder: &E,
+    ) -> Result<()> {
         Err(ExportError::FeatureNotEnabled("onnx".to_string()))
     }
 }
-
 
 // =============================================================================
 // Protobuf serialisation

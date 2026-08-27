@@ -3,10 +3,10 @@
 //! This module provides C-compatible functions for integrating the DPB mobile
 //! runtime with iOS (Swift/Objective-C) and Android (JNI/Kotlin) applications.
 
-use std::slice;
+use crate::{MobileModel, MobileRuntime, RuntimeConfig};
+use std::ffi::{c_char, c_float, c_int};
 use std::ptr;
-use std::ffi::{c_char, c_int, c_float};
-use crate::{MobileRuntime, MobileModel, RuntimeConfig};
+use std::slice;
 
 /// FFI error codes
 #[repr(C)]
@@ -150,9 +150,7 @@ pub unsafe extern "C" fn dpb_config_default(config: *mut DpbRuntimeConfig) -> c_
 /// Returns a pointer that must be freed with dpb_runtime_destroy.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn dpb_runtime_create() -> *mut DpbRuntime {
-    unsafe {
-        dpb_runtime_create_with_config(&DpbRuntimeConfig::default())
-    }
+    unsafe { dpb_runtime_create_with_config(&DpbRuntimeConfig::default()) }
 }
 
 /// Create a new runtime with custom configuration
@@ -264,8 +262,12 @@ pub unsafe extern "C" fn dpb_infer(
             Err(e) => {
                 let error_code = match e {
                     crate::RuntimeError::ModelNotLoaded => DpbErrorCode::ModelNotLoaded,
-                    crate::RuntimeError::InvalidInputDimensions { .. } => DpbErrorCode::InvalidInputDimensions,
-                    crate::RuntimeError::InvalidOutputDimensions { .. } => DpbErrorCode::InvalidOutputDimensions,
+                    crate::RuntimeError::InvalidInputDimensions { .. } => {
+                        DpbErrorCode::InvalidInputDimensions
+                    }
+                    crate::RuntimeError::InvalidOutputDimensions { .. } => {
+                        DpbErrorCode::InvalidOutputDimensions
+                    }
                     crate::RuntimeError::AllocationFailed(_) => DpbErrorCode::AllocationFailed,
                     crate::RuntimeError::InferenceFailed(_) => DpbErrorCode::InferenceFailed,
                     _ => DpbErrorCode::UnknownError,

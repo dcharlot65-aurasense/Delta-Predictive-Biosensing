@@ -12,5 +12,5 @@ pub mod hebbian;
 
 // Re-export commonly used types
 pub use hebbian::{
-    BCMRule, CovarianceRule, HebbianLayer, HebbianRule, OjasRule, SynapticTrace, STDP,
+    BCMRule, CovarianceRule, HebbianLayer, HebbianRule, OjasRule, STDP, SynapticTrace,
 };

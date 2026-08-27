@@ -77,7 +77,10 @@ impl FpgaDataType {
             FpgaDataType::Float16 => "half".to_string(),
             FpgaDataType::FixedQ16 => "ap_fixed<32, 16>".to_string(),
             FpgaDataType::FixedQ8 => "ap_fixed<16, 8>".to_string(),
-            FpgaDataType::FixedCustom { int_bits, frac_bits } => {
+            FpgaDataType::FixedCustom {
+                int_bits,
+                frac_bits,
+            } => {
                 format!("ap_fixed<{}, {}>", int_bits + frac_bits, *int_bits)
             }
         }
@@ -90,7 +93,10 @@ impl FpgaDataType {
             FpgaDataType::Float16 => "ihc::hls_float<5, 10>".to_string(),
             FpgaDataType::FixedQ16 => "ac_fixed<32, 16, true>".to_string(),
             FpgaDataType::FixedQ8 => "ac_fixed<16, 8, true>".to_string(),
-            FpgaDataType::FixedCustom { int_bits, frac_bits } => {
+            FpgaDataType::FixedCustom {
+                int_bits,
+                frac_bits,
+            } => {
                 format!("ac_fixed<{}, {}, true>", int_bits + frac_bits, *int_bits)
             }
         }
@@ -359,7 +365,11 @@ impl FpgaExporter {
         Ok(code)
     }
 
-    fn generate_level_crossing_xilinx(&self, code: &mut String, config: &EncoderConfig) -> Result<(), FpgaExportError> {
+    fn generate_level_crossing_xilinx(
+        &self,
+        code: &mut String,
+        config: &EncoderConfig,
+    ) -> Result<(), FpgaExportError> {
         writeln!(code, "void level_crossing_encode(")?;
         writeln!(code, "    data_t input[NUM_CHANNELS],")?;
         writeln!(code, "    spike_t output[NUM_CHANNELS],")?;
@@ -378,12 +388,21 @@ impl FpgaExporter {
         writeln!(code, "        data_t curr = input[ch];")?;
         writeln!(code, "        data_t p = prev[ch];")?;
         writeln!(code)?;
-        writeln!(code, "        // Positive crossing: prev < threshold AND curr >= threshold")?;
+        writeln!(
+            code,
+            "        // Positive crossing: prev < threshold AND curr >= threshold"
+        )?;
         writeln!(code, "        if (p < threshold && curr >= threshold) {{")?;
         writeln!(code, "            output[ch] = 1;")?;
         writeln!(code, "        }}")?;
-        writeln!(code, "        // Negative crossing: prev >= threshold AND curr < threshold")?;
-        writeln!(code, "        else if (p >= threshold && curr < threshold) {{")?;
+        writeln!(
+            code,
+            "        // Negative crossing: prev >= threshold AND curr < threshold"
+        )?;
+        writeln!(
+            code,
+            "        else if (p >= threshold && curr < threshold) {{"
+        )?;
         writeln!(code, "            output[ch] = -1;")?;
         writeln!(code, "        }}")?;
         writeln!(code, "        else {{")?;
@@ -397,7 +416,11 @@ impl FpgaExporter {
         Ok(())
     }
 
-    fn generate_delta_modulation_xilinx(&self, code: &mut String, config: &EncoderConfig) -> Result<(), FpgaExportError> {
+    fn generate_delta_modulation_xilinx(
+        &self,
+        code: &mut String,
+        config: &EncoderConfig,
+    ) -> Result<(), FpgaExportError> {
         writeln!(code, "void delta_modulation_encode(")?;
         writeln!(code, "    data_t input[NUM_CHANNELS],")?;
         writeln!(code, "    spike_t output[NUM_CHANNELS],")?;
@@ -408,7 +431,10 @@ impl FpgaExporter {
         writeln!(code, "#pragma HLS ARRAY_PARTITION variable=output complete")?;
         writeln!(code)?;
         writeln!(code, "    static data_t reference[NUM_CHANNELS];")?;
-        writeln!(code, "#pragma HLS ARRAY_PARTITION variable=reference complete")?;
+        writeln!(
+            code,
+            "#pragma HLS ARRAY_PARTITION variable=reference complete"
+        )?;
         writeln!(code)?;
         writeln!(code, "    CHANNEL_LOOP:")?;
         writeln!(code, "    for (int ch = 0; ch < NUM_CHANNELS; ch++) {{")?;
@@ -417,11 +443,17 @@ impl FpgaExporter {
         writeln!(code)?;
         writeln!(code, "        if (diff > threshold) {{")?;
         writeln!(code, "            output[ch] = 1;")?;
-        writeln!(code, "            reference[ch] = reference[ch] + threshold;")?;
+        writeln!(
+            code,
+            "            reference[ch] = reference[ch] + threshold;"
+        )?;
         writeln!(code, "        }}")?;
         writeln!(code, "        else if (diff < -threshold) {{")?;
         writeln!(code, "            output[ch] = -1;")?;
-        writeln!(code, "            reference[ch] = reference[ch] - threshold;")?;
+        writeln!(
+            code,
+            "            reference[ch] = reference[ch] - threshold;"
+        )?;
         writeln!(code, "        }}")?;
         writeln!(code, "        else {{")?;
         writeln!(code, "            output[ch] = 0;")?;
@@ -432,7 +464,11 @@ impl FpgaExporter {
         Ok(())
     }
 
-    fn generate_temporal_contrast_xilinx(&self, code: &mut String, config: &EncoderConfig) -> Result<(), FpgaExportError> {
+    fn generate_temporal_contrast_xilinx(
+        &self,
+        code: &mut String,
+        config: &EncoderConfig,
+    ) -> Result<(), FpgaExportError> {
         writeln!(code, "void temporal_contrast_encode(")?;
         writeln!(code, "    data_t input[NUM_CHANNELS],")?;
         writeln!(code, "    spike_t output[NUM_CHANNELS],")?;
@@ -467,7 +503,11 @@ impl FpgaExporter {
         Ok(())
     }
 
-    fn generate_moving_window_xilinx(&self, code: &mut String, config: &EncoderConfig) -> Result<(), FpgaExportError> {
+    fn generate_moving_window_xilinx(
+        &self,
+        code: &mut String,
+        config: &EncoderConfig,
+    ) -> Result<(), FpgaExportError> {
         writeln!(code, "#define WINDOW_SIZE {}", config.window_size)?;
         writeln!(code)?;
         writeln!(code, "void moving_window_encode(")?;
@@ -480,7 +520,10 @@ impl FpgaExporter {
         writeln!(code, "#pragma HLS ARRAY_PARTITION variable=output complete")?;
         writeln!(code)?;
         writeln!(code, "    static data_t window[NUM_CHANNELS][WINDOW_SIZE];")?;
-        writeln!(code, "#pragma HLS ARRAY_PARTITION variable=window complete dim=1")?;
+        writeln!(
+            code,
+            "#pragma HLS ARRAY_PARTITION variable=window complete dim=1"
+        )?;
         writeln!(code, "    static int window_idx = 0;")?;
         writeln!(code)?;
         writeln!(code, "    CHANNEL_LOOP:")?;
@@ -516,7 +559,11 @@ impl FpgaExporter {
         Ok(())
     }
 
-    fn generate_axi_wrapper_xilinx(&self, code: &mut String, config: &EncoderConfig) -> Result<(), FpgaExportError> {
+    fn generate_axi_wrapper_xilinx(
+        &self,
+        code: &mut String,
+        config: &EncoderConfig,
+    ) -> Result<(), FpgaExportError> {
         writeln!(code, "// AXI Stream Wrapper")?;
         writeln!(code, "typedef struct {{")?;
         writeln!(code, "    data_t data[NUM_CHANNELS];")?;
@@ -553,7 +600,11 @@ impl FpgaExporter {
         writeln!(code, "        axis_data_t in_pkt = input_stream.read();")?;
         writeln!(code, "        axis_spike_t out_pkt;")?;
         writeln!(code)?;
-        writeln!(code, "        {}_encode(in_pkt.data, out_pkt.data, threshold);", func_name)?;
+        writeln!(
+            code,
+            "        {}_encode(in_pkt.data, out_pkt.data, threshold);",
+            func_name
+        )?;
         writeln!(code)?;
         writeln!(code, "        out_pkt.last = in_pkt.last;")?;
         writeln!(code, "        output_stream.write(out_pkt);")?;
@@ -578,7 +629,11 @@ impl FpgaExporter {
         writeln!(code, "typedef {} data_t;", data_type)?;
         writeln!(code, "typedef ac_int<2, true> spike_t;")?;
         writeln!(code)?;
-        writeln!(code, "constexpr int NUM_CHANNELS = {};", config.num_channels)?;
+        writeln!(
+            code,
+            "constexpr int NUM_CHANNELS = {};",
+            config.num_channels
+        )?;
         writeln!(code)?;
 
         // Generate encoder based on type
@@ -596,9 +651,15 @@ impl FpgaExporter {
                 writeln!(code, "        data_t curr = input.read();")?;
                 writeln!(code, "        spike_t spike = 0;")?;
                 writeln!(code)?;
-                writeln!(code, "        if (prev[ch] < threshold && curr >= threshold) {{")?;
+                writeln!(
+                    code,
+                    "        if (prev[ch] < threshold && curr >= threshold) {{"
+                )?;
                 writeln!(code, "            spike = 1;")?;
-                writeln!(code, "        }} else if (prev[ch] >= threshold && curr < threshold) {{")?;
+                writeln!(
+                    code,
+                    "        }} else if (prev[ch] >= threshold && curr < threshold) {{"
+                )?;
                 writeln!(code, "            spike = -1;")?;
                 writeln!(code, "        }}")?;
                 writeln!(code)?;
@@ -623,10 +684,16 @@ impl FpgaExporter {
                 writeln!(code)?;
                 writeln!(code, "        if (diff > threshold) {{")?;
                 writeln!(code, "            spike = 1;")?;
-                writeln!(code, "            reference[ch] = reference[ch] + threshold;")?;
+                writeln!(
+                    code,
+                    "            reference[ch] = reference[ch] + threshold;"
+                )?;
                 writeln!(code, "        }} else if (diff < -threshold) {{")?;
                 writeln!(code, "            spike = -1;")?;
-                writeln!(code, "            reference[ch] = reference[ch] - threshold;")?;
+                writeln!(
+                    code,
+                    "            reference[ch] = reference[ch] - threshold;"
+                )?;
                 writeln!(code, "        }}")?;
                 writeln!(code)?;
                 writeln!(code, "        output.write(spike);")?;
@@ -718,7 +785,11 @@ impl FpgaExporter {
         writeln!(code, "typedef int8_t spike_t;")?;
         writeln!(code)?;
         writeln!(code, "// Fixed-point threshold (Q16.16)")?;
-        writeln!(code, "#define THRESHOLD {}", (config.threshold * 65536.0) as i32)?;
+        writeln!(
+            code,
+            "#define THRESHOLD {}",
+            (config.threshold * 65536.0) as i32
+        )?;
         writeln!(code)?;
 
         match config.encoder_type {
@@ -732,9 +803,15 @@ impl FpgaExporter {
                 writeln!(code, "    for (int ch = 0; ch < NUM_CHANNELS; ch++) {{")?;
                 writeln!(code, "        data_t curr = input[ch];")?;
                 writeln!(code)?;
-                writeln!(code, "        if (prev[ch] < THRESHOLD && curr >= THRESHOLD) {{")?;
+                writeln!(
+                    code,
+                    "        if (prev[ch] < THRESHOLD && curr >= THRESHOLD) {{"
+                )?;
                 writeln!(code, "            output[ch] = 1;")?;
-                writeln!(code, "        }} else if (prev[ch] >= THRESHOLD && curr < THRESHOLD) {{")?;
+                writeln!(
+                    code,
+                    "        }} else if (prev[ch] >= THRESHOLD && curr < THRESHOLD) {{"
+                )?;
                 writeln!(code, "            output[ch] = -1;")?;
                 writeln!(code, "        }} else {{")?;
                 writeln!(code, "            output[ch] = 0;")?;
@@ -756,10 +833,16 @@ impl FpgaExporter {
                 writeln!(code)?;
                 writeln!(code, "        if (diff > THRESHOLD) {{")?;
                 writeln!(code, "            output[ch] = 1;")?;
-                writeln!(code, "            reference[ch] = reference[ch] + THRESHOLD;")?;
+                writeln!(
+                    code,
+                    "            reference[ch] = reference[ch] + THRESHOLD;"
+                )?;
                 writeln!(code, "        }} else if (diff < -THRESHOLD) {{")?;
                 writeln!(code, "            output[ch] = -1;")?;
-                writeln!(code, "            reference[ch] = reference[ch] - THRESHOLD;")?;
+                writeln!(
+                    code,
+                    "            reference[ch] = reference[ch] - THRESHOLD;"
+                )?;
                 writeln!(code, "        }} else {{")?;
                 writeln!(code, "            output[ch] = 0;")?;
                 writeln!(code, "        }}")?;

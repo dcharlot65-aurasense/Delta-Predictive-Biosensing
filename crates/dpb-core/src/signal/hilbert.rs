@@ -134,7 +134,11 @@ pub fn analytic_signal(signal: &[f64], sample_rate: f64) -> AnalyticSignal {
         instantaneous_frequency.push(freq);
     }
 
-    AnalyticSignal::new(amplitude_envelope, instantaneous_phase, instantaneous_frequency)
+    AnalyticSignal::new(
+        amplitude_envelope,
+        instantaneous_phase,
+        instantaneous_frequency,
+    )
 }
 
 /// Convenience function to extract just the amplitude envelope.
@@ -258,9 +262,9 @@ mod tests {
         }
 
         // Spot-check the three landmarks explicitly.
-        assert!(env[0] > 1.45, "peak: {}", env[0]);              // t=0     -> 1.5
+        assert!(env[0] > 1.45, "peak: {}", env[0]); // t=0     -> 1.5
         assert!((env[n / 8] - 1.0).abs() < 0.05, "{}", env[n / 8]); // t=0.125 -> 1.0
-        assert!(env[n / 4] < 0.55, "trough: {}", env[n / 4]);    // t=0.25  -> 0.5
+        assert!(env[n / 4] < 0.55, "trough: {}", env[n / 4]); // t=0.25  -> 0.5
     }
 
     #[test]
@@ -375,5 +379,4 @@ mod tests {
 
         assert!(late_freq > early_freq);
     }
-
 }

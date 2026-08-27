@@ -43,8 +43,10 @@ impl PainAutonomicAnalyzer {
         }
 
         let onset_sample = (pain_onset_sec * self.sample_rate) as usize;
-        let baseline_start = onset_sample.saturating_sub((self.baseline_window_sec * self.sample_rate) as usize);
-        let response_end = (onset_sample + (self.response_window_sec * self.sample_rate) as usize).min(eda.len());
+        let baseline_start =
+            onset_sample.saturating_sub((self.baseline_window_sec * self.sample_rate) as usize);
+        let response_end =
+            (onset_sample + (self.response_window_sec * self.sample_rate) as usize).min(eda.len());
 
         // Calculate baseline
         let baseline_samples = &eda[baseline_start..onset_sample.min(eda.len())];
@@ -77,7 +79,10 @@ impl PainAutonomicAnalyzer {
 
         // Find peak amplitude
         let peak_amplitude = response_samples.iter().cloned().fold(f64::NAN, f64::max);
-        let peak_idx = response_samples.iter().position(|&v| v == peak_amplitude).unwrap_or(0);
+        let peak_idx = response_samples
+            .iter()
+            .position(|&v| v == peak_amplitude)
+            .unwrap_or(0);
 
         let scr_onset_latency = scr_onset_idx.map(|i| i as f64 / self.sample_rate);
         let peak_latency = peak_idx as f64 / self.sample_rate;
@@ -151,7 +156,8 @@ impl PainAutonomicAnalyzer {
         let peak_latency = response_rr[..=peak_idx].iter().sum::<f64>() / 1000.0;
 
         // Calculate mean response HR
-        let mean_response_hr = 60000.0 / (response_rr.iter().sum::<f64>() / response_rr.len() as f64);
+        let mean_response_hr =
+            60000.0 / (response_rr.iter().sum::<f64>() / response_rr.len() as f64);
 
         // Calculate HRV in response window (RMSSD)
         let rmssd = self.calculate_rmssd(&response_rr);
@@ -173,11 +179,14 @@ impl PainAutonomicAnalyzer {
         }
 
         let onset_sample = (pain_onset_sec * self.sample_rate) as usize;
-        let baseline_start = onset_sample.saturating_sub((self.baseline_window_sec * self.sample_rate) as usize);
-        let response_end = (onset_sample + (self.response_window_sec * self.sample_rate) as usize).min(pupil_diameter_mm.len());
+        let baseline_start =
+            onset_sample.saturating_sub((self.baseline_window_sec * self.sample_rate) as usize);
+        let response_end = (onset_sample + (self.response_window_sec * self.sample_rate) as usize)
+            .min(pupil_diameter_mm.len());
 
         // Calculate baseline
-        let baseline_samples = &pupil_diameter_mm[baseline_start..onset_sample.min(pupil_diameter_mm.len())];
+        let baseline_samples =
+            &pupil_diameter_mm[baseline_start..onset_sample.min(pupil_diameter_mm.len())];
         let baseline_diameter = if baseline_samples.is_empty() {
             0.0
         } else {
@@ -200,7 +209,10 @@ impl PainAutonomicAnalyzer {
 
         // Find peak dilation
         let peak_diameter = response_samples.iter().cloned().fold(f64::NAN, f64::max);
-        let peak_idx = response_samples.iter().position(|&v| v == peak_diameter).unwrap_or(0);
+        let peak_idx = response_samples
+            .iter()
+            .position(|&v| v == peak_diameter)
+            .unwrap_or(0);
         let peak_latency = peak_idx as f64 / self.sample_rate;
 
         // Calculate dilation metrics
@@ -239,11 +251,14 @@ impl PainAutonomicAnalyzer {
         }
 
         let onset_sample = (pain_onset_sec * self.sample_rate) as usize;
-        let baseline_start = onset_sample.saturating_sub((self.baseline_window_sec * self.sample_rate) as usize);
-        let response_end = (onset_sample + (self.response_window_sec * self.sample_rate) as usize).min(respiratory_signal.len());
+        let baseline_start =
+            onset_sample.saturating_sub((self.baseline_window_sec * self.sample_rate) as usize);
+        let response_end = (onset_sample + (self.response_window_sec * self.sample_rate) as usize)
+            .min(respiratory_signal.len());
 
         // Calculate baseline respiratory rate
-        let baseline_samples = &respiratory_signal[baseline_start..onset_sample.min(respiratory_signal.len())];
+        let baseline_samples =
+            &respiratory_signal[baseline_start..onset_sample.min(respiratory_signal.len())];
         let baseline_rate = self.estimate_respiratory_rate(baseline_samples);
 
         // Calculate response respiratory rate
@@ -257,7 +272,8 @@ impl PainAutonomicAnalyzer {
         // Check for breath hold (reduced amplitude/rate)
         let baseline_amplitude = self.calculate_amplitude(baseline_samples);
         let response_amplitude = self.calculate_amplitude(response_samples);
-        let breath_hold_detected = response_rate < baseline_rate * 0.5 || response_amplitude < baseline_amplitude * 0.3;
+        let breath_hold_detected =
+            response_rate < baseline_rate * 0.5 || response_amplitude < baseline_amplitude * 0.3;
 
         RespiratoryResponse {
             baseline_rate_bpm: baseline_rate,
@@ -279,7 +295,8 @@ impl PainAutonomicAnalyzer {
         let scr = eda.map(|e| self.scr_to_pain(e, pain_onset_sec));
         let hr = rr_intervals.map(|r| self.hr_response(r, pain_onset_sec));
         let pupil_response = pupil.map(|p| self.pupil_response(p, pain_onset_sec));
-        let respiratory_response = respiratory.map(|r| self.respiratory_response(r, pain_onset_sec));
+        let respiratory_response =
+            respiratory.map(|r| self.respiratory_response(r, pain_onset_sec));
 
         // Calculate composite autonomic response score
         let composite = self.calculate_composite_score(&scr, &hr, &pupil_response);

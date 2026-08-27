@@ -11,11 +11,11 @@ use std::hint::black_box;
 
 // Setup functions that create test data
 mod setup {
-    use dpb_neurons::prelude::*;
-    use dpb_neurons::lif::{LifConfig, AlifConfig};
-    use dpb_neurons::izhikevich::IzhikevichConfig;
     use dpb_neurons::adex::AdExConfig;
     use dpb_neurons::batch::BatchLifLayer;
+    use dpb_neurons::izhikevich::IzhikevichConfig;
+    use dpb_neurons::lif::{AlifConfig, LifConfig};
+    use dpb_neurons::prelude::*;
     use ndarray::Array1;
 
     pub fn lif_neuron() -> LifNeuron {
@@ -108,19 +108,25 @@ fn bench_quantized_single_update(mut neuron: dpb_neurons::QuantizedLifNeuron) ->
 // Batch neuron update benchmarks
 #[library_benchmark]
 #[bench::batch_10(setup::batch_lif_10())]
-fn bench_batch_lif_10((mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f32>)) -> ndarray::Array1<bool> {
+fn bench_batch_lif_10(
+    (mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f32>),
+) -> ndarray::Array1<bool> {
     black_box(layer.update(black_box(&inputs), black_box(1.0)))
 }
 
 #[library_benchmark]
 #[bench::batch_100(setup::batch_lif_100())]
-fn bench_batch_lif_100((mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f32>)) -> ndarray::Array1<bool> {
+fn bench_batch_lif_100(
+    (mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f32>),
+) -> ndarray::Array1<bool> {
     black_box(layer.update(black_box(&inputs), black_box(1.0)))
 }
 
 #[library_benchmark]
 #[bench::batch_1000(setup::batch_lif_1000())]
-fn bench_batch_lif_1000((mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f32>)) -> ndarray::Array1<bool> {
+fn bench_batch_lif_1000(
+    (mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f32>),
+) -> ndarray::Array1<bool> {
     black_box(layer.update(black_box(&inputs), black_box(1.0)))
 }
 
@@ -140,7 +146,9 @@ fn bench_lif_100_timesteps(mut neuron: dpb_neurons::prelude::LifNeuron) -> i32 {
 
 #[library_benchmark]
 #[bench::batch_100_steps(setup::batch_lif_100())]
-fn bench_batch_100_timesteps((mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f32>)) -> i32 {
+fn bench_batch_100_timesteps(
+    (mut layer, inputs): (dpb_neurons::batch::BatchLifLayer, ndarray::Array1<f32>),
+) -> i32 {
     let mut spike_count = 0;
     for _ in 0..100 {
         let spikes = layer.update(black_box(&inputs), black_box(1.0));
@@ -213,10 +221,9 @@ library_benchmark_group!(
 );
 
 main!(
-    library_benchmark_groups =
-        single_neuron_updates,
-        hardware_neurons,
-        batch_neurons,
-        timestep_simulations,
-        surrogate_gradients
+    library_benchmark_groups = single_neuron_updates,
+    hardware_neurons,
+    batch_neurons,
+    timestep_simulations,
+    surrogate_gradients
 );

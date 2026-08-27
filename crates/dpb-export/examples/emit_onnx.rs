@@ -7,7 +7,10 @@ use dpb_export::onnx::OnnxExporter;
 fn main() {
     let dir = std::env::args().nth(1).expect("usage: emit_onnx <dir>");
     let cases: Vec<(&str, MockEncoder)> = vec![
-        ("level_crossing", MockEncoder::level_crossing(4, 1000.0, 0.1)),
+        (
+            "level_crossing",
+            MockEncoder::level_crossing(4, 1000.0, 0.1),
+        ),
         ("delta", MockEncoder::delta(2, 500.0, 0.05, 8)),
         (
             "temporal_contrast",

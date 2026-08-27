@@ -199,7 +199,10 @@ pub struct CoordinateSystem {
     pub eeg_coordinate_units: String,
 
     /// Description of the coordinate system
-    #[serde(rename = "EEGCoordinateSystemDescription", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "EEGCoordinateSystemDescription",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub eeg_coordinate_system_description: Option<String>,
 
     /// Anatomical landmarks used
@@ -371,7 +374,9 @@ impl EegBids {
     fn read_channels(base_path: &Path) -> Result<Vec<ChannelInfo>> {
         let channels_path = PathBuf::from(format!("{}_channels.tsv", base_path.display()));
         if !channels_path.exists() {
-            return Err(DpbError::DataValidation("channels.tsv file not found".to_string()));
+            return Err(DpbError::DataValidation(
+                "channels.tsv file not found".to_string(),
+            ));
         }
 
         let file = File::open(&channels_path).map_err(DpbError::Io)?;
@@ -386,18 +391,15 @@ impl EegBids {
         let columns: Vec<&str> = header.split('\t').collect();
 
         // Find required column indices
-        let name_idx = columns
-            .iter()
-            .position(|&c| c == "name")
-            .ok_or_else(|| DpbError::DataValidation("Missing 'name' column in channels.tsv".to_string()))?;
-        let type_idx = columns
-            .iter()
-            .position(|&c| c == "type")
-            .ok_or_else(|| DpbError::DataValidation("Missing 'type' column in channels.tsv".to_string()))?;
-        let units_idx = columns
-            .iter()
-            .position(|&c| c == "units")
-            .ok_or_else(|| DpbError::DataValidation("Missing 'units' column in channels.tsv".to_string()))?;
+        let name_idx = columns.iter().position(|&c| c == "name").ok_or_else(|| {
+            DpbError::DataValidation("Missing 'name' column in channels.tsv".to_string())
+        })?;
+        let type_idx = columns.iter().position(|&c| c == "type").ok_or_else(|| {
+            DpbError::DataValidation("Missing 'type' column in channels.tsv".to_string())
+        })?;
+        let units_idx = columns.iter().position(|&c| c == "units").ok_or_else(|| {
+            DpbError::DataValidation("Missing 'units' column in channels.tsv".to_string())
+        })?;
 
         // Find optional column indices
         let low_cutoff_idx = columns.iter().position(|&c| c == "low_cutoff");
@@ -419,9 +421,11 @@ impl EegBids {
                 channel_type: values[type_idx].to_string(),
                 units: values[units_idx].to_string(),
                 low_cutoff: low_cutoff_idx.and_then(|i| values.get(i).and_then(|v| v.parse().ok())),
-                high_cutoff: high_cutoff_idx.and_then(|i| values.get(i).and_then(|v| v.parse().ok())),
+                high_cutoff: high_cutoff_idx
+                    .and_then(|i| values.get(i).and_then(|v| v.parse().ok())),
                 notch: notch_idx.and_then(|i| values.get(i).map(|v| v.to_string())),
-                sampling_frequency: sampling_idx.and_then(|i| values.get(i).and_then(|v| v.parse().ok())),
+                sampling_frequency: sampling_idx
+                    .and_then(|i| values.get(i).and_then(|v| v.parse().ok())),
                 reference: reference_idx.and_then(|i| values.get(i).map(|v| v.to_string())),
                 status: status_idx.and_then(|i| values.get(i).map(|v| v.to_string())),
                 description: description_idx.and_then(|i| values.get(i).map(|v| v.to_string())),
@@ -438,7 +442,9 @@ impl EegBids {
     fn read_electrodes(base_path: &Path) -> Result<Vec<ElectrodeInfo>> {
         let electrodes_path = PathBuf::from(format!("{}_electrodes.tsv", base_path.display()));
         if !electrodes_path.exists() {
-            return Err(DpbError::DataValidation("electrodes.tsv file not found".to_string()));
+            return Err(DpbError::DataValidation(
+                "electrodes.tsv file not found".to_string(),
+            ));
         }
 
         let file = File::open(&electrodes_path).map_err(DpbError::Io)?;
@@ -453,13 +459,21 @@ impl EegBids {
         let columns: Vec<&str> = header.split('\t').collect();
 
         // Find required column indices
-        let name_idx = columns.iter().position(|&c| c == "name")
+        let name_idx = columns
+            .iter()
+            .position(|&c| c == "name")
             .ok_or_else(|| DpbError::DataValidation("Missing 'name' column".to_string()))?;
-        let x_idx = columns.iter().position(|&c| c == "x")
+        let x_idx = columns
+            .iter()
+            .position(|&c| c == "x")
             .ok_or_else(|| DpbError::DataValidation("Missing 'x' column".to_string()))?;
-        let y_idx = columns.iter().position(|&c| c == "y")
+        let y_idx = columns
+            .iter()
+            .position(|&c| c == "y")
             .ok_or_else(|| DpbError::DataValidation("Missing 'y' column".to_string()))?;
-        let z_idx = columns.iter().position(|&c| c == "z")
+        let z_idx = columns
+            .iter()
+            .position(|&c| c == "z")
             .ok_or_else(|| DpbError::DataValidation("Missing 'z' column".to_string()))?;
 
         // Optional columns
@@ -474,9 +488,15 @@ impl EegBids {
 
             let electrode = ElectrodeInfo {
                 name: values[name_idx].to_string(),
-                x: values[x_idx].parse().map_err(|e| DpbError::DataValidation(format!("Invalid x: {}", e)))?,
-                y: values[y_idx].parse().map_err(|e| DpbError::DataValidation(format!("Invalid y: {}", e)))?,
-                z: values[z_idx].parse().map_err(|e| DpbError::DataValidation(format!("Invalid z: {}", e)))?,
+                x: values[x_idx]
+                    .parse()
+                    .map_err(|e| DpbError::DataValidation(format!("Invalid x: {}", e)))?,
+                y: values[y_idx]
+                    .parse()
+                    .map_err(|e| DpbError::DataValidation(format!("Invalid y: {}", e)))?,
+                z: values[z_idx]
+                    .parse()
+                    .map_err(|e| DpbError::DataValidation(format!("Invalid z: {}", e)))?,
                 material: material_idx.and_then(|i| values.get(i).map(|v| v.to_string())),
                 impedance: impedance_idx.and_then(|i| values.get(i).and_then(|v| v.parse().ok())),
                 extra: HashMap::new(),
@@ -499,7 +519,9 @@ impl EegBids {
     fn read_events(base_path: &Path) -> Result<Vec<EventInfo>> {
         let events_path = PathBuf::from(format!("{}_events.tsv", base_path.display()));
         if !events_path.exists() {
-            return Err(DpbError::DataValidation("events.tsv file not found".to_string()));
+            return Err(DpbError::DataValidation(
+                "events.tsv file not found".to_string(),
+            ));
         }
 
         let file = File::open(&events_path).map_err(DpbError::Io)?;
@@ -514,9 +536,13 @@ impl EegBids {
         let columns: Vec<&str> = header.split('\t').collect();
 
         // Find required column indices
-        let onset_idx = columns.iter().position(|&c| c == "onset")
+        let onset_idx = columns
+            .iter()
+            .position(|&c| c == "onset")
             .ok_or_else(|| DpbError::DataValidation("Missing 'onset' column".to_string()))?;
-        let duration_idx = columns.iter().position(|&c| c == "duration")
+        let duration_idx = columns
+            .iter()
+            .position(|&c| c == "duration")
             .ok_or_else(|| DpbError::DataValidation("Missing 'duration' column".to_string()))?;
 
         // Optional columns
@@ -533,10 +559,15 @@ impl EegBids {
             let values: Vec<&str> = line.split('\t').collect();
 
             let event = EventInfo {
-                onset: values[onset_idx].parse().map_err(|e| DpbError::DataValidation(format!("Invalid onset: {}", e)))?,
-                duration: values[duration_idx].parse().map_err(|e| DpbError::DataValidation(format!("Invalid duration: {}", e)))?,
+                onset: values[onset_idx]
+                    .parse()
+                    .map_err(|e| DpbError::DataValidation(format!("Invalid onset: {}", e)))?,
+                duration: values[duration_idx]
+                    .parse()
+                    .map_err(|e| DpbError::DataValidation(format!("Invalid duration: {}", e)))?,
                 trial_type: trial_type_idx.and_then(|i| values.get(i).map(|v| v.to_string())),
-                response_time: response_time_idx.and_then(|i| values.get(i).and_then(|v| v.parse().ok())),
+                response_time: response_time_idx
+                    .and_then(|i| values.get(i).and_then(|v| v.parse().ok())),
                 stim_file: stim_file_idx.and_then(|i| values.get(i).map(|v| v.to_string())),
                 value: value_idx.and_then(|i| values.get(i).map(|v| v.to_string())),
                 sample: sample_idx.and_then(|i| values.get(i).and_then(|v| v.parse().ok())),
@@ -550,10 +581,7 @@ impl EegBids {
     }
 
     /// Write channels TSV file
-    pub fn write_channels<P: AsRef<Path>>(
-        path: P,
-        channels: &[ChannelInfo],
-    ) -> Result<()> {
+    pub fn write_channels<P: AsRef<Path>>(path: P, channels: &[ChannelInfo]) -> Result<()> {
         let mut file = File::create(path.as_ref()).map_err(DpbError::Io)?;
 
         // Write header
@@ -571,10 +599,19 @@ impl EegBids {
                 channel.name,
                 channel.channel_type,
                 channel.units,
-                channel.low_cutoff.map(|v| v.to_string()).unwrap_or_else(|| "n/a".to_string()),
-                channel.high_cutoff.map(|v| v.to_string()).unwrap_or_else(|| "n/a".to_string()),
+                channel
+                    .low_cutoff
+                    .map(|v| v.to_string())
+                    .unwrap_or_else(|| "n/a".to_string()),
+                channel
+                    .high_cutoff
+                    .map(|v| v.to_string())
+                    .unwrap_or_else(|| "n/a".to_string()),
                 channel.notch.as_deref().unwrap_or("n/a"),
-                channel.sampling_frequency.map(|v| v.to_string()).unwrap_or_else(|| "n/a".to_string()),
+                channel
+                    .sampling_frequency
+                    .map(|v| v.to_string())
+                    .unwrap_or_else(|| "n/a".to_string()),
                 channel.reference.as_deref().unwrap_or("n/a"),
                 channel.status.as_deref().unwrap_or("good"),
                 channel.description.as_deref().unwrap_or("n/a"),
@@ -586,10 +623,7 @@ impl EegBids {
     }
 
     /// Write electrodes TSV file
-    pub fn write_electrodes<P: AsRef<Path>>(
-        path: P,
-        electrodes: &[ElectrodeInfo],
-    ) -> Result<()> {
+    pub fn write_electrodes<P: AsRef<Path>>(path: P, electrodes: &[ElectrodeInfo]) -> Result<()> {
         let mut file = File::create(path.as_ref()).map_err(DpbError::Io)?;
 
         // Write header
@@ -605,7 +639,10 @@ impl EegBids {
                 electrode.y,
                 electrode.z,
                 electrode.material.as_deref().unwrap_or("n/a"),
-                electrode.impedance.map(|v| v.to_string()).unwrap_or_else(|| "n/a".to_string()),
+                electrode
+                    .impedance
+                    .map(|v| v.to_string())
+                    .unwrap_or_else(|| "n/a".to_string()),
             )
             .map_err(DpbError::Io)?;
         }
@@ -614,15 +651,15 @@ impl EegBids {
     }
 
     /// Write events TSV file
-    pub fn write_events<P: AsRef<Path>>(
-        path: P,
-        events: &[EventInfo],
-    ) -> Result<()> {
+    pub fn write_events<P: AsRef<Path>>(path: P, events: &[EventInfo]) -> Result<()> {
         let mut file = File::create(path.as_ref()).map_err(DpbError::Io)?;
 
         // Write header
-        writeln!(file, "onset\tduration\ttrial_type\tresponse_time\tstim_file\tvalue\tsample")
-            .map_err(DpbError::Io)?;
+        writeln!(
+            file,
+            "onset\tduration\ttrial_type\tresponse_time\tstim_file\tvalue\tsample"
+        )
+        .map_err(DpbError::Io)?;
 
         // Write events
         for event in events {
@@ -632,10 +669,16 @@ impl EegBids {
                 event.onset,
                 event.duration,
                 event.trial_type.as_deref().unwrap_or("n/a"),
-                event.response_time.map(|v| v.to_string()).unwrap_or_else(|| "n/a".to_string()),
+                event
+                    .response_time
+                    .map(|v| v.to_string())
+                    .unwrap_or_else(|| "n/a".to_string()),
                 event.stim_file.as_deref().unwrap_or("n/a"),
                 event.value.as_deref().unwrap_or("n/a"),
-                event.sample.map(|v| v.to_string()).unwrap_or_else(|| "n/a".to_string()),
+                event
+                    .sample
+                    .map(|v| v.to_string())
+                    .unwrap_or_else(|| "n/a".to_string()),
             )
             .map_err(DpbError::Io)?;
         }
@@ -731,17 +774,15 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let electrodes_path = temp_dir.path().join("electrodes.tsv");
 
-        let electrodes = vec![
-            ElectrodeInfo {
-                name: "Fp1".to_string(),
-                x: -0.0295,
-                y: 0.0826,
-                z: -0.0056,
-                material: Some("Ag/AgCl".to_string()),
-                impedance: Some(5.2),
-                extra: HashMap::new(),
-            },
-        ];
+        let electrodes = vec![ElectrodeInfo {
+            name: "Fp1".to_string(),
+            x: -0.0295,
+            y: 0.0826,
+            z: -0.0056,
+            material: Some("Ag/AgCl".to_string()),
+            impedance: Some(5.2),
+            extra: HashMap::new(),
+        }];
 
         EegBids::write_electrodes(&electrodes_path, &electrodes)?;
         assert!(electrodes_path.exists());

@@ -3,13 +3,17 @@
 //! Tests complete workflows from encoding through training, inference,
 //! calibration, and explainability.
 
-use dpb_snn::*;
 use dpb_snn::architectures::SNNArchitecture;
 use dpb_snn::tensor::SpikeTensor;
+use dpb_snn::*;
 use ndarray::Array2;
 
 /// Create a simple synthetic spike tensor for testing
-fn create_test_spike_tensor(batch_size: usize, num_neurons: usize, num_timesteps: usize) -> SpikeTensor {
+fn create_test_spike_tensor(
+    batch_size: usize,
+    num_neurons: usize,
+    num_timesteps: usize,
+) -> SpikeTensor {
     // Create dense tensor with sparse spike patterns
     let mut dense = ndarray::Array3::zeros((batch_size, num_timesteps, num_neurons));
 
@@ -60,9 +64,13 @@ fn test_encoder_to_snn_to_decoder() {
         vec![num_input_neurons, num_hidden, num_output],
         snn_config,
         true, // use_bias
-    ).expect("Failed to create SNN");
+    )
+    .expect("Failed to create SNN");
 
-    println!("  Created SNN: {} → {} → {}", num_input_neurons, num_hidden, num_output);
+    println!(
+        "  Created SNN: {} → {} → {}",
+        num_input_neurons, num_hidden, num_output
+    );
 
     // Step 3: Forward pass through SNN
     let output_spikes = snn
@@ -74,7 +82,10 @@ fn test_encoder_to_snn_to_decoder() {
     // Verify output shape
     // shape() is (batch_size, num_steps, num_neurons) -- a tuple, and the
     // step count precedes the neuron count.
-    assert_eq!(output_spikes.shape(), (batch_size, num_timesteps, num_output));
+    assert_eq!(
+        output_spikes.shape(),
+        (batch_size, num_timesteps, num_output)
+    );
 
     // Step 4: Decode using rate decoder
     let rate_decoder = SpikeRateDecoder::new(num_output, None, false);
@@ -145,9 +156,7 @@ fn test_calibrated_snn_predictions() {
     }
 
     // Convert to arrays
-    let logits_array = Array2::from_shape_fn((batch_size, num_classes), |(i, j)| {
-        all_logits[i][j]
-    });
+    let logits_array = Array2::from_shape_fn((batch_size, num_classes), |(i, j)| all_logits[i][j]);
 
     println!("  Generated {} predictions", batch_size);
 
@@ -222,7 +231,10 @@ fn test_calibrated_snn_predictions() {
     println!("  Brier Score: {:.4}", brier);
 
     assert!((0.0..=1.0).contains(&ece), "ECE should be in [0, 1]");
-    assert!((0.0..=1.0).contains(&brier), "Brier score should be in [0, 1]");
+    assert!(
+        (0.0..=1.0).contains(&brier),
+        "Brier score should be in [0, 1]"
+    );
 
     println!("  ✓ Calibration pipeline completed successfully");
 }
@@ -249,12 +261,11 @@ fn test_explainability_pipeline() {
         vec![num_input, num_hidden, num_output],
         snn_config,
         true, // use_bias
-    ).expect("Failed to create SNN");
+    )
+    .expect("Failed to create SNN");
 
     let input_spikes = create_test_spike_tensor(batch_size, num_input, num_timesteps);
-    let output_spikes = snn
-        .forward(&input_spikes)
-        .expect("Forward pass failed");
+    let output_spikes = snn.forward(&input_spikes).expect("Forward pass failed");
 
     println!("  Model: {} → {} → {}", num_input, num_hidden, num_output);
 
@@ -282,11 +293,18 @@ fn test_explainability_pipeline() {
 
     let importance = compute_spike_importance(&spike_times, &output_gradients, &layer_weights);
 
-    println!("  Computed spike importance for {} spikes", importance.len());
+    println!(
+        "  Computed spike importance for {} spikes",
+        importance.len()
+    );
 
     // Every record must name a real neuron and a spike time the network emitted.
     for record in &importance {
-        assert!(record.neuron_id < num_output, "neuron {} out of range", record.neuron_id);
+        assert!(
+            record.neuron_id < num_output,
+            "neuron {} out of range",
+            record.neuron_id
+        );
         assert!(
             spike_times[record.neuron_id].contains(&record.spike_time),
             "importance reported for a spike at t={} that neuron {} never emitted",
@@ -330,7 +348,9 @@ fn test_explainability_pipeline() {
     }
 
     // Step 5: Gradient-based attribution
-    let inputs: Vec<f64> = (0..num_output).map(|n| spike_times[n].len() as f64).collect();
+    let inputs: Vec<f64> = (0..num_output)
+        .map(|n| spike_times[n].len() as f64)
+        .collect();
     let gradient_attr = GradientAttribution::compute(&inputs, &output_gradients);
 
     assert_eq!(gradient_attr.len(), inputs.len());
@@ -341,12 +361,14 @@ fn test_explainability_pipeline() {
     // Step 6: Export explanation to JSON
     let explanation_json = export_explanation_json(None, None, Some(&importance));
 
-    println!("  Exported explanation JSON ({} bytes)", explanation_json.len());
+    println!(
+        "  Exported explanation JSON ({} bytes)",
+        explanation_json.len()
+    );
     assert!(!explanation_json.is_empty());
 
     // Verify it's valid JSON
-    let parsed: serde_json::Value =
-        serde_json::from_str(&explanation_json).expect("Invalid JSON");
+    let parsed: serde_json::Value = serde_json::from_str(&explanation_json).expect("Invalid JSON");
     assert!(parsed.is_object());
 
     println!("  ✓ Explainability pipeline completed successfully");
@@ -356,9 +378,9 @@ fn test_explainability_pipeline() {
 fn test_onnx_export_import_consistency() {
     println!("Testing ONNX export consistency");
 
-    use dpb_snn::export::{OnnxExporter, ModelConfig, LayerConfig};
     use dpb_snn::export::config::LayerType;
-    use dpb_snn::export::weights::{ModelWeights, LayerWeights};
+    use dpb_snn::export::weights::{LayerWeights, ModelWeights};
+    use dpb_snn::export::{LayerConfig, ModelConfig, OnnxExporter};
 
     // Step 1: Create model configuration
     let mut config = ModelConfig::new("integration_test_model")
@@ -428,7 +450,10 @@ fn test_onnx_export_import_consistency() {
         .export_snn_model(&weights, &config.layers, &config.input_shape)
         .expect("ONNX export failed");
 
-    println!("  Exported to ONNX ({} bytes)", export_result.model_bytes.len());
+    println!(
+        "  Exported to ONNX ({} bytes)",
+        export_result.model_bytes.len()
+    );
     assert!(!export_result.model_bytes.is_empty());
 
     // Step 4: Verify export metadata
@@ -483,11 +508,10 @@ fn test_uncertainty_estimation_pipeline() {
     };
 
     for _ in 0..num_models {
-        models.push(FeedforwardSNN::new(
-            vec![num_input, 20, num_classes],
-            snn_config.clone(),
-            true,
-        ).expect("Failed to create SNN"));
+        models.push(
+            FeedforwardSNN::new(vec![num_input, 20, num_classes], snn_config.clone(), true)
+                .expect("Failed to create SNN"),
+        );
     }
 
     println!("  Created ensemble of {} models", num_models);
@@ -529,7 +553,10 @@ fn test_uncertainty_estimation_pipeline() {
         variances.push(variance);
     }
 
-    println!("  Computed predictions and uncertainties for {} samples", batch_size);
+    println!(
+        "  Computed predictions and uncertainties for {} samples",
+        batch_size
+    );
 
     // Every sample must yield one statistic per class.
     for (i, (mean, variance)) in means.iter().zip(variances.iter()).enumerate() {
@@ -582,7 +609,10 @@ fn test_uncertainty_estimation_pipeline() {
             ci.upper - ci.lower
         );
 
-        assert!(ci.lower <= ci.upper, "CI lower bound should be <= upper bound");
+        assert!(
+            ci.lower <= ci.upper,
+            "CI lower bound should be <= upper bound"
+        );
     }
 
     println!("  ✓ Uncertainty estimation pipeline completed");
@@ -600,8 +630,14 @@ fn test_multi_decoder_comparison() {
 
     // Test different decoders
     let decoders: Vec<(&str, Box<dyn Decoder>)> = vec![
-        ("Rate", Box::new(SpikeRateDecoder::new(num_neurons, None, false))),
-        ("First Spike", Box::new(FirstSpikeDecoder::new(num_neurons, num_timesteps))),
+        (
+            "Rate",
+            Box::new(SpikeRateDecoder::new(num_neurons, None, false)),
+        ),
+        (
+            "First Spike",
+            Box::new(FirstSpikeDecoder::new(num_neurons, num_timesteps)),
+        ),
         // PopulationDecoder::new takes (num_classes, neurons_per_class) and
         // therefore expects `classes * per_class` input neurons. Passing
         // `num_neurons` as the class count asked for 200 where the tensor has 20.
@@ -615,7 +651,9 @@ fn test_multi_decoder_comparison() {
     println!("  Testing {} decoder types", decoders.len());
 
     for (name, decoder) in decoders {
-        let result = decoder.decode(&spikes).unwrap_or_else(|_| panic!("{} decoder failed", name));
+        let result = decoder
+            .decode(&spikes)
+            .unwrap_or_else(|_| panic!("{} decoder failed", name));
 
         println!("  {} decoder output shape: {:?}", name, result.shape());
 
@@ -623,7 +661,11 @@ fn test_multi_decoder_comparison() {
 
         // Verify no NaN or infinite values
         for &val in result.iter() {
-            assert!(val.is_finite(), "{} decoder produced non-finite value", name);
+            assert!(
+                val.is_finite(),
+                "{} decoder produced non-finite value",
+                name
+            );
         }
     }
 
@@ -695,7 +737,10 @@ fn test_training_with_convergence_analysis() {
         spike_tracker.update(epoch, &metrics);
 
         if epoch % 5 == 0 {
-            println!("  Epoch {}: loss={:.4}, spike_rate={:.4}", epoch, loss, spike_rate);
+            println!(
+                "  Epoch {}: loss={:.4}, spike_rate={:.4}",
+                epoch, loss, spike_rate
+            );
         }
     }
 

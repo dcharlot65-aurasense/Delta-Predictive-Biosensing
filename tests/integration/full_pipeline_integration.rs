@@ -4,16 +4,15 @@
 //! Synthesis → Processing → Encoding → SNN → Decoding → Analysis
 
 use dpb_core::SignalBuffer;
-use dpb_encoders::prelude::*;
-use dpb_snn::{
-    FeedforwardSNN, SpikeTensor, SpikeRateDecoder, Decoder,
-    NeuronModel, NeuronParams, SNNConfig,
-};
-use dpb_snn::architectures::SNNArchitecture;
-use dpb_synth::contact::ecg::{EcgMorphologyGenerator, EcgMorphologyParams, WaveParams};
-use dpb_synth::contact::respiratory::{RespiratoryWaveformGenerator, RespiratoryParams};
-use dpb_synth::traits::SyntheticGenerator;
 use dpb_core::signal::*;
+use dpb_encoders::prelude::*;
+use dpb_snn::architectures::SNNArchitecture;
+use dpb_snn::{
+    Decoder, FeedforwardSNN, NeuronModel, NeuronParams, SNNConfig, SpikeRateDecoder, SpikeTensor,
+};
+use dpb_synth::contact::ecg::{EcgMorphologyGenerator, EcgMorphologyParams, WaveParams};
+use dpb_synth::contact::respiratory::{RespiratoryParams, RespiratoryWaveformGenerator};
+use dpb_synth::traits::SyntheticGenerator;
 
 const TEST_SEED: u64 = 42;
 
@@ -52,18 +51,24 @@ fn test_synthetic_to_analysis_pipeline() {
         .generate(&params, TEST_SEED)
         .expect("Failed to generate ECG");
 
-    println!("  ✓ Generated ECG: {:.1}s @ {:.0} Hz", duration, sampling_rate);
-    println!("    Ground truth R-peaks: {}", generated.ground_truth.events.len());
+    println!(
+        "  ✓ Generated ECG: {:.1}s @ {:.0} Hz",
+        duration, sampling_rate
+    );
+    println!(
+        "    Ground truth R-peaks: {}",
+        generated.ground_truth.events.len()
+    );
 
     // Step 2: Process with dpb-core signal processing
     let signal_data: Vec<f32> = generated.signal.iter().map(|&x| x as f32).collect();
     let signal = SignalBuffer::single_channel(signal_data.clone(), sampling_rate);
 
     // Apply bandpass filter
-    let lowpass = IirFilter::butterworth_lowpass(4, 40.0, sampling_rate)
-        .expect("Failed to create lowpass");
-    let highpass = IirFilter::butterworth_highpass(4, 0.5, sampling_rate)
-        .expect("Failed to create highpass");
+    let lowpass =
+        IirFilter::butterworth_lowpass(4, 40.0, sampling_rate).expect("Failed to create lowpass");
+    let highpass =
+        IirFilter::butterworth_highpass(4, 0.5, sampling_rate).expect("Failed to create highpass");
 
     // `filter` takes an ArrayView and returns an Array directly.
     let as_f64: Vec<f64> = signal_data.iter().map(|&x| x as f64).collect();
@@ -77,7 +82,9 @@ fn test_synthetic_to_analysis_pipeline() {
 
     // Detect R-peaks
     let detector = PanTompkinsDetector::new(sampling_rate).expect("detector");
-    let detected_peaks = detector.detect_r_peaks(&filtered).expect("Failed to detect R-peaks");
+    let detected_peaks = detector
+        .detect_r_peaks(&filtered)
+        .expect("Failed to detect R-peaks");
 
     println!("  ✓ Detected {} R-peaks", detected_peaks.len());
 
@@ -140,7 +147,8 @@ fn test_synthetic_to_analysis_pipeline() {
         neuron_params: NeuronParams::default(),
     };
 
-    let mut snn = FeedforwardSNN::new(vec![num_channels, 32, 16, num_output], snn_config, true).expect("SNN");
+    let mut snn =
+        FeedforwardSNN::new(vec![num_channels, 32, 16, num_output], snn_config, true).expect("SNN");
     let output_spikes = snn.forward(&spike_tensor).expect("Failed to run SNN");
 
     println!("  ✓ SNN inference completed");
@@ -304,7 +312,8 @@ fn test_multimodal_synthesis_and_fusion() {
         neuron_params: NeuronParams::default(),
     };
 
-    let mut fusion_snn = FeedforwardSNN::new(vec![total_channels, 32, 8], snn_config, true).expect("SNN");
+    let mut fusion_snn =
+        FeedforwardSNN::new(vec![total_channels, 32, 8], snn_config, true).expect("SNN");
     let output = fusion_snn
         .forward(&fused_tensor)
         .expect("Failed to run fusion SNN");
@@ -433,10 +442,7 @@ fn test_normative_comparison_pipeline() {
         );
 
         // Verify z-scores are reasonable
-        assert!(
-            mean_rr_zscore.abs() < 3.0,
-            "Z-score should be within ±3"
-        );
+        assert!(mean_rr_zscore.abs() < 3.0, "Z-score should be within ±3");
     }
 
     println!("\n  ✓ Normative comparison pipeline completed!");
@@ -453,7 +459,10 @@ fn test_real_time_streaming_simulation() {
 
     println!("  Configuration:");
     println!("    Sample rate: {:.0} Hz", sampling_rate);
-    println!("    Chunk size: {} samples ({:.1}s)", chunk_size, chunk_duration);
+    println!(
+        "    Chunk size: {} samples ({:.1}s)",
+        chunk_size, chunk_duration
+    );
     println!("    Total chunks: {}", num_chunks);
 
     // Initialize processing pipeline components
@@ -662,8 +671,16 @@ fn test_end_to_end_feature_extraction() {
             name,
             value
         );
-        assert!(value >= 0.0, "Feature {} should be non-negative: {}", name, value);
+        assert!(
+            value >= 0.0,
+            "Feature {} should be non-negative: {}",
+            name,
+            value
+        );
     }
 
-    println!("\n  ✓ Feature extraction completed with {} features!", features.len());
+    println!(
+        "\n  ✓ Feature extraction completed with {} features!",
+        features.len()
+    );
 }

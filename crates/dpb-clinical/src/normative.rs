@@ -4,7 +4,7 @@
 //! normative data, enabling equitable clinical assessments across diverse
 //! patient populations.
 
-use crate::{demographics::Demographics, ClinicalError, Result};
+use crate::{ClinicalError, Result, demographics::Demographics};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -52,7 +52,8 @@ impl NormativeDatabase {
     /// Add population norms.
     pub fn add_norms(&mut self, population_key: &str, norms: PopulationNorms, sample_size: usize) {
         self.norms.insert(population_key.to_string(), norms);
-        self.sample_sizes.insert(population_key.to_string(), sample_size);
+        self.sample_sizes
+            .insert(population_key.to_string(), sample_size);
     }
 
     /// Get norms for a specific population.
@@ -61,7 +62,10 @@ impl NormativeDatabase {
     }
 
     /// Get norms for demographics, with fallback to broader categories.
-    pub fn get_norms_for_demographics(&self, demographics: &Demographics) -> Option<&PopulationNorms> {
+    pub fn get_norms_for_demographics(
+        &self,
+        demographics: &Demographics,
+    ) -> Option<&PopulationNorms> {
         let key = demographics.population_key();
 
         // Try exact match first
@@ -115,12 +119,7 @@ impl NormativeDatabase {
     }
 
     /// Calculate z-score for a value.
-    pub fn z_score(
-        &self,
-        measure: &str,
-        value: f64,
-        demographics: &Demographics,
-    ) -> Result<f64> {
+    pub fn z_score(&self, measure: &str, value: f64, demographics: &Demographics) -> Result<f64> {
         let norms = self
             .get_norms_for_demographics(demographics)
             .ok_or_else(|| ClinicalError::MissingNormativeData(demographics.population_key()))?;
@@ -184,7 +183,8 @@ impl PopulationNorms {
 
     /// Add reliability coefficient.
     pub fn add_reliability(&mut self, measure: &str, reliability: f64) {
-        self.reliability.insert(measure.to_string(), reliability.clamp(0.0, 1.0));
+        self.reliability
+            .insert(measure.to_string(), reliability.clamp(0.0, 1.0));
     }
 
     /// Get reference for a measure.
@@ -340,14 +340,23 @@ pub struct PercentileTable {
 impl PercentileTable {
     /// Create from percentile-score pairs.
     pub fn new(percentiles: Vec<f64>, scores: Vec<f64>) -> Self {
-        Self { percentiles, scores }
+        Self {
+            percentiles,
+            scores,
+        }
     }
 
     /// Create standard percentile table.
     pub fn standard() -> Self {
         Self {
-            percentiles: vec![1.0, 2.0, 5.0, 9.0, 16.0, 25.0, 37.0, 50.0, 63.0, 75.0, 84.0, 91.0, 95.0, 98.0, 99.0],
-            scores: vec![-2.33, -2.05, -1.65, -1.34, -1.0, -0.67, -0.33, 0.0, 0.33, 0.67, 1.0, 1.34, 1.65, 2.05, 2.33],
+            percentiles: vec![
+                1.0, 2.0, 5.0, 9.0, 16.0, 25.0, 37.0, 50.0, 63.0, 75.0, 84.0, 91.0, 95.0, 98.0,
+                99.0,
+            ],
+            scores: vec![
+                -2.33, -2.05, -1.65, -1.34, -1.0, -0.67, -0.33, 0.0, 0.33, 0.67, 1.0, 1.34, 1.65,
+                2.05, 2.33,
+            ],
         }
     }
 
@@ -445,13 +454,15 @@ impl MeasureDefinition {
     /// Validate a value.
     pub fn validate(&self, value: f64) -> bool {
         if let Some(min) = self.min_value
-            && value < min {
-                return false;
-            }
+            && value < min
+        {
+            return false;
+        }
         if let Some(max) = self.max_value
-            && value > max {
-                return false;
-            }
+            && value > max
+        {
+            return false;
+        }
         true
     }
 }
@@ -462,7 +473,8 @@ fn z_to_percentile(z: f64) -> f64 {
     let x = z.abs();
     let t = 1.0 / (1.0 + 0.2316419 * x);
     let d = 0.3989423 * (-x * x / 2.0).exp();
-    let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+    let p =
+        d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
 
     if z >= 0.0 {
         (1.0 - p) * 100.0
@@ -542,7 +554,7 @@ pub enum ChangeClassification {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::demographics::{Sex, Ethnicity};
+    use crate::demographics::{Ethnicity, Sex};
 
     #[test]
     fn test_z_score_calculation() {
@@ -609,19 +621,19 @@ mod tests {
         // measurements are labelled and needs a clinical decision, not a test.
         let r = NormativeReference::new(100.0, 15.0);
         for (score, expected) in [
-            (130.0, "Very Superior"),  // z =  2.00
-            (125.0, "Superior"),       // z =  1.67
-            (121.0, "Superior"),       // z =  1.40
-            (115.0, "High Average"),   // z =  1.00
-            (111.0, "High Average"),   // z =  0.73
-            (100.0, "Average"),        // z =  0.00
-            (90.0, "Average"),         // z = -0.67
-            (85.0, "Low Average"),     // z = -1.00
-            (80.0, "Borderline"),      // z = -1.33, just past the -1.3 cut-off
-            (75.0, "Borderline"),      // z = -1.67
-            (70.0, "Borderline"),      // z = -2.00 exactly
-            (69.0, "Extremely Low"),   // z = -2.07
-            (50.0, "Extremely Low"),   // z = -3.33
+            (130.0, "Very Superior"), // z =  2.00
+            (125.0, "Superior"),      // z =  1.67
+            (121.0, "Superior"),      // z =  1.40
+            (115.0, "High Average"),  // z =  1.00
+            (111.0, "High Average"),  // z =  0.73
+            (100.0, "Average"),       // z =  0.00
+            (90.0, "Average"),        // z = -0.67
+            (85.0, "Low Average"),    // z = -1.00
+            (80.0, "Borderline"),     // z = -1.33, just past the -1.3 cut-off
+            (75.0, "Borderline"),     // z = -1.67
+            (70.0, "Borderline"),     // z = -2.00 exactly
+            (69.0, "Extremely Low"),  // z = -2.07
+            (50.0, "Extremely Low"),  // z = -3.33
         ] {
             assert_eq!(
                 r.qualitative_descriptor(score),

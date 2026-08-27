@@ -26,8 +26,14 @@ impl ECGNet {
 
         // Residual blocks
         let residual_blocks = vec![
-            (xavier_init(vec![256, 256, 3], seed + 3), xavier_init(vec![256, 256, 3], seed + 4)),
-            (xavier_init(vec![256, 256, 3], seed + 5), xavier_init(vec![256, 256, 3], seed + 6)),
+            (
+                xavier_init(vec![256, 256, 3], seed + 3),
+                xavier_init(vec![256, 256, 3], seed + 4),
+            ),
+            (
+                xavier_init(vec![256, 256, 3], seed + 5),
+                xavier_init(vec![256, 256, 3], seed + 6),
+            ),
         ];
 
         // LSTM for temporal modeling
@@ -37,8 +43,14 @@ impl ECGNet {
 
         // FC layers
         let fc_layers = vec![
-            (xavier_init(vec![hidden_size, 64], seed + 9), Tensor::zeros(vec![64])),
-            (xavier_init(vec![64, num_classes], seed + 10), Tensor::zeros(vec![num_classes])),
+            (
+                xavier_init(vec![hidden_size, 64], seed + 9),
+                Tensor::zeros(vec![64]),
+            ),
+            (
+                xavier_init(vec![64, num_classes], seed + 10),
+                Tensor::zeros(vec![num_classes]),
+            ),
         ];
 
         Self {
@@ -88,12 +100,20 @@ impl ANNBaseline for ECGNet {
     }
 
     fn num_parameters(&self) -> usize {
-        let conv_params: usize = self.conv_layers.iter().map(|c| count_params(&c.shape)).sum();
-        let res_params: usize = self.residual_blocks.iter()
+        let conv_params: usize = self
+            .conv_layers
+            .iter()
+            .map(|c| count_params(&c.shape))
+            .sum();
+        let res_params: usize = self
+            .residual_blocks
+            .iter()
             .map(|(c1, c2)| count_params(&c1.shape) + count_params(&c2.shape))
             .sum();
         let lstm_params = count_params(&self.lstm_w_ih.shape) + count_params(&self.lstm_w_hh.shape);
-        let fc_params: usize = self.fc_layers.iter()
+        let fc_params: usize = self
+            .fc_layers
+            .iter()
             .map(|(w, b)| count_params(&w.shape) + count_params(&b.shape))
             .sum();
 
@@ -150,8 +170,14 @@ impl DeepGait {
 
         // FC layers
         let fc_layers = vec![
-            (xavier_init(vec![hidden_size * 2, 128], seed + 9), Tensor::zeros(vec![128])),
-            (xavier_init(vec![128, output_size], seed + 10), Tensor::zeros(vec![output_size])),
+            (
+                xavier_init(vec![hidden_size * 2, 128], seed + 9),
+                Tensor::zeros(vec![128]),
+            ),
+            (
+                xavier_init(vec![128, output_size], seed + 10),
+                Tensor::zeros(vec![output_size]),
+            ),
         ];
 
         Self {
@@ -195,11 +221,20 @@ impl ANNBaseline for DeepGait {
     }
 
     fn num_parameters(&self) -> usize {
-        let conv_params: usize = self.spatial_conv.iter().map(|c| count_params(&c.shape)).sum();
-        let lstm_params = count_params(&self.lstm_forward.0.shape) + count_params(&self.lstm_forward.1.shape) +
-                         count_params(&self.lstm_backward.0.shape) + count_params(&self.lstm_backward.1.shape);
-        let attention_params = count_params(&self.attention_w.shape) + count_params(&self.attention_v.shape);
-        let fc_params: usize = self.fc_layers.iter()
+        let conv_params: usize = self
+            .spatial_conv
+            .iter()
+            .map(|c| count_params(&c.shape))
+            .sum();
+        let lstm_params = count_params(&self.lstm_forward.0.shape)
+            + count_params(&self.lstm_forward.1.shape)
+            + count_params(&self.lstm_backward.0.shape)
+            + count_params(&self.lstm_backward.1.shape);
+        let attention_params =
+            count_params(&self.attention_w.shape) + count_params(&self.attention_v.shape);
+        let fc_params: usize = self
+            .fc_layers
+            .iter()
             .map(|(w, b)| count_params(&w.shape) + count_params(&b.shape))
             .sum();
 
@@ -242,9 +277,18 @@ impl TremorNet {
 
         // FC layers
         let fc_layers = vec![
-            (xavier_init(vec![64 * 10, 128], seed + 4), Tensor::zeros(vec![128])),
-            (xavier_init(vec![128, 64], seed + 5), Tensor::zeros(vec![64])),
-            (xavier_init(vec![64, output_size], seed + 6), Tensor::zeros(vec![output_size])),
+            (
+                xavier_init(vec![64 * 10, 128], seed + 4),
+                Tensor::zeros(vec![128]),
+            ),
+            (
+                xavier_init(vec![128, 64], seed + 5),
+                Tensor::zeros(vec![64]),
+            ),
+            (
+                xavier_init(vec![64, output_size], seed + 6),
+                Tensor::zeros(vec![output_size]),
+            ),
         ];
 
         Self {
@@ -262,7 +306,11 @@ impl ANNBaseline for TremorNet {
 
     fn forward(&self, input: &Tensor) -> Tensor {
         // Simplified forward
-        let batch_size = if input.shape.len() == 3 { input.shape[0] } else { 1 };
+        let batch_size = if input.shape.len() == 3 {
+            input.shape[0]
+        } else {
+            1
+        };
         let mut x = Tensor::zeros(vec![batch_size, 64 * 10]);
 
         // FC layers
@@ -277,12 +325,16 @@ impl ANNBaseline for TremorNet {
     }
 
     fn num_parameters(&self) -> usize {
-        let freq_params: usize = self.freq_convs.iter()
+        let freq_params: usize = self
+            .freq_convs
+            .iter()
             .flat_map(|branch| branch.iter())
             .map(|c| count_params(&c.shape))
             .sum();
         let temporal_params = count_params(&self.temporal_conv.shape);
-        let fc_params: usize = self.fc_layers.iter()
+        let fc_params: usize = self
+            .fc_layers
+            .iter()
             .map(|(w, b)| count_params(&w.shape) + count_params(&b.shape))
             .sum();
 
@@ -327,12 +379,12 @@ impl VoiceNet {
 
         let fusion_fc = (
             xavier_init(vec![256 + hidden_size, 256], seed + 5),
-            Tensor::zeros(vec![256])
+            Tensor::zeros(vec![256]),
         );
 
         let output_fc = (
             xavier_init(vec![256, output_size], seed + 6),
-            Tensor::zeros(vec![output_size])
+            Tensor::zeros(vec![output_size]),
         );
 
         Self {
@@ -350,7 +402,11 @@ impl ANNBaseline for VoiceNet {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let batch_size = if input.shape.len() == 3 { input.shape[0] } else { 1 };
+        let batch_size = if input.shape.len() == 3 {
+            input.shape[0]
+        } else {
+            1
+        };
         let x = Tensor::zeros(vec![batch_size, self.fusion_fc.0.shape[0]]);
 
         let x = x.matmul(&self.fusion_fc.0).add(&self.fusion_fc.1).relu();
@@ -359,9 +415,12 @@ impl ANNBaseline for VoiceNet {
 
     fn num_parameters(&self) -> usize {
         let spec_params: usize = self.spec_conv.iter().map(|c| count_params(&c.shape)).sum();
-        let lstm_params = count_params(&self.prosody_lstm.0.shape) + count_params(&self.prosody_lstm.1.shape);
-        let fusion_params = count_params(&self.fusion_fc.0.shape) + count_params(&self.fusion_fc.1.shape);
-        let output_params = count_params(&self.output_fc.0.shape) + count_params(&self.output_fc.1.shape);
+        let lstm_params =
+            count_params(&self.prosody_lstm.0.shape) + count_params(&self.prosody_lstm.1.shape);
+        let fusion_params =
+            count_params(&self.fusion_fc.0.shape) + count_params(&self.fusion_fc.1.shape);
+        let output_params =
+            count_params(&self.output_fc.0.shape) + count_params(&self.output_fc.1.shape);
 
         spec_params + lstm_params + fusion_params + output_params
     }
@@ -386,15 +445,24 @@ pub struct MultimodalFusion {
 }
 
 impl MultimodalFusion {
-    pub fn new(modality_sizes: &[usize], hidden_size: usize, output_size: usize, seed: u64) -> Self {
+    pub fn new(
+        modality_sizes: &[usize],
+        hidden_size: usize,
+        output_size: usize,
+        seed: u64,
+    ) -> Self {
         let mut modality_encoders = Vec::new();
 
         for (i, &mod_size) in modality_sizes.iter().enumerate() {
             let encoder = vec![
-                (xavier_init(vec![mod_size, hidden_size], seed + i as u64 * 10),
-                 Tensor::zeros(vec![hidden_size])),
-                (xavier_init(vec![hidden_size, hidden_size], seed + i as u64 * 10 + 1),
-                 Tensor::zeros(vec![hidden_size])),
+                (
+                    xavier_init(vec![mod_size, hidden_size], seed + i as u64 * 10),
+                    Tensor::zeros(vec![hidden_size]),
+                ),
+                (
+                    xavier_init(vec![hidden_size, hidden_size], seed + i as u64 * 10 + 1),
+                    Tensor::zeros(vec![hidden_size]),
+                ),
             ];
             modality_encoders.push(encoder);
         }
@@ -402,12 +470,12 @@ impl MultimodalFusion {
         let total_hidden = hidden_size * modality_sizes.len();
         let fusion_fc = (
             xavier_init(vec![total_hidden, hidden_size * 2], seed + 100),
-            Tensor::zeros(vec![hidden_size * 2])
+            Tensor::zeros(vec![hidden_size * 2]),
         );
 
         let output_fc = (
             xavier_init(vec![hidden_size * 2, output_size], seed + 101),
-            Tensor::zeros(vec![output_size])
+            Tensor::zeros(vec![output_size]),
         );
 
         Self {
@@ -425,7 +493,11 @@ impl ANNBaseline for MultimodalFusion {
 
     fn forward(&self, input: &Tensor) -> Tensor {
         // Simplified: assume input is already concatenated features
-        let batch_size = if input.shape.len() == 2 { input.shape[0] } else { 1 };
+        let batch_size = if input.shape.len() == 2 {
+            input.shape[0]
+        } else {
+            1
+        };
         let x = Tensor::zeros(vec![batch_size, self.fusion_fc.0.shape[0]]);
 
         let x = x.matmul(&self.fusion_fc.0).add(&self.fusion_fc.1).relu();
@@ -433,13 +505,17 @@ impl ANNBaseline for MultimodalFusion {
     }
 
     fn num_parameters(&self) -> usize {
-        let encoder_params: usize = self.modality_encoders.iter()
+        let encoder_params: usize = self
+            .modality_encoders
+            .iter()
             .flat_map(|enc| enc.iter())
             .map(|(w, b)| count_params(&w.shape) + count_params(&b.shape))
             .sum();
 
-        let fusion_params = count_params(&self.fusion_fc.0.shape) + count_params(&self.fusion_fc.1.shape);
-        let output_params = count_params(&self.output_fc.0.shape) + count_params(&self.output_fc.1.shape);
+        let fusion_params =
+            count_params(&self.fusion_fc.0.shape) + count_params(&self.fusion_fc.1.shape);
+        let output_params =
+            count_params(&self.output_fc.0.shape) + count_params(&self.output_fc.1.shape);
 
         encoder_params + fusion_params + output_params
     }
@@ -449,8 +525,10 @@ impl ANNBaseline for MultimodalFusion {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("MultimodalFusion: Late fusion of {} modalities",
-                self.modality_encoders.len())
+        format!(
+            "MultimodalFusion: Late fusion of {} modalities",
+            self.modality_encoders.len()
+        )
     }
 }
 
@@ -464,14 +542,19 @@ pub struct AttentionFusion {
 }
 
 impl AttentionFusion {
-    pub fn new(modality_sizes: &[usize], hidden_size: usize, output_size: usize, seed: u64) -> Self {
+    pub fn new(
+        modality_sizes: &[usize],
+        hidden_size: usize,
+        output_size: usize,
+        seed: u64,
+    ) -> Self {
         let mut modality_encoders = Vec::new();
 
         for (i, &mod_size) in modality_sizes.iter().enumerate() {
-            let encoder = vec![
-                (xavier_init(vec![mod_size, hidden_size], seed + i as u64 * 10),
-                 Tensor::zeros(vec![hidden_size])),
-            ];
+            let encoder = vec![(
+                xavier_init(vec![mod_size, hidden_size], seed + i as u64 * 10),
+                Tensor::zeros(vec![hidden_size]),
+            )];
             modality_encoders.push(encoder);
         }
 
@@ -480,12 +563,12 @@ impl AttentionFusion {
 
         let fusion_fc = (
             xavier_init(vec![hidden_size, hidden_size], seed + 102),
-            Tensor::zeros(vec![hidden_size])
+            Tensor::zeros(vec![hidden_size]),
         );
 
         let output_fc = (
             xavier_init(vec![hidden_size, output_size], seed + 103),
-            Tensor::zeros(vec![output_size])
+            Tensor::zeros(vec![output_size]),
         );
 
         Self {
@@ -504,7 +587,11 @@ impl ANNBaseline for AttentionFusion {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let batch_size = if input.shape.len() == 2 { input.shape[0] } else { 1 };
+        let batch_size = if input.shape.len() == 2 {
+            input.shape[0]
+        } else {
+            1
+        };
         let x = Tensor::zeros(vec![batch_size, self.fusion_fc.0.shape[0]]);
 
         let x = x.matmul(&self.fusion_fc.0).add(&self.fusion_fc.1).relu();
@@ -512,14 +599,19 @@ impl ANNBaseline for AttentionFusion {
     }
 
     fn num_parameters(&self) -> usize {
-        let encoder_params: usize = self.modality_encoders.iter()
+        let encoder_params: usize = self
+            .modality_encoders
+            .iter()
             .flat_map(|enc| enc.iter())
             .map(|(w, b)| count_params(&w.shape) + count_params(&b.shape))
             .sum();
 
-        let attention_params = count_params(&self.attention_w.shape) + count_params(&self.attention_v.shape);
-        let fusion_params = count_params(&self.fusion_fc.0.shape) + count_params(&self.fusion_fc.1.shape);
-        let output_params = count_params(&self.output_fc.0.shape) + count_params(&self.output_fc.1.shape);
+        let attention_params =
+            count_params(&self.attention_w.shape) + count_params(&self.attention_v.shape);
+        let fusion_params =
+            count_params(&self.fusion_fc.0.shape) + count_params(&self.fusion_fc.1.shape);
+        let output_params =
+            count_params(&self.output_fc.0.shape) + count_params(&self.output_fc.1.shape);
 
         encoder_params + attention_params + fusion_params + output_params
     }
@@ -529,8 +621,10 @@ impl ANNBaseline for AttentionFusion {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("AttentionFusion: Attention-weighted fusion of {} modalities",
-                self.modality_encoders.len())
+        format!(
+            "AttentionFusion: Attention-weighted fusion of {} modalities",
+            self.modality_encoders.len()
+        )
     }
 }
 
@@ -545,26 +639,35 @@ pub struct GraphNN {
 }
 
 impl GraphNN {
-    pub fn new(node_features: usize, hidden_size: usize, num_layers: usize, output_size: usize, seed: u64) -> Self {
+    pub fn new(
+        node_features: usize,
+        hidden_size: usize,
+        num_layers: usize,
+        output_size: usize,
+        seed: u64,
+    ) -> Self {
         let mut node_fc = Vec::new();
         let mut in_size = node_features;
 
         for i in 0..2 {
             node_fc.push((
                 xavier_init(vec![in_size, hidden_size], seed + i as u64),
-                Tensor::zeros(vec![hidden_size])
+                Tensor::zeros(vec![hidden_size]),
             ));
             in_size = hidden_size;
         }
 
         let mut graph_conv = Vec::new();
         for i in 0..num_layers {
-            graph_conv.push(xavier_init(vec![hidden_size, hidden_size], seed + 10 + i as u64));
+            graph_conv.push(xavier_init(
+                vec![hidden_size, hidden_size],
+                seed + 10 + i as u64,
+            ));
         }
 
         let output_fc = (
             xavier_init(vec![hidden_size, output_size], seed + 100),
-            Tensor::zeros(vec![output_size])
+            Tensor::zeros(vec![output_size]),
         );
 
         Self {
@@ -598,15 +701,16 @@ impl ANNBaseline for GraphNN {
     }
 
     fn num_parameters(&self) -> usize {
-        let node_params: usize = self.node_fc.iter()
+        let node_params: usize = self
+            .node_fc
+            .iter()
             .map(|(w, b)| count_params(&w.shape) + count_params(&b.shape))
             .sum();
 
-        let graph_params: usize = self.graph_conv.iter()
-            .map(|c| count_params(&c.shape))
-            .sum();
+        let graph_params: usize = self.graph_conv.iter().map(|c| count_params(&c.shape)).sum();
 
-        let output_params = count_params(&self.output_fc.0.shape) + count_params(&self.output_fc.1.shape);
+        let output_params =
+            count_params(&self.output_fc.0.shape) + count_params(&self.output_fc.1.shape);
 
         node_params + graph_params + output_params
     }
@@ -616,8 +720,10 @@ impl ANNBaseline for GraphNN {
     }
 
     fn architecture_summary(&self) -> String {
-        format!("GraphNN: {} graph convolution layers for skeleton/graph data",
-                self.graph_conv.len())
+        format!(
+            "GraphNN: {} graph convolution layers for skeleton/graph data",
+            self.graph_conv.len()
+        )
     }
 }
 
@@ -645,8 +751,14 @@ impl HybridCNNRNN {
         let lstm_w_hh = xavier_init(vec![hidden_size, hidden_size * 4], seed + 4);
 
         let fc_layers = vec![
-            (xavier_init(vec![hidden_size, 128], seed + 5), Tensor::zeros(vec![128])),
-            (xavier_init(vec![128, output_size], seed + 6), Tensor::zeros(vec![output_size])),
+            (
+                xavier_init(vec![hidden_size, 128], seed + 5),
+                Tensor::zeros(vec![128]),
+            ),
+            (
+                xavier_init(vec![128, output_size], seed + 6),
+                Tensor::zeros(vec![output_size]),
+            ),
         ];
 
         Self {
@@ -690,7 +802,9 @@ impl ANNBaseline for HybridCNNRNN {
     fn num_parameters(&self) -> usize {
         let cnn_params: usize = self.cnn_layers.iter().map(|c| count_params(&c.shape)).sum();
         let lstm_params = count_params(&self.lstm_w_ih.shape) + count_params(&self.lstm_w_hh.shape);
-        let fc_params: usize = self.fc_layers.iter()
+        let fc_params: usize = self
+            .fc_layers
+            .iter()
             .map(|(w, b)| count_params(&w.shape) + count_params(&b.shape))
             .sum();
 

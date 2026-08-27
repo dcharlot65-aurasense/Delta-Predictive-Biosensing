@@ -48,7 +48,8 @@ fn test_level_crossing_accuracy() {
         mode: LevelCrossingMode::FixedLevel,
     };
 
-    let spike_train = encoder.encode(&signal_buffer, &config)
+    let spike_train = encoder
+        .encode(&signal_buffer, &config)
         .expect("Failed to encode");
 
     // Expected crossings: signal crosses threshold twice per cycle (up and down)
@@ -59,7 +60,7 @@ fn test_level_crossing_accuracy() {
         spike_train.len() as f64,
         (expected_crossings - 4) as f64,
         (expected_crossings + 4) as f64,
-        "Level crossing count"
+        "Level crossing count",
     );
 
     println!(
@@ -81,7 +82,8 @@ fn test_derivative_encoder_zero_crossings() {
     };
 
     let generator = PhysiologicalTremorGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate tremor");
 
     let signal_data: Vec<f32> = generated.signal.iter().map(|&x| x as f32).collect();
@@ -94,8 +96,7 @@ fn test_derivative_encoder_zero_crossings() {
         ..DerivativeConfig::default()
     };
 
-    let spike_train = encoder.encode(&signal, &config)
-        .expect("Failed to encode");
+    let spike_train = encoder.encode(&signal, &config).expect("Failed to encode");
 
     // A derivative encoder fires on RATE OF CHANGE, not on sign changes.
     //
@@ -118,8 +119,14 @@ fn test_derivative_encoder_zero_crossings() {
 
     let mut previous = usize::MAX;
     for threshold in [0.01f32, 0.05, 0.2, 1.0, 5.0] {
-        let config = DerivativeConfig { threshold, ..DerivativeConfig::default() };
-        let count = encoder.encode(&signal, &config).expect("Failed to encode").len();
+        let config = DerivativeConfig {
+            threshold,
+            ..DerivativeConfig::default()
+        };
+        let count = encoder
+            .encode(&signal, &config)
+            .expect("Failed to encode")
+            .len();
         assert!(
             count <= previous,
             "raising the threshold to {threshold} increased the count: {previous} -> {count}"
@@ -128,9 +135,15 @@ fn test_derivative_encoder_zero_crossings() {
     }
 
     // A threshold far above any achievable slope must silence it entirely.
-    let silent = DerivativeConfig { threshold: 1.0e6, ..DerivativeConfig::default() };
+    let silent = DerivativeConfig {
+        threshold: 1.0e6,
+        ..DerivativeConfig::default()
+    };
     assert!(
-        encoder.encode(&signal, &silent).expect("Failed to encode").is_empty(),
+        encoder
+            .encode(&signal, &silent)
+            .expect("Failed to encode")
+            .is_empty(),
         "an unreachable threshold should produce no events"
     );
 
@@ -147,14 +160,27 @@ fn test_encoder_event_timing_precision() {
     let params = EcgMorphologyParams {
         duration: 5.0,
         sampling_rate: 1000.0, // 1ms resolution
-        heart_rate: 60.0, // 1 beat per second
-        p_wave: WaveParams { amplitude: 0.25, width: 0.1, time_offset: -PI / 3.0 },
-        qrs_complex: WaveParams { amplitude: 1.0, width: 0.1, time_offset: 0.0 },
-        t_wave: WaveParams { amplitude: 0.35, width: 0.25, time_offset: PI / 2.0 },
+        heart_rate: 60.0,      // 1 beat per second
+        p_wave: WaveParams {
+            amplitude: 0.25,
+            width: 0.1,
+            time_offset: -PI / 3.0,
+        },
+        qrs_complex: WaveParams {
+            amplitude: 1.0,
+            width: 0.1,
+            time_offset: 0.0,
+        },
+        t_wave: WaveParams {
+            amplitude: 0.35,
+            width: 0.25,
+            time_offset: PI / 2.0,
+        },
     };
 
     let generator = EcgMorphologyGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate ECG");
 
     let signal_data: Vec<f32> = generated.signal.iter().map(|&x| x as f32).collect();
@@ -172,8 +198,7 @@ fn test_encoder_event_timing_precision() {
         mode: LevelCrossingMode::FixedLevel,
     };
 
-    let spike_train = encoder.encode(&signal, &config)
-        .expect("Failed to encode");
+    let spike_train = encoder.encode(&signal, &config).expect("Failed to encode");
 
     let r_peaks = &generated.ground_truth.events;
 
@@ -182,7 +207,7 @@ fn test_encoder_event_timing_precision() {
         spike_train.len() as f64,
         (r_peaks.len() - 2) as f64,
         (r_peaks.len() + 2) as f64,
-        "Peak count should match ground truth"
+        "Peak count should match ground truth",
     );
 
     println!(
@@ -220,12 +245,13 @@ fn test_encoder_threshold_sensitivity() {
             relative: false,
             refractory_period: 0.0,
             // Detection semantics: one event per crossing of the level. The
-        // default `Delta` mode instead emits one event per threshold of
-        // travel, which is the reconstructable sampling behaviour.
-        mode: LevelCrossingMode::FixedLevel,
+            // default `Delta` mode instead emits one event per threshold of
+            // travel, which is the reconstructable sampling behaviour.
+            mode: LevelCrossingMode::FixedLevel,
         };
 
-        let spike_train = encoder.encode(&signal_buffer, &config)
+        let spike_train = encoder
+            .encode(&signal_buffer, &config)
             .expect("Failed to encode");
 
         // Higher thresholds should produce fewer or equal spikes
@@ -272,7 +298,8 @@ fn test_encoder_refractory_period() {
         mode: LevelCrossingMode::FixedLevel,
     };
 
-    let spikes_no_refrac = encoder.encode(&signal_buffer, &config_no_refrac)
+    let spikes_no_refrac = encoder
+        .encode(&signal_buffer, &config_no_refrac)
         .expect("Failed to encode");
 
     // Test with refractory period
@@ -286,7 +313,8 @@ fn test_encoder_refractory_period() {
         mode: LevelCrossingMode::FixedLevel,
     };
 
-    let spikes_with_refrac = encoder.encode(&signal_buffer, &config_with_refrac)
+    let spikes_with_refrac = encoder
+        .encode(&signal_buffer, &config_with_refrac)
         .expect("Failed to encode");
 
     // Refractory period should reduce spike count
@@ -335,23 +363,19 @@ fn test_encoder_polarity_preservation() {
         mode: LevelCrossingMode::FixedLevel,
     };
 
-    let spike_train = encoder.encode(&signal_buffer, &config)
+    let spike_train = encoder
+        .encode(&signal_buffer, &config)
         .expect("Failed to encode");
 
     // Should have spikes with different polarities
-    let polarities: Vec<i8> = spike_train.iter()
-        .map(|e| e.polarity)
-        .collect();
+    let polarities: Vec<i8> = spike_train.iter().map(|e| e.polarity).collect();
 
     let has_positive = polarities.iter().any(|&p| p > 0);
     let has_negative = polarities.iter().any(|&p| p < 0);
 
     // Note: LevelCrossingEncoder may only use positive polarity
     // This test verifies the spike train structure is correct
-    assert!(
-        !spike_train.is_empty(),
-        "Should produce spikes"
-    );
+    assert!(!spike_train.is_empty(), "Should produce spikes");
 
     println!(
         "Polarity test: {} spikes, positive: {}, negative: {}",
@@ -373,7 +397,8 @@ fn test_encoder_output_validation() {
     };
 
     let generator = PhysiologicalTremorGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate");
 
     let signal_data: Vec<f32> = generated.signal.iter().map(|&x| x as f32).collect();
@@ -390,8 +415,7 @@ fn test_encoder_output_validation() {
         mode: LevelCrossingMode::FixedLevel,
     };
 
-    let spike_train = encoder.encode(&signal, &config)
-        .expect("Failed to encode");
+    let spike_train = encoder.encode(&signal, &config).expect("Failed to encode");
 
     // Validate spike train properties
     assert!(!spike_train.is_empty(), "Should produce spikes");
@@ -419,4 +443,3 @@ fn test_encoder_output_validation() {
         spike_train.len()
     );
 }
-

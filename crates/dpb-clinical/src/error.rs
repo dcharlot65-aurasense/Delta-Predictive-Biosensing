@@ -96,11 +96,13 @@ mod tests {
     #[test]
     fn test_is_data_error() {
         assert!(ClinicalError::InvalidDemographics("test".into()).is_data_error());
-        assert!(ClinicalError::InsufficientData {
-            required: 10,
-            available: 5
-        }
-        .is_data_error());
+        assert!(
+            ClinicalError::InsufficientData {
+                required: 10,
+                available: 5
+            }
+            .is_data_error()
+        );
         assert!(!ClinicalError::StatisticalError("test".into()).is_data_error());
     }
 }

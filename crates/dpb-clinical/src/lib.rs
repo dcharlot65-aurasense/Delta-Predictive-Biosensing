@@ -75,13 +75,13 @@
 //! # }
 //! ```
 
-pub mod error;
-pub mod demographics;
-pub mod normative;
-pub mod treatment;
 pub mod comorbidity;
-pub mod practice_effects;
+pub mod demographics;
+pub mod error;
+pub mod normative;
 pub mod phi;
+pub mod practice_effects;
+pub mod treatment;
 
 // Re-export the crate's public surface.
 //
@@ -90,11 +90,16 @@ pub mod phi;
 // for a `TreatmentResponse`, `ConditionCategory` for a `Condition`,
 // `CorrectionMethod` for a `PracticeEffectCorrector` -- had to be named by
 // module path, which nothing documented.
-pub use error::{ClinicalError, Result};
+pub use comorbidity::{
+    CombinedEffect, ComorbidityModel, ComorbidityProfile, ComplexInteraction, Condition,
+    ConditionCategory, ConditionSeverity, ConditionStatus, Interaction, InteractionType,
+    PatientCondition,
+};
 pub use demographics::{
     AgeGroup, BroadEthnicCategory, DemographicFactor, Demographics, Ethnicity, FactorCategory,
     Handedness, Sex,
 };
+pub use error::{ClinicalError, Result};
 pub use normative::{
     ChangeClassification, MeasureDefinition, NormativeDatabase, NormativeReference,
     PercentileTable, PopulationNorms, ReliableChangeIndex,
@@ -103,19 +108,16 @@ pub use treatment::{
     Assessment, EffectInterpretation, EffectSize, EffectType, GroupStats, InterventionModel,
     ResponseClassification, ResponseCriteria, TreatmentGroup, TreatmentResponse,
 };
-pub use comorbidity::{
-    CombinedEffect, ComorbidityModel, ComorbidityProfile, ComplexInteraction, Condition,
-    ConditionCategory, ConditionSeverity, ConditionStatus, Interaction, InteractionType,
-    PatientCondition,
-};
 // `practice_effects::EffectType` collides with the treatment one, so it keeps a
 // qualified name here.
+pub use phi::{
+    DeIdentificationConfig, DeIdentifiedRecord, DeIdentifier, PatientRecord, PhiIdentifier,
+};
 pub use practice_effects::{
     AssessmentSession, CorrectedScore, CorrectionMethod, EffectType as PracticeEffectType,
-    PracticeEffect, PracticeEffectCorrector, PracticeEffectNorms, SRBCalculator,
-    SRBClassification, SerialAssessment,
+    PracticeEffect, PracticeEffectCorrector, PracticeEffectNorms, SRBCalculator, SRBClassification,
+    SerialAssessment,
 };
-pub use phi::{DeIdentifier, DeIdentificationConfig, PatientRecord, DeIdentifiedRecord, PhiIdentifier};
 
 /// Clinical data version.
 pub const CLINICAL_DATA_VERSION: &str = "1.1";

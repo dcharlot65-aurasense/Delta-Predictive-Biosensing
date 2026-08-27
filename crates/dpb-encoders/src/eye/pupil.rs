@@ -72,8 +72,7 @@ pub struct PupilDilationEncoder;
 impl PupilDilationEncoder {
     /// Creates a new [`PupilDilationEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }
 
@@ -222,7 +221,6 @@ impl EventEncoder for PupilLightReflexEncoder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     #[test]
     fn test_pupil_diameter_template() {

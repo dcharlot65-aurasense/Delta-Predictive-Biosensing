@@ -33,7 +33,9 @@ impl MetricTrait for MeanAbsoluteError {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
         if predictions.is_empty() {
             return Ok(0.0);
@@ -104,7 +106,9 @@ impl MetricTrait for MeanSquaredError {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
         if predictions.is_empty() {
             return Ok(0.0);
@@ -228,7 +232,9 @@ impl MetricTrait for RSquared {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
         if predictions.is_empty() {
             return Ok(0.0);
@@ -331,7 +337,9 @@ impl MetricTrait for PearsonCorrelation {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
         if predictions.is_empty() {
             return Ok(0.0);
@@ -417,7 +425,8 @@ impl SpearmanCorrelation {
     }
 
     fn rank(values: &[f32]) -> Vec<f64> {
-        let mut indexed: Vec<(usize, f32)> = values.iter().enumerate().map(|(i, &v)| (i, v)).collect();
+        let mut indexed: Vec<(usize, f32)> =
+            values.iter().enumerate().map(|(i, &v)| (i, v)).collect();
         indexed.sort_by(|a, b| a.1.total_cmp(&b.1));
 
         let mut ranks = vec![0.0; values.len()];
@@ -474,7 +483,9 @@ impl MetricTrait for SpearmanCorrelation {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
         Ok(Self::compute_correlation(predictions, targets))
     }
@@ -524,7 +535,9 @@ impl MetricTrait for MeanAbsolutePercentageError {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
         if predictions.is_empty() {
             return Ok(0.0);
@@ -534,7 +547,8 @@ impl MetricTrait for MeanAbsolutePercentageError {
         let mut valid_count = 0;
 
         for (p, t) in predictions.iter().zip(targets.iter()) {
-            if t.abs() > 1e-10 {  // Avoid division by zero
+            if t.abs() > 1e-10 {
+                // Avoid division by zero
                 sum += ((t - p) / t).abs() as f64;
                 valid_count += 1;
             }
@@ -549,7 +563,8 @@ impl MetricTrait for MeanAbsolutePercentageError {
 
     fn update(&mut self, predictions: &[f32], targets: &[f32]) {
         for (p, t) in predictions.iter().zip(targets.iter()) {
-            if t.abs() > 1e-10 {  // Avoid division by zero
+            if t.abs() > 1e-10 {
+                // Avoid division by zero
                 self.sum_percentage_error += ((t - p) / t).abs() as f64;
                 self.count += 1.0;
             }
@@ -606,7 +621,9 @@ impl MetricTrait for ExplainedVariance {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
         if predictions.is_empty() {
             return Ok(0.0);
@@ -730,7 +747,7 @@ mod tests {
         let targets = vec![1.0, 2.0, 3.0, 4.0];
 
         let result = r2.compute(&preds, &targets).unwrap();
-        assert_eq!(result, 1.0);  // Perfect prediction
+        assert_eq!(result, 1.0); // Perfect prediction
     }
 
     #[test]
@@ -740,7 +757,7 @@ mod tests {
         let targets = vec![2.0, 4.0, 6.0, 8.0, 10.0];
 
         let result = pearson.compute(&preds, &targets).unwrap();
-        assert!((result - 1.0).abs() < 1e-6);  // Perfect linear correlation
+        assert!((result - 1.0).abs() < 1e-6); // Perfect linear correlation
     }
 
     #[test]
@@ -750,7 +767,7 @@ mod tests {
         let targets = vec![1.0, 2.0, 3.0, 4.0, 5.0];
 
         let result = spearman.compute(&preds, &targets).unwrap();
-        assert!((result - 1.0).abs() < 1e-6);  // Perfect rank correlation
+        assert!((result - 1.0).abs() < 1e-6); // Perfect rank correlation
     }
 
     #[test]
@@ -760,7 +777,7 @@ mod tests {
         let targets = vec![100.0, 100.0];
 
         let result = mape.compute(&preds, &targets).unwrap();
-        assert!((result - 10.0).abs() < 0.01);  // 10% average error (with tolerance)
+        assert!((result - 10.0).abs() < 0.01); // 10% average error (with tolerance)
     }
 
     #[test]
@@ -770,6 +787,6 @@ mod tests {
         let targets = vec![1.0, 2.0, 3.0, 4.0];
 
         let result = ev.compute(&preds, &targets).unwrap();
-        assert!((result - 1.0).abs() < 1e-6);  // Perfect prediction
+        assert!((result - 1.0).abs() < 1e-6); // Perfect prediction
     }
 }

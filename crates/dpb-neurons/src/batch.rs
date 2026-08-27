@@ -119,7 +119,7 @@ impl BatchLifLayer {
 
             // LIF dynamics
             let dv = (-(self.v[i] - self.config.v_rest) + self.config.r_m * inputs[i])
-                     / self.config.tau_mem;
+                / self.config.tau_mem;
             self.v[i] += dv * dt;
 
             // Check for spike

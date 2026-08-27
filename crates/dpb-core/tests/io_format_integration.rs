@@ -60,7 +60,10 @@ fn test_wfdb_roundtrip() {
 
     // Step 3: Write to WFDB format. The writer takes ADC counts, so convert
     // through the signal's own gain and baseline.
-    let adc: Vec<i16> = signal_data.iter().map(|&v| signal.physical_to_adc(v)).collect();
+    let adc: Vec<i16> = signal_data
+        .iter()
+        .map(|&v| signal.physical_to_adc(v))
+        .collect();
 
     let mut writer = WfdbWriter::new(&base_path, header.clone(), vec![signal.clone()])
         .expect("Failed to create WFDB writer");
@@ -78,9 +81,7 @@ fn test_wfdb_roundtrip() {
     assert_eq!(reader.signals().len(), 1);
 
     // Read all samples
-    let read_samples = reader
-        .read_all_samples(0)
-        .expect("Failed to read samples");
+    let read_samples = reader.read_all_samples(0).expect("Failed to read samples");
 
     // Step 5: Verify data matches (within quantization error)
     assert_eq!(
@@ -98,12 +99,7 @@ fn test_wfdb_roundtrip() {
         mean_error += error;
 
         // Quantization error should be small (depends on ADC resolution)
-        assert!(
-            error < 0.1,
-            "Sample {} error too large: {:.6}",
-            i,
-            error
-        );
+        assert!(error < 0.1, "Sample {} error too large: {:.6}", i, error);
     }
 
     mean_error /= num_samples as f64;
@@ -129,8 +125,11 @@ fn test_wfdb_multi_channel_roundtrip() {
 
     // Create header and one signal spec per channel. Signals are passed to the
     // writer rather than pushed onto the header.
-    let mut header =
-        WfdbHeader::new("multi_channel_record".to_string(), num_channels, sample_rate);
+    let mut header = WfdbHeader::new(
+        "multi_channel_record".to_string(),
+        num_channels,
+        sample_rate,
+    );
     header.n_samples = Some(num_samples);
 
     let signals: Vec<WfdbSignal> = (0..num_channels)
@@ -157,7 +156,9 @@ fn test_wfdb_multi_channel_roundtrip() {
 
     let mut writer = WfdbWriter::new(&base_path, header.clone(), signals.clone())
         .expect("Failed to create multi-channel WFDB writer");
-    writer.write_samples(&to_frames(&adc)).expect("Failed to write channels");
+    writer
+        .write_samples(&to_frames(&adc))
+        .expect("Failed to write channels");
     writer.finish().expect("Failed to finalise record");
 
     // Read back and verify each channel
@@ -225,13 +226,9 @@ fn test_edf_roundtrip() {
     let signals: Vec<EdfSignal> = signal_labels
         .iter()
         .map(|label| {
-            EdfSignal::new(
-                label.to_string(),
-                "uV".to_string(),
-                samples_per_record,
-            )
-            .with_physical_range(-500.0, 500.0)
-            .with_digital_range(-32768, 32767)
+            EdfSignal::new(label.to_string(), "uV".to_string(), samples_per_record)
+                .with_physical_range(-500.0, 500.0)
+                .with_digital_range(-32768, 32767)
         })
         .collect();
 
@@ -258,7 +255,9 @@ fn test_edf_roundtrip() {
             .iter()
             .map(|s| s[start..start + samples_per_record].to_vec())
             .collect();
-        writer.write_record(&chunk).expect("Failed to write EDF record");
+        writer
+            .write_record(&chunk)
+            .expect("Failed to write EDF record");
     }
     writer.finish().expect("Failed to finalise EDF file");
 
@@ -326,7 +325,9 @@ fn test_edf_annotation_support() {
     for record in 0..duration as usize {
         let start = record * samples_per_record;
         let chunk = vec![signal_data[start..start + samples_per_record].to_vec()];
-        writer.write_record(&chunk).expect("Failed to write EDF record");
+        writer
+            .write_record(&chunk)
+            .expect("Failed to write EDF record");
     }
     writer.finish().expect("Failed to finalise EDF file");
 
@@ -360,10 +361,15 @@ fn test_wfdb_with_annotations() {
     };
 
     // Write signal
-    let adc: Vec<i16> = signal_data.iter().map(|&v| signal.physical_to_adc(v)).collect();
+    let adc: Vec<i16> = signal_data
+        .iter()
+        .map(|&v| signal.physical_to_adc(v))
+        .collect();
     let mut writer = WfdbWriter::new(&base_path, header.clone(), vec![signal.clone()])
         .expect("Failed to create WFDB writer");
-    writer.write_samples(&to_frames(&[adc])).expect("Failed to write signal");
+    writer
+        .write_samples(&to_frames(&[adc]))
+        .expect("Failed to write signal");
 
     // Create annotations (e.g., R-peak markers)
     let mut annotations = Vec::new();
@@ -437,7 +443,9 @@ fn test_format_conversion_wfdb_to_edf() {
     let mut wfdb_writer =
         WfdbWriter::new(&wfdb_path, wfdb_header.clone(), vec![wfdb_signal.clone()])
             .expect("Failed to create WFDB writer");
-    wfdb_writer.write_samples(&to_frames(&[adc])).expect("Failed to write WFDB");
+    wfdb_writer
+        .write_samples(&to_frames(&[adc]))
+        .expect("Failed to write WFDB");
     wfdb_writer.finish().expect("Failed to finalise WFDB");
 
     // Step 2: Read from WFDB
@@ -462,7 +470,9 @@ fn test_format_conversion_wfdb_to_edf() {
     for record in 0..n_records {
         let start = record * samples_per_record;
         let chunk = vec![wfdb_data[start..start + samples_per_record].to_vec()];
-        edf_writer.write_record(&chunk).expect("Failed to write EDF");
+        edf_writer
+            .write_record(&chunk)
+            .expect("Failed to write EDF");
     }
     edf_writer.finish().expect("Failed to finalise EDF file");
 

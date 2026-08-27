@@ -51,73 +51,38 @@
 //! ground truth data without rendering actual media files. Set `render: false`
 //! in parameters to generate only ground truth annotations.
 
-pub mod video;
 pub mod audio;
 pub mod audio_world;
 pub mod skeleton;
 pub mod smpl;
 pub mod style_transfer;
+pub mod video;
 
 pub use video::{
-    Level3VideoGenerator,
-    GaitVideoParams,
-    HandVideoParams,
-    TappingVideoParams,
-    VideoOutput,
-    PoseGroundTruth,
-    HandGroundTruth,
-    TappingGroundTruth,
-    VideoGeneratorError,
+    GaitVideoParams, HandGroundTruth, HandVideoParams, Level3VideoGenerator, PoseGroundTruth,
+    TappingGroundTruth, TappingVideoParams, VideoGeneratorError, VideoOutput,
 };
 
 pub use audio::{
-    Level3AudioGenerator,
-    VoiceAudioParams,
-    AudioOutput,
+    AudioBackend, AudioGeneratorError, AudioOutput, Level3AudioGenerator, VoiceAudioParams,
     VoiceGroundTruth,
-    AudioBackend,
-    AudioGeneratorError,
 };
 
 pub use audio_world::{
-    SustainedVowelGenerator,
-    ConnectedSpeechGenerator,
-    DiadochokinesisGenerator,
-    ReadingPassageGenerator,
-    SustainedVowelParams,
-    ConnectedSpeechParams,
-    DiadochokinesisParams,
-    ReadingPassageParams,
-    AudioGroundTruth,
-    AudioEvent,
-    WorldAudioGenerator,
+    AudioEvent, AudioGroundTruth, ConnectedSpeechGenerator, ConnectedSpeechParams,
+    DiadochokinesisGenerator, DiadochokinesisParams, ReadingPassageGenerator, ReadingPassageParams,
+    SustainedVowelGenerator, SustainedVowelParams, WorldAudioGenerator,
 };
 
 pub use skeleton::{
-    SkeletonRenderer,
-    SkeletonParams,
-    SkeletonError,
-    RenderStyle,
-    CameraView,
-    PoseLandmarks,
-    HandLandmarks,
-    render_clinical_pose_frame,
-    render_clinical_hand_frame,
+    CameraView, HandLandmarks, PoseLandmarks, RenderStyle, SkeletonError, SkeletonParams,
+    SkeletonRenderer, render_clinical_hand_frame, render_clinical_pose_frame,
 };
 
-pub use smpl::{
-    SmplRenderer,
-    SmplParams,
-    SmplError,
-    SmplBodyModel,
-    SmplPose,
-};
+pub use smpl::{SmplBodyModel, SmplError, SmplParams, SmplPose, SmplRenderer};
 
 pub use style_transfer::{
-    StyleTransferRenderer,
-    StyleTransferParams,
-    StyleTransferError,
-    StyleType,
+    StyleTransferError, StyleTransferParams, StyleTransferRenderer, StyleType,
 };
 
 #[cfg(test)]

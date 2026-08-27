@@ -37,11 +37,11 @@
 //! ```
 
 use super::{Backend, GpuBuffer, GpuDevice, GpuError, GpuResult};
-use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "cuda")]
-use cudarc::driver::{CudaDevice as CudarDevice, CudaSlice, LaunchConfig, LaunchAsync};
+use cudarc::driver::{CudaDevice as CudarDevice, CudaSlice, LaunchAsync, LaunchConfig};
 
 /// Check if CUDA is available on this system
 ///
@@ -49,7 +49,9 @@ use cudarc::driver::{CudaDevice as CudarDevice, CudaSlice, LaunchConfig, LaunchA
 pub fn is_cuda_available() -> bool {
     #[cfg(feature = "cuda")]
     {
-        cudarc::driver::CudaDevice::count().map(|c| c > 0).unwrap_or(false)
+        cudarc::driver::CudaDevice::count()
+            .map(|c| c > 0)
+            .unwrap_or(false)
     }
     #[cfg(not(feature = "cuda"))]
     {
@@ -68,14 +70,18 @@ pub fn list_cuda_devices() -> GpuResult<Vec<(u32, String)>> {
         for i in 0..count {
             let device = cudarc::driver::CudaDevice::new(i)
                 .map_err(|e| GpuError::AllocationFailed(format!("Device {} error: {:?}", i, e)))?;
-            let name = device.name().unwrap_or_else(|_| format!("CUDA Device {}", i));
+            let name = device
+                .name()
+                .unwrap_or_else(|_| format!("CUDA Device {}", i));
             devices.push((i as u32, name));
         }
         Ok(devices)
     }
     #[cfg(not(feature = "cuda"))]
     {
-        Err(GpuError::BackendNotAvailable("CUDA feature not enabled".to_string()))
+        Err(GpuError::BackendNotAvailable(
+            "CUDA feature not enabled".to_string(),
+        ))
     }
 }
 
@@ -112,7 +118,9 @@ impl CudaDevice {
         }
         #[cfg(not(feature = "cuda"))]
         {
-            Err(GpuError::BackendNotAvailable("CUDA feature not enabled".to_string()))
+            Err(GpuError::BackendNotAvailable(
+                "CUDA feature not enabled".to_string(),
+            ))
         }
     }
 
@@ -149,7 +157,10 @@ impl CudaDevice {
             let block_size = 256u32;
 
             // Get the kernel function
-            if let Some(func) = self.cudarc_device.get_func("snn_kernels", "spike_propagation") {
+            if let Some(func) = self
+                .cudarc_device
+                .get_func("snn_kernels", "spike_propagation")
+            {
                 let cfg = LaunchConfig {
                     grid_dim: (grid_size, 1, 1),
                     block_dim: (block_size, 1, 1),
@@ -166,7 +177,9 @@ impl CudaDevice {
         }
         #[cfg(not(feature = "cuda"))]
         {
-            Err(GpuError::BackendNotAvailable("CUDA not available".to_string()))
+            Err(GpuError::BackendNotAvailable(
+                "CUDA not available".to_string(),
+            ))
         }
     }
 
@@ -207,7 +220,9 @@ impl CudaDevice {
         }
         #[cfg(not(feature = "cuda"))]
         {
-            Err(GpuError::BackendNotAvailable("CUDA not available".to_string()))
+            Err(GpuError::BackendNotAvailable(
+                "CUDA not available".to_string(),
+            ))
         }
     }
 
@@ -231,7 +246,10 @@ impl CudaDevice {
             let grid_size = ((num_rows + 255) / 256) as u32;
             let block_size = 256u32;
 
-            if let Some(func) = self.cudarc_device.get_func("snn_kernels", "sparse_matmul_csr") {
+            if let Some(func) = self
+                .cudarc_device
+                .get_func("snn_kernels", "sparse_matmul_csr")
+            {
                 let cfg = LaunchConfig {
                     grid_dim: (grid_size, 1, 1),
                     block_dim: (block_size, 1, 1),
@@ -246,7 +264,9 @@ impl CudaDevice {
         }
         #[cfg(not(feature = "cuda"))]
         {
-            Err(GpuError::BackendNotAvailable("CUDA not available".to_string()))
+            Err(GpuError::BackendNotAvailable(
+                "CUDA not available".to_string(),
+            ))
         }
     }
 
@@ -288,7 +308,9 @@ impl CudaDevice {
         }
         #[cfg(not(feature = "cuda"))]
         {
-            Err(GpuError::BackendNotAvailable("CUDA not available".to_string()))
+            Err(GpuError::BackendNotAvailable(
+                "CUDA not available".to_string(),
+            ))
         }
     }
 
@@ -338,7 +360,8 @@ impl GpuDevice for CudaDevice {
                 if let Some(ref slice) = cuda_buf.cuda_slice {
                     // Convert f32 slice to bytes
                     let bytes: &[u8] = bytemuck::cast_slice(src);
-                    self.cudarc_device.htod_sync_copy_into(bytes, slice)
+                    self.cudarc_device
+                        .htod_sync_copy_into(bytes, slice)
                         .map_err(|e| GpuError::TransferFailed(format!("H2D copy: {:?}", e)))?;
                 }
             }
@@ -359,7 +382,9 @@ impl GpuDevice for CudaDevice {
         {
             if let Some(cuda_buf) = src.as_any().downcast_ref::<CudaBuffer>() {
                 if let Some(ref slice) = cuda_buf.cuda_slice {
-                    let bytes: Vec<u8> = self.cudarc_device.dtoh_sync_copy(slice)
+                    let bytes: Vec<u8> = self
+                        .cudarc_device
+                        .dtoh_sync_copy(slice)
                         .map_err(|e| GpuError::TransferFailed(format!("D2H copy: {:?}", e)))?;
                     let floats: &[f32] = bytemuck::cast_slice(&bytes);
                     dst[..floats.len()].copy_from_slice(floats);
@@ -387,8 +412,11 @@ impl GpuDevice for CudaDevice {
                 src.as_any().downcast_ref::<CudaBuffer>(),
                 dst.as_any().downcast_ref::<CudaBuffer>(),
             ) {
-                if let (Some(ref src_slice), Some(ref dst_slice)) = (&src_buf.cuda_slice, &dst_buf.cuda_slice) {
-                    self.cudarc_device.dtod_copy(src_slice, dst_slice)
+                if let (Some(ref src_slice), Some(ref dst_slice)) =
+                    (&src_buf.cuda_slice, &dst_buf.cuda_slice)
+                {
+                    self.cudarc_device
+                        .dtod_copy(src_slice, dst_slice)
                         .map_err(|e| GpuError::TransferFailed(format!("D2D copy: {:?}", e)))?;
                 }
             }
@@ -399,7 +427,8 @@ impl GpuDevice for CudaDevice {
     fn synchronize(&self) -> GpuResult<()> {
         #[cfg(feature = "cuda")]
         {
-            self.cudarc_device.synchronize()
+            self.cudarc_device
+                .synchronize()
                 .map_err(|e| GpuError::SynchronizationFailed(format!("{:?}", e)))?;
         }
         Ok(())
@@ -414,7 +443,9 @@ impl GpuDevice for CudaDevice {
     fn name(&self) -> String {
         #[cfg(feature = "cuda")]
         {
-            self.cudarc_device.name().unwrap_or_else(|_| format!("CUDA Device {}", self.device_id))
+            self.cudarc_device
+                .name()
+                .unwrap_or_else(|_| format!("CUDA Device {}", self.device_id))
         }
         #[cfg(not(feature = "cuda"))]
         {
@@ -476,7 +507,8 @@ impl std::fmt::Debug for CudaBuffer {
 impl CudaBuffer {
     #[cfg(feature = "cuda")]
     fn new(device: &Arc<CudarDevice>, size: usize, device_id: u32) -> GpuResult<Self> {
-        let cuda_slice = device.alloc_zeros::<u8>(size)
+        let cuda_slice = device
+            .alloc_zeros::<u8>(size)
             .map_err(|e| GpuError::AllocationFailed(format!("cudaMalloc: {:?}", e)))?;
 
         Ok(CudaBuffer {
@@ -488,7 +520,9 @@ impl CudaBuffer {
 
     #[cfg(not(feature = "cuda"))]
     fn new(_size: usize, _device_id: u32) -> GpuResult<Self> {
-        Err(GpuError::BackendNotAvailable("CUDA not available".to_string()))
+        Err(GpuError::BackendNotAvailable(
+            "CUDA not available".to_string(),
+        ))
     }
 }
 
@@ -576,7 +610,9 @@ impl CudaMemoryPool {
         }
         #[cfg(not(feature = "cuda"))]
         {
-            Err(GpuError::BackendNotAvailable("CUDA not available".to_string()))
+            Err(GpuError::BackendNotAvailable(
+                "CUDA not available".to_string(),
+            ))
         }
     }
 
@@ -588,9 +624,7 @@ impl CudaMemoryPool {
             // Clone into the free pool for reuse
             let _ = cuda_buf; // Acknowledge we can't easily reuse due to Arc ownership
         }
-        self.free_buffers
-            .entry(size)
-            .or_insert_with(Vec::new);
+        self.free_buffers.entry(size).or_insert_with(Vec::new);
     }
 
     #[allow(dead_code)]

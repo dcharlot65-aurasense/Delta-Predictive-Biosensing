@@ -154,9 +154,10 @@ impl BidsSession {
 
             if path.is_dir()
                 && let Some(name) = path.file_name().and_then(|n| n.to_str())
-                    && let Some(modality) = Modality::from_dir_name(name) {
-                        modalities.push(modality);
-                    }
+                && let Some(modality) = Modality::from_dir_name(name)
+            {
+                modalities.push(modality);
+            }
         }
 
         Ok(modalities)
@@ -245,8 +246,11 @@ impl BidsSession {
     ///
     /// The scans file lists all acquisitions in this session.
     pub fn scans_file(&self) -> PathBuf {
-        self.path
-            .join(format!("sub-{}_{}_scans.tsv", self.subject_id, self.label()))
+        self.path.join(format!(
+            "sub-{}_{}_scans.tsv",
+            self.subject_id,
+            self.label()
+        ))
     }
 
     /// Build a filename following BIDS naming convention
@@ -418,7 +422,10 @@ mod tests {
         session.write_metadata("test", &metadata)?;
 
         let read_metadata = session.read_metadata("test")?;
-        assert_eq!(read_metadata.acq_time, Some("2025-01-15T10:30:00".to_string()));
+        assert_eq!(
+            read_metadata.acq_time,
+            Some("2025-01-15T10:30:00".to_string())
+        );
         assert_eq!(read_metadata.condition, Some("resting_state".to_string()));
 
         Ok(())

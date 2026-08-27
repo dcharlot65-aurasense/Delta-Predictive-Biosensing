@@ -35,11 +35,8 @@ impl RocAnalyzer {
         }
 
         // Sort by score descending
-        let mut indexed: Vec<(f64, bool)> = scores
-            .iter()
-            .cloned()
-            .zip(labels.iter().cloned())
-            .collect();
+        let mut indexed: Vec<(f64, bool)> =
+            scores.iter().cloned().zip(labels.iter().cloned()).collect();
         indexed.sort_by(|a, b| b.0.total_cmp(&a.0));
 
         // Generate ROC points
@@ -108,8 +105,7 @@ impl RocAnalyzer {
             // four positive and four negative, gave 0.375 with negatives first
             // and 0.625 with positives first, where the only correct answer for
             // a score that carries no information is 0.5.
-            let last_of_tie_group =
-                i + 1 == indexed.len() || indexed[i + 1].0 != *score;
+            let last_of_tie_group = i + 1 == indexed.len() || indexed[i + 1].0 != *score;
             if !last_of_tie_group {
                 continue;
             }
@@ -214,7 +210,8 @@ impl RocAnalyzer {
         let q1 = auc / (2.0 - auc);
         let q2 = 2.0 * auc * auc / (1.0 + auc);
 
-        let se = ((auc * (1.0 - auc) + (n_pos as f64 - 1.0) * (q1 - auc * auc)
+        let se = ((auc * (1.0 - auc)
+            + (n_pos as f64 - 1.0) * (q1 - auc * auc)
             + (n_neg as f64 - 1.0) * (q2 - auc * auc))
             / (n_pos as f64 * n_neg as f64))
             .sqrt();
@@ -248,7 +245,11 @@ impl RocAnalyzer {
             }
         }
 
-        curve.points.last().map(|p| p.true_positive_rate).unwrap_or(0.0)
+        curve
+            .points
+            .last()
+            .map(|p| p.true_positive_rate)
+            .unwrap_or(0.0)
     }
 
     /// Get specificity at specific sensitivity
@@ -507,7 +508,9 @@ mod tests {
         assert_eq!(RocAnalyzer::interpret_auc(0.65), AucInterpretation::Poor);
         assert_eq!(RocAnalyzer::interpret_auc(0.75), AucInterpretation::Fair);
         assert_eq!(RocAnalyzer::interpret_auc(0.85), AucInterpretation::Good);
-        assert_eq!(RocAnalyzer::interpret_auc(0.95), AucInterpretation::Excellent);
+        assert_eq!(
+            RocAnalyzer::interpret_auc(0.95),
+            AucInterpretation::Excellent
+        );
     }
-
 }

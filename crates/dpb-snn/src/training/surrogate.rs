@@ -25,7 +25,12 @@ pub trait SurrogateGradient: Send + Sync {
     fn compute_gradient(&self, v_mem: f32, threshold: f32) -> f32;
 
     /// Apply surrogate gradient to spike tensor
-    fn apply(&self, spikes: &SpikeTensor, v_mem: &Array3<f32>, threshold: f32) -> SNNResult<Array3<f32>>;
+    fn apply(
+        &self,
+        spikes: &SpikeTensor,
+        v_mem: &Array3<f32>,
+        threshold: f32,
+    ) -> SNNResult<Array3<f32>>;
 }
 
 /// Box surrogate gradient (rectangular window)
@@ -51,7 +56,12 @@ impl SurrogateGradient for BoxSurrogate {
         }
     }
 
-    fn apply(&self, spikes: &SpikeTensor, v_mem: &Array3<f32>, threshold: f32) -> SNNResult<Array3<f32>> {
+    fn apply(
+        &self,
+        spikes: &SpikeTensor,
+        v_mem: &Array3<f32>,
+        threshold: f32,
+    ) -> SNNResult<Array3<f32>> {
         let spike_dense = spikes.to_dense();
         let mut gradient = Array3::zeros(spike_dense.raw_dim());
 
@@ -84,7 +94,12 @@ impl SurrogateGradient for FastSigmoidSurrogate {
         self.beta / (1.0 + x.abs()).powi(2)
     }
 
-    fn apply(&self, spikes: &SpikeTensor, v_mem: &Array3<f32>, threshold: f32) -> SNNResult<Array3<f32>> {
+    fn apply(
+        &self,
+        spikes: &SpikeTensor,
+        v_mem: &Array3<f32>,
+        threshold: f32,
+    ) -> SNNResult<Array3<f32>> {
         let spike_dense = spikes.to_dense();
         let mut gradient = Array3::zeros(spike_dense.raw_dim());
 
@@ -115,7 +130,12 @@ impl SurrogateGradient for SuperSpikeSurrogate {
         1.0 / (1.0 + x.abs()).powi(2)
     }
 
-    fn apply(&self, spikes: &SpikeTensor, v_mem: &Array3<f32>, threshold: f32) -> SNNResult<Array3<f32>> {
+    fn apply(
+        &self,
+        spikes: &SpikeTensor,
+        v_mem: &Array3<f32>,
+        threshold: f32,
+    ) -> SNNResult<Array3<f32>> {
         let spike_dense = spikes.to_dense();
         let mut gradient = Array3::zeros(spike_dense.raw_dim());
 
@@ -157,7 +177,10 @@ impl BPTT {
             SurrogateType::SuperSpike => Box::new(SuperSpikeSurrogate::new(10.0)),
         };
 
-        Self { surrogate, num_steps }
+        Self {
+            surrogate,
+            num_steps,
+        }
     }
 
     /// Compute gradients through time
@@ -168,7 +191,10 @@ impl BPTT {
         threshold: f32,
     ) -> SNNResult<Vec<Array3<f32>>> {
         let num_actual_steps = v_mem_history.len();
-        let bptt_steps = self.num_steps.unwrap_or(num_actual_steps).min(num_actual_steps);
+        let bptt_steps = self
+            .num_steps
+            .unwrap_or(num_actual_steps)
+            .min(num_actual_steps);
 
         let mut gradients = vec![Array3::zeros(output_grad.raw_dim()); num_actual_steps];
 
@@ -220,7 +246,10 @@ impl OTTT {
             _ => Box::new(SuperSpikeSurrogate::new(10.0)),
         };
 
-        Self { surrogate, trace_decay }
+        Self {
+            surrogate,
+            trace_decay,
+        }
     }
 }
 
@@ -254,7 +283,10 @@ impl SLTT {
             _ => Box::new(SuperSpikeSurrogate::new(10.0)),
         };
 
-        Self { surrogate, layer_window }
+        Self {
+            surrogate,
+            layer_window,
+        }
     }
 }
 

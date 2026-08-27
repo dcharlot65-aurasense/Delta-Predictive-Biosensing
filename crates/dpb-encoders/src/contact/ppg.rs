@@ -1,8 +1,6 @@
 //! PPG (Photoplethysmography) encoders and population templates
 
-use dpb_core::{
-    Context, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent,
-};
+use dpb_core::{Context, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent};
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
@@ -102,11 +100,15 @@ pub struct PpgPulseEncoder;
 impl PpgPulseEncoder {
     /// Creates a new [`PpgPulseEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
-    fn detect_peaks(&self, signal: &[f32], config: &PpgPulseConfig, sample_rate: f64) -> Vec<usize> {
+    fn detect_peaks(
+        &self,
+        signal: &[f32],
+        config: &PpgPulseConfig,
+        sample_rate: f64,
+    ) -> Vec<usize> {
         let mut peaks = Vec::new();
         let min_samples = (config.min_distance * sample_rate) as usize;
 
@@ -197,8 +199,7 @@ pub struct PpgAmplitudeEncoder;
 impl PpgAmplitudeEncoder {
     /// Creates a new [`PpgAmplitudeEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn calculate_amplitude(&self, window: &[f32]) -> f32 {
@@ -317,12 +318,7 @@ impl EventEncoder for PpgPttEncoder {
                 let deviation = (ptt - expected_ptt).abs();
 
                 if deviation > config.threshold as f64 {
-                    events.push(SpikeEvent::new(
-                        ppg_event.timestamp,
-                        0,
-                        1,
-                        deviation as f32,
-                    ));
+                    events.push(SpikeEvent::new(ppg_event.timestamp, 0, 1, deviation as f32));
                 }
             }
         }

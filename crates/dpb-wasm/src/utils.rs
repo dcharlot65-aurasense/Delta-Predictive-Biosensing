@@ -29,6 +29,5 @@ pub fn is_browser() -> bool {
 /// Get the user agent string (if available).
 #[wasm_bindgen(js_name = "getUserAgent")]
 pub fn get_user_agent() -> Option<String> {
-    web_sys::window()
-        .and_then(|w| w.navigator().user_agent().ok())
+    web_sys::window().and_then(|w| w.navigator().user_agent().ok())
 }

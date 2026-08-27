@@ -333,7 +333,11 @@ impl CheckpointManager {
     /// Get checkpoint metadata
     pub fn get_metadata(&self, checkpoint_id: &str) -> Option<CheckpointMetadata> {
         let state = self.state.read().unwrap();
-        state.checkpoints.iter().find(|c| c.id == checkpoint_id).cloned()
+        state
+            .checkpoints
+            .iter()
+            .find(|c| c.id == checkpoint_id)
+            .cloned()
     }
 
     /// List all checkpoints

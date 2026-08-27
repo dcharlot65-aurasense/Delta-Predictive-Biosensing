@@ -4,12 +4,12 @@
 //! These baselines serve as reference points for evaluating SNN performance across
 //! different architectural paradigms.
 
-pub mod mlp;
 pub mod cnn;
-pub mod rnn;
-pub mod transformer;
-pub mod specialized;
 pub mod conversion;
+pub mod mlp;
+pub mod rnn;
+pub mod specialized;
+pub mod transformer;
 
 use std::f32::consts::PI;
 
@@ -38,10 +38,14 @@ impl Tensor {
         // Simple Box-Muller transform for normal distribution
         let mut rng_state = seed;
         for _i in 0..size {
-            rng_state = rng_state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            rng_state = rng_state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             let u1 = (rng_state as f32) / (u64::MAX as f32);
 
-            rng_state = rng_state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            rng_state = rng_state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             let u2 = (rng_state as f32) / (u64::MAX as f32);
 
             let z = (-2.0 * u1.ln()).sqrt() * (2.0 * PI * u2).cos();
@@ -76,7 +80,10 @@ impl Tensor {
     pub fn matmul(&self, other: &Tensor) -> Tensor {
         assert_eq!(self.shape.len(), 2, "matmul requires 2D tensors");
         assert_eq!(other.shape.len(), 2, "matmul requires 2D tensors");
-        assert_eq!(self.shape[1], other.shape[0], "incompatible shapes for matmul");
+        assert_eq!(
+            self.shape[1], other.shape[0],
+            "incompatible shapes for matmul"
+        );
 
         let m = self.shape[0];
         let n = self.shape[1];
@@ -111,7 +118,11 @@ impl Tensor {
 
     /// Sigmoid activation
     pub fn sigmoid(&self) -> Tensor {
-        let data = self.data.iter().map(|&x| 1.0 / (1.0 + (-x).exp())).collect();
+        let data = self
+            .data
+            .iter()
+            .map(|&x| 1.0 / (1.0 + (-x).exp()))
+            .collect();
         Tensor {
             data,
             shape: self.shape.clone(),
@@ -134,7 +145,8 @@ impl Tensor {
         if self.shape.len() == 1 {
             let max_val = data.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
             let sum: f32 = data.iter().map(|&x| (x - max_val).exp()).sum();
-            data.iter_mut().for_each(|x| *x = (*x - max_val).exp() / sum);
+            data.iter_mut()
+                .for_each(|x| *x = (*x - max_val).exp() / sum);
         } else {
             // For 2D: softmax along last dimension
             let last_dim = *self.shape.last().unwrap();
@@ -147,7 +159,9 @@ impl Tensor {
 
                 let max_val = slice.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
                 let sum: f32 = slice.iter().map(|&x| (x - max_val).exp()).sum();
-                slice.iter_mut().for_each(|x| *x = (*x - max_val).exp() / sum);
+                slice
+                    .iter_mut()
+                    .for_each(|x| *x = (*x - max_val).exp() / sum);
             }
         }
 
@@ -169,8 +183,16 @@ impl Tensor {
     /// construction — 13 tests across four modules from this one assert.
     pub fn add(&self, other: &Tensor) -> Tensor {
         if self.shape == other.shape {
-            let data = self.data.iter().zip(&other.data).map(|(a, b)| a + b).collect();
-            return Tensor { data, shape: self.shape.clone() };
+            let data = self
+                .data
+                .iter()
+                .zip(&other.data)
+                .map(|(a, b)| a + b)
+                .collect();
+            return Tensor {
+                data,
+                shape: self.shape.clone(),
+            };
         }
 
         if let Some(width) = self.broadcast_width(other) {
@@ -180,7 +202,10 @@ impl Tensor {
                 .enumerate()
                 .map(|(i, a)| a + other.data[i % width])
                 .collect();
-            return Tensor { data, shape: self.shape.clone() };
+            return Tensor {
+                data,
+                shape: self.shape.clone(),
+            };
         }
 
         panic!(
@@ -208,17 +233,29 @@ impl Tensor {
     /// broadcasting rule as [`Tensor::add`] (per-feature scaling).
     pub fn mul(&self, other: &Tensor) -> Tensor {
         if self.shape != other.shape
-            && let Some(width) = self.broadcast_width(other) {
-                let data = self
-                    .data
-                    .iter()
-                    .enumerate()
-                    .map(|(i, a)| a * other.data[i % width])
-                    .collect();
-                return Tensor { data, shape: self.shape.clone() };
-            }
-        assert_eq!(self.shape, other.shape, "shapes must match for multiplication");
-        let data = self.data.iter().zip(&other.data).map(|(a, b)| a * b).collect();
+            && let Some(width) = self.broadcast_width(other)
+        {
+            let data = self
+                .data
+                .iter()
+                .enumerate()
+                .map(|(i, a)| a * other.data[i % width])
+                .collect();
+            return Tensor {
+                data,
+                shape: self.shape.clone(),
+            };
+        }
+        assert_eq!(
+            self.shape, other.shape,
+            "shapes must match for multiplication"
+        );
+        let data = self
+            .data
+            .iter()
+            .zip(&other.data)
+            .map(|(a, b)| a * b)
+            .collect();
         Tensor {
             data,
             shape: self.shape.clone(),
@@ -246,8 +283,16 @@ impl Tensor {
 
     /// 1D convolution (simplified)
     pub fn conv1d(&self, kernel: &Tensor, stride: usize, padding: usize) -> Tensor {
-        assert_eq!(self.shape.len(), 3, "conv1d requires 3D input [batch, channels, length]");
-        assert_eq!(kernel.shape.len(), 3, "conv1d requires 3D kernel [out_ch, in_ch, kernel_size]");
+        assert_eq!(
+            self.shape.len(),
+            3,
+            "conv1d requires 3D input [batch, channels, length]"
+        );
+        assert_eq!(
+            kernel.shape.len(),
+            3,
+            "conv1d requires 3D kernel [out_ch, in_ch, kernel_size]"
+        );
 
         let batch = self.shape[0];
         let in_channels = self.shape[1];
@@ -267,8 +312,11 @@ impl Tensor {
                         for k in 0..kernel_size {
                             let in_pos = ol * stride + k;
                             if in_pos >= padding && in_pos < in_length + padding {
-                                let in_idx = b * in_channels * in_length + ic * in_length + (in_pos - padding);
-                                let kernel_idx = oc * in_channels * kernel_size + ic * kernel_size + k;
+                                let in_idx = b * in_channels * in_length
+                                    + ic * in_length
+                                    + (in_pos - padding);
+                                let kernel_idx =
+                                    oc * in_channels * kernel_size + ic * kernel_size + k;
                                 sum += self.data[in_idx] * kernel.data[kernel_idx];
                             }
                         }
@@ -355,7 +403,8 @@ impl Tensor {
                 let slice = &self.data[start..end];
 
                 let mean: f32 = slice.iter().sum::<f32>() / features as f32;
-                let var: f32 = slice.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / features as f32;
+                let var: f32 =
+                    slice.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / features as f32;
                 let std = (var + eps).sqrt();
 
                 for j in 0..features {
@@ -396,22 +445,33 @@ pub fn count_params(shape: &[usize]) -> usize {
 
 /// Helper function to initialize weights with Xavier/Glorot initialization
 pub fn xavier_init(shape: Vec<usize>, seed: u64) -> Tensor {
-    let fan_in = if shape.len() >= 2 { shape[shape.len() - 2] } else { 1 };
-    let fan_out = if !shape.is_empty() { shape[shape.len() - 1] } else { 1 };
+    let fan_in = if shape.len() >= 2 {
+        shape[shape.len() - 2]
+    } else {
+        1
+    };
+    let fan_out = if !shape.is_empty() {
+        shape[shape.len() - 1]
+    } else {
+        1
+    };
     let limit = (6.0 / (fan_in + fan_out) as f32).sqrt();
 
     let mut tensor = Tensor::randn(shape, seed);
-    tensor.data.iter_mut().for_each(|x| *x = (*x).clamp(-limit, limit));
+    tensor
+        .data
+        .iter_mut()
+        .for_each(|x| *x = (*x).clamp(-limit, limit));
     tensor
 }
 
 // Re-export all baseline architectures
-pub use mlp::*;
 pub use cnn::*;
-pub use rnn::*;
-pub use transformer::*;
-pub use specialized::*;
 pub use conversion::*;
+pub use mlp::*;
+pub use rnn::*;
+pub use specialized::*;
+pub use transformer::*;
 
 #[cfg(test)]
 mod tests {

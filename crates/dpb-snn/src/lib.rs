@@ -193,23 +193,23 @@
 //! | [`gpu`] | GPU acceleration (CUDA, Metal) - requires `gpu` feature |
 //! | [`distributed`] | Distributed training infrastructure - requires `distributed` feature |
 
-pub mod tensor;
-pub mod layers;
+pub mod analysis;
 pub mod architectures;
-pub mod training;
+pub mod baselines;
+pub mod calibration;
 pub mod conversion;
 pub mod decoders;
+pub mod distillation;
+pub mod explain;
 pub mod export;
 pub mod fusion;
-pub mod analysis;
-pub mod baselines;
+pub mod layers;
 pub mod learning;
-pub mod optimization;
-pub mod calibration;
-pub mod explain;
-pub mod distillation;
-pub mod neuromorphic;
 pub mod neuromodulation;
+pub mod neuromorphic;
+pub mod optimization;
+pub mod tensor;
+pub mod training;
 
 #[cfg(feature = "distributed")]
 pub mod distributed;
@@ -218,170 +218,282 @@ pub mod distributed;
 pub mod gpu;
 
 // Re-export commonly used types
-pub use tensor::{SpikeTensor, SpikeRepresentation};
-pub use layers::{
-    SpikingLinear, SpikingConv2d, SpikingConv1d,
-    SpikingSumPool2d, SpikingMaxPool2d,
-    SpikingRNN, SpikingLSTM,
-    SpikingAttention,
+pub use analysis::{
+    AccuracyPlateauDetector, AnalysisReport, BatchSizeAnalyzer, ConvergenceAnalyzer,
+    ConvergenceRateAnalyzer, DivergenceDetector, EarlyStoppingAnalyzer, EpochEfficiencyAnalyzer,
+    ExplodingGradientDetector, GeneralizationGapAnalyzer, GradientFlowAnalyzer,
+    GradientNormTracker, HyperparameterSensitivityAnalyzer, LearningCurveSmoothed,
+    LearningRateAnalyzer, LossPlateauDetector, MethodComparisonAnalyzer, OscillationDetector,
+    OverfittingDetector, SaturatedNeuronDetector, SilentNeuronDetector, SparsityTracker,
+    SpikeRateTracker, SurrogateGradientAnalyzer, TemporalDynamicsAnalyzer, TrainingMetrics,
+    VanishingGradientDetector, WeightDistributionTracker, WeightMagnitudeTracker,
+    WeightSparsityTracker, WeightUpdateTracker,
 };
 pub use architectures::{
-    FeedforwardSNN, ConvolutionalSNN, RecurrentSNN,
-    SpikingGCN, SpikingTransformer,
-};
-pub use training::{
-    SurrogateGradient, SurrogateType, BPTT, OTTT, SLTT,
-    SpikingCrossEntropy, SpikeCountLoss, SpikeTimingLoss,
-    AdamOptimizer, SGDOptimizer,
-};
-pub use conversion::{ANNToSNNConverter, WeightNormalization, ThresholdBalancing};
-pub use decoders::{
-    // Rate-based decoders
-    SpikeRateDecoder, FirstSpikeDecoder, PopulationDecoder, MaxSpikeDecoder,
-    WindowedRateDecoder, ExponentialRateDecoder, AdaptiveRateDecoder,
-    NormalizedRateDecoder, WeightedRateDecoder,
-    // Temporal decoders
-    TemporalPatternDecoder, LatencyDecoder, ISIDecoder, BurstDecoder,
-    LastSpikeDecoder, PhaseDecoder, RankOrderDecoder,
-    // Clinical score decoders
-    UPDRSDecoder, TremorSeverityDecoder, GaitScoreDecoder,
-    UPDRSMotorDecoder, UPDRSTremorDecoder, UPDRSBradykinesiaDecoder,
-    UPDRSRigidityDecoder, UPDRSGaitDecoder, TUGDecoder,
-    BergBalanceDecoder, MoCADecoder, VoiceHDDecoder,
-    PDQ39Decoder, HoehnYahrDecoder, SEADLDecoder,
-    // Regression decoders
-    HeartRateDecoder, HRVDecoder, TremorFrequencyDecoder,
-    TremorAmplitudeDecoder, GaitVelocityDecoder, StrideTimeDecoder,
-    TappingFrequencyDecoder, ReactionTimeDecoder, SpeechRateDecoder,
-    PupilDiameterDecoder,
-    // Classification decoders
-    BinaryClassDecoder, MultiClassDecoder, TremorTypeDecoder,
-    GaitPhaseDecoder, SleepStageDecoder, ActivityDecoder,
-    EmotionDecoder, FatigueDecoder, MedicationStateDecoder,
-    DyskinesiasDecoder,
-    // Base decoder trait
-    Decoder,
-};
-pub use fusion::{
-    FusionNetwork, FusionConfig, Modality,
-    EarlyFusionSNN, LateFusionSNN, CrossModalAttentionSNN,
-    HierarchicalFusionSNN, TemporalAlignmentSNN, GatedFusionSNN,
-    NeuroPlaySNN, CognitiveMotorFusionSNN,
-    CognitiveMotorFusion, CognitiveMotorFusionConfig,
-    CognitiveProfile, MotorProfile, IntegratedAssessment,
-    DissociationPattern, DissociationType, ChangeMetrics, ChangeDirection,
-    RiskCategory, DomainZScores,
-};
-pub use analysis::{
-    ConvergenceAnalyzer, TrainingMetrics, AnalysisReport,
-    LossPlateauDetector, AccuracyPlateauDetector, EarlyStoppingAnalyzer,
-    ConvergenceRateAnalyzer, OscillationDetector, DivergenceDetector,
-    LearningCurveSmoothed, GeneralizationGapAnalyzer, OverfittingDetector,
-    LearningRateAnalyzer, BatchSizeAnalyzer, EpochEfficiencyAnalyzer,
-    GradientNormTracker, GradientFlowAnalyzer, VanishingGradientDetector,
-    ExplodingGradientDetector, SurrogateGradientAnalyzer,
-    SpikeRateTracker, SparsityTracker, SilentNeuronDetector,
-    SaturatedNeuronDetector, TemporalDynamicsAnalyzer,
-    WeightDistributionTracker, WeightMagnitudeTracker, WeightSparsityTracker,
-    WeightUpdateTracker, MethodComparisonAnalyzer, HyperparameterSensitivityAnalyzer,
+    ConvolutionalSNN, FeedforwardSNN, RecurrentSNN, SpikingGCN, SpikingTransformer,
 };
 pub use baselines::{
-    ANNBaseline, Tensor as BaselineTensor,
-    // MLP architectures
-    MLP2Layer, MLP3Layer, MLP4Layer, MLPDropout, MLPBatchNorm, MLPResidual,
-    MLPWideSingle, MLPDeep,
-    // CNN architectures
-    CNN1DSmall, CNN1DMedium, CNN1DLarge, CNN1DResidual, CNN1DDilated,
-    CNN2DLeNet, CNN2DVGG, CNN2DResNet, CNN2DMobileNet, TCN,
-    // RNN architectures
-    SimpleRNN, LSTM, BiLSTM, StackedLSTM, GRU, BiGRU, StackedGRU,
-    PeepholeLSTM, AttentionLSTM, IndRNN,
-    // Transformer architectures
-    TransformerEncoder, TransformerSmall, TransformerMedium, TransformerLarge,
-    LinearTransformer, Performer, Informer, Autoformer,
-    // Specialized architectures
-    ECGNet, DeepGait, TremorNet, VoiceNet,
-    MultimodalFusion, AttentionFusion, GraphNN, HybridCNNRNN,
+    ANNBaseline,
     // Conversion utilities
     ANNToSNNConverter as BaselineConverter,
+    AttentionFusion,
+    AttentionLSTM,
+    Autoformer,
+    BiGRU,
+    BiLSTM,
+    CNN1DDilated,
+    CNN1DLarge,
+    CNN1DMedium,
+    CNN1DResidual,
+    // CNN architectures
+    CNN1DSmall,
+    CNN2DLeNet,
+    CNN2DMobileNet,
+    CNN2DResNet,
+    CNN2DVGG,
     ConversionConfig as BaselineConversionConfig,
-    WeightNormalizationMethod, ThresholdBalancingStrategy,
+    DeepGait,
+    // Specialized architectures
+    ECGNet,
+    GRU,
+    GraphNN,
+    HybridCNNRNN,
+    IndRNN,
+    Informer,
+    LSTM,
+    LinearTransformer,
+    // MLP architectures
+    MLP2Layer,
+    MLP3Layer,
+    MLP4Layer,
+    MLPBatchNorm,
+    MLPDeep,
+    MLPDropout,
+    MLPResidual,
+    MLPWideSingle,
+    MultimodalFusion,
+    PeepholeLSTM,
+    Performer,
+    // RNN architectures
+    SimpleRNN,
+    StackedGRU,
+    StackedLSTM,
+    TCN,
+    Tensor as BaselineTensor,
+    ThresholdBalancingStrategy,
+    // Transformer architectures
+    TransformerEncoder,
+    TransformerLarge,
+    TransformerMedium,
+    TransformerSmall,
+    TremorNet,
+    VoiceNet,
+    WeightNormalizationMethod,
     convert_model_to_snn,
+};
+pub use conversion::{ANNToSNNConverter, ThresholdBalancing, WeightNormalization};
+pub use decoders::{
+    ActivityDecoder,
+    AdaptiveRateDecoder,
+    BergBalanceDecoder,
+    // Classification decoders
+    BinaryClassDecoder,
+    BurstDecoder,
+    // Base decoder trait
+    Decoder,
+    DyskinesiasDecoder,
+    EmotionDecoder,
+    ExponentialRateDecoder,
+    FatigueDecoder,
+    FirstSpikeDecoder,
+    GaitPhaseDecoder,
+    GaitScoreDecoder,
+    GaitVelocityDecoder,
+    HRVDecoder,
+    // Regression decoders
+    HeartRateDecoder,
+    HoehnYahrDecoder,
+    ISIDecoder,
+    LastSpikeDecoder,
+    LatencyDecoder,
+    MaxSpikeDecoder,
+    MedicationStateDecoder,
+    MoCADecoder,
+    MultiClassDecoder,
+    NormalizedRateDecoder,
+    PDQ39Decoder,
+    PhaseDecoder,
+    PopulationDecoder,
+    PupilDiameterDecoder,
+    RankOrderDecoder,
+    ReactionTimeDecoder,
+    SEADLDecoder,
+    SleepStageDecoder,
+    SpeechRateDecoder,
+    // Rate-based decoders
+    SpikeRateDecoder,
+    StrideTimeDecoder,
+    TUGDecoder,
+    TappingFrequencyDecoder,
+    // Temporal decoders
+    TemporalPatternDecoder,
+    TremorAmplitudeDecoder,
+    TremorFrequencyDecoder,
+    TremorSeverityDecoder,
+    TremorTypeDecoder,
+    UPDRSBradykinesiaDecoder,
+    // Clinical score decoders
+    UPDRSDecoder,
+    UPDRSGaitDecoder,
+    UPDRSMotorDecoder,
+    UPDRSRigidityDecoder,
+    UPDRSTremorDecoder,
+    VoiceHDDecoder,
+    WeightedRateDecoder,
+    WindowedRateDecoder,
+};
+pub use fusion::{
+    ChangeDirection, ChangeMetrics, CognitiveMotorFusion, CognitiveMotorFusionConfig,
+    CognitiveMotorFusionSNN, CognitiveProfile, CrossModalAttentionSNN, DissociationPattern,
+    DissociationType, DomainZScores, EarlyFusionSNN, FusionConfig, FusionNetwork, GatedFusionSNN,
+    HierarchicalFusionSNN, IntegratedAssessment, LateFusionSNN, Modality, MotorProfile,
+    NeuroPlaySNN, RiskCategory, TemporalAlignmentSNN,
+};
+pub use layers::{
+    SpikingAttention, SpikingConv1d, SpikingConv2d, SpikingLSTM, SpikingLinear, SpikingMaxPool2d,
+    SpikingRNN, SpikingSumPool2d,
+};
+pub use tensor::{SpikeRepresentation, SpikeTensor};
+pub use training::{
+    AdamOptimizer, BPTT, OTTT, SGDOptimizer, SLTT, SpikeCountLoss, SpikeTimingLoss,
+    SpikingCrossEntropy, SurrogateGradient, SurrogateType,
 };
 
 // Re-export learning types
 pub use learning::{
-    BCMRule, CovarianceRule, HebbianLayer, HebbianRule, OjasRule, SynapticTrace, STDP,
+    BCMRule, CovarianceRule, HebbianLayer, HebbianRule, OjasRule, STDP, SynapticTrace,
 };
 
 // Re-export optimization types
-pub use optimization::{NetworkPruner, PruningMask, PruningSchedule, PruningStats, PruningStrategy};
+pub use optimization::{
+    NetworkPruner, PruningMask, PruningSchedule, PruningStats, PruningStrategy,
+};
 
 // Re-export calibration types
 pub use calibration::{
-    TemperatureScaling, PlattScaling, IsotonicCalibration,
-    UncertaintyEstimator, MCDropout, EnsembleUncertainty, ConfidenceInterval,
-    expected_calibration_error, maximum_calibration_error, reliability_diagram,
-    brier_score, negative_log_likelihood, ReliabilityBin, bootstrap_ci,
+    ConfidenceInterval, EnsembleUncertainty, IsotonicCalibration, MCDropout, PlattScaling,
+    ReliabilityBin, TemperatureScaling, UncertaintyEstimator, bootstrap_ci, brier_score,
+    expected_calibration_error, maximum_calibration_error, negative_log_likelihood,
+    reliability_diagram,
 };
 
 // Re-export explainability types
 pub use explain::{
-    SpikeImportance, NeuronImportance, LayerImportance,
-    compute_spike_importance, compute_importance_by_perturbation, aggregate_to_neurons,
-    AttentionMap, TemporalAttention, SpatialAttention,
-    FeatureAttribution, GradientAttribution, IntegratedGradients, SpikeSHAP,
-    ExplanationVisualizer, HeatmapData, export_explanation_json,
+    AttentionMap, ExplanationVisualizer, FeatureAttribution, GradientAttribution, HeatmapData,
+    IntegratedGradients, LayerImportance, NeuronImportance, SpatialAttention, SpikeImportance,
+    SpikeSHAP, TemporalAttention, aggregate_to_neurons, compute_importance_by_perturbation,
+    compute_spike_importance, export_explanation_json,
 };
 
 // Re-export distillation types
 pub use distillation::{
-    // Core distillation
-    TeacherStudentFramework, TeacherModel, StudentModel,
-    DistillationConfig, DistillationMode, KnowledgeTransfer,
-    // Loss functions
-    DistillationLoss, KLDivergenceLoss, MSELoss, CosineSimLoss,
-    HintLoss, AttentionTransferLoss, CombinedDistillationLoss, LossWeights,
-    // SNN-specific distillation
-    SpikePatternDistillation, SpikeRateDistillation,
-    MembranePotentialDistillation, SynapticWeightTransfer,
-    TemporalCreditAssignment, SpikeDistillationConfig,
     // Compression utilities
-    ArchitectureSearch, LayerMerging, ChannelPruningGuided,
-    QuantizationAwareDistillation, CompressionMetrics,
-    CompressionConfig, SearchStrategy,
+    ArchitectureSearch,
+    AttentionTransferLoss,
+    BornAgainNetworks,
+    ChannelPruningGuided,
+    CombinedDistillationLoss,
+    CompressionConfig,
+    CompressionMetrics,
+    CosineSimLoss,
+    DistillationConfig,
+    // Loss functions
+    DistillationLoss,
+    DistillationMode,
+    HintLoss,
+    KLDivergenceLoss,
+    KnowledgeTransfer,
+    LayerMerging,
+    LossWeights,
+    MSELoss,
+    MembranePotentialDistillation,
+    ProgressiveConfig,
+    ProgressiveDistillation,
+    QuantizationAwareDistillation,
+    SearchStrategy,
     // Self-distillation
-    SelfDistillation, BornAgainNetworks, ProgressiveDistillation,
-    SelfDistillationConfig, ProgressiveConfig,
+    SelfDistillation,
+    SelfDistillationConfig,
+    SpikeDistillationConfig,
+    // SNN-specific distillation
+    SpikePatternDistillation,
+    SpikeRateDistillation,
+    StudentModel,
+    SynapticWeightTransfer,
+    TeacherModel,
+    // Core distillation
+    TeacherStudentFramework,
+    TemporalCreditAssignment,
 };
 
 // Re-export neuromodulation types
 pub use neuromodulation::{
-    // Core types
-    Neuromodulator, NeuromodulatorType, ModulatorySystem,
-    ModulatorConcentration, DiffusionModel, ReceptorBinding,
-    Dopamine, Acetylcholine, Serotonin, Norepinephrine,
-    // Dopamine system
-    DopamineSystem, DopamineConfig, RewardPredictionError,
-    DopamineMode, DopamineReceptorType, StrialRegion,
+    AChReceptorType,
+    Acetylcholine,
+    AcetylcholineConfig,
     // Acetylcholine system
-    AcetylcholineSystem, AcetylcholineConfig,
-    AChReceptorType, AttentionState, BasalForebrainRegion, ChAT,
-    // Reward-modulated learning
-    RewardModulatedSTDP, RewardSignal, EligibilityTrace,
-    TemporalCreditAssignment as NeuromodTemporalCreditAssignment,
-    IntrinsicMotivation, RewardShaping, ThreeFactorRule,
+    AcetylcholineSystem,
+    AttentionState,
+    BasalForebrainRegion,
+    BrainState,
+    ChAT,
+    DiffusionModel,
+    Dopamine,
+    DopamineConfig,
+    DopamineMode,
+    DopamineReceptorType,
+    // Dopamine system
+    DopamineSystem,
+    EligibilityTrace,
+    FiringRateHomeostasis,
     // Gating
-    GainModulation, GainModulationConfig, ModulationType,
-    InputGating, OutputGating, ThresholdModulation,
+    GainModulation,
+    GainModulationConfig,
+    HomeostaticConfig,
     // Homeostasis
-    HomeostaticPlasticity, HomeostaticConfig, FiringRateHomeostasis,
-    SynapticScaling, IntrinsicPlasticity, Metaplasticity,
-    SleepConsolidation,
+    HomeostaticPlasticity,
+    InputGating,
+    IntrinsicMotivation,
+    IntrinsicPlasticity,
+    Metaplasticity,
+    ModulationType,
+    ModulatorConcentration,
+    ModulatorInteraction,
     // Integration
-    ModulatoryNetwork, ModulatoryNetworkConfig,
-    ModulatorInteraction, SpatialScope, TemporalCoordination,
-    StateDependent, BrainState,
+    ModulatoryNetwork,
+    ModulatoryNetworkConfig,
+    ModulatorySystem,
+    // Core types
+    Neuromodulator,
+    NeuromodulatorType,
+    Norepinephrine,
+    OutputGating,
+    ReceptorBinding,
+    // Reward-modulated learning
+    RewardModulatedSTDP,
+    RewardPredictionError,
+    RewardShaping,
+    RewardSignal,
+    Serotonin,
+    SleepConsolidation,
+    SpatialScope,
+    StateDependent,
+    StrialRegion,
+    SynapticScaling,
+    TemporalCoordination,
+    TemporalCreditAssignment as NeuromodTemporalCreditAssignment,
+    ThreeFactorRule,
+    ThresholdModulation,
 };
 
 use dpb_core::error::DpbError;

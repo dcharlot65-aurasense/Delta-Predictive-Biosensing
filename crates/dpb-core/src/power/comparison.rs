@@ -26,9 +26,9 @@ pub struct SNNvsANNEstimator {
 impl Default for SNNvsANNEstimator {
     fn default() -> Self {
         Self {
-            ann_energy_per_mac_pj: 50.0,     // Conservative 16-bit MAC estimate
-            snn_energy_per_synop_pj: 5.0,    // Efficient neuromorphic synop
-            timesteps_per_ann_inference: 1,   // ANN is single forward pass
+            ann_energy_per_mac_pj: 50.0,    // Conservative 16-bit MAC estimate
+            snn_energy_per_synop_pj: 5.0,   // Efficient neuromorphic synop
+            timesteps_per_ann_inference: 1, // ANN is single forward pass
         }
     }
 }
@@ -145,8 +145,8 @@ impl Default for SparsityAwareEstimator {
     fn default() -> Self {
         Self {
             base_energy_per_op_pj: 10.0,
-            sparsity_overhead_pj: 1.0,    // Small overhead for sparsity logic
-            structural_sparsity: 0.0,      // No pruning by default
+            sparsity_overhead_pj: 1.0, // Small overhead for sparsity logic
+            structural_sparsity: 0.0,  // No pruning by default
         }
     }
 }
@@ -246,10 +246,10 @@ pub struct DynamicPowerEstimator {
 impl Default for DynamicPowerEstimator {
     fn default() -> Self {
         Self {
-            activity_factor: 0.3,         // 30% switching activity
-            capacitance_f: 1e-12,         // 1 pF
-            voltage_v: 1.0,               // 1.0V supply
-            frequency_hz: 100e6,          // 100 MHz
+            activity_factor: 0.3, // 30% switching activity
+            capacitance_f: 1e-12, // 1 pF
+            voltage_v: 1.0,       // 1.0V supply
+            frequency_hz: 100e6,  // 100 MHz
         }
     }
 }
@@ -278,8 +278,7 @@ impl DynamicPowerEstimator {
     /// Computes dynamic power using CMOS power equation
     pub fn compute_dynamic_power(&self, activity: f64) -> f64 {
         // P = α × C × V² × f
-        let power_w = activity * self.capacitance_f *
-                     self.voltage_v.powi(2) * self.frequency_hz;
+        let power_w = activity * self.capacitance_f * self.voltage_v.powi(2) * self.frequency_hz;
         power_w * 1000.0 // Convert to mW
     }
 }
@@ -351,7 +350,7 @@ impl Default for LeakagePowerEstimator {
     fn default() -> Self {
         Self {
             leakage_current_per_transistor_a: 1e-12, // 1 pA per transistor
-            num_transistors: 1_000_000,               // 1M transistors
+            num_transistors: 1_000_000,              // 1M transistors
             voltage_v: 1.0,
             temperature_c: 25.0,
         }
@@ -363,7 +362,7 @@ impl LeakagePowerEstimator {
     pub fn advanced_node() -> Self {
         Self {
             leakage_current_per_transistor_a: 10e-12, // 10 pA (7nm)
-            num_transistors: 100_000_000,              // 100M transistors
+            num_transistors: 100_000_000,             // 100M transistors
             voltage_v: 0.8,
             temperature_c: 25.0,
         }
@@ -385,9 +384,8 @@ impl LeakagePowerEstimator {
         // Approximation: 2× per 10°C increase from 25°C
         let temp_factor = 2.0_f64.powf((self.temperature_c - 25.0) / 10.0);
 
-        let total_leakage_current_a = (self.num_transistors as f64) *
-                                      self.leakage_current_per_transistor_a *
-                                      temp_factor;
+        let total_leakage_current_a =
+            (self.num_transistors as f64) * self.leakage_current_per_transistor_a * temp_factor;
 
         let power_w = self.voltage_v * total_leakage_current_a;
         power_w * 1000.0 // Convert to mW
@@ -444,11 +442,19 @@ mod tests {
         let snn_metrics = estimator.estimate_snn(&stats);
 
         // SNN should be more efficient for sparse activity
-        assert!(snn_metrics.energy_per_inference_uj < ann_metrics.energy_per_inference_uj,
-            "SNN: {} µJ, ANN: {} µJ", snn_metrics.energy_per_inference_uj, ann_metrics.energy_per_inference_uj);
+        assert!(
+            snn_metrics.energy_per_inference_uj < ann_metrics.energy_per_inference_uj,
+            "SNN: {} µJ, ANN: {} µJ",
+            snn_metrics.energy_per_inference_uj,
+            ann_metrics.energy_per_inference_uj
+        );
 
         let ratio = estimator.efficiency_ratio(&stats);
-        assert!(ratio < 1.0, "Efficiency ratio should be < 1.0, got {}", ratio); // SNN uses less energy
+        assert!(
+            ratio < 1.0,
+            "Efficiency ratio should be < 1.0, got {}",
+            ratio
+        ); // SNN uses less energy
     }
 
     #[test]
@@ -494,7 +500,9 @@ mod tests {
 
         // Pruning should reduce both operations and energy
         assert!(pruned_metrics.synops_per_inference < no_pruning_metrics.synops_per_inference);
-        assert!(pruned_metrics.energy_per_inference_uj < no_pruning_metrics.energy_per_inference_uj);
+        assert!(
+            pruned_metrics.energy_per_inference_uj < no_pruning_metrics.energy_per_inference_uj
+        );
     }
 
     #[test]

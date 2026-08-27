@@ -16,8 +16,8 @@
 //! Research and educational use only. Not a medical device.
 
 use crate::{
-    Demographics, ImpairmentLevel, MetricDomain, MetricType,
-    NormativeComparison, NormativeDatabase, NormsError, Result,
+    Demographics, ImpairmentLevel, MetricDomain, MetricType, NormativeComparison,
+    NormativeDatabase, NormsError, Result,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -254,7 +254,11 @@ impl<'a> MultiModalAssessor<'a> {
     }
 
     /// Summarize a single domain
-    fn summarize_domain(&self, domain: MetricDomain, comparisons: &[&NormativeComparison]) -> DomainSummary {
+    fn summarize_domain(
+        &self,
+        domain: MetricDomain,
+        comparisons: &[&NormativeComparison],
+    ) -> DomainSummary {
         let metric_count = comparisons.len();
 
         // Calculate z-score statistics
@@ -282,7 +286,8 @@ impl<'a> MultiModalAssessor<'a> {
         let impaired_count = comparisons.iter().filter(|c| c.z_score < -1.0).count();
 
         // Classify domain
-        let classification = self.classify_domain(mean_z_score, z_score_sd, impaired_count, metric_count);
+        let classification =
+            self.classify_domain(mean_z_score, z_score_sd, impaired_count, metric_count);
 
         DomainSummary {
             domain,
@@ -333,15 +338,21 @@ impl<'a> MultiModalAssessor<'a> {
         domain_ranking.sort_by(|a, b| a.1.total_cmp(&b.1));
 
         // Calculate global impairment index
-        let global_z: f64 = comparisons.iter().map(|c| c.z_score).sum::<f64>()
-            / comparisons.len() as f64;
+        let global_z: f64 =
+            comparisons.iter().map(|c| c.z_score).sum::<f64>() / comparisons.len() as f64;
         let global_impairment_index = ((-global_z).max(0.0) / 3.0).min(1.0);
 
         // Calculate domain discrepancy
         let domain_z_scores: Vec<f64> = domain_summaries.values().map(|s| s.mean_z_score).collect();
         let domain_discrepancy = if domain_z_scores.len() >= 2 {
-            let max_z = domain_z_scores.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-            let min_z = domain_z_scores.iter().cloned().fold(f64::INFINITY, f64::min);
+            let max_z = domain_z_scores
+                .iter()
+                .cloned()
+                .fold(f64::NEG_INFINITY, f64::max);
+            let min_z = domain_z_scores
+                .iter()
+                .cloned()
+                .fold(f64::INFINITY, f64::min);
             max_z - min_z
         } else {
             0.0
@@ -539,10 +550,7 @@ mod tests {
     fn test_domain_classification() {
         // Test well-preserved domain
         let db = NormativeDatabase::with_defaults();
-        let assessor = MultiModalAssessor::new(
-            &db,
-            Demographics::new(30, Sex::Male),
-        );
+        let assessor = MultiModalAssessor::new(&db, Demographics::new(30, Sex::Male));
         let classification = assessor.classify_domain(-0.3, 0.5, 0, 5);
         assert_eq!(classification, DomainClassification::WellPreserved);
 

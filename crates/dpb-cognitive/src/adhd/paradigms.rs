@@ -98,8 +98,7 @@ impl QbTest {
         stimuli: &[QbTestStimulus],
         responses: &[QbTestResponse],
     ) -> AttentionMetrics {
-        let target_stimuli: Vec<&QbTestStimulus> =
-            stimuli.iter().filter(|s| s.is_target).collect();
+        let target_stimuli: Vec<&QbTestStimulus> = stimuli.iter().filter(|s| s.is_target).collect();
 
         let mut hits = 0;
         let mut omissions = 0;

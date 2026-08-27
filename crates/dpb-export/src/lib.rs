@@ -41,26 +41,26 @@
 //! # }
 //! ```
 
+pub mod binary;
+pub mod encoder_export;
 pub mod error;
+pub mod fpga;
+pub mod json;
 pub mod metadata;
+pub mod neuromorphic;
 pub mod onnx;
 /// Minimal protobuf wire-format writer, used to emit ONNX models.
 pub mod protobuf;
-pub mod json;
-pub mod binary;
-pub mod encoder_export;
-pub mod fpga;
-pub mod neuromorphic;
 
-pub use error::{ExportError, Result};
-pub use metadata::{ModelMetadata, ModelInfo};
 pub use encoder_export::{EncoderExport, EncoderParams, ExportableEncoder};
+pub use error::{ExportError, Result};
+pub use metadata::{ModelInfo, ModelMetadata};
 
 #[cfg(feature = "onnx")]
 pub use onnx::OnnxExporter;
 
-pub use json::JsonExporter;
 pub use binary::BinaryExporter;
+pub use json::JsonExporter;
 
 /// Supported export formats.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -264,23 +264,23 @@ mod tests {
 
     #[test]
     fn test_model_exporter_with_name() {
-        let exporter = ModelExporter::new()
-            .with_name("Custom Model");
+        let exporter = ModelExporter::new().with_name("Custom Model");
         assert_eq!(exporter.metadata().name, "Custom Model");
     }
 
     #[test]
     fn test_model_exporter_with_version() {
-        let exporter = ModelExporter::new()
-            .with_version("2.0.0");
+        let exporter = ModelExporter::new().with_version("2.0.0");
         assert_eq!(exporter.metadata().version, "2.0.0");
     }
 
     #[test]
     fn test_model_exporter_with_description() {
-        let exporter = ModelExporter::new()
-            .with_description("A test model for unit testing");
-        assert_eq!(exporter.metadata().description, "A test model for unit testing");
+        let exporter = ModelExporter::new().with_description("A test model for unit testing");
+        assert_eq!(
+            exporter.metadata().description,
+            "A test model for unit testing"
+        );
     }
 
     #[test]
@@ -289,7 +289,10 @@ mod tests {
             .with_metadata("encoder_type", "level_crossing")
             .with_metadata("channels", "8");
 
-        assert_eq!(exporter.metadata().get("encoder_type"), Some("level_crossing"));
+        assert_eq!(
+            exporter.metadata().get("encoder_type"),
+            Some("level_crossing")
+        );
         assert_eq!(exporter.metadata().get("channels"), Some("8"));
     }
 
@@ -315,8 +318,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let path = dir.path().join("model.json");
 
-        let exporter = ModelExporter::new()
-            .with_name("JSON Export Test");
+        let exporter = ModelExporter::new().with_name("JSON Export Test");
 
         let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
         let result = exporter.export_json(&path, &encoder);
@@ -333,8 +335,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let path = dir.path().join("model.dpb");
 
-        let exporter = ModelExporter::new()
-            .with_name("Binary Export Test");
+        let exporter = ModelExporter::new().with_name("Binary Export Test");
 
         let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
         let result = exporter.export_binary(&path, &encoder);

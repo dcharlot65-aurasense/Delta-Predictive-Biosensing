@@ -1,7 +1,7 @@
 //! Mobile-specific optimizations for size and performance.
 
+use crate::model::{LayerInfo, MobileModel, QuantizationType};
 use serde::{Deserialize, Serialize};
-use crate::model::{MobileModel, LayerInfo, QuantizationType};
 
 /// Optimization level
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -72,15 +72,9 @@ impl WeightPruner {
     /// Prune weights from a single layer
     fn prune_layer(&self, layer: &mut LayerInfo) -> Result<PruningStats, String> {
         match self.strategy {
-            PruningStrategy::Magnitude => {
-                self.magnitude_prune_layer(layer)
-            }
-            PruningStrategy::Structured => {
-                self.structured_prune_layer(layer)
-            }
-            PruningStrategy::Movement => {
-                Err("Movement pruning not yet implemented".into())
-            }
+            PruningStrategy::Magnitude => self.magnitude_prune_layer(layer),
+            PruningStrategy::Structured => self.structured_prune_layer(layer),
+            PruningStrategy::Movement => Err("Movement pruning not yet implemented".into()),
         }
     }
 
@@ -348,9 +342,8 @@ impl MemoryPlanner {
             plan.total_intermediate_size += layer_size;
         }
 
-        plan.total_size = plan.input_buffer_size +
-                          plan.output_buffer_size +
-                          plan.total_intermediate_size;
+        plan.total_size =
+            plan.input_buffer_size + plan.output_buffer_size + plan.total_intermediate_size;
 
         plan
     }

@@ -9,8 +9,8 @@
 //! traumatic brain injury, and age-related decline assessment.
 
 use super::{FusionConfig, FusionNetwork, Modality};
-use crate::{SNNError, SNNResult, SpikeTensor, SpikingLinear, NeuronParams};
 use crate::layers::SpikingLayer;
+use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor, SpikingLinear};
 use ndarray::Array3;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -127,8 +127,6 @@ impl CognitiveProfile {
 
     /// Calculate d-prime (sensitivity) from hit rate and false alarm rate
     fn calculate_d_prime(hit_rate: f64, fa_rate: f64) -> f64 {
-        
-
         // Inverse normal (z-score) approximation
         let z_hit = Self::inverse_normal(hit_rate);
         let z_fa = Self::inverse_normal(fa_rate);
@@ -626,11 +624,7 @@ impl CognitiveMotorFusion {
     }
 
     /// Fuse cognitive and motor profiles into integrated assessment
-    pub fn fuse(
-        &self,
-        cognitive: &CognitiveProfile,
-        motor: &MotorProfile,
-    ) -> IntegratedAssessment {
+    pub fn fuse(&self, cognitive: &CognitiveProfile, motor: &MotorProfile) -> IntegratedAssessment {
         // Calculate weighted composite
         let composite = self.config.cognitive_weight * cognitive.composite_score
             + self.config.motor_weight * motor.composite_score;
@@ -755,7 +749,8 @@ impl CognitiveMotorFusion {
         baseline: &IntegratedAssessment,
         followup: &IntegratedAssessment,
     ) -> ChangeMetrics {
-        let cognitive_change = followup.cognitive.composite_score - baseline.cognitive.composite_score;
+        let cognitive_change =
+            followup.cognitive.composite_score - baseline.cognitive.composite_score;
         let motor_change = followup.motor.composite_score - baseline.motor.composite_score;
         let overall_change = followup.composite_score - baseline.composite_score;
 
@@ -831,8 +826,12 @@ impl CognitiveMotorFusion {
         let mot_feat = mot_dense.dim().2;
 
         let mut concat = Array3::<f32>::zeros((batch, time, cog_feat + mot_feat));
-        concat.slice_mut(ndarray::s![.., .., 0..cog_feat]).assign(&cog_dense);
-        concat.slice_mut(ndarray::s![.., .., cog_feat..]).assign(&mot_dense);
+        concat
+            .slice_mut(ndarray::s![.., .., 0..cog_feat])
+            .assign(&cog_dense);
+        concat
+            .slice_mut(ndarray::s![.., .., cog_feat..])
+            .assign(&mot_dense);
 
         let concat_tensor = SpikeTensor::from_dense(concat, false);
 
@@ -878,11 +877,21 @@ impl CognitiveMotorFusion {
         for layer in &self.motor_encoder {
             total += layer.parameters().iter().map(|p| p.len()).sum::<usize>();
         }
-        total += self.cross_attention.parameters().iter().map(|p| p.len()).sum::<usize>();
+        total += self
+            .cross_attention
+            .parameters()
+            .iter()
+            .map(|p| p.len())
+            .sum::<usize>();
         for layer in &self.fusion_layers {
             total += layer.parameters().iter().map(|p| p.len()).sum::<usize>();
         }
-        total += self.output_layer.parameters().iter().map(|p| p.len()).sum::<usize>();
+        total += self
+            .output_layer
+            .parameters()
+            .iter()
+            .map(|p| p.len())
+            .sum::<usize>();
 
         total
     }
@@ -940,11 +949,13 @@ impl FusionNetwork for CognitiveMotorFusionSNN {
 
     fn forward(&mut self, inputs: &HashMap<Modality, SpikeTensor>) -> SNNResult<SpikeTensor> {
         // Extract cognitive and motor inputs
-        let cognitive_input = inputs.get(&Modality::Eye)
+        let cognitive_input = inputs
+            .get(&Modality::Eye)
             .or_else(|| inputs.get(&Modality::Contact))
             .ok_or_else(|| SNNError::InvalidConfig("Missing cognitive/motor input".to_string()))?;
 
-        let motor_input = inputs.get(&Modality::Pose)
+        let motor_input = inputs
+            .get(&Modality::Pose)
             .or_else(|| inputs.get(&Modality::Contact))
             .ok_or_else(|| SNNError::InvalidConfig("Missing motor input".to_string()))?;
 
@@ -967,8 +978,12 @@ impl FusionNetwork for CognitiveMotorFusionSNN {
         let mot_feat = mot_dense.dim().2;
 
         let mut concat = Array3::<f32>::zeros((batch, time, cog_feat + mot_feat));
-        concat.slice_mut(ndarray::s![.., .., 0..cog_feat]).assign(&cog_dense);
-        concat.slice_mut(ndarray::s![.., .., cog_feat..]).assign(&mot_dense);
+        concat
+            .slice_mut(ndarray::s![.., .., 0..cog_feat])
+            .assign(&cog_dense);
+        concat
+            .slice_mut(ndarray::s![.., .., cog_feat..])
+            .assign(&mot_dense);
 
         let concat_tensor = SpikeTensor::from_dense(concat, false);
 
@@ -1048,7 +1063,10 @@ mod tests {
 
         assert!(dissociation.is_some());
         let d = dissociation.unwrap();
-        assert_eq!(d.pattern_type, DissociationType::MotorPreservedCognitiveImpaired);
+        assert_eq!(
+            d.pattern_type,
+            DissociationType::MotorPreservedCognitiveImpaired
+        );
         assert!(d.magnitude > 1.5);
     }
 
@@ -1110,7 +1128,11 @@ mod tests {
         assert!(profile.processing_speed_score > 0.5);
         assert!(profile.attention_score > 0.9);
         // D-prime should be finite (sign depends on hit/fa rates)
-        assert!(profile.d_prime.is_finite(), "d_prime should be finite, got {}", profile.d_prime);
+        assert!(
+            profile.d_prime.is_finite(),
+            "d_prime should be finite, got {}",
+            profile.d_prime
+        );
     }
 
     #[test]

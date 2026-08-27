@@ -8,8 +8,8 @@ use numpy::ndarray::Array2;
 
 use crate::types::{PyGroundTruth, PyTimeSeries};
 use numpy::PyArray2;
-use pyo3::prelude::*;
 use pyo3::PyClassInitializer;
+use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use std::collections::HashMap;
 
@@ -100,23 +100,28 @@ pub struct PyEcgGenerator {
 impl PyEcgGenerator {
     #[new]
     #[pyo3(signature = (heart_rate=70.0, hrv_sdnn=50.0, noise_level=0.05, artifacts=false))]
-    fn new(heart_rate: f64, hrv_sdnn: f64, noise_level: f64, artifacts: bool) -> PyClassInitializer<Self> {
+    fn new(
+        heart_rate: f64,
+        hrv_sdnn: f64,
+        noise_level: f64,
+        artifacts: bool,
+    ) -> PyClassInitializer<Self> {
         let mut config = HashMap::new();
         config.insert("heart_rate".to_string(), heart_rate);
         config.insert("hrv_sdnn".to_string(), hrv_sdnn);
         config.insert("noise_level".to_string(), noise_level);
 
         PyClassInitializer::from(PySyntheticGenerator {
-                name: "ECG".to_string(),
-                config,
-            })
-            .add_subclass(Self {
-                heart_rate,
-                hrv_sdnn,
-                noise_level,
-                artifacts,
-            })
-}
+            name: "ECG".to_string(),
+            config,
+        })
+        .add_subclass(Self {
+            heart_rate,
+            hrv_sdnn,
+            noise_level,
+            artifacts,
+        })
+    }
 
     fn generate(
         &self,
@@ -143,9 +148,8 @@ impl PyEcgGenerator {
 
         let samples: Vec<f32> = generated.signal.iter().map(|&v| v as f32).collect();
         let num_samples = samples.len();
-        let array = Array2::from_shape_vec((num_samples, 1), samples).map_err(|e| {
-            pyo3::exceptions::PyValueError::new_err(format!("signal shape: {e}"))
-        })?;
+        let array = Array2::from_shape_vec((num_samples, 1), samples)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("signal shape: {e}")))?;
         let data = PyArray2::from_owned_array(py, array);
         let signal = PyTimeSeries::new(data.into(), sample_rate, 0.0);
 
@@ -204,7 +208,12 @@ pub struct PyPpgGenerator {
 impl PyPpgGenerator {
     #[new]
     #[pyo3(signature = (heart_rate=75.0, hrv_sdnn=40.0, noise_level=0.03, dc_offset=0.5))]
-    fn new(heart_rate: f64, hrv_sdnn: f64, noise_level: f64, dc_offset: f64) -> PyClassInitializer<Self> {
+    fn new(
+        heart_rate: f64,
+        hrv_sdnn: f64,
+        noise_level: f64,
+        dc_offset: f64,
+    ) -> PyClassInitializer<Self> {
         let mut config = HashMap::new();
         config.insert("heart_rate".to_string(), heart_rate);
         config.insert("hrv_sdnn".to_string(), hrv_sdnn);
@@ -212,16 +221,16 @@ impl PyPpgGenerator {
         config.insert("dc_offset".to_string(), dc_offset);
 
         PyClassInitializer::from(PySyntheticGenerator {
-                name: "PPG".to_string(),
-                config,
-            })
-            .add_subclass(Self {
-                heart_rate,
-                hrv_sdnn,
-                noise_level,
-                dc_offset,
-            })
-}
+            name: "PPG".to_string(),
+            config,
+        })
+        .add_subclass(Self {
+            heart_rate,
+            hrv_sdnn,
+            noise_level,
+            dc_offset,
+        })
+    }
 
     fn generate(
         &self,
@@ -245,9 +254,8 @@ impl PyPpgGenerator {
 
         let samples: Vec<f32> = generated.signal.iter().map(|&v| v as f32).collect();
         let num_samples = samples.len();
-        let array = Array2::from_shape_vec((num_samples, 1), samples).map_err(|e| {
-            pyo3::exceptions::PyValueError::new_err(format!("signal shape: {e}"))
-        })?;
+        let array = Array2::from_shape_vec((num_samples, 1), samples)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("signal shape: {e}")))?;
         let data = PyArray2::from_owned_array(py, array);
         let signal = PyTimeSeries::new(data.into(), sample_rate, 0.0);
 
@@ -291,15 +299,15 @@ impl PyAccelerometerGenerator {
         config.insert("sampling_jitter".to_string(), sampling_jitter);
 
         PyClassInitializer::from(PySyntheticGenerator {
-                name: "Accelerometer".to_string(),
-                config,
-            })
-            .add_subclass(Self {
-                activity: activity.to_string(),
-                noise_level,
-                sampling_jitter,
-            })
-}
+            name: "Accelerometer".to_string(),
+            config,
+        })
+        .add_subclass(Self {
+            activity: activity.to_string(),
+            noise_level,
+            sampling_jitter,
+        })
+    }
 
     fn generate(
         &self,
@@ -349,22 +357,26 @@ pub struct PyEmgGenerator {
 impl PyEmgGenerator {
     #[new]
     #[pyo3(signature = (muscle_activation=0.5, fatigue_rate=0.01, noise_level=0.05))]
-    fn new(muscle_activation: f64, fatigue_rate: f64, noise_level: f64) -> PyClassInitializer<Self> {
+    fn new(
+        muscle_activation: f64,
+        fatigue_rate: f64,
+        noise_level: f64,
+    ) -> PyClassInitializer<Self> {
         let mut config = HashMap::new();
         config.insert("muscle_activation".to_string(), muscle_activation);
         config.insert("fatigue_rate".to_string(), fatigue_rate);
         config.insert("noise_level".to_string(), noise_level);
 
         PyClassInitializer::from(PySyntheticGenerator {
-                name: "EMG".to_string(),
-                config,
-            })
-            .add_subclass(Self {
-                muscle_activation,
-                fatigue_rate,
-                noise_level,
-            })
-}
+            name: "EMG".to_string(),
+            config,
+        })
+        .add_subclass(Self {
+            muscle_activation,
+            fatigue_rate,
+            noise_level,
+        })
+    }
 
     fn generate(
         &self,
@@ -388,9 +400,8 @@ impl PyEmgGenerator {
 
         let samples: Vec<f32> = generated.signal.iter().map(|&v| v as f32).collect();
         let num_samples = samples.len();
-        let array = Array2::from_shape_vec((num_samples, 1), samples).map_err(|e| {
-            pyo3::exceptions::PyValueError::new_err(format!("signal shape: {e}"))
-        })?;
+        let array = Array2::from_shape_vec((num_samples, 1), samples)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("signal shape: {e}")))?;
         let data = PyArray2::from_owned_array(py, array);
         let signal = PyTimeSeries::new(data.into(), sample_rate, 0.0);
 
@@ -428,22 +439,26 @@ pub struct PyEegGenerator {
 impl PyEegGenerator {
     #[new]
     #[pyo3(signature = (num_channels=8, dominant_frequency=10.0, noise_level=0.1))]
-    fn new(num_channels: usize, dominant_frequency: f64, noise_level: f64) -> PyClassInitializer<Self> {
+    fn new(
+        num_channels: usize,
+        dominant_frequency: f64,
+        noise_level: f64,
+    ) -> PyClassInitializer<Self> {
         let mut config = HashMap::new();
         config.insert("num_channels".to_string(), num_channels as f64);
         config.insert("dominant_frequency".to_string(), dominant_frequency);
         config.insert("noise_level".to_string(), noise_level);
 
         PyClassInitializer::from(PySyntheticGenerator {
-                name: "EEG".to_string(),
-                config,
-            })
-            .add_subclass(Self {
-                num_channels,
-                dominant_frequency,
-                noise_level,
-            })
-}
+            name: "EEG".to_string(),
+            config,
+        })
+        .add_subclass(Self {
+            num_channels,
+            dominant_frequency,
+            noise_level,
+        })
+    }
 
     fn generate(
         &self,
@@ -510,11 +525,9 @@ impl PyBatchGenerator {
         // Delegate to the wrapped generator, one call per sample with a
         // distinct seed so the batch is varied rather than repeated.
         for i in 0..self.batch_size {
-            let result = self.generator.call_method1(
-                py,
-                "generate",
-                (duration, sample_rate, i as u64),
-            )?;
+            let result =
+                self.generator
+                    .call_method1(py, "generate", (duration, sample_rate, i as u64))?;
             let bound = result.bind(py);
             let signal = bound.get_item(0)?.unbind();
             let ground_truth = bound.get_item(1)?.unbind();
@@ -550,23 +563,17 @@ fn create_generator(name: &str, config: Option<&Bound<'_, PyDict>>) -> PyResult<
 
                 Py::new(py, PyEcgGenerator::new(heart_rate, 50.0, 0.05, false))?.into_any()
             }
-            "ppg" => {
-                Py::new(py, PyPpgGenerator::new(75.0, 40.0, 0.03, 0.5))?.into_any()
-            }
+            "ppg" => Py::new(py, PyPpgGenerator::new(75.0, 40.0, 0.03, 0.5))?.into_any(),
             "accelerometer" => {
                 Py::new(py, PyAccelerometerGenerator::new("rest", 0.02, 0.001))?.into_any()
             }
-            "emg" => {
-                Py::new(py, PyEmgGenerator::new(0.5, 0.01, 0.05))?.into_any()
-            }
-            "eeg" => {
-                Py::new(py, PyEegGenerator::new(8, 10.0, 0.1))?.into_any()
-            }
+            "emg" => Py::new(py, PyEmgGenerator::new(0.5, 0.01, 0.05))?.into_any(),
+            "eeg" => Py::new(py, PyEegGenerator::new(8, 10.0, 0.1))?.into_any(),
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(format!(
                     "Unknown generator: {}",
                     name
-                )))
+                )));
             }
         };
 

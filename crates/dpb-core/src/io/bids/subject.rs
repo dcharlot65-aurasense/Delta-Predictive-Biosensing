@@ -133,9 +133,10 @@ impl BidsSubject {
 
             if path.is_dir()
                 && let Some(name) = path.file_name().and_then(|n| n.to_str())
-                    && name.starts_with("ses-") {
-                        return Ok(true);
-                    }
+                && name.starts_with("ses-")
+            {
+                return Ok(true);
+            }
         }
 
         Ok(false)
@@ -157,14 +158,15 @@ impl BidsSubject {
 
             if path.is_dir()
                 && let Some(name) = path.file_name().and_then(|n| n.to_str())
-                    && name.starts_with("ses-") {
-                        let session_id = name.strip_prefix("ses-").unwrap();
-                        sessions.push(BidsSession::new(
-                            &self.dataset_root,
-                            &self.subject_id,
-                            session_id,
-                        ));
-                    }
+                && name.starts_with("ses-")
+            {
+                let session_id = name.strip_prefix("ses-").unwrap();
+                sessions.push(BidsSession::new(
+                    &self.dataset_root,
+                    &self.subject_id,
+                    session_id,
+                ));
+            }
         }
 
         sessions.sort_by(|a, b| a.id().cmp(b.id()));

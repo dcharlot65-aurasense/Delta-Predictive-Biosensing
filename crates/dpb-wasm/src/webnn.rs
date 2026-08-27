@@ -29,8 +29,8 @@
 //! const spikes = await encoder.encode(signalData);
 //! ```
 
-use wasm_bindgen::prelude::*;
 use js_sys::Float32Array;
+use wasm_bindgen::prelude::*;
 use web_sys::console;
 
 /// WebNN device type for backend selection.
@@ -233,7 +233,12 @@ impl WebNNGraphBuilder {
     }
 
     /// Add a constant operand.
-    pub fn constant(&mut self, name: &str, desc: WebNNTensorDesc, _data: Float32Array) -> WebNNOperand {
+    pub fn constant(
+        &mut self,
+        name: &str,
+        desc: WebNNTensorDesc,
+        _data: Float32Array,
+    ) -> WebNNOperand {
         let operand = WebNNOperand::new(name, desc);
         self.operands.push(operand.clone());
         self.operations.push(format!("constant:{}", name));
@@ -292,7 +297,8 @@ impl WebNNGraphBuilder {
         let dims = vec![a.desc.dimensions[0], b.desc.dimensions[1]];
         let operand = WebNNOperand::new(&name, WebNNTensorDesc::float32(dims));
         self.operands.push(operand.clone());
-        self.operations.push(format!("matmul:{}:{}", a.name, b.name));
+        self.operations
+            .push(format!("matmul:{}:{}", a.name, b.name));
         operand
     }
 
@@ -307,7 +313,10 @@ impl WebNNGraphBuilder {
         let name = format!("{}_conv1d", input.name);
         let operand = WebNNOperand::new(&name, input.desc.clone()); // Simplified
         self.operands.push(operand.clone());
-        self.operations.push(format!("conv1d:{}:{}:{}:{}", input.name, filter.name, stride, padding));
+        self.operations.push(format!(
+            "conv1d:{}:{}:{}:{}",
+            input.name, filter.name, stride, padding
+        ));
         operand
     }
 
@@ -415,7 +424,9 @@ impl WebNNEncoder {
     /// Encode signal using WebNN-accelerated level crossing detection.
     pub fn encode_level_crossing(&self, signal: Float32Array) -> Result<Vec<u32>, JsValue> {
         if !self.initialized {
-            return Err(JsValue::from_str("WebNN not initialized. Call initialize() first."));
+            return Err(JsValue::from_str(
+                "WebNN not initialized. Call initialize() first.",
+            ));
         }
 
         // Fallback CPU implementation
@@ -436,21 +447,26 @@ impl WebNNEncoder {
     /// Encode signal using WebNN-accelerated delta modulation.
     pub fn encode_delta(&self, signal: Float32Array) -> Result<Vec<i8>, JsValue> {
         if !self.initialized {
-            return Err(JsValue::from_str("WebNN not initialized. Call initialize() first."));
+            return Err(JsValue::from_str(
+                "WebNN not initialized. Call initialize() first.",
+            ));
         }
 
         let data: Vec<f32> = signal.to_vec();
         let neg_threshold = -self.threshold;
 
-        let spikes: Vec<i8> = data.iter().map(|&v| {
-            if v > self.threshold {
-                1
-            } else if v < neg_threshold {
-                -1
-            } else {
-                0
-            }
-        }).collect();
+        let spikes: Vec<i8> = data
+            .iter()
+            .map(|&v| {
+                if v > self.threshold {
+                    1
+                } else if v < neg_threshold {
+                    -1
+                } else {
+                    0
+                }
+            })
+            .collect();
 
         Ok(spikes)
     }

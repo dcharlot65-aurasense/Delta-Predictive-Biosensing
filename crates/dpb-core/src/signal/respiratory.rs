@@ -9,7 +9,7 @@
 
 use crate::error::{DpbError, Result};
 use crate::signal::fft::{FftProcessor, fft_frequencies};
-use ndarray::{ArrayView1};
+use ndarray::ArrayView1;
 use serde::{Deserialize, Serialize};
 
 /// Individual breath event
@@ -174,10 +174,10 @@ impl RespiratoryAnalyzer {
     pub fn new(sample_rate: f64) -> Self {
         Self {
             sample_rate,
-            min_breath_duration: 1.0,    // seconds (60 breaths/min max)
-            max_breath_duration: 10.0,   // seconds (6 breaths/min min)
-            apnea_threshold: 10.0,       // seconds
-            hypopnea_threshold: 0.3,     // 30% reduction
+            min_breath_duration: 1.0,  // seconds (60 breaths/min max)
+            max_breath_duration: 10.0, // seconds (6 breaths/min min)
+            apnea_threshold: 10.0,     // seconds
+            hypopnea_threshold: 0.3,   // 30% reduction
         }
     }
 
@@ -209,8 +209,9 @@ impl RespiratoryAnalyzer {
         let mut crossings = Vec::new();
 
         for i in 1..n {
-            if (signal[i - 1] < mean && signal[i] >= mean) ||
-               (signal[i - 1] >= mean && signal[i] < mean) {
+            if (signal[i - 1] < mean && signal[i] >= mean)
+                || (signal[i - 1] >= mean && signal[i] < mean)
+            {
                 crossings.push(i);
             }
         }
@@ -243,7 +244,11 @@ impl RespiratoryAnalyzer {
             if duration >= self.min_breath_duration && duration <= self.max_breath_duration {
                 // Find actual peak (max) during inspiration
                 let insp_region = &signal.as_slice().unwrap()[insp_start..peak_idx.min(n)];
-                let insp_amp = insp_region.iter().cloned().fold(f64::NEG_INFINITY, f64::max) - mean;
+                let insp_amp = insp_region
+                    .iter()
+                    .cloned()
+                    .fold(f64::NEG_INFINITY, f64::max)
+                    - mean;
 
                 // Find trough during expiration
                 let exp_region = &signal.as_slice().unwrap()[peak_idx.min(n)..breath_end.min(n)];
@@ -288,9 +293,8 @@ impl RespiratoryAnalyzer {
         }
 
         // Calculate baseline breath amplitude
-        let baseline_amplitude: f64 = breaths.iter()
-            .map(|b| b.tidal_volume)
-            .sum::<f64>() / breaths.len() as f64;
+        let baseline_amplitude: f64 =
+            breaths.iter().map(|b| b.tidal_volume).sum::<f64>() / breaths.len() as f64;
 
         // Look for gaps between breaths (apneas) and reduced breaths (hypopneas)
         for i in 0..breaths.len() - 1 {
@@ -344,18 +348,13 @@ impl RespiratoryAnalyzer {
     }
 
     /// Classify apnea type based on effort signal
-    fn classify_apnea_type(
-        &self,
-        signal: ArrayView1<f64>,
-        start: usize,
-        end: usize,
-    ) -> ApneaType {
+    fn classify_apnea_type(&self, signal: ArrayView1<f64>, start: usize, end: usize) -> ApneaType {
         let segment = signal.slice(ndarray::s![start..end]);
 
         // Calculate variance during apnea - high variance suggests obstructive
         let mean = segment.mean().unwrap_or(0.0);
-        let variance: f64 = segment.iter().map(|x| (x - mean).powi(2)).sum::<f64>()
-            / segment.len() as f64;
+        let variance: f64 =
+            segment.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / segment.len() as f64;
 
         // Low variance suggests central apnea (no respiratory effort)
         let baseline_var = signal.var(0.0);
@@ -381,14 +380,17 @@ impl RespiratoryAnalyzer {
         }
 
         // Calculate breath interval statistics
-        let intervals: Vec<f64> = breaths.windows(2)
+        let intervals: Vec<f64> = breaths
+            .windows(2)
             .map(|w| w[1].start_time - w[0].start_time)
             .collect();
 
         let mean_interval = intervals.iter().sum::<f64>() / intervals.len() as f64;
-        let std_interval = (intervals.iter()
+        let std_interval = (intervals
+            .iter()
             .map(|x| (x - mean_interval).powi(2))
-            .sum::<f64>() / intervals.len() as f64)
+            .sum::<f64>()
+            / intervals.len() as f64)
             .sqrt();
         let cv = std_interval / mean_interval;
 
@@ -504,7 +506,8 @@ impl RespiratoryAnalyzer {
         let respiratory_rate = n_breaths as f64 / duration * 60.0;
 
         // Calculate intervals and variability
-        let intervals: Vec<f64> = breaths.windows(2)
+        let intervals: Vec<f64> = breaths
+            .windows(2)
             .map(|w| w[1].start_time - w[0].start_time)
             .collect();
 
@@ -515,9 +518,11 @@ impl RespiratoryAnalyzer {
         };
 
         let rate_variability = if intervals.len() > 1 {
-            let std: f64 = (intervals.iter()
+            let std: f64 = (intervals
+                .iter()
                 .map(|x| (x - mean_interval).powi(2))
-                .sum::<f64>() / intervals.len() as f64)
+                .sum::<f64>()
+                / intervals.len() as f64)
                 .sqrt();
             std / mean_interval
         } else {
@@ -534,9 +539,11 @@ impl RespiratoryAnalyzer {
         let mean_tidal_volume = tidal_volumes.iter().sum::<f64>() / n_breaths as f64;
 
         let tidal_volume_variability = if n_breaths > 1 {
-            let std = (tidal_volumes.iter()
+            let std = (tidal_volumes
+                .iter()
                 .map(|v| (v - mean_tidal_volume).powi(2))
-                .sum::<f64>() / n_breaths as f64)
+                .sum::<f64>()
+                / n_breaths as f64)
                 .sqrt();
             std / mean_tidal_volume
         } else {
@@ -652,9 +659,7 @@ pub fn analyze_sleep_breathing(
         0.0
     };
 
-    let max_duration = apneas.iter()
-        .map(|a| a.duration)
-        .fold(0.0, f64::max);
+    let max_duration = apneas.iter().map(|a| a.duration).fold(0.0, f64::max);
 
     // Find dominant type
     let mut type_counts = std::collections::HashMap::new();
@@ -707,8 +712,11 @@ mod tests {
         let breaths = analyzer.detect_breaths(signal.view());
 
         // Should detect approximately 15 breaths
-        assert!(breaths.len() >= 12 && breaths.len() <= 18,
-            "Expected ~15 breaths, got {}", breaths.len());
+        assert!(
+            breaths.len() >= 12 && breaths.len() <= 18,
+            "Expected ~15 breaths, got {}",
+            breaths.len()
+        );
     }
 
     #[test]
@@ -721,13 +729,20 @@ mod tests {
         let analyzer = RespiratoryAnalyzer::new(sample_rate);
         let rate = analyzer.calculate_respiratory_rate(signal.view()).unwrap();
 
-        assert!((rate - resp_rate).abs() < 2.0,
-            "Expected rate ~{}, got {}", resp_rate, rate);
+        assert!(
+            (rate - resp_rate).abs() < 2.0,
+            "Expected rate ~{}, got {}",
+            resp_rate,
+            rate
+        );
     }
 
     #[test]
     fn test_apnea_severity() {
-        assert_eq!(ApneaSeverity::from_duration(5.0), ApneaSeverity::Subclinical);
+        assert_eq!(
+            ApneaSeverity::from_duration(5.0),
+            ApneaSeverity::Subclinical
+        );
         assert_eq!(ApneaSeverity::from_duration(15.0), ApneaSeverity::Mild);
         assert_eq!(ApneaSeverity::from_duration(30.0), ApneaSeverity::Moderate);
         assert_eq!(ApneaSeverity::from_duration(50.0), ApneaSeverity::Severe);
@@ -735,10 +750,19 @@ mod tests {
 
     #[test]
     fn test_sleep_apnea_severity() {
-        assert_eq!(SleepApneaSeverity::from_ahi(3.0), SleepApneaSeverity::Normal);
+        assert_eq!(
+            SleepApneaSeverity::from_ahi(3.0),
+            SleepApneaSeverity::Normal
+        );
         assert_eq!(SleepApneaSeverity::from_ahi(10.0), SleepApneaSeverity::Mild);
-        assert_eq!(SleepApneaSeverity::from_ahi(20.0), SleepApneaSeverity::Moderate);
-        assert_eq!(SleepApneaSeverity::from_ahi(40.0), SleepApneaSeverity::Severe);
+        assert_eq!(
+            SleepApneaSeverity::from_ahi(20.0),
+            SleepApneaSeverity::Moderate
+        );
+        assert_eq!(
+            SleepApneaSeverity::from_ahi(40.0),
+            SleepApneaSeverity::Severe
+        );
     }
 
     #[test]

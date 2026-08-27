@@ -687,8 +687,8 @@ impl Decoder for PupilDiameterDecoder {
 
             // Map spike rate to pupil diameter
             // Higher activity typically correlates with larger pupils (arousal)
-            let diameter = self.min_diameter_mm
-                + mean_rate * (self.max_diameter_mm - self.min_diameter_mm);
+            let diameter =
+                self.min_diameter_mm + mean_rate * (self.max_diameter_mm - self.min_diameter_mm);
 
             output[[b, 0]] = diameter.clamp(self.min_diameter_mm, self.max_diameter_mm);
         }

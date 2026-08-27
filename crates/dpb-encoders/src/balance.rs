@@ -29,10 +29,10 @@ impl PopulationTemplate for SwayAreaTemplate {
     fn expected_value(&self, context: &Context) -> f64 {
         // Sway area increases with age (published norms)
         match context.age {
-            Some(age) if age < 30.0 => 1.5,   // Young adults: ~1.5 cm²
-            Some(age) if age < 50.0 => 2.0,   // Middle-aged: ~2.0 cm²
-            Some(age) if age < 70.0 => 3.0,   // Older adults: ~3.0 cm²
-            Some(_) => 4.5,                    // Elderly: ~4.5 cm²
+            Some(age) if age < 30.0 => 1.5, // Young adults: ~1.5 cm²
+            Some(age) if age < 50.0 => 2.0, // Middle-aged: ~2.0 cm²
+            Some(age) if age < 70.0 => 3.0, // Older adults: ~3.0 cm²
+            Some(_) => 4.5,                 // Elderly: ~4.5 cm²
             None => 2.5,
         }
     }
@@ -60,10 +60,10 @@ impl PopulationTemplate for SwayVelocityTemplate {
     fn expected_value(&self, context: &Context) -> f64 {
         // Mean sway velocity norms by age
         match context.age {
-            Some(age) if age < 30.0 => 0.8,   // Young: ~0.8 cm/s
-            Some(age) if age < 50.0 => 1.0,   // Middle: ~1.0 cm/s
-            Some(age) if age < 70.0 => 1.4,   // Older: ~1.4 cm/s
-            Some(_) => 2.0,                    // Elderly: ~2.0 cm/s
+            Some(age) if age < 30.0 => 0.8, // Young: ~0.8 cm/s
+            Some(age) if age < 50.0 => 1.0, // Middle: ~1.0 cm/s
+            Some(age) if age < 70.0 => 1.4, // Older: ~1.4 cm/s
+            Some(_) => 2.0,                 // Elderly: ~2.0 cm/s
             None => 1.2,
         }
     }
@@ -90,10 +90,10 @@ impl PopulationTemplate for StabilityLimitTemplate {
     fn expected_value(&self, context: &Context) -> f64 {
         // Max excursion decreases with age
         match context.age {
-            Some(age) if age < 30.0 => 95.0,  // Young: ~95%
-            Some(age) if age < 50.0 => 90.0,  // Middle: ~90%
-            Some(age) if age < 70.0 => 80.0,  // Older: ~80%
-            Some(_) => 65.0,                   // Elderly: ~65%
+            Some(age) if age < 30.0 => 95.0, // Young: ~95%
+            Some(age) if age < 50.0 => 90.0, // Middle: ~90%
+            Some(age) if age < 70.0 => 80.0, // Older: ~80%
+            Some(_) => 65.0,                 // Elderly: ~65%
             None => 85.0,
         }
     }
@@ -133,9 +133,9 @@ pub struct CopSwayConfig {
 impl Default for CopSwayConfig {
     fn default() -> Self {
         Self {
-            excursion_threshold: 1.0,  // 1 cm threshold
-            min_interval: 0.1,         // 100ms minimum interval
-            window_size: 50,           // ~0.5s at 100Hz
+            excursion_threshold: 1.0, // 1 cm threshold
+            min_interval: 0.1,        // 100ms minimum interval
+            window_size: 50,          // ~0.5s at 100Hz
             separate_axes: true,
         }
     }
@@ -216,7 +216,12 @@ impl EventEncoder for CopSwayEncoder {
 
             // Get channel data
             let channel_data: Vec<f32> = if num_channels > 1 {
-                samples.iter().skip(ch).step_by(num_channels).copied().collect()
+                samples
+                    .iter()
+                    .skip(ch)
+                    .step_by(num_channels)
+                    .copied()
+                    .collect()
             } else {
                 samples.to_vec()
             };
@@ -268,9 +273,9 @@ pub struct CopVelocityConfig {
 impl Default for CopVelocityConfig {
     fn default() -> Self {
         Self {
-            velocity_threshold: 3.0,   // 3 cm/s threshold
-            min_interval: 0.05,        // 50ms minimum interval
-            smoothing_window: 5,       // 5-sample smoothing
+            velocity_threshold: 3.0, // 3 cm/s threshold
+            min_interval: 0.05,      // 50ms minimum interval
+            smoothing_window: 5,     // 5-sample smoothing
         }
     }
 }
@@ -341,7 +346,12 @@ impl EventEncoder for CopVelocityEncoder {
             let mut last_event_idx = 0;
 
             let channel_data: Vec<f32> = if num_channels > 1 {
-                samples.iter().skip(ch).step_by(num_channels).copied().collect()
+                samples
+                    .iter()
+                    .skip(ch)
+                    .step_by(num_channels)
+                    .copied()
+                    .collect()
             } else {
                 samples.to_vec()
             };
@@ -400,9 +410,9 @@ pub struct StabilityLimitConfig {
 impl Default for StabilityLimitConfig {
     fn default() -> Self {
         Self {
-            bos_limits: (12.0, 8.0, 8.0, 8.0),  // Typical BoS: 12cm ant, 8cm post/left/right
-            threshold_fraction: 0.8,            // Fire at 80% of limit
-            min_interval: 0.2,                  // 200ms minimum interval
+            bos_limits: (12.0, 8.0, 8.0, 8.0), // Typical BoS: 12cm ant, 8cm post/left/right
+            threshold_fraction: 0.8,           // Fire at 80% of limit
+            min_interval: 0.2,                 // 200ms minimum interval
         }
     }
 }

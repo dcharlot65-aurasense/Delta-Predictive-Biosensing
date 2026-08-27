@@ -18,7 +18,10 @@ pub trait FhirSerializer {
     fn deserialize<T: for<'de> Deserialize<'de>>(&self, data: &str) -> Result<T>;
 
     /// Deserializes a FHIR resource from a reader
-    fn deserialize_from_reader<T: for<'de> Deserialize<'de>, R: Read>(&self, reader: R) -> Result<T>;
+    fn deserialize_from_reader<T: for<'de> Deserialize<'de>, R: Read>(
+        &self,
+        reader: R,
+    ) -> Result<T>;
 
     /// Returns the MIME type for this serialization format
     fn mime_type(&self) -> &'static str;
@@ -77,7 +80,10 @@ impl FhirSerializer for JsonSerializer {
             .map_err(|e| DpbError::Other(format!("JSON deserialization error: {}", e)))
     }
 
-    fn deserialize_from_reader<T: for<'de> Deserialize<'de>, R: Read>(&self, reader: R) -> Result<T> {
+    fn deserialize_from_reader<T: for<'de> Deserialize<'de>, R: Read>(
+        &self,
+        reader: R,
+    ) -> Result<T> {
         serde_json::from_reader(reader)
             .map_err(|e| DpbError::Other(format!("JSON deserialization error: {}", e)))
     }
@@ -139,8 +145,13 @@ impl XmlSerializer {
                 xml
             }
             serde_json::Value::String(s) => {
-                format!("{}<{} value=\"{}\" />{}", indent_str, tag_name,
-                    escape_xml(s), newline)
+                format!(
+                    "{}<{} value=\"{}\" />{}",
+                    indent_str,
+                    tag_name,
+                    escape_xml(s),
+                    newline
+                )
             }
             serde_json::Value::Number(n) => {
                 format!("{}<{} value=\"{}\" />{}", indent_str, tag_name, n, newline)
@@ -172,7 +183,10 @@ impl FhirSerializer for XmlSerializer {
 
         // Convert to XML
         let mut xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-        xml.push_str(&format!("<{} xmlns=\"http://hl7.org/fhir\">\n", resource_type));
+        xml.push_str(&format!(
+            "<{} xmlns=\"http://hl7.org/fhir\">\n",
+            resource_type
+        ));
 
         if let serde_json::Value::Object(ref map) = json_value {
             for (key, value) in map {
@@ -186,22 +200,30 @@ impl FhirSerializer for XmlSerializer {
         Ok(xml)
     }
 
-    fn serialize_to_writer<T: Serialize, W: Write>(&self, resource: &T, mut writer: W) -> Result<()> {
+    fn serialize_to_writer<T: Serialize, W: Write>(
+        &self,
+        resource: &T,
+        mut writer: W,
+    ) -> Result<()> {
         let xml_string = self.serialize(resource)?;
-        writer.write_all(xml_string.as_bytes())
+        writer
+            .write_all(xml_string.as_bytes())
             .map_err(|e| DpbError::Other(format!("Write error: {}", e)))
     }
 
     fn deserialize<T: for<'de> Deserialize<'de>>(&self, _data: &str) -> Result<T> {
         // XML deserialization not fully implemented - would require XML parser
         Err(DpbError::Other(
-            "XML deserialization not yet implemented. Use JSON format.".to_string()
+            "XML deserialization not yet implemented. Use JSON format.".to_string(),
         ))
     }
 
-    fn deserialize_from_reader<T: for<'de> Deserialize<'de>, R: Read>(&self, _reader: R) -> Result<T> {
+    fn deserialize_from_reader<T: for<'de> Deserialize<'de>, R: Read>(
+        &self,
+        _reader: R,
+    ) -> Result<T> {
         Err(DpbError::Other(
-            "XML deserialization not yet implemented. Use JSON format.".to_string()
+            "XML deserialization not yet implemented. Use JSON format.".to_string(),
         ))
     }
 
@@ -264,9 +286,10 @@ impl NarrativeGenerator {
         }
 
         if let Some(value) = &obs.value_quantity
-            && let (Some(val), Some(unit)) = (value.value, &value.unit) {
-                narrative.push_str(&format!("<p>Value: {} {}</p>", val, unit));
-            }
+            && let (Some(val), Some(unit)) = (value.value, &value.unit)
+        {
+            narrative.push_str(&format!("<p>Value: {} {}</p>", val, unit));
+        }
 
         if let Some(time) = &obs.effective_date_time {
             narrative.push_str(&format!("<p>Time: {}</p>", time));
@@ -338,10 +361,9 @@ impl Extension {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::io::fhir::resources::{Patient, HumanName};
+    use crate::io::fhir::resources::{HumanName, Patient};
     // Only the tests build resources directly; the serializers are generic.
     use crate::io::fhir::{Bundle, FhirResource};
-    
 
     #[test]
     fn test_json_serialization() {
@@ -422,30 +444,29 @@ mod tests {
     fn test_escape_xml() {
         let input = "<tag> & \"quote\" 'apos'";
         let escaped = escape_xml(input);
-        assert_eq!(escaped, "&lt;tag&gt; &amp; &quot;quote&quot; &apos;apos&apos;");
+        assert_eq!(
+            escaped,
+            "&lt;tag&gt; &amp; &quot;quote&quot; &apos;apos&apos;"
+        );
     }
 
     #[test]
     fn test_extension_creation() {
         let ext = Extension::string(
             "http://example.org/custom".to_string(),
-            "custom value".to_string()
+            "custom value".to_string(),
         );
         assert_eq!(ext.url, "http://example.org/custom");
         assert_eq!(ext.value_string, Some("custom value".to_string()));
 
-        let ext_int = Extension::integer(
-            "http://example.org/score".to_string(),
-            42
-        );
+        let ext_int = Extension::integer("http://example.org/score".to_string(), 42);
         assert_eq!(ext_int.value_integer, Some(42));
     }
 
     #[test]
     fn test_bundle_serialization() {
         let patient = Patient::new("patient-001".to_string());
-        let bundle = Bundle::collection()
-            .add_resource(FhirResource::Patient(patient));
+        let bundle = Bundle::collection().add_resource(FhirResource::Patient(patient));
 
         let serializer = JsonSerializer::pretty();
         let json = serializer.serialize(&bundle).unwrap();

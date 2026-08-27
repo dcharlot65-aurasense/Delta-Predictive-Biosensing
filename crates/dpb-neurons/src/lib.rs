@@ -137,15 +137,15 @@
 pub mod traits;
 
 // Core neuron models
-pub mod lif;
-pub mod izhikevich;
 pub mod adex;
-pub mod hodgkin_huxley;
-pub mod srm;
 pub mod calcium;
-pub mod stochastic;
-pub mod recurrent;
 pub mod hardware;
+pub mod hodgkin_huxley;
+pub mod izhikevich;
+pub mod lif;
+pub mod recurrent;
+pub mod srm;
+pub mod stochastic;
 
 // Reservoir computing
 pub mod reservoir;
@@ -167,9 +167,7 @@ pub use traits::{
 };
 
 // Re-export LIF variants
-pub use lif::{
-    AlifNeuron, ClifNeuron, ElifNeuron, GlifNeuron, IfNeuron, LifNeuron, QlifNeuron,
-};
+pub use lif::{AlifNeuron, ClifNeuron, ElifNeuron, GlifNeuron, IfNeuron, LifNeuron, QlifNeuron};
 
 // Re-export other models
 pub use adex::AdExNeuron;
@@ -194,8 +192,8 @@ pub use batch::{BatchLifLayer, BatchNetwork, BatchNeuronLayer, PopulationStats};
 
 // Re-export GPU types
 pub use gpu::{
-    GpuAlifNeuron, GpuIzhikevichNeuron, GpuLifNeuron, GpuNeuronKernel, GpuSimParams,
-    ALIF_SHADER, ELIF_SHADER, IZHIKEVICH_SHADER, LIF_SHADER,
+    ALIF_SHADER, ELIF_SHADER, GpuAlifNeuron, GpuIzhikevichNeuron, GpuLifNeuron, GpuNeuronKernel,
+    GpuSimParams, IZHIKEVICH_SHADER, LIF_SHADER,
 };
 
 // Re-export reservoir computing types
@@ -203,10 +201,9 @@ pub use reservoir::{EchoStateNetwork, LiquidStateMachine, SparsityPattern};
 
 // Re-export dendritic computation types
 pub use dendritic::{
-    Compartment, DendriticTree, MultiCompartmentNeuron, DendriticSynapse,
-    IonChannel, HodgkinHuxleyChannel, CalciumChannel, NmdaReceptor,
-    DendriticIntegration, PassiveIntegration, ActiveIntegration,
-    DendriticPlasticity, DendriticStdp,
+    ActiveIntegration, CalciumChannel, Compartment, DendriticIntegration, DendriticPlasticity,
+    DendriticStdp, DendriticSynapse, DendriticTree, HodgkinHuxleyChannel, IonChannel,
+    MultiCompartmentNeuron, NmdaReceptor, PassiveIntegration,
 };
 
 /// Prelude module for convenient imports.

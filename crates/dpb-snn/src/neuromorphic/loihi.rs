@@ -3,15 +3,15 @@
 //! Provides export capabilities for Intel Loihi and Loihi 2 chips using
 //! NxSDK and Lava frameworks.
 
-use serde::{Deserialize, Serialize};
-use super::{
-    NeuromorphicExporter, NeuromorphicTarget, NetworkDescription, ExportResult,
-    ExportFile, ExportMetadata, NetworkStats, HardwareUtilization,
-};
 use super::constraints::HardwareConstraints;
-use super::partitioning::{NetworkPartitioner, PartitionStrategy, NetworkGraph, Edge};
-use super::quantization::{WeightQuantizer, QuantizationScheme};
-use crate::{SNNResult, SNNError};
+use super::partitioning::{Edge, NetworkGraph, NetworkPartitioner, PartitionStrategy};
+use super::quantization::{QuantizationScheme, WeightQuantizer};
+use super::{
+    ExportFile, ExportMetadata, ExportResult, HardwareUtilization, NetworkDescription,
+    NetworkStats, NeuromorphicExporter, NeuromorphicTarget,
+};
+use crate::{SNNError, SNNResult};
+use serde::{Deserialize, Serialize};
 
 /// Loihi exporter
 pub struct LoihiExporter {
@@ -51,14 +51,14 @@ impl LoihiExporter {
             ));
 
             // Configure compartment parameters
-            code.push_str(&format!(
-                "compartments_{}.configure(\n",
-                i
-            ));
+            code.push_str(&format!("compartments_{}.configure(\n", i));
             code.push_str(&format!("    vThMant={},\n", comp_group.v_threshold_mant));
             code.push_str(&format!("    vDecay={},\n", comp_group.decay_v));
             code.push_str(&format!("    uDecay={},\n", comp_group.decay_u));
-            code.push_str(&format!("    refractDelay={},\n", comp_group.refractory_delay));
+            code.push_str(&format!(
+                "    refractDelay={},\n",
+                comp_group.refractory_delay
+            ));
             code.push_str(")\n\n");
         }
 
@@ -74,7 +74,10 @@ impl LoihiExporter {
             code.push_str(&format!("        weight={},\n", conn.weight));
             code.push_str(&format!("        delay={},\n", conn.delay));
             code.push_str("    ),\n");
-            code.push_str(&format!("    connectionMask=nx.{},\n", conn.connection_type));
+            code.push_str(&format!(
+                "    connectionMask=nx.{},\n",
+                conn.connection_type
+            ));
             code.push_str(")\n\n");
         }
 
@@ -82,17 +85,17 @@ impl LoihiExporter {
         if self.config.enable_learning {
             code.push_str("# Configure learning rules\n");
             for (i, rule) in network.learning_rules.iter().enumerate() {
-                code.push_str(&format!(
-                    "learning_rule_{} = net.createLearningRule(\n",
-                    i
-                ));
+                code.push_str(&format!("learning_rule_{} = net.createLearningRule(\n", i));
                 code.push_str(&format!("    dw='{}',\n", rule.rule_type));
                 code.push_str(&format!("    x0={},\n", rule.x0));
                 code.push_str(&format!("    y0={},\n", rule.y0));
                 code.push_str(&format!("    tauX={},\n", rule.tau_x));
                 code.push_str(&format!("    tauY={},\n", rule.tau_y));
                 code.push_str(")\n");
-                code.push_str(&format!("conn_{}.enableLearning(learning_rule_{})\n\n", i, i));
+                code.push_str(&format!(
+                    "conn_{}.enableLearning(learning_rule_{})\n\n",
+                    i, i
+                ));
             }
         }
 
@@ -120,10 +123,7 @@ impl LoihiExporter {
         // Create LIF neurons
         code.push_str("# Create LIF neuron populations\n");
         for (i, comp_group) in network.compartment_groups.iter().enumerate() {
-            code.push_str(&format!(
-                "neurons_{} = LIF(\n",
-                i
-            ));
+            code.push_str(&format!("neurons_{} = LIF(\n", i));
             code.push_str(&format!("    shape=({}),\n", comp_group.size));
             code.push_str(&format!("    vth={},\n", comp_group.v_threshold_mant));
             code.push_str(&format!("    dv={},\n", comp_group.decay_v));
@@ -134,10 +134,7 @@ impl LoihiExporter {
         // Create connections (Dense processes)
         code.push_str("# Create synaptic connections\n");
         for (i, conn) in network.connections.iter().enumerate() {
-            code.push_str(&format!(
-                "synapse_{} = Dense(\n",
-                i
-            ));
+            code.push_str(&format!("synapse_{} = Dense(\n", i));
             code.push_str(&format!("    weights=np.array([{}]),\n", conn.weight));
             code.push_str(")\n");
             code.push_str(&format!(
@@ -153,7 +150,10 @@ impl LoihiExporter {
         // Run configuration
         code.push_str("# Configure and run\n");
         code.push_str("run_cfg = Loihi2SimCfg()\n");
-        code.push_str(&format!("neurons_0.run(condition=RunSteps(num_steps={}), run_cfg=run_cfg)\n", self.config.num_steps));
+        code.push_str(&format!(
+            "neurons_0.run(condition=RunSteps(num_steps={}), run_cfg=run_cfg)\n",
+            self.config.num_steps
+        ));
         code.push_str("neurons_0.stop()\n");
 
         code
@@ -177,10 +177,8 @@ impl LoihiExporter {
         let graph = NetworkGraph::new(num_neurons, edges);
 
         // Partition network
-        let partitioner = NetworkPartitioner::new(
-            self.constraints.clone(),
-            PartitionStrategy::LoadBalanced,
-        );
+        let partitioner =
+            NetworkPartitioner::new(self.constraints.clone(), PartitionStrategy::LoadBalanced);
         let partition = partitioner.partition(&graph)?;
 
         // Create Loihi-specific structures
@@ -497,7 +495,9 @@ mod chrono {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::neuromorphic::{Population, Connection, NeuronParameters, NetworkParameters, ConnectionType};
+    use crate::neuromorphic::{
+        Connection, ConnectionType, NetworkParameters, NeuronParameters, Population,
+    };
 
     fn create_test_network() -> NetworkDescription {
         NetworkDescription {

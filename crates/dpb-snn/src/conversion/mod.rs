@@ -1,9 +1,9 @@
 //! ANN-to-SNN conversion utilities
 
 use crate::{
+    SNNConfig, SNNResult, SpikeTensor,
     architectures::{FeedforwardSNN, SNNArchitecture},
     layers::SpikingLayer,
-    SNNConfig, SNNResult, SpikeTensor,
 };
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
@@ -93,11 +93,12 @@ impl ANNToSNNConverter {
         // Adjust thresholds based on activation statistics
         for (layer_idx, layer) in snn.layers.iter_mut().enumerate() {
             if let Some(&mean_activation) = layer_activations[layer_idx].first()
-                && mean_activation > 0.0 {
-                    // Scale threshold to achieve target spike rate
-                    let scale = mean_activation / self.target_spike_rate;
-                    layer.neuron_params.v_threshold *= scale;
-                }
+                && mean_activation > 0.0
+            {
+                // Scale threshold to achieve target spike rate
+                let scale = mean_activation / self.target_spike_rate;
+                layer.neuron_params.v_threshold *= scale;
+            }
         }
 
         Ok(())
@@ -153,7 +154,10 @@ impl WeightNormalization {
             }
             WeightNormalization::MaxWeight => {
                 // Simple max normalization
-                let max_weight = weights.iter().map(|x| x.abs()).fold(0.0f32, |a, b| a.max(b));
+                let max_weight = weights
+                    .iter()
+                    .map(|x| x.abs())
+                    .fold(0.0f32, |a, b| a.max(b));
                 if max_weight > 0.0 {
                     weights / max_weight
                 } else {
@@ -240,7 +244,10 @@ impl CalibrationPipeline {
 
         for _iteration in 0..self.max_iterations {
             // Run calibration
-            converter.calibrate(snn, &calibration_data[..self.num_samples.min(calibration_data.len())])?;
+            converter.calibrate(
+                snn,
+                &calibration_data[..self.num_samples.min(calibration_data.len())],
+            )?;
 
             // Validate
             let accuracy = validation_fn(snn);
@@ -332,7 +339,9 @@ mod tests {
             Array2::from_shape_vec((3, 5), vec![1.0; 15]).unwrap(),
         ];
 
-        let snn = converter.convert_weights(&ann_weights, SNNConfig::default()).unwrap();
+        let snn = converter
+            .convert_weights(&ann_weights, SNNConfig::default())
+            .unwrap();
         assert_eq!(snn.num_layers(), 2);
     }
 }

@@ -3,7 +3,7 @@
 //! This module provides synthetic biosignal datasets for benchmarking encoders
 //! and neural networks. All datasets include ground truth annotations.
 
-use dpb_core::{SignalBuffer, GroundTruth};
+use dpb_core::{GroundTruth, SignalBuffer};
 use rand::{Rng, RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
@@ -113,7 +113,8 @@ impl BenchmarkDataset for SyntheticECG {
         metadata.insert("modality".to_string(), "ECG".to_string());
 
         // Store R-peak times as temporal annotations
-        let temporal: Vec<(f64, f64, u32)> = r_peak_times.iter()
+        let temporal: Vec<(f64, f64, u32)> = r_peak_times
+            .iter()
             .map(|&time| (time, time, 0)) // (start, end, label=0 for R-peak)
             .collect();
 
@@ -179,13 +180,16 @@ impl SyntheticECG {
         let width_samples = (width * sample_rate * 3.0) as usize; // 3 sigma
 
         for i in 0..width_samples {
-            let signed_idx = center_idx as isize + offset_samples + i as isize - width_samples as isize / 2;
+            let signed_idx =
+                center_idx as isize + offset_samples + i as isize - width_samples as isize / 2;
             if let Ok(idx) = usize::try_from(signed_idx)
-                && idx < signal.len() {
-                    let t = i as f64 - width_samples as f64 / 2.0;
-                    let gaussian = amplitude * ((-0.5 * (t / (width * sample_rate)).powi(2)).exp() as f32);
-                    signal[idx] += gaussian;
-                }
+                && idx < signal.len()
+            {
+                let t = i as f64 - width_samples as f64 / 2.0;
+                let gaussian =
+                    amplitude * ((-0.5 * (t / (width * sample_rate)).powi(2)).exp() as f32);
+                signal[idx] += gaussian;
+            }
         }
     }
 }
@@ -214,7 +218,7 @@ impl SyntheticGait {
             num_samples,
             sample_rate,
             stride_frequency: 0.9, // ~54 steps/min
-            stance_ratio: 0.6,      // 60% stance, 40% swing
+            stance_ratio: 0.6,     // 60% stance, 40% swing
             noise_level: 0.1,
             seed,
         }
@@ -289,7 +293,10 @@ impl BenchmarkDataset for SyntheticGait {
 
         // Create ground truth
         let mut metadata = HashMap::new();
-        metadata.insert("stride_frequency".to_string(), self.stride_frequency.to_string());
+        metadata.insert(
+            "stride_frequency".to_string(),
+            self.stride_frequency.to_string(),
+        );
         metadata.insert("stance_ratio".to_string(), self.stance_ratio.to_string());
         metadata.insert("modality".to_string(), "Gait".to_string());
 
@@ -413,7 +420,10 @@ impl BenchmarkDataset for SyntheticTremor {
 
         // Create ground truth
         let mut metadata = HashMap::new();
-        metadata.insert("tremor_frequency".to_string(), self.tremor_frequency.to_string());
+        metadata.insert(
+            "tremor_frequency".to_string(),
+            self.tremor_frequency.to_string(),
+        );
         metadata.insert("amplitude".to_string(), self.amplitude.to_string());
         metadata.insert("modality".to_string(), "Tremor".to_string());
 

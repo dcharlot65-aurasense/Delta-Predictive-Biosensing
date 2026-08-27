@@ -8,10 +8,16 @@
 
 use dpb_synth::{
     // Augmentation imports
-    AugmentationPipeline, GaussianNoise, BaselineWander,
-    PowerlineNoise, MotionArtifact, TimeWarp, MagnitudeScale,
+    AugmentationPipeline,
+    BaselineWander,
     // Cohort imports
-    CohortGenerator, Sex,
+    CohortGenerator,
+    GaussianNoise,
+    MagnitudeScale,
+    MotionArtifact,
+    PowerlineNoise,
+    Sex,
+    TimeWarp,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -36,10 +42,10 @@ fn demonstrate_augmentation() {
     // Create a simple synthetic ECG-like signal
     let signal: Vec<f64> = (0..1000)
         .map(|i| {
-            let t = i as f64 / 250.0;  // 250 Hz sampling rate
+            let t = i as f64 / 250.0; // 250 Hz sampling rate
             // Simplified ECG: sum of sinusoids
             (2.0 * PI * 1.2 * t).sin() +  // Heart rate ~72 bpm
-            0.3 * (2.0 * PI * 10.0 * t).sin()  // High frequency component
+            0.3 * (2.0 * PI * 10.0 * t).sin() // High frequency component
         })
         .collect();
 
@@ -48,13 +54,13 @@ fn demonstrate_augmentation() {
     // Create augmentation pipeline with multiple techniques
     let pipeline = AugmentationPipeline::new()
         // Add realistic ECG noise
-        .add(GaussianNoise::new(20.0), 0.8)  // 80% chance of white noise
-        .add(PowerlineNoise::new(60.0, 0.05), 0.5)  // 50% chance of 60 Hz interference
-        .add(BaselineWander::new(0.3, 0.1), 0.6)  // 60% chance of baseline drift
+        .add(GaussianNoise::new(20.0), 0.8) // 80% chance of white noise
+        .add(PowerlineNoise::new(60.0, 0.05), 0.5) // 50% chance of 60 Hz interference
+        .add(BaselineWander::new(0.3, 0.1), 0.6) // 60% chance of baseline drift
         // Add temporal variations
-        .add(TimeWarp::new(0.1, 4), 0.3)  // 30% chance of time warping
+        .add(TimeWarp::new(0.1, 4), 0.3) // 30% chance of time warping
         // Add physiological variations
-        .add(MagnitudeScale::new((0.85, 1.15)), 0.9);  // 90% chance of amplitude variation
+        .add(MagnitudeScale::new((0.85, 1.15)), 0.9); // 90% chance of amplitude variation
 
     // Apply augmentation
     let mut rng = ChaCha8Rng::seed_from_u64(42);
@@ -70,11 +76,11 @@ fn demonstrate_cohort_generation() {
 
     // Create a cohort generator for a cardiovascular study
     let generator = CohortGenerator::new(50)
-        .with_age_distribution(55.0, 12.0)  // Mean age 55, std 12 years
-        .with_sex_ratio(0.6)  // 60% male
-        .with_disease("Hypertension", 0.35)  // 35% prevalence
-        .with_disease("Diabetes", 0.15)  // 15% prevalence
-        .with_disease("CAD", 0.10);  // 10% prevalence of coronary artery disease
+        .with_age_distribution(55.0, 12.0) // Mean age 55, std 12 years
+        .with_sex_ratio(0.6) // 60% male
+        .with_disease("Hypertension", 0.35) // 35% prevalence
+        .with_disease("Diabetes", 0.15) // 15% prevalence
+        .with_disease("CAD", 0.10); // 10% prevalence of coronary artery disease
 
     // Generate cohort
     let cohort = generator.generate(42);
@@ -82,28 +88,42 @@ fn demonstrate_cohort_generation() {
     println!("Generated cohort of {} patients", cohort.len());
 
     // Analyze cohort statistics
-    let avg_age = cohort.iter().map(|p| p.demographics.age_years).sum::<f64>() / cohort.len() as f64;
-    let male_count = cohort.iter().filter(|p| p.demographics.sex == Sex::Male).count();
-    let htn_count = cohort.iter().filter(|p| p.has_condition("Hypertension")).count();
-    let diabetes_count = cohort.iter().filter(|p| p.has_condition("Diabetes")).count();
+    let avg_age =
+        cohort.iter().map(|p| p.demographics.age_years).sum::<f64>() / cohort.len() as f64;
+    let male_count = cohort
+        .iter()
+        .filter(|p| p.demographics.sex == Sex::Male)
+        .count();
+    let htn_count = cohort
+        .iter()
+        .filter(|p| p.has_condition("Hypertension"))
+        .count();
+    let diabetes_count = cohort
+        .iter()
+        .filter(|p| p.has_condition("Diabetes"))
+        .count();
 
     println!("  Average age: {:.1} years", avg_age);
-    println!("  Male: {}%, Female: {}%",
-             male_count * 100 / cohort.len(),
-             (cohort.len() - male_count) * 100 / cohort.len());
+    println!(
+        "  Male: {}%, Female: {}%",
+        male_count * 100 / cohort.len(),
+        (cohort.len() - male_count) * 100 / cohort.len()
+    );
     println!("  Hypertension: {}%", htn_count * 100 / cohort.len());
     println!("  Diabetes: {}%", diabetes_count * 100 / cohort.len());
 
     // Show examples of individual patients
     println!("\nSample patients:");
     for (i, patient) in cohort.iter().take(3).enumerate() {
-        println!("  Patient {}: {} year old {}, BMI {:.1}, HR {:.0} bpm, HRV {:.1} ms",
-                 i + 1,
-                 patient.demographics.age_years.round(),
-                 patient.demographics.sex.as_str(),
-                 patient.demographics.bmi,
-                 patient.baseline_hr,
-                 patient.baseline_hrv);
+        println!(
+            "  Patient {}: {} year old {}, BMI {:.1}, HR {:.0} bpm, HRV {:.1} ms",
+            i + 1,
+            patient.demographics.age_years.round(),
+            patient.demographics.sex.as_str(),
+            patient.demographics.bmi,
+            patient.baseline_hr,
+            patient.baseline_hrv
+        );
         if !patient.conditions.is_empty() {
             println!("    Conditions: {}", patient.conditions.join(", "));
         }
@@ -158,7 +178,10 @@ fn demonstrate_ml_dataset_generation() {
 
         // Generate multiple augmented versions
         let num_augmentations = 5;
-        println!("  {}: Generating {} augmented samples", patient.id, num_augmentations);
+        println!(
+            "  {}: Generating {} augmented samples",
+            patient.id, num_augmentations
+        );
 
         for aug_id in 0..num_augmentations {
             let augmented = pipeline.apply(&signal, &mut rng);

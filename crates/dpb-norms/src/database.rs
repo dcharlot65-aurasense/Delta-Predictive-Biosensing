@@ -15,10 +15,7 @@
 //!
 //! Research and educational use only. Not a medical device.
 
-use crate::{
-    Demographics, MetricType, NormativeComparison,
-    NormativeStats, NormsError, Result,
-};
+use crate::{Demographics, MetricType, NormativeComparison, NormativeStats, NormsError, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -45,9 +42,10 @@ impl NormativeEntry {
 
         // Check sex if specified
         if let Some(sex) = self.sex
-            && demographics.sex != sex {
-                return false;
-            }
+            && demographics.sex != sex
+        {
+            return false;
+        }
 
         true
     }
@@ -207,7 +205,9 @@ impl NormativeDatabase {
         let icc = self.reliability.get(&metric).copied().unwrap_or(0.85);
 
         // Get average stats across age groups
-        let table = self.tables.get(&metric)
+        let table = self
+            .tables
+            .get(&metric)
             .ok_or_else(|| NormsError::MetricNotFound(format!("{:?}", metric)))?;
 
         if table.is_empty() {
@@ -215,9 +215,8 @@ impl NormativeDatabase {
         }
 
         // Calculate average SD
-        let avg_sd: f64 = table.entries.iter()
-            .map(|e| e.stats.std_dev)
-            .sum::<f64>() / table.entries.len() as f64;
+        let avg_sd: f64 =
+            table.entries.iter().map(|e| e.stats.std_dev).sum::<f64>() / table.entries.len() as f64;
 
         // MDC95 = SEM * sqrt(2) * 1.96
         let sem = avg_sd * (1.0 - icc).sqrt();
@@ -232,13 +231,17 @@ impl NormativeDatabase {
         metric: MetricType,
         demographics: &Demographics,
     ) -> Result<&NormativeStats> {
-        let table = self.tables.get(&metric)
+        let table = self
+            .tables
+            .get(&metric)
             .ok_or_else(|| NormsError::MetricNotFound(format!("{:?}", metric)))?;
 
-        let entry = table.find_best_match(demographics)
-            .ok_or_else(|| NormsError::DemographicsOutOfRange(
-                format!("No norms for age {} {:?}", demographics.age, demographics.sex)
-            ))?;
+        let entry = table.find_best_match(demographics).ok_or_else(|| {
+            NormsError::DemographicsOutOfRange(format!(
+                "No norms for age {} {:?}",
+                demographics.age, demographics.sex
+            ))
+        })?;
 
         Ok(&entry.stats)
     }
@@ -509,17 +512,47 @@ impl NormativeDatabase {
             MetricType::PressurePainThreshold,
             &[
                 ((18, 29), Some(crate::demographics::Sex::Male), 450.0, 120.0),
-                ((18, 29), Some(crate::demographics::Sex::Female), 350.0, 100.0),
+                (
+                    (18, 29),
+                    Some(crate::demographics::Sex::Female),
+                    350.0,
+                    100.0,
+                ),
                 ((30, 39), Some(crate::demographics::Sex::Male), 440.0, 115.0),
-                ((30, 39), Some(crate::demographics::Sex::Female), 340.0, 95.0),
+                (
+                    (30, 39),
+                    Some(crate::demographics::Sex::Female),
+                    340.0,
+                    95.0,
+                ),
                 ((40, 49), Some(crate::demographics::Sex::Male), 420.0, 110.0),
-                ((40, 49), Some(crate::demographics::Sex::Female), 330.0, 90.0),
+                (
+                    (40, 49),
+                    Some(crate::demographics::Sex::Female),
+                    330.0,
+                    90.0,
+                ),
                 ((50, 59), Some(crate::demographics::Sex::Male), 400.0, 105.0),
-                ((50, 59), Some(crate::demographics::Sex::Female), 315.0, 85.0),
+                (
+                    (50, 59),
+                    Some(crate::demographics::Sex::Female),
+                    315.0,
+                    85.0,
+                ),
                 ((60, 69), Some(crate::demographics::Sex::Male), 380.0, 100.0),
-                ((60, 69), Some(crate::demographics::Sex::Female), 300.0, 80.0),
+                (
+                    (60, 69),
+                    Some(crate::demographics::Sex::Female),
+                    300.0,
+                    80.0,
+                ),
                 ((70, 89), Some(crate::demographics::Sex::Male), 360.0, 95.0),
-                ((70, 89), Some(crate::demographics::Sex::Female), 285.0, 75.0),
+                (
+                    (70, 89),
+                    Some(crate::demographics::Sex::Female),
+                    285.0,
+                    75.0,
+                ),
             ],
         );
         self.set_reliability(MetricType::PressurePainThreshold, 0.88);
@@ -529,13 +562,33 @@ impl NormativeDatabase {
             MetricType::PainTolerance,
             &[
                 ((18, 29), Some(crate::demographics::Sex::Male), 650.0, 150.0),
-                ((18, 29), Some(crate::demographics::Sex::Female), 520.0, 130.0),
+                (
+                    (18, 29),
+                    Some(crate::demographics::Sex::Female),
+                    520.0,
+                    130.0,
+                ),
                 ((30, 49), Some(crate::demographics::Sex::Male), 620.0, 145.0),
-                ((30, 49), Some(crate::demographics::Sex::Female), 500.0, 125.0),
+                (
+                    (30, 49),
+                    Some(crate::demographics::Sex::Female),
+                    500.0,
+                    125.0,
+                ),
                 ((50, 69), Some(crate::demographics::Sex::Male), 580.0, 140.0),
-                ((50, 69), Some(crate::demographics::Sex::Female), 470.0, 120.0),
+                (
+                    (50, 69),
+                    Some(crate::demographics::Sex::Female),
+                    470.0,
+                    120.0,
+                ),
                 ((70, 89), Some(crate::demographics::Sex::Male), 540.0, 135.0),
-                ((70, 89), Some(crate::demographics::Sex::Female), 440.0, 115.0),
+                (
+                    (70, 89),
+                    Some(crate::demographics::Sex::Female),
+                    440.0,
+                    115.0,
+                ),
             ],
         );
         self.set_reliability(MetricType::PainTolerance, 0.85);
@@ -645,18 +698,58 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::RateOfForceDevelopment,
             &[
-                ((18, 29), Some(crate::demographics::Sex::Male), 1200.0, 300.0),
-                ((18, 29), Some(crate::demographics::Sex::Female), 750.0, 200.0),
-                ((30, 39), Some(crate::demographics::Sex::Male), 1100.0, 280.0),
-                ((30, 39), Some(crate::demographics::Sex::Female), 700.0, 185.0),
+                (
+                    (18, 29),
+                    Some(crate::demographics::Sex::Male),
+                    1200.0,
+                    300.0,
+                ),
+                (
+                    (18, 29),
+                    Some(crate::demographics::Sex::Female),
+                    750.0,
+                    200.0,
+                ),
+                (
+                    (30, 39),
+                    Some(crate::demographics::Sex::Male),
+                    1100.0,
+                    280.0,
+                ),
+                (
+                    (30, 39),
+                    Some(crate::demographics::Sex::Female),
+                    700.0,
+                    185.0,
+                ),
                 ((40, 49), Some(crate::demographics::Sex::Male), 950.0, 260.0),
-                ((40, 49), Some(crate::demographics::Sex::Female), 620.0, 170.0),
+                (
+                    (40, 49),
+                    Some(crate::demographics::Sex::Female),
+                    620.0,
+                    170.0,
+                ),
                 ((50, 59), Some(crate::demographics::Sex::Male), 800.0, 240.0),
-                ((50, 59), Some(crate::demographics::Sex::Female), 530.0, 155.0),
+                (
+                    (50, 59),
+                    Some(crate::demographics::Sex::Female),
+                    530.0,
+                    155.0,
+                ),
                 ((60, 69), Some(crate::demographics::Sex::Male), 650.0, 220.0),
-                ((60, 69), Some(crate::demographics::Sex::Female), 440.0, 140.0),
+                (
+                    (60, 69),
+                    Some(crate::demographics::Sex::Female),
+                    440.0,
+                    140.0,
+                ),
                 ((70, 89), Some(crate::demographics::Sex::Male), 480.0, 180.0),
-                ((70, 89), Some(crate::demographics::Sex::Female), 320.0, 120.0),
+                (
+                    (70, 89),
+                    Some(crate::demographics::Sex::Female),
+                    320.0,
+                    120.0,
+                ),
             ],
         );
         self.set_reliability(MetricType::RateOfForceDevelopment, 0.90);
@@ -987,7 +1080,7 @@ impl NormativeDatabase {
         self.add_age_sex_norms(
             MetricType::UpdrsMotor,
             &[
-                ((18, 49), None, 0.0, 1.0),  // Healthy baseline
+                ((18, 49), None, 0.0, 1.0), // Healthy baseline
                 ((50, 69), None, 2.0, 3.0),
                 ((70, 89), None, 5.0, 5.0),
             ],
@@ -1484,13 +1577,33 @@ impl NormativeDatabase {
             MetricType::VoiceF0,
             &[
                 ((18, 29), Some(crate::demographics::Sex::Male), 120.0, 20.0),
-                ((18, 29), Some(crate::demographics::Sex::Female), 220.0, 25.0),
+                (
+                    (18, 29),
+                    Some(crate::demographics::Sex::Female),
+                    220.0,
+                    25.0,
+                ),
                 ((30, 49), Some(crate::demographics::Sex::Male), 115.0, 20.0),
-                ((30, 49), Some(crate::demographics::Sex::Female), 210.0, 25.0),
+                (
+                    (30, 49),
+                    Some(crate::demographics::Sex::Female),
+                    210.0,
+                    25.0,
+                ),
                 ((50, 69), Some(crate::demographics::Sex::Male), 110.0, 22.0),
-                ((50, 69), Some(crate::demographics::Sex::Female), 195.0, 28.0),
+                (
+                    (50, 69),
+                    Some(crate::demographics::Sex::Female),
+                    195.0,
+                    28.0,
+                ),
                 ((70, 89), Some(crate::demographics::Sex::Male), 130.0, 25.0),
-                ((70, 89), Some(crate::demographics::Sex::Female), 180.0, 30.0),
+                (
+                    (70, 89),
+                    Some(crate::demographics::Sex::Female),
+                    180.0,
+                    30.0,
+                ),
             ],
         );
         self.set_reliability(MetricType::VoiceF0, 0.90);
@@ -1691,11 +1804,15 @@ mod tests {
         let demo = Demographics::new(30, Sex::Male);
 
         // Average RT should be around 50th percentile
-        let p = db.percentile(MetricType::SimpleReactionTime, 260.0, &demo).unwrap();
+        let p = db
+            .percentile(MetricType::SimpleReactionTime, 260.0, &demo)
+            .unwrap();
         assert!((p - 50.0).abs() < 10.0);
 
         // Fast RT should be higher percentile (but RT is lower-is-better)
-        let p_fast = db.percentile(MetricType::SimpleReactionTime, 200.0, &demo).unwrap();
+        let p_fast = db
+            .percentile(MetricType::SimpleReactionTime, 200.0, &demo)
+            .unwrap();
         assert!(p_fast < 20.0); // Lower percentile for faster time
     }
 
@@ -1705,11 +1822,15 @@ mod tests {
         let demo = Demographics::new(30, Sex::Male);
 
         // Mean should have z = 0
-        let z = db.z_score(MetricType::SimpleReactionTime, 260.0, &demo).unwrap();
+        let z = db
+            .z_score(MetricType::SimpleReactionTime, 260.0, &demo)
+            .unwrap();
         assert!(z.abs() < 0.5);
 
         // 1 SD above mean
-        let z_high = db.z_score(MetricType::SimpleReactionTime, 302.0, &demo).unwrap();
+        let z_high = db
+            .z_score(MetricType::SimpleReactionTime, 302.0, &demo)
+            .unwrap();
         assert!((z_high - 1.0).abs() < 0.1);
     }
 
@@ -1735,7 +1856,9 @@ mod tests {
         let old = Demographics::new(75, Sex::Male);
 
         // RT should be faster in young
-        let young_rt = db.get_stats(MetricType::SimpleReactionTime, &young).unwrap();
+        let young_rt = db
+            .get_stats(MetricType::SimpleReactionTime, &young)
+            .unwrap();
         let old_rt = db.get_stats(MetricType::SimpleReactionTime, &old).unwrap();
 
         assert!(young_rt.mean < old_rt.mean);
@@ -1745,7 +1868,9 @@ mod tests {
     fn test_mdc_calculation() {
         let db = NormativeDatabase::with_defaults();
 
-        let mdc = db.minimal_detectable_change(MetricType::GaitVelocity).unwrap();
+        let mdc = db
+            .minimal_detectable_change(MetricType::GaitVelocity)
+            .unwrap();
 
         // MDC should be positive and reasonable
         assert!(mdc > 0.0);

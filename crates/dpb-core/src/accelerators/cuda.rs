@@ -32,8 +32,8 @@
 //! ```
 
 use crate::accelerators::{
-    Accelerator, AcceleratorBuffer, AcceleratorCapabilities, AcceleratorError, AcceleratorType,
-    AcceleratorOperation, OperationType,
+    Accelerator, AcceleratorBuffer, AcceleratorCapabilities, AcceleratorError,
+    AcceleratorOperation, AcceleratorType, OperationType,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -287,7 +287,7 @@ impl CudaAccelerator {
         // Simulated device info - in production would call cuDeviceGet*
         Ok(CudaDeviceInfo {
             name: format!("NVIDIA GPU {}", ordinal),
-            compute_capability: (8, 6), // Ampere
+            compute_capability: (8, 6),            // Ampere
             total_memory: 24 * 1024 * 1024 * 1024, // 24GB
             sm_count: 84,
             max_threads_per_block: 1024,
@@ -309,7 +309,9 @@ impl CudaAccelerator {
             6 => 128, // Pascal
             _ => 64,
         };
-        let flops = (info.sm_count as f64) * (cores_per_sm as f64) * 2.0
+        let flops = (info.sm_count as f64)
+            * (cores_per_sm as f64)
+            * 2.0
             * (info.clock_rate_khz as f64 * 1000.0);
         (flops / 1e12) as f32
     }
@@ -317,11 +319,10 @@ impl CudaAccelerator {
     /// Estimate memory bandwidth.
     fn estimate_bandwidth(info: &CudaDeviceInfo) -> f32 {
         // GB/s = memory clock * bus width * 2 (DDR) / 8
-        let bandwidth = (info.memory_clock_rate_khz as f64 * 1000.0)
-            * (info.memory_bus_width as f64)
-            * 2.0
-            / 8.0
-            / 1e9;
+        let bandwidth =
+            (info.memory_clock_rate_khz as f64 * 1000.0) * (info.memory_bus_width as f64) * 2.0
+                / 8.0
+                / 1e9;
         bandwidth as f32
     }
 
@@ -340,7 +341,9 @@ impl CudaAccelerator {
 
     /// Allocate device memory.
     pub fn malloc(&self, size_bytes: usize) -> Result<CudaBuffer, AcceleratorError> {
-        let id = self.next_buffer_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let id = self
+            .next_buffer_id
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         // In production: cuMemAlloc or cuMemAllocManaged
         let buffer = CudaBuffer {
@@ -350,12 +353,18 @@ impl CudaAccelerator {
             is_unified: self.config.unified_memory,
         };
 
-        self.buffers.lock().expect("accelerator mutex poisoned").insert(id, CudaBuffer {
-            id,
-            size_bytes,
-            device_ptr: 0,
-            is_unified: self.config.unified_memory,
-        });
+        self.buffers
+            .lock()
+            .expect("accelerator mutex poisoned")
+            .insert(
+                id,
+                CudaBuffer {
+                    id,
+                    size_bytes,
+                    device_ptr: 0,
+                    is_unified: self.config.unified_memory,
+                },
+            );
 
         Ok(buffer)
     }
@@ -368,20 +377,31 @@ impl CudaAccelerator {
     }
 
     /// Copy data to device buffer.
-    pub fn copy_to_device_buffer(&self, buffer: &CudaBuffer, data: &[f32]) -> Result<(), AcceleratorError> {
+    pub fn copy_to_device_buffer(
+        &self,
+        buffer: &CudaBuffer,
+        data: &[f32],
+    ) -> Result<(), AcceleratorError> {
         // In production: cuMemcpyHtoD
         Ok(())
     }
 
     /// Copy data from device buffer.
-    pub fn copy_from_device_buffer(&self, buffer: &CudaBuffer, data: &mut [f32]) -> Result<(), AcceleratorError> {
+    pub fn copy_from_device_buffer(
+        &self,
+        buffer: &CudaBuffer,
+        data: &mut [f32],
+    ) -> Result<(), AcceleratorError> {
         // In production: cuMemcpyDtoH
         Ok(())
     }
 
     /// Free device memory.
     pub fn free(&self, buffer: CudaBuffer) -> Result<(), AcceleratorError> {
-        self.buffers.lock().expect("accelerator mutex poisoned").remove(&buffer.id);
+        self.buffers
+            .lock()
+            .expect("accelerator mutex poisoned")
+            .remove(&buffer.id);
         // In production: cuMemFree
         Ok(())
     }
@@ -458,24 +478,36 @@ impl Accelerator for CudaAccelerator {
         ))
     }
 
-    fn copy_to_device(&self, buffer: &mut AcceleratorBuffer, data: &[f32]) -> Result<(), AcceleratorError> {
+    fn copy_to_device(
+        &self,
+        buffer: &mut AcceleratorBuffer,
+        data: &[f32],
+    ) -> Result<(), AcceleratorError> {
         let buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         if let Some(cuda_buffer) = buffers.get(&buffer.id) {
             // In production: cuMemcpyHtoD
             drop(buffers);
             Ok(())
         } else {
-            Err(AcceleratorError::InvalidOperation("Buffer not found".to_string()))
+            Err(AcceleratorError::InvalidOperation(
+                "Buffer not found".to_string(),
+            ))
         }
     }
 
-    fn copy_from_device(&self, buffer: &AcceleratorBuffer, data: &mut [f32]) -> Result<(), AcceleratorError> {
+    fn copy_from_device(
+        &self,
+        buffer: &AcceleratorBuffer,
+        data: &mut [f32],
+    ) -> Result<(), AcceleratorError> {
         let buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         if buffers.contains_key(&buffer.id) {
             // In production: cuMemcpyDtoH
             Ok(())
         } else {
-            Err(AcceleratorError::InvalidOperation("Buffer not found".to_string()))
+            Err(AcceleratorError::InvalidOperation(
+                "Buffer not found".to_string(),
+            ))
         }
     }
 
@@ -489,9 +521,10 @@ impl Accelerator for CudaAccelerator {
                 // Would execute delta modulation kernel
                 Ok(())
             }
-            _ => Err(AcceleratorError::Unsupported(
-                format!("Operation {:?} not implemented for CUDA", operation.op_type)
-            ))
+            _ => Err(AcceleratorError::Unsupported(format!(
+                "Operation {:?} not implemented for CUDA",
+                operation.op_type
+            ))),
         }
     }
 
@@ -603,7 +636,7 @@ mod tests {
     fn test_launch_config_2d() {
         let config = LaunchConfig::grid_2d(1920, 1080, 16, 16);
         assert_eq!(config.grid.0, 120); // ceil(1920/16)
-        assert_eq!(config.grid.1, 68);  // ceil(1080/16)
+        assert_eq!(config.grid.1, 68); // ceil(1080/16)
     }
 
     #[test]

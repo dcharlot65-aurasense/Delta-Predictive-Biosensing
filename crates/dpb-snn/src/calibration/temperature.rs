@@ -1,6 +1,5 @@
 //! Temperature scaling for neural network calibration
 
-
 /// Temperature scaling for neural network calibration
 /// Divides logits by a learned temperature parameter
 #[derive(Debug, Clone)]
@@ -320,10 +319,10 @@ mod tests {
 
         // Create synthetic data: overconfident predictions
         let logits = vec![
-            vec![5.0, 1.0, 0.5],  // Predict class 0, label 0
-            vec![0.5, 5.0, 1.0],  // Predict class 1, label 1
-            vec![1.0, 0.5, 5.0],  // Predict class 2, label 2
-            vec![4.0, 1.0, 0.5],  // Predict class 0, label 0
+            vec![5.0, 1.0, 0.5], // Predict class 0, label 0
+            vec![0.5, 5.0, 1.0], // Predict class 1, label 1
+            vec![1.0, 0.5, 5.0], // Predict class 2, label 2
+            vec![4.0, 1.0, 0.5], // Predict class 0, label 0
         ];
         let labels = vec![0, 1, 2, 0];
 
@@ -359,10 +358,7 @@ mod tests {
         ts.temperature = 1.5;
         ts.fitted = true;
 
-        let logits = vec![
-            vec![3.0, 1.0, 0.5],
-            vec![0.5, 3.0, 1.0],
-        ];
+        let logits = vec![vec![3.0, 1.0, 0.5], vec![0.5, 3.0, 1.0]];
 
         let calibrated = ts.calibrate_batch(&logits);
         assert_eq!(calibrated.len(), 2);

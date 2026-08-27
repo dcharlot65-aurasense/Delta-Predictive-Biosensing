@@ -20,8 +20,7 @@ use serde::{Deserialize, Serialize};
 /// while the fields were already `i16`, so the stated hardware constraint and
 /// the actual one disagreed.
 #[repr(C)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Pod, Zeroable)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Pod, Zeroable, Default)]
 pub struct XyloLifState {
     /// Membrane potential (16-bit hardware state).
     pub v: i16,
@@ -37,7 +36,6 @@ pub struct XyloLifState {
     pub _padding: u8,
 }
 
-
 /// Bit-shift decay, as Xylo approximates an exponential.
 ///
 /// The hardware computes `v' = v - (v >> dash)`. When the shift underflows to
@@ -47,7 +45,11 @@ pub struct XyloLifState {
 #[inline]
 fn xylo_bitshift_decay(value: i16, dash: u8) -> i16 {
     let shifted = value >> dash.min(15);
-    let decay = if shifted == 0 && value > 0 { 1 } else { shifted };
+    let decay = if shifted == 0 && value > 0 {
+        1
+    } else {
+        shifted
+    };
     value.saturating_sub(decay)
 }
 
@@ -245,8 +247,7 @@ impl NeuronModel for XyloLifNeuron {
 
 /// Pulsar LIF state with integer arithmetic.
 #[repr(C)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Pod, Zeroable)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Pod, Zeroable, Default)]
 pub struct PulsarLifState {
     /// Membrane potential (16-bit)
     pub v: i32,
@@ -256,7 +257,6 @@ pub struct PulsarLifState {
     pub refrac_timer: u16,
     pub _padding: u16,
 }
-
 
 /// Pulsar LIF configuration.
 #[repr(C)]
@@ -416,8 +416,7 @@ impl NeuronModel for PulsarLifNeuron {
 
 /// Quantized LIF state (8-bit fixed point).
 #[repr(C)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Pod, Zeroable)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Pod, Zeroable, Default)]
 pub struct QuantizedLifState {
     /// Membrane potential (Q8.8 fixed point)
     pub v: i16,
@@ -425,7 +424,6 @@ pub struct QuantizedLifState {
     pub refrac: u8,
     pub _padding: u8,
 }
-
 
 /// Quantized LIF configuration (8-bit parameters).
 #[repr(C)]
@@ -634,7 +632,10 @@ mod tests {
         // Use smaller input that doesn't trigger spike (threshold is 1000)
         // input_int = (50.0 * 10.0) = 500
         neuron.update(50.0, 1.0);
-        assert!(neuron.state.v > 0, "Voltage should increase with sub-threshold input");
+        assert!(
+            neuron.state.v > 0,
+            "Voltage should increase with sub-threshold input"
+        );
     }
 
     #[test]
@@ -725,7 +726,11 @@ mod tests {
     fn test_xylo_no_overflow_across_range() {
         for v in [i16::MIN, -20000, -1, 0, 1, 6553, 20000, i16::MAX] {
             for dash in 0u8..=15 {
-                let config = XyloLifConfig { dash_mem: dash, dash_syn: dash, ..Default::default() };
+                let config = XyloLifConfig {
+                    dash_mem: dash,
+                    dash_syn: dash,
+                    ..Default::default()
+                };
                 let mut neuron = XyloLifNeuron::new(config);
                 neuron.state.v = v;
                 neuron.state.i_syn = v;
@@ -748,7 +753,10 @@ mod tests {
         assert_eq!(xylo_bitshift_decay(1, 4), 0);
 
         // Left to itself the membrane must settle at rest, not stall short.
-        let config = XyloLifConfig { v_thresh: 30000, ..Default::default() };
+        let config = XyloLifConfig {
+            v_thresh: 30000,
+            ..Default::default()
+        };
         let mut neuron = XyloLifNeuron::new(config);
         neuron.state.v = 5000;
         for _ in 0..10_000 {
@@ -762,7 +770,11 @@ mod tests {
     #[test]
     fn test_xylo_smaller_dash_decays_faster() {
         let decay_after = |dash: u8| {
-            let config = XyloLifConfig { dash_mem: dash, v_thresh: 30000, ..Default::default() };
+            let config = XyloLifConfig {
+                dash_mem: dash,
+                v_thresh: 30000,
+                ..Default::default()
+            };
             let mut neuron = XyloLifNeuron::new(config);
             neuron.state.v = 10000;
             for _ in 0..10 {
@@ -780,9 +792,30 @@ mod tests {
     #[test]
     fn test_xylo_rejects_out_of_range_dash() {
         assert!(XyloLifConfig::default().validate().is_ok());
-        assert!(XyloLifConfig { dash_mem: 16, ..Default::default() }.validate().is_err());
-        assert!(XyloLifConfig { dash_syn: 16, ..Default::default() }.validate().is_err());
-        assert!(XyloLifConfig { dash_mem: 15, dash_syn: 15, ..Default::default() }.validate().is_ok());
+        assert!(
+            XyloLifConfig {
+                dash_mem: 16,
+                ..Default::default()
+            }
+            .validate()
+            .is_err()
+        );
+        assert!(
+            XyloLifConfig {
+                dash_syn: 16,
+                ..Default::default()
+            }
+            .validate()
+            .is_err()
+        );
+        assert!(
+            XyloLifConfig {
+                dash_mem: 15,
+                dash_syn: 15,
+                ..Default::default()
+            }
+            .validate()
+            .is_ok()
+        );
     }
-
 }

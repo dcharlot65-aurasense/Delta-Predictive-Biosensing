@@ -343,13 +343,13 @@ impl PipelineStage for NormalizeStage {
             return input;
         }
 
-        let min = self.min_val.unwrap_or_else(|| {
-            input.iter().cloned().fold(f64::INFINITY, f64::min)
-        });
+        let min = self
+            .min_val
+            .unwrap_or_else(|| input.iter().cloned().fold(f64::INFINITY, f64::min));
 
-        let max = self.max_val.unwrap_or_else(|| {
-            input.iter().cloned().fold(f64::NEG_INFINITY, f64::max)
-        });
+        let max = self
+            .max_val
+            .unwrap_or_else(|| input.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
 
         let range = max - min;
         if range == 0.0 {
@@ -435,8 +435,7 @@ mod tests {
 
     #[test]
     fn test_normalize_stage_with_range() {
-        let mut stage = NormalizeStage::new("normalize", 10)
-            .with_range(0.0, 10.0);
+        let mut stage = NormalizeStage::new("normalize", 10).with_range(0.0, 10.0);
         let input = vec![0.0, 5.0, 10.0];
         let output = stage.process(input);
 

@@ -20,11 +20,11 @@
 //! JsonExporter::save(&json_data, "output.json").unwrap();
 //! ```
 
+use crate::{Result, VizError};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use crate::{Result, VizError};
 
 /// Supported export formats
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -448,7 +448,11 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("test.csv");
 
-        let data = vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0], vec![7.0, 8.0, 9.0]];
+        let data = vec![
+            vec![1.0, 2.0, 3.0],
+            vec![4.0, 5.0, 6.0],
+            vec![7.0, 8.0, 9.0],
+        ];
 
         let headers = vec!["A".to_string(), "B".to_string(), "C".to_string()];
 

@@ -1,8 +1,6 @@
 //! ECG (Electrocardiogram) encoders and population templates
 
-use dpb_core::{
-    Context, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent,
-};
+use dpb_core::{Context, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent};
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
@@ -16,13 +14,13 @@ impl PopulationTemplate for HeartRateTemplate {
     fn expected_value(&self, context: &Context) -> f64 {
         // Age-based heart rate norms (beats per minute)
         match context.age {
-            Some(age) if age < 1.0 => 140.0,     // Infant
-            Some(age) if age < 3.0 => 120.0,     // Toddler
-            Some(age) if age < 12.0 => 100.0,    // Child
-            Some(age) if age < 18.0 => 85.0,     // Adolescent
-            Some(age) if age < 65.0 => 72.0,     // Adult
-            Some(_) => 75.0,                      // Senior
-            None => 72.0,                         // Default adult
+            Some(age) if age < 1.0 => 140.0,  // Infant
+            Some(age) if age < 3.0 => 120.0,  // Toddler
+            Some(age) if age < 12.0 => 100.0, // Child
+            Some(age) if age < 18.0 => 85.0,  // Adolescent
+            Some(age) if age < 65.0 => 72.0,  // Adult
+            Some(_) => 75.0,                  // Senior
+            None => 72.0,                     // Default adult
         }
     }
 
@@ -107,7 +105,7 @@ impl PopulationTemplate for QtIntervalTemplate {
     fn expected_value(&self, context: &Context) -> f64 {
         // QTc (corrected QT) in milliseconds
         match context.sex.as_deref() {
-            Some("M") | Some("Male") => 410.0, // Male: <430 ms
+            Some("M") | Some("Male") => 410.0,   // Male: <430 ms
             Some("F") | Some("Female") => 420.0, // Female: <450 ms
             _ => 415.0,
         }
@@ -153,8 +151,7 @@ pub struct EcgRPeakEncoder;
 impl EcgRPeakEncoder {
     /// Creates a new [`EcgRPeakEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn detect_peaks(&self, signal: &[f32], config: &EcgRPeakConfig) -> Vec<usize> {
@@ -242,8 +239,7 @@ pub struct EcgMorphologyEncoder;
 impl EcgMorphologyEncoder {
     /// Creates a new [`EcgMorphologyEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn correlate(&self, signal: &[f32], template: &[f32]) -> f32 {

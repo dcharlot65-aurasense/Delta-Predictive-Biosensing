@@ -1,6 +1,6 @@
 //! Tremor signal generators
 
-use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth};
+use crate::traits::{GeneratedData, SyntheticGenerator, TimeSeriesGroundTruth};
 use ndarray::Array1;
 use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
@@ -14,8 +14,8 @@ pub struct PhysiologicalTremorGenerator;
 pub struct PhysiologicalTremorParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub frequency: f64,        // Hz (8-12)
-    pub amplitude: f64,        // typically small (0.1-0.5 deg)
+    pub frequency: f64,             // Hz (8-12)
+    pub amplitude: f64,             // typically small (0.1-0.5 deg)
     pub frequency_variability: f64, // Hz
 }
 
@@ -24,7 +24,11 @@ impl SyntheticGenerator for PhysiologicalTremorGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = PhysiologicalTremorParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -55,7 +59,7 @@ impl SyntheticGenerator for PhysiologicalTremorGenerator {
                     phase += 2.0 * PI * freq * dt;
                     value
                 })
-                .collect()
+                .collect(),
         );
 
         let mut gt_params = HashMap::new();
@@ -69,7 +73,11 @@ impl SyntheticGenerator for PhysiologicalTremorGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -84,10 +92,14 @@ impl SyntheticGenerator for PhysiologicalTremorGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.frequency < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("frequency must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "frequency must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -100,9 +112,9 @@ pub struct ParkinsonianTremorGenerator;
 pub struct ParkinsonianTremorParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub frequency: f64,        // Hz (4-6)
+    pub frequency: f64, // Hz (4-6)
     pub amplitude: f64,
-    pub pill_rolling: bool,    // alternating component
+    pub pill_rolling: bool,        // alternating component
     pub amplitude_modulation: f64, // waxing/waning period (s)
 }
 
@@ -111,7 +123,11 @@ impl SyntheticGenerator for ParkinsonianTremorGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = ParkinsonianTremorParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -142,14 +158,17 @@ impl SyntheticGenerator for ParkinsonianTremorGenerator {
 
                     (primary + pill_roll) * modulation
                 })
-                .collect()
+                .collect(),
         );
 
         let mut gt_params = HashMap::new();
         gt_params.insert("frequency".to_string(), params.frequency);
         gt_params.insert("amplitude".to_string(), params.amplitude);
         gt_params.insert("tremor_type".to_string(), 1.0); // Parkinsonian
-        gt_params.insert("pill_rolling".to_string(), if params.pill_rolling { 1.0 } else { 0.0 });
+        gt_params.insert(
+            "pill_rolling".to_string(),
+            if params.pill_rolling { 1.0 } else { 0.0 },
+        );
 
         let ground_truth = TimeSeriesGroundTruth {
             parameters: gt_params,
@@ -157,7 +176,11 @@ impl SyntheticGenerator for ParkinsonianTremorGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -173,10 +196,14 @@ impl SyntheticGenerator for ParkinsonianTremorGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.frequency < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("frequency must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "frequency must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -189,9 +216,9 @@ pub struct EssentialTremorGenerator;
 pub struct EssentialTremorParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub frequency: f64,        // Hz (4-12, typically 6-8)
+    pub frequency: f64, // Hz (4-12, typically 6-8)
     pub amplitude: f64,
-    pub harmonics: Vec<f64>,   // harmonic amplitudes
+    pub harmonics: Vec<f64>, // harmonic amplitudes
 }
 
 impl SyntheticGenerator for EssentialTremorGenerator {
@@ -199,7 +226,11 @@ impl SyntheticGenerator for EssentialTremorGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = EssentialTremorParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -216,7 +247,8 @@ impl SyntheticGenerator for EssentialTremorGenerator {
                     let amp_mod = f64::max(sample_val, 0.0);
 
                     // Fundamental frequency
-                    let mut sample = params.amplitude * amp_mod * (2.0 * PI * params.frequency * t).sin();
+                    let mut sample =
+                        params.amplitude * amp_mod * (2.0 * PI * params.frequency * t).sin();
 
                     // Add harmonics
                     for (harm_idx, &harm_amp) in params.harmonics.iter().enumerate() {
@@ -226,7 +258,7 @@ impl SyntheticGenerator for EssentialTremorGenerator {
 
                     sample
                 })
-                .collect()
+                .collect(),
         );
 
         let mut gt_params = HashMap::new();
@@ -240,7 +272,11 @@ impl SyntheticGenerator for EssentialTremorGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -255,10 +291,14 @@ impl SyntheticGenerator for EssentialTremorGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.frequency < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("frequency must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "frequency must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -271,10 +311,10 @@ pub struct CerebellarTremorGenerator;
 pub struct CerebellarTremorParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub frequency: f64,        // Hz (3-5)
+    pub frequency: f64, // Hz (3-5)
     pub baseline_amplitude: f64,
     pub movement_times: Vec<(f64, f64)>, // (start, end) of intended movements
-    pub amplitude_increase: f64, // fold increase during movement
+    pub amplitude_increase: f64,         // fold increase during movement
 }
 
 impl SyntheticGenerator for CerebellarTremorGenerator {
@@ -282,7 +322,11 @@ impl SyntheticGenerator for CerebellarTremorGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = CerebellarTremorParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -312,7 +356,7 @@ impl SyntheticGenerator for CerebellarTremorGenerator {
                     // Low-frequency, high-amplitude tremor
                     amplitude * (2.0 * PI * params.frequency * t + rng.random_range(0.0..0.2)).sin()
                 })
-                .collect()
+                .collect(),
         );
 
         let mut gt_params = HashMap::new();
@@ -320,7 +364,8 @@ impl SyntheticGenerator for CerebellarTremorGenerator {
         gt_params.insert("baseline_amplitude".to_string(), params.baseline_amplitude);
         gt_params.insert("tremor_type".to_string(), 3.0); // Cerebellar
 
-        let segments = params.movement_times
+        let segments = params
+            .movement_times
             .iter()
             .map(|(start, end)| crate::traits::Segment {
                 start: *start,
@@ -335,7 +380,11 @@ impl SyntheticGenerator for CerebellarTremorGenerator {
             segments,
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -351,10 +400,14 @@ impl SyntheticGenerator for CerebellarTremorGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.frequency < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("frequency must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "frequency must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -367,10 +420,10 @@ pub struct TremorModulationGenerator;
 pub struct TremorModulationParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub carrier_frequency: f64,     // Hz (tremor frequency)
+    pub carrier_frequency: f64, // Hz (tremor frequency)
     pub carrier_amplitude: f64,
-    pub modulation_frequency: f64,  // Hz (modulation)
-    pub modulation_depth: f64,      // 0-1
+    pub modulation_frequency: f64, // Hz (modulation)
+    pub modulation_depth: f64,     // 0-1
 }
 
 impl SyntheticGenerator for TremorModulationGenerator {
@@ -378,7 +431,11 @@ impl SyntheticGenerator for TremorModulationGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = TremorModulationParams;
 
-    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        _seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -390,18 +447,22 @@ impl SyntheticGenerator for TremorModulationGenerator {
                     let t = i as f64 * dt;
 
                     // AM modulation: A(1 + m*sin(2πf_m*t)) * sin(2πf_c*t)
-                    let modulation = 1.0 + params.modulation_depth *
-                        (2.0 * PI * params.modulation_frequency * t).sin();
+                    let modulation = 1.0
+                        + params.modulation_depth
+                            * (2.0 * PI * params.modulation_frequency * t).sin();
                     let carrier = (2.0 * PI * params.carrier_frequency * t).sin();
 
                     params.carrier_amplitude * modulation * carrier
                 })
-                .collect()
+                .collect(),
         );
 
         let mut gt_params = HashMap::new();
         gt_params.insert("carrier_frequency".to_string(), params.carrier_frequency);
-        gt_params.insert("modulation_frequency".to_string(), params.modulation_frequency);
+        gt_params.insert(
+            "modulation_frequency".to_string(),
+            params.modulation_frequency,
+        );
         gt_params.insert("modulation_depth".to_string(), params.modulation_depth);
 
         let ground_truth = TimeSeriesGroundTruth {
@@ -410,7 +471,11 @@ impl SyntheticGenerator for TremorModulationGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -426,10 +491,14 @@ impl SyntheticGenerator for TremorModulationGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.modulation_depth < 0.0 || params.modulation_depth > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("modulation_depth must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "modulation_depth must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -442,16 +511,16 @@ pub struct MultiAxisTremorGenerator;
 pub struct MultiAxisTremorParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub frequency: f64,           // Hz (tremor frequency)
-    pub amplitude_x: f64,         // X-axis amplitude
-    pub amplitude_y: f64,         // Y-axis amplitude
-    pub amplitude_z: f64,         // Z-axis amplitude
-    pub xy_correlation: f64,      // -1 to 1 (correlation between X and Y)
-    pub xz_correlation: f64,      // -1 to 1 (correlation between X and Z)
-    pub yz_correlation: f64,      // -1 to 1 (correlation between Y and Z)
-    pub phase_x: f64,             // radians
-    pub phase_y: f64,             // radians
-    pub phase_z: f64,             // radians
+    pub frequency: f64,      // Hz (tremor frequency)
+    pub amplitude_x: f64,    // X-axis amplitude
+    pub amplitude_y: f64,    // Y-axis amplitude
+    pub amplitude_z: f64,    // Z-axis amplitude
+    pub xy_correlation: f64, // -1 to 1 (correlation between X and Y)
+    pub xz_correlation: f64, // -1 to 1 (correlation between X and Z)
+    pub yz_correlation: f64, // -1 to 1 (correlation between Y and Z)
+    pub phase_x: f64,        // radians
+    pub phase_y: f64,        // radians
+    pub phase_z: f64,        // radians
 }
 
 impl SyntheticGenerator for MultiAxisTremorGenerator {
@@ -459,7 +528,11 @@ impl SyntheticGenerator for MultiAxisTremorGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = MultiAxisTremorParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -494,18 +567,29 @@ impl SyntheticGenerator for MultiAxisTremorGenerator {
             // Apply correlation structure using Cholesky-like decomposition
             let x = params.amplitude_x * base_x + independent_noise_x[i];
 
-            let y = params.amplitude_y * base_y +
-                    params.xy_correlation * (params.amplitude_y / params.amplitude_x) * (x - independent_noise_x[i]) +
-                    (1.0 - params.xy_correlation.powi(2)).sqrt() * independent_noise_y[i];
+            let y = params.amplitude_y * base_y
+                + params.xy_correlation
+                    * (params.amplitude_y / params.amplitude_x)
+                    * (x - independent_noise_x[i])
+                + (1.0 - params.xy_correlation.powi(2)).sqrt() * independent_noise_y[i];
 
-            let z_shared_x = params.xz_correlation * (params.amplitude_z / params.amplitude_x) * (x - independent_noise_x[i]);
-            let z_shared_y = params.yz_correlation * (params.amplitude_z / params.amplitude_y) *
-                            ((y - independent_noise_y[i]) - params.xy_correlation * (params.amplitude_y / params.amplitude_x) * (x - independent_noise_x[i])) /
-                            (1.0 - params.xy_correlation.powi(2)).sqrt();
+            let z_shared_x = params.xz_correlation
+                * (params.amplitude_z / params.amplitude_x)
+                * (x - independent_noise_x[i]);
+            let z_shared_y = params.yz_correlation
+                * (params.amplitude_z / params.amplitude_y)
+                * ((y - independent_noise_y[i])
+                    - params.xy_correlation
+                        * (params.amplitude_y / params.amplitude_x)
+                        * (x - independent_noise_x[i]))
+                / (1.0 - params.xy_correlation.powi(2)).sqrt();
 
-            let z_independent_var = 1.0 - params.xz_correlation.powi(2) - params.yz_correlation.powi(2);
-            let z = params.amplitude_z * base_z + z_shared_x + z_shared_y +
-                    z_independent_var.max(0.0).sqrt() * independent_noise_z[i];
+            let z_independent_var =
+                1.0 - params.xz_correlation.powi(2) - params.yz_correlation.powi(2);
+            let z = params.amplitude_z * base_z
+                + z_shared_x
+                + z_shared_y
+                + z_independent_var.max(0.0).sqrt() * independent_noise_z[i];
 
             signal_x.push(x);
             signal_y.push(y);
@@ -534,7 +618,11 @@ impl SyntheticGenerator for MultiAxisTremorGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new((signal_x, signal_y, signal_z), ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            (signal_x, signal_y, signal_z),
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -545,30 +633,43 @@ impl SyntheticGenerator for MultiAxisTremorGenerator {
             amplitude_x: 2.0,
             amplitude_y: 1.5,
             amplitude_z: 1.0,
-            xy_correlation: 0.7,   // Strong X-Y correlation (typical)
-            xz_correlation: 0.3,   // Moderate X-Z correlation
-            yz_correlation: 0.4,   // Moderate Y-Z correlation
+            xy_correlation: 0.7, // Strong X-Y correlation (typical)
+            xz_correlation: 0.3, // Moderate X-Z correlation
+            yz_correlation: 0.4, // Moderate Y-Z correlation
             phase_x: 0.0,
-            phase_y: PI / 4.0,     // 45° phase shift
-            phase_z: PI / 2.0,     // 90° phase shift
+            phase_y: PI / 4.0, // 45° phase shift
+            phase_z: PI / 2.0, // 90° phase shift
         }
     }
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.sampling_rate <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("sampling_rate must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "sampling_rate must be positive".to_string(),
+            ));
         }
-        if params.xy_correlation.abs() > 1.0 || params.xz_correlation.abs() > 1.0 || params.yz_correlation.abs() > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("correlations must be in [-1, 1]".to_string()));
+        if params.xy_correlation.abs() > 1.0
+            || params.xz_correlation.abs() > 1.0
+            || params.yz_correlation.abs() > 1.0
+        {
+            return Err(crate::GeneratorError::InvalidParameter(
+                "correlations must be in [-1, 1]".to_string(),
+            ));
         }
         // Check if correlation matrix is valid (positive semi-definite)
         let det = 1.0 + 2.0 * params.xy_correlation * params.xz_correlation * params.yz_correlation
-                  - params.xy_correlation.powi(2) - params.xz_correlation.powi(2) - params.yz_correlation.powi(2);
+            - params.xy_correlation.powi(2)
+            - params.xz_correlation.powi(2)
+            - params.yz_correlation.powi(2);
         if det < -1e-10 {
-            return Err(crate::GeneratorError::InvalidParameter("correlation matrix is not valid (not positive semi-definite)".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "correlation matrix is not valid (not positive semi-definite)".to_string(),
+            ));
         }
         Ok(())
     }
@@ -583,7 +684,10 @@ mod tests {
         let generator = PhysiologicalTremorGenerator;
         let params = PhysiologicalTremorGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -591,7 +695,10 @@ mod tests {
         let generator = ParkinsonianTremorGenerator;
         let params = ParkinsonianTremorGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]

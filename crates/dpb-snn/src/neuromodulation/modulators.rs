@@ -36,26 +36,26 @@ impl NeuromodulatorType {
     /// Get the typical time constant for this neuromodulator (ms)
     pub fn typical_time_constant(&self) -> f64 {
         match self {
-            Self::Dopamine => 200.0,          // Fast phasic, slow tonic
-            Self::Acetylcholine => 100.0,     // Fast
-            Self::Serotonin => 1000.0,        // Slow
-            Self::Norepinephrine => 150.0,    // Medium
-            Self::GABA => 50.0,               // Fast
-            Self::Glutamate => 20.0,          // Very fast
-            Self::Custom(_) => 200.0,         // Default
+            Self::Dopamine => 200.0,       // Fast phasic, slow tonic
+            Self::Acetylcholine => 100.0,  // Fast
+            Self::Serotonin => 1000.0,     // Slow
+            Self::Norepinephrine => 150.0, // Medium
+            Self::GABA => 50.0,            // Fast
+            Self::Glutamate => 20.0,       // Very fast
+            Self::Custom(_) => 200.0,      // Default
         }
     }
 
     /// Get typical diffusion radius (μm)
     pub fn typical_diffusion_radius(&self) -> f64 {
         match self {
-            Self::Dopamine => 100.0,          // Volume transmission
-            Self::Acetylcholine => 50.0,      // Moderate diffusion
-            Self::Serotonin => 200.0,         // Wide diffusion
-            Self::Norepinephrine => 150.0,    // Wide diffusion
-            Self::GABA => 10.0,               // Local
-            Self::Glutamate => 5.0,           // Very local
-            Self::Custom(_) => 100.0,         // Default
+            Self::Dopamine => 100.0,       // Volume transmission
+            Self::Acetylcholine => 50.0,   // Moderate diffusion
+            Self::Serotonin => 200.0,      // Wide diffusion
+            Self::Norepinephrine => 150.0, // Wide diffusion
+            Self::GABA => 10.0,            // Local
+            Self::Glutamate => 5.0,        // Very local
+            Self::Custom(_) => 100.0,      // Default
         }
     }
 }
@@ -222,12 +222,7 @@ impl DiffusionModel {
     }
 
     /// Compute diffusion over spatial grid
-    pub fn diffuse_2d(
-        &self,
-        concentration: &Array2<f64>,
-        dt: f64,
-        dx: f64,
-    ) -> Array2<f64> {
+    pub fn diffuse_2d(&self, concentration: &Array2<f64>, dt: f64, dx: f64) -> Array2<f64> {
         let (height, width) = concentration.dim();
         let mut new_concentration = concentration.clone();
 
@@ -378,8 +373,18 @@ impl Default for Dopamine {
                 effective_radius: 100.0,
                 ..Default::default()
             },
-            d1_receptors: ReceptorBinding::at_equilibrium("D1".to_string(), 0.01, 0.001, TONIC_BASELINE),
-            d2_receptors: ReceptorBinding::at_equilibrium("D2".to_string(), 0.02, 0.002, TONIC_BASELINE),
+            d1_receptors: ReceptorBinding::at_equilibrium(
+                "D1".to_string(),
+                0.01,
+                0.001,
+                TONIC_BASELINE,
+            ),
+            d2_receptors: ReceptorBinding::at_equilibrium(
+                "D2".to_string(),
+                0.02,
+                0.002,
+                TONIC_BASELINE,
+            ),
         }
     }
 }
@@ -401,8 +406,18 @@ impl Default for Acetylcholine {
                 effective_radius: 50.0,
                 ..Default::default()
             },
-            nicotinic_receptors: ReceptorBinding::at_equilibrium("Nicotinic".to_string(), 0.05, 0.005, TONIC_BASELINE),
-            muscarinic_receptors: ReceptorBinding::at_equilibrium("Muscarinic".to_string(), 0.01, 0.001, TONIC_BASELINE),
+            nicotinic_receptors: ReceptorBinding::at_equilibrium(
+                "Nicotinic".to_string(),
+                0.05,
+                0.005,
+                TONIC_BASELINE,
+            ),
+            muscarinic_receptors: ReceptorBinding::at_equilibrium(
+                "Muscarinic".to_string(),
+                0.01,
+                0.001,
+                TONIC_BASELINE,
+            ),
         }
     }
 }
@@ -424,8 +439,18 @@ impl Default for Serotonin {
                 effective_radius: 200.0,
                 ..Default::default()
             },
-            receptors_5ht1a: ReceptorBinding::at_equilibrium("5-HT1A".to_string(), 0.008, 0.0008, TONIC_BASELINE),
-            receptors_5ht2a: ReceptorBinding::at_equilibrium("5-HT2A".to_string(), 0.01, 0.001, TONIC_BASELINE),
+            receptors_5ht1a: ReceptorBinding::at_equilibrium(
+                "5-HT1A".to_string(),
+                0.008,
+                0.0008,
+                TONIC_BASELINE,
+            ),
+            receptors_5ht2a: ReceptorBinding::at_equilibrium(
+                "5-HT2A".to_string(),
+                0.01,
+                0.001,
+                TONIC_BASELINE,
+            ),
         }
     }
 }
@@ -447,8 +472,18 @@ impl Default for Norepinephrine {
                 effective_radius: 150.0,
                 ..Default::default()
             },
-            alpha_receptors: ReceptorBinding::at_equilibrium("Alpha".to_string(), 0.015, 0.0015, TONIC_BASELINE),
-            beta_receptors: ReceptorBinding::at_equilibrium("Beta".to_string(), 0.02, 0.002, TONIC_BASELINE),
+            alpha_receptors: ReceptorBinding::at_equilibrium(
+                "Alpha".to_string(),
+                0.015,
+                0.0015,
+                TONIC_BASELINE,
+            ),
+            beta_receptors: ReceptorBinding::at_equilibrium(
+                "Beta".to_string(),
+                0.02,
+                0.002,
+                TONIC_BASELINE,
+            ),
         }
     }
 }
@@ -480,7 +515,8 @@ impl Neuromodulator {
 
     /// Add a receptor type
     pub fn add_receptor(&mut self, name: String, k_on: f64, k_off: f64) {
-        self.receptors.insert(name.clone(), ReceptorBinding::new(name, k_on, k_off));
+        self.receptors
+            .insert(name.clone(), ReceptorBinding::new(name, k_on, k_off));
     }
 
     /// Update all receptors based on current concentration
@@ -549,7 +585,10 @@ mod tests {
     #[test]
     fn test_neuromodulator_types() {
         assert_eq!(NeuromodulatorType::Dopamine.typical_time_constant(), 200.0);
-        assert_eq!(NeuromodulatorType::Acetylcholine.typical_time_constant(), 100.0);
+        assert_eq!(
+            NeuromodulatorType::Acetylcholine.typical_time_constant(),
+            100.0
+        );
         assert!(NeuromodulatorType::Dopamine.typical_diffusion_radius() > 0.0);
     }
 

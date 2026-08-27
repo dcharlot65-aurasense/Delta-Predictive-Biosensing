@@ -34,8 +34,7 @@ pub struct HandTremorEncoder;
 impl HandTremorEncoder {
     /// Creates a new [`HandTremorEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }
 
@@ -60,8 +59,8 @@ impl EventEncoder for HandTremorEncoder {
 
             // Calculate tremor amplitude (standard deviation)
             let mean = window.iter().sum::<f32>() / window.len() as f32;
-            let variance = window.iter().map(|&x| (x - mean).powi(2)).sum::<f32>()
-                / window.len() as f32;
+            let variance =
+                window.iter().map(|&x| (x - mean).powi(2)).sum::<f32>() / window.len() as f32;
             let tremor_amp = variance.sqrt();
 
             if tremor_amp > config.threshold {

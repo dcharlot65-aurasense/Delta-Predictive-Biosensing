@@ -4,7 +4,7 @@
 //! dense and sparse formats with conversion utilities.
 
 use crate::{SNNError, SNNResult};
-use ndarray::{s, Array1, Array2, Array3};
+use ndarray::{Array1, Array2, Array3, s};
 use serde::{Deserialize, Serialize};
 
 /// Represents spike data in different formats
@@ -41,7 +41,12 @@ impl SparseSpikes {
     }
 
     /// Add a spike event
-    pub fn add_spike(&mut self, batch_idx: usize, time_idx: usize, neuron_idx: usize) -> SNNResult<()> {
+    pub fn add_spike(
+        &mut self,
+        batch_idx: usize,
+        time_idx: usize,
+        neuron_idx: usize,
+    ) -> SNNResult<()> {
         if batch_idx >= self.batch_size {
             return Err(SNNError::InvalidConfig(format!(
                 "Batch index {} out of bounds (max: {})",
@@ -119,7 +124,12 @@ impl SpikeTensor {
     }
 
     /// Create a zero-initialized spike tensor
-    pub fn zeros(batch_size: usize, num_steps: usize, num_neurons: usize, requires_grad: bool) -> Self {
+    pub fn zeros(
+        batch_size: usize,
+        num_steps: usize,
+        num_neurons: usize,
+        requires_grad: bool,
+    ) -> Self {
         let data = Array3::zeros((batch_size, num_steps, num_neurons));
         Self::from_dense(data, requires_grad)
     }
@@ -167,7 +177,9 @@ impl SpikeTensor {
     pub fn shape(&self) -> (usize, usize, usize) {
         match &self.data {
             SpikeRepresentation::Dense(arr) => (arr.shape()[0], arr.shape()[1], arr.shape()[2]),
-            SpikeRepresentation::Sparse(sparse) => (sparse.batch_size, sparse.num_steps, sparse.num_neurons),
+            SpikeRepresentation::Sparse(sparse) => {
+                (sparse.batch_size, sparse.num_steps, sparse.num_neurons)
+            }
         }
     }
 
@@ -198,7 +210,8 @@ impl SpikeTensor {
     pub fn to_sparse(&self) -> SparseSpikes {
         match &self.data {
             SpikeRepresentation::Dense(arr) => {
-                let (batch_size, num_steps, num_neurons) = (arr.shape()[0], arr.shape()[1], arr.shape()[2]);
+                let (batch_size, num_steps, num_neurons) =
+                    (arr.shape()[0], arr.shape()[1], arr.shape()[2]);
                 let mut sparse = SparseSpikes::new(batch_size, num_steps, num_neurons);
                 for b in 0..batch_size {
                     for t in 0..num_steps {
@@ -218,7 +231,8 @@ impl SpikeTensor {
     /// Compute spike rate (spikes per time step)
     pub fn spike_rate(&self) -> Array2<f32> {
         let dense = self.to_dense();
-        let (batch_size, num_steps, num_neurons) = (dense.shape()[0], dense.shape()[1], dense.shape()[2]);
+        let (batch_size, num_steps, num_neurons) =
+            (dense.shape()[0], dense.shape()[1], dense.shape()[2]);
 
         let mut rates = Array2::zeros((batch_size, num_neurons));
         for b in 0..batch_size {
@@ -266,12 +280,13 @@ impl SpikeTensor {
     /// Temporal convolution (spike filtering)
     pub fn temporal_conv(&self, kernel: &Array1<f32>) -> SNNResult<SpikeTensor> {
         let dense = self.to_dense();
-        let (batch_size, num_steps, num_neurons) = (dense.shape()[0], dense.shape()[1], dense.shape()[2]);
+        let (batch_size, num_steps, num_neurons) =
+            (dense.shape()[0], dense.shape()[1], dense.shape()[2]);
         let kernel_len = kernel.len();
 
         if kernel_len > num_steps {
             return Err(SNNError::InvalidConfig(
-                "Kernel length exceeds number of time steps".to_string()
+                "Kernel length exceeds number of time steps".to_string(),
             ));
         }
 
@@ -297,11 +312,12 @@ impl SpikeTensor {
     /// Spatial pooling (max pooling over neurons)
     pub fn spatial_max_pool(&self, pool_size: usize) -> SNNResult<SpikeTensor> {
         let dense = self.to_dense();
-        let (batch_size, num_steps, num_neurons) = (dense.shape()[0], dense.shape()[1], dense.shape()[2]);
+        let (batch_size, num_steps, num_neurons) =
+            (dense.shape()[0], dense.shape()[1], dense.shape()[2]);
 
         if num_neurons % pool_size != 0 {
             return Err(SNNError::InvalidConfig(
-                "Number of neurons must be divisible by pool size".to_string()
+                "Number of neurons must be divisible by pool size".to_string(),
             ));
         }
 
@@ -313,7 +329,8 @@ impl SpikeTensor {
                 for n_out in 0..output_neurons {
                     let start = n_out * pool_size;
                     let end = start + pool_size;
-                    let max_val = dense.slice(s![b, t, start..end])
+                    let max_val = dense
+                        .slice(s![b, t, start..end])
                         .iter()
                         .fold(f32::NEG_INFINITY, |a, &b| a.max(b));
                     output[[b, t, n_out]] = max_val;
@@ -327,11 +344,12 @@ impl SpikeTensor {
     /// Temporal pooling (sum over time windows)
     pub fn temporal_sum_pool(&self, pool_size: usize) -> SNNResult<SpikeTensor> {
         let dense = self.to_dense();
-        let (batch_size, num_steps, num_neurons) = (dense.shape()[0], dense.shape()[1], dense.shape()[2]);
+        let (batch_size, num_steps, num_neurons) =
+            (dense.shape()[0], dense.shape()[1], dense.shape()[2]);
 
         if num_steps % pool_size != 0 {
             return Err(SNNError::InvalidConfig(
-                "Number of time steps must be divisible by pool size".to_string()
+                "Number of time steps must be divisible by pool size".to_string(),
             ));
         }
 

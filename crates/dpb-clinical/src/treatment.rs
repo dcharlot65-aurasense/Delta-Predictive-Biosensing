@@ -69,48 +69,49 @@ impl TreatmentResponse {
 
     /// Classify response based on criteria.
     pub fn classify_response(&mut self, criteria: &ResponseCriteria) -> ResponseClassification {
-        let classification = if let Some(raw_change) = self.change_from_baseline(&criteria.primary_measure) {
-            // `change_from_baseline` is followup - baseline, so its sign depends on
-            // the measure's direction. Normalise to a magnitude where positive
-            // always means "got better", per criteria.higher_is_better. Without
-            // this every lower-is-better measure (depression, UPDRS, TUG, Trail
-            // Making, reaction time) classifies backwards.
-            let improvement = if criteria.higher_is_better {
-                raw_change
-            } else {
-                -raw_change
-            };
+        let classification =
+            if let Some(raw_change) = self.change_from_baseline(&criteria.primary_measure) {
+                // `change_from_baseline` is followup - baseline, so its sign depends on
+                // the measure's direction. Normalise to a magnitude where positive
+                // always means "got better", per criteria.higher_is_better. Without
+                // this every lower-is-better measure (depression, UPDRS, TUG, Trail
+                // Making, reaction time) classifies backwards.
+                let improvement = if criteria.higher_is_better {
+                    raw_change
+                } else {
+                    -raw_change
+                };
 
-            // Compared by magnitude so a caller may pass either a signed threshold
-            // matching their direction (e.g. -12.5 for a lower-is-better measure)
-            // or a plain magnitude (12.5). Both mean the same thing.
-            let required = criteria.response_threshold.abs();
+                // Compared by magnitude so a caller may pass either a signed threshold
+                // matching their direction (e.g. -12.5 for a lower-is-better measure)
+                // or a plain magnitude (12.5). Both mean the same thing.
+                let required = criteria.response_threshold.abs();
 
-            if improvement >= required {
-                let reached_remission = criteria.remission_threshold.and_then(|remission| {
-                    let val = self
-                        .latest_followup()?
-                        .get_value(&criteria.primary_measure)?;
-                    // Remission is an absolute cut-off, so it is crossed in the
-                    // direction the measure improves.
-                    Some(if criteria.higher_is_better {
-                        val >= remission
-                    } else {
-                        val <= remission
-                    })
-                });
-                match reached_remission {
-                    Some(true) => ResponseClassification::Remission,
-                    _ => ResponseClassification::Response,
+                if improvement >= required {
+                    let reached_remission = criteria.remission_threshold.and_then(|remission| {
+                        let val = self
+                            .latest_followup()?
+                            .get_value(&criteria.primary_measure)?;
+                        // Remission is an absolute cut-off, so it is crossed in the
+                        // direction the measure improves.
+                        Some(if criteria.higher_is_better {
+                            val >= remission
+                        } else {
+                            val <= remission
+                        })
+                    });
+                    match reached_remission {
+                        Some(true) => ResponseClassification::Remission,
+                        _ => ResponseClassification::Response,
+                    }
+                } else if improvement > 0.0 {
+                    ResponseClassification::PartialResponse
+                } else {
+                    ResponseClassification::NoResponse
                 }
-            } else if improvement > 0.0 {
-                ResponseClassification::PartialResponse
             } else {
-                ResponseClassification::NoResponse
-            }
-        } else {
-            ResponseClassification::Unknown
-        };
+                ResponseClassification::Unknown
+            };
 
         self.classification = Some(classification);
         classification
@@ -209,7 +210,10 @@ pub enum ResponseClassification {
 impl ResponseClassification {
     /// Whether this is a positive response.
     pub fn is_positive(&self) -> bool {
-        matches!(self, ResponseClassification::Remission | ResponseClassification::Response)
+        matches!(
+            self,
+            ResponseClassification::Remission | ResponseClassification::Response
+        )
     }
 }
 
@@ -296,22 +300,34 @@ impl InterventionModel {
         group2: &str,
         measure: &str,
     ) -> Result<EffectSize> {
-        let g1 = self.groups.get(group1)
-            .ok_or_else(|| ClinicalError::InvalidConfiguration(format!("Group {} not found", group1)))?;
-        let g2 = self.groups.get(group2)
-            .ok_or_else(|| ClinicalError::InvalidConfiguration(format!("Group {} not found", group2)))?;
+        let g1 = self.groups.get(group1).ok_or_else(|| {
+            ClinicalError::InvalidConfiguration(format!("Group {} not found", group1))
+        })?;
+        let g2 = self.groups.get(group2).ok_or_else(|| {
+            ClinicalError::InvalidConfiguration(format!("Group {} not found", group2))
+        })?;
 
-        let stats1 = g1.get_stats(measure)
-            .ok_or_else(|| ClinicalError::InvalidConfiguration(format!("No stats for {} in {}", measure, group1)))?;
-        let stats2 = g2.get_stats(measure)
-            .ok_or_else(|| ClinicalError::InvalidConfiguration(format!("No stats for {} in {}", measure, group2)))?;
+        let stats1 = g1.get_stats(measure).ok_or_else(|| {
+            ClinicalError::InvalidConfiguration(format!("No stats for {} in {}", measure, group1))
+        })?;
+        let stats2 = g2.get_stats(measure).ok_or_else(|| {
+            ClinicalError::InvalidConfiguration(format!("No stats for {} in {}", measure, group2))
+        })?;
 
-        EffectSize::cohens_d(stats1.mean, stats2.mean, stats1.sd, stats2.sd, stats1.n, stats2.n)
+        EffectSize::cohens_d(
+            stats1.mean,
+            stats2.mean,
+            stats1.sd,
+            stats2.sd,
+            stats1.n,
+            stats2.n,
+        )
     }
 
     /// Calculate within-group effect sizes for all groups.
     pub fn within_group_effect_sizes(&self, measure: &str) -> HashMap<String, Result<EffectSize>> {
-        self.groups.iter()
+        self.groups
+            .iter()
             .map(|(name, group)| {
                 let effect = group.within_group_effect_size(measure);
                 (name.clone(), effect)
@@ -321,17 +337,20 @@ impl InterventionModel {
 
     /// Get response rates for all groups.
     pub fn response_rates(&self) -> HashMap<String, f64> {
-        self.groups.iter()
+        self.groups
+            .iter()
             .map(|(name, group)| (name.clone(), group.response_rate()))
             .collect()
     }
 
     /// Calculate number needed to treat (NNT).
     pub fn nnt(&self, treatment: &str, control: &str) -> Result<f64> {
-        let treatment_group = self.groups.get(treatment)
-            .ok_or_else(|| ClinicalError::InvalidConfiguration("Treatment group not found".to_string()))?;
-        let control_group = self.groups.get(control)
-            .ok_or_else(|| ClinicalError::InvalidConfiguration("Control group not found".to_string()))?;
+        let treatment_group = self.groups.get(treatment).ok_or_else(|| {
+            ClinicalError::InvalidConfiguration("Treatment group not found".to_string())
+        })?;
+        let control_group = self.groups.get(control).ok_or_else(|| {
+            ClinicalError::InvalidConfiguration("Control group not found".to_string())
+        })?;
 
         let treatment_rate = treatment_group.response_rate();
         let control_rate = control_group.response_rate();
@@ -339,7 +358,9 @@ impl InterventionModel {
         let ard = treatment_rate - control_rate; // Absolute risk difference
 
         if ard.abs() < 1e-10 {
-            return Err(ClinicalError::InvalidConfiguration("No difference in response rates".to_string()));
+            return Err(ClinicalError::InvalidConfiguration(
+                "No difference in response rates".to_string(),
+            ));
         }
 
         Ok(1.0 / ard.abs())
@@ -395,7 +416,9 @@ impl TreatmentGroup {
             return 0.0;
         }
 
-        let responders = self.responses.iter()
+        let responders = self
+            .responses
+            .iter()
             .filter(|r| r.classification.map(|c| c.is_positive()).unwrap_or(false))
             .count();
 
@@ -404,8 +427,9 @@ impl TreatmentGroup {
 
     /// Calculate within-group effect size.
     pub fn within_group_effect_size(&self, measure: &str) -> Result<EffectSize> {
-        let stats = self.get_stats(measure)
-            .ok_or_else(|| ClinicalError::InvalidConfiguration(format!("No stats for {}", measure)))?;
+        let stats = self.get_stats(measure).ok_or_else(|| {
+            ClinicalError::InvalidConfiguration(format!("No stats for {}", measure))
+        })?;
 
         Ok(EffectSize {
             value: stats.effect_size,
@@ -485,17 +509,20 @@ impl EffectSize {
     ) -> Result<Self> {
         // Pooled standard deviation
         let pooled_sd = (((n1 - 1) as f64 * sd1.powi(2) + (n2 - 1) as f64 * sd2.powi(2))
-            / (n1 + n2 - 2) as f64).sqrt();
+            / (n1 + n2 - 2) as f64)
+            .sqrt();
 
         if pooled_sd.abs() < 1e-10 {
-            return Err(ClinicalError::InvalidConfiguration("Cannot calculate effect size with zero SD".to_string()));
+            return Err(ClinicalError::InvalidConfiguration(
+                "Cannot calculate effect size with zero SD".to_string(),
+            ));
         }
 
         let d = (mean1 - mean2) / pooled_sd;
 
         // Calculate confidence interval
-        let se = ((n1 + n2) as f64 / (n1 * n2) as f64
-            + d.powi(2) / (2.0 * (n1 + n2) as f64)).sqrt();
+        let se =
+            ((n1 + n2) as f64 / (n1 * n2) as f64 + d.powi(2) / (2.0 * (n1 + n2) as f64)).sqrt();
         let ci_lower = d - 1.96 * se;
         let ci_upper = d + 1.96 * se;
 
@@ -535,7 +562,9 @@ impl EffectSize {
     /// Calculate Glass's delta.
     pub fn glass_delta(mean_treatment: f64, mean_control: f64, sd_control: f64) -> Result<Self> {
         if sd_control.abs() < 1e-10 {
-            return Err(ClinicalError::InvalidConfiguration("Cannot calculate effect size with zero SD".to_string()));
+            return Err(ClinicalError::InvalidConfiguration(
+                "Cannot calculate effect size with zero SD".to_string(),
+            ));
         }
 
         let delta = (mean_treatment - mean_control) / sd_control;
@@ -667,7 +696,8 @@ mod tests {
             15.0,  // control SD
             50,    // treatment n
             50,    // control n
-        ).unwrap();
+        )
+        .unwrap();
 
         assert!((effect.value - 0.67).abs() < 0.1);
         assert_eq!(effect.interpretation, EffectInterpretation::Medium);
@@ -675,9 +705,7 @@ mod tests {
 
     #[test]
     fn test_hedges_g() {
-        let effect = EffectSize::hedges_g(
-            110.0, 100.0, 15.0, 15.0, 10, 10
-        ).unwrap();
+        let effect = EffectSize::hedges_g(110.0, 100.0, 15.0, 15.0, 10, 10).unwrap();
 
         // Hedges' g should be slightly smaller than Cohen's d for small samples
         let cohens = EffectSize::cohens_d(110.0, 100.0, 15.0, 15.0, 10, 10).unwrap();
@@ -775,7 +803,9 @@ mod tests {
         model.add_group("treatment", treatment);
         model.add_group("control", control);
 
-        let effect = model.between_group_effect_size("treatment", "control", "symptom_score").unwrap();
+        let effect = model
+            .between_group_effect_size("treatment", "control", "symptom_score")
+            .unwrap();
         assert!((effect.value.abs() - 2.0).abs() < 0.1);
     }
 
@@ -799,12 +829,21 @@ mod tests {
         // Add mock responses (60% response in treatment, 30% in control)
         for i in 0..10 {
             let baseline = Assessment::new(0.0, "Baseline");
-            let mut t_response = TreatmentResponse::new(&format!("T{}", i), "Drug", baseline.clone());
-            t_response.classification = Some(if i < 6 { ResponseClassification::Response } else { ResponseClassification::NoResponse });
+            let mut t_response =
+                TreatmentResponse::new(&format!("T{}", i), "Drug", baseline.clone());
+            t_response.classification = Some(if i < 6 {
+                ResponseClassification::Response
+            } else {
+                ResponseClassification::NoResponse
+            });
             treatment.add_response(t_response);
 
             let mut c_response = TreatmentResponse::new(&format!("C{}", i), "Placebo", baseline);
-            c_response.classification = Some(if i < 3 { ResponseClassification::Response } else { ResponseClassification::NoResponse });
+            c_response.classification = Some(if i < 3 {
+                ResponseClassification::Response
+            } else {
+                ResponseClassification::NoResponse
+            });
             control.add_response(c_response);
         }
 

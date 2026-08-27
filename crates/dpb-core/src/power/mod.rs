@@ -43,7 +43,9 @@ pub use neuromorphic::{
     AkidaEstimator, BrainScaleSEstimator, LoihiEstimator, SpinnAkerEstimator, TrueNorthEstimator,
     XyloEstimator,
 };
-pub use synaptic::{MACEstimator, NeuronUpdateEstimator, SpikeTransmitEstimator, SynapticOpEstimator};
+pub use synaptic::{
+    MACEstimator, NeuronUpdateEstimator, SpikeTransmitEstimator, SynapticOpEstimator,
+};
 
 /// Statistics describing a neural network model for power estimation.
 #[derive(Debug, Clone)]

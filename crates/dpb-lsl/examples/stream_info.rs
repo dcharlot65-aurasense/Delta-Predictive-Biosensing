@@ -6,8 +6,9 @@
 //! Run with: cargo run --example stream_info -p dpb-lsl
 
 use dpb_lsl::{
+    ChannelFormat,
     stream_info::{ChannelInfo, StreamInfo, StreamInfoBuilder},
-    stream_types, ChannelFormat,
+    stream_types,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -47,7 +48,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .channel_format(ChannelFormat::Float32)
         .source_id("heart_monitor_001")
         .session_id("session_20250118_001")
-        .xml_desc(r#"
+        .xml_desc(
+            r#"
             <desc>
                 <manufacturer>AuraSense</manufacturer>
                 <channels>
@@ -56,7 +58,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     <channel><label>Lead III</label><unit>mV</unit></channel>
                 </channels>
             </desc>
-        "#)
+        "#,
+        )
         .build()?;
 
     println!("Created ECG stream:");
@@ -109,18 +112,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Method 5: Channel metadata");
     println!("--------------------------");
 
-    let channels = [ChannelInfo::eeg("Fp1"),
+    let channels = [
+        ChannelInfo::eeg("Fp1"),
         ChannelInfo::eeg("Fp2"),
         ChannelInfo::eeg("F3"),
         ChannelInfo::eeg("F4"),
         ChannelInfo::eeg("C3"),
         ChannelInfo::eeg("C4"),
         ChannelInfo::eeg("O1"),
-        ChannelInfo::eeg("O2")];
+        ChannelInfo::eeg("O2"),
+    ];
 
     println!("Standard 10-20 EEG channels:");
     for (i, ch) in channels.iter().enumerate() {
-        println!("  Ch{}: {} ({} - {})", i, ch.label, ch.channel_type, ch.unit);
+        println!(
+            "  Ch{}: {} ({} - {})",
+            i, ch.label, ch.channel_type, ch.unit
+        );
     }
     println!();
 
@@ -142,12 +150,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("------------------------------");
 
     println!("Format byte sizes:");
-    println!("  Float32: {} bytes", ChannelFormat::Float32.bytes_per_sample());
-    println!("  Float64: {} bytes", ChannelFormat::Float64.bytes_per_sample());
+    println!(
+        "  Float32: {} bytes",
+        ChannelFormat::Float32.bytes_per_sample()
+    );
+    println!(
+        "  Float64: {} bytes",
+        ChannelFormat::Float64.bytes_per_sample()
+    );
     println!("  Int32: {} bytes", ChannelFormat::Int32.bytes_per_sample());
     println!("  Int16: {} bytes", ChannelFormat::Int16.bytes_per_sample());
     println!("  Int8: {} bytes", ChannelFormat::Int8.bytes_per_sample());
-    println!("  String: {} bytes (variable)", ChannelFormat::String.bytes_per_sample());
+    println!(
+        "  String: {} bytes (variable)",
+        ChannelFormat::String.bytes_per_sample()
+    );
 
     println!("\n=== Example Complete ===");
     Ok(())

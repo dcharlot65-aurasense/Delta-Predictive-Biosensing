@@ -106,10 +106,10 @@
 //! ```
 
 pub mod ecg;
-pub mod eeg;
 pub mod eda;
-pub mod emg;
+pub mod eeg;
 pub mod emd;
+pub mod emg;
 pub mod eye;
 pub mod fatigue;
 pub mod fft;
@@ -124,18 +124,16 @@ pub mod voice;
 pub mod wavelet;
 
 pub use fft::{FftProcessor, Stft, WindowType, create_window, fft_frequencies, stft_times};
-pub use filter::{FirFilter, IirFilter, FilterType, median_filter};
+pub use filter::{FilterType, FirFilter, IirFilter, median_filter};
 pub use resample::{downsample, resample_linear, resample_to_length, upsample};
 
 // Wavelet transform exports
-pub use wavelet::{
-    WaveletFamily, ContinuousWaveletTransform, DiscreteWaveletTransform, DwtResult,
-};
+pub use wavelet::{ContinuousWaveletTransform, DiscreteWaveletTransform, DwtResult, WaveletFamily};
 
 // Hilbert transform exports
 pub use hilbert::{
-    hilbert_transform, analytic_signal, instantaneous_phase,
-    instantaneous_frequency, AnalyticSignal,
+    AnalyticSignal, analytic_signal, hilbert_transform, instantaneous_frequency,
+    instantaneous_phase,
 };
 
 // ICA exports
@@ -143,72 +141,102 @@ pub use ica::{FastICA, ICAResult, NonlinearFunction};
 
 // EMD exports
 pub use emd::{
-    // Core EMD
-    Emd, EmdConfig, StoppingCriterion,
-    // Ensemble methods
-    Eemd, EemdConfig, Ceemdan, CeemdanConfig,
-    // VMD
-    Vmd, VmdConfig,
-    // Hilbert-Huang Transform
-    HilbertHuangTransform, HilbertSpectrum,
-    // IMF structures
-    Imf, ImfSet,
+    BoundaryCondition,
+    Ceemdan,
+    CeemdanConfig,
     // Spline interpolation
-    CubicSpline, BoundaryCondition,
+    CubicSpline,
+    // Ensemble methods
+    Eemd,
+    EemdConfig,
+    // Core EMD
+    Emd,
+    EmdConfig,
+    // Hilbert-Huang Transform
+    HilbertHuangTransform,
+    HilbertSpectrum,
+    // IMF structures
+    Imf,
+    ImfSet,
+    StoppingCriterion,
+    // VMD
+    Vmd,
+    VmdConfig,
 };
 
 // ECG analysis exports
 pub use ecg::{
-    PanTompkinsDetector, RPeak, QrsMorphology, QrsTemplate, BeatType,
-    ArrhythmiaDetector, ArrhythmiaAnalysis,
+    ArrhythmiaAnalysis, ArrhythmiaDetector, BeatType, PanTompkinsDetector, QrsMorphology,
+    QrsTemplate, RPeak,
 };
 
 // HRV analysis exports
-pub use hrv::{HrvTimeDomain, HrvFrequencyDomain, HrvAnalyzer, HrvMetrics};
+pub use hrv::{HrvAnalyzer, HrvFrequencyDomain, HrvMetrics, HrvTimeDomain};
 
 // PPG analysis exports
-pub use ppg::{PpgAnalyzer, PulseWaveFeatures, SpO2Result, PrvMetrics};
+pub use ppg::{PpgAnalyzer, PrvMetrics, PulseWaveFeatures, SpO2Result};
 
 // EDA analysis exports
 pub use eda::{EdaAnalyzer, EdaDecomposition, EdaMetrics, ScrEvent};
 
 // EMG analysis exports
-pub use emg::{EmgAnalyzer, EmgBurst, EmgTimeMetrics, EmgFrequencyMetrics, FatigueMetrics};
+pub use emg::{EmgAnalyzer, EmgBurst, EmgFrequencyMetrics, EmgTimeMetrics, FatigueMetrics};
 
 // Eye tracking analysis exports
-pub use eye::{EyeAnalyzer, Saccade, Fixation, Blink, SmoothPursuitMetrics, PupilMetrics, GazePatternSummary};
+pub use eye::{
+    Blink, EyeAnalyzer, Fixation, GazePatternSummary, PupilMetrics, Saccade, SmoothPursuitMetrics,
+};
 
 // Voice analysis exports
-pub use voice::{VoiceAnalyzer, F0Metrics, JitterMetrics, ShimmerMetrics, VoiceQualityMetrics, SpectralVoiceFeatures, SpeechTimingMetrics};
+pub use voice::{
+    F0Metrics, JitterMetrics, ShimmerMetrics, SpectralVoiceFeatures, SpeechTimingMetrics,
+    VoiceAnalyzer, VoiceQualityMetrics,
+};
 
 // EEG analysis exports
 pub use eeg::{
-    // Band power analysis
-    alpha_asymmetry, compute_band_powers, extract_band_power, relative_band_power,
-    theta_beta_ratio, BandPowers, EegBands,
-    // Artifact detection
-    apply_notch_filter, detect_artifacts, ArtifactSegment, ArtifactType,
+    AlertLevel,
+    ArtifactSegment,
+    ArtifactType,
+    BandPowers,
+    EegBands,
+    EpileptiformSpike,
     // ERP analysis
-    Erp, ErpAnalyzer, ErpComponent, ErpGenerator, OddballData,
+    Erp,
+    ErpAnalyzer,
+    ErpComponent,
+    ErpGenerator,
+    OddballData,
+    SeizureAnalysisResult,
     // Seizure detection
-    SeizureDetector, SeizureEvent, SeizureType, SeizureEvolution,
-    EpileptiformSpike, AlertLevel, SeizureAnalysisResult, analyze_for_seizures,
+    SeizureDetector,
+    SeizureEvent,
+    SeizureEvolution,
+    SeizureType,
+    // Band power analysis
+    alpha_asymmetry,
+    analyze_for_seizures,
+    // Artifact detection
+    apply_notch_filter,
+    compute_band_powers,
+    detect_artifacts,
+    extract_band_power,
+    relative_band_power,
+    theta_beta_ratio,
 };
 
 // Fatigue detection exports
 pub use fatigue::{
-    EmgFatigueAnalyzer, EmgFatigueMetrics,
-    ForceFatigueAnalyzer, ForceFatigueMetrics,
-    CognitiveFatigueAnalyzer, CognitiveFatigueMetrics,
-    IntegratedFatigueMetrics, FatigueType, FatigueSeverity,
-    integrate_fatigue,
+    CognitiveFatigueAnalyzer, CognitiveFatigueMetrics, EmgFatigueAnalyzer, EmgFatigueMetrics,
+    FatigueSeverity, FatigueType, ForceFatigueAnalyzer, ForceFatigueMetrics,
+    IntegratedFatigueMetrics, integrate_fatigue,
 };
 
 // Respiratory analysis exports
 pub use respiratory::{
-    RespiratoryAnalyzer, RespiratoryMetrics, RespiratoryPattern, PatternType,
-    BreathEvent, ApneaEvent, ApneaType, ApneaSeverity,
-    SleepBreathingAnalysis, SleepApneaSeverity, analyze_sleep_breathing,
+    ApneaEvent, ApneaSeverity, ApneaType, BreathEvent, PatternType, RespiratoryAnalyzer,
+    RespiratoryMetrics, RespiratoryPattern, SleepApneaSeverity, SleepBreathingAnalysis,
+    analyze_sleep_breathing,
 };
 
 use crate::error::{DpbError, Result};
@@ -326,10 +354,7 @@ pub fn find_peaks(signal: ArrayView1<f64>, threshold: f64) -> Vec<usize> {
     let mut peaks = Vec::new();
 
     for i in 1..signal.len() - 1 {
-        if signal[i] > threshold
-            && signal[i] > signal[i - 1]
-            && signal[i] > signal[i + 1]
-        {
+        if signal[i] > threshold && signal[i] > signal[i - 1] && signal[i] > signal[i + 1] {
             peaks.push(i);
         }
     }
@@ -342,10 +367,7 @@ pub fn find_valleys(signal: ArrayView1<f64>, threshold: f64) -> Vec<usize> {
     let mut valleys = Vec::new();
 
     for i in 1..signal.len() - 1 {
-        if signal[i] < threshold
-            && signal[i] < signal[i - 1]
-            && signal[i] < signal[i + 1]
-        {
+        if signal[i] < threshold && signal[i] < signal[i - 1] && signal[i] < signal[i + 1] {
             valleys.push(i);
         }
     }

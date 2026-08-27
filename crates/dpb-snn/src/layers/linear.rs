@@ -2,7 +2,7 @@
 
 use super::{NeuronState, SpikingLayer};
 use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor};
-use ndarray::{s, Array1, Array2, Array3};
+use ndarray::{Array1, Array2, Array3, s};
 use rand::rng;
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
@@ -46,9 +46,7 @@ impl SpikingLinear {
         let normal = Normal::new(0.0, std_dev).unwrap();
         let mut rng = rng();
 
-        let weights = Array2::from_shape_fn((output_size, input_size), |_| {
-            normal.sample(&mut rng)
-        });
+        let weights = Array2::from_shape_fn((output_size, input_size), |_| normal.sample(&mut rng));
 
         let bias = if use_bias {
             Some(Array1::zeros(output_size))
@@ -109,11 +107,8 @@ impl SpikingLinear {
         input: &Array3<f32>,
         output_grad: &Array3<f32>,
     ) -> SNNResult<Array3<f32>> {
-        let (batch_size, num_steps, input_size) = (
-            input.shape()[0],
-            input.shape()[1],
-            input.shape()[2],
-        );
+        let (batch_size, num_steps, input_size) =
+            (input.shape()[0], input.shape()[1], input.shape()[2]);
         let output_size = self.weights.shape()[0];
 
         // Initialize gradients

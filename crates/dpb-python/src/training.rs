@@ -2,8 +2,8 @@
 
 use dpb_snn::training::LossFunction as _;
 use dpb_snn::{SpikeCountLoss, SpikeTensor, SpikeTimingLoss, SpikingCrossEntropy};
-use numpy::ndarray::Array2;
 use numpy::PyReadonlyArray2;
+use numpy::ndarray::Array2;
 
 /// Lift a (samples x classes) prediction matrix into the single-timestep
 /// `SpikeTensor` the loss functions take.
@@ -24,8 +24,8 @@ fn targets_to_array(targets: &PyReadonlyArray2<f32>) -> Array2<f32> {
     targets.as_array().to_owned()
 }
 
-use pyo3::prelude::*;
 use pyo3::PyClassInitializer;
+use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use std::collections::HashMap;
 
@@ -88,10 +88,10 @@ impl PySpikeCountLoss {
     #[pyo3(signature = (weight=1.0))]
     fn new(weight: f32) -> PyClassInitializer<Self> {
         PyClassInitializer::from(PyLossFunction {
-                name: "SpikeCount".to_string(),
-            })
-            .add_subclass(Self { weight })
-}
+            name: "SpikeCount".to_string(),
+        })
+        .add_subclass(Self { weight })
+    }
 
     /// Compute the loss.
     ///
@@ -109,9 +109,7 @@ impl PySpikeCountLoss {
         SpikeCountLoss::new(self.weight)
             .compute(&tensor, &target_array)
             .map(|loss| loss * self.weight)
-            .map_err(|e| {
-                pyo3::exceptions::PyValueError::new_err(format!("spike-count loss: {e}"))
-            })
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("spike-count loss: {e}")))
     }
 }
 
@@ -138,13 +136,13 @@ impl PySpikeTimeLoss {
     #[pyo3(signature = (weight=1.0, time_window=0.01))]
     fn new(weight: f32, time_window: f32) -> PyClassInitializer<Self> {
         PyClassInitializer::from(PyLossFunction {
-                name: "SpikeTime".to_string(),
-            })
-            .add_subclass(Self {
-                weight,
-                time_window,
-            })
-}
+            name: "SpikeTime".to_string(),
+        })
+        .add_subclass(Self {
+            weight,
+            time_window,
+        })
+    }
 
     /// Compute the loss.
     ///
@@ -162,9 +160,7 @@ impl PySpikeTimeLoss {
         SpikeTimingLoss::new(self.time_window)
             .compute(&tensor, &target_array)
             .map(|loss| loss * self.weight)
-            .map_err(|e| {
-                pyo3::exceptions::PyValueError::new_err(format!("spike-timing loss: {e}"))
-            })
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("spike-timing loss: {e}")))
     }
 }
 
@@ -186,10 +182,10 @@ impl PyCrossEntropyLoss {
     #[pyo3(signature = (weight=1.0))]
     fn new(weight: f32) -> PyClassInitializer<Self> {
         PyClassInitializer::from(PyLossFunction {
-                name: "CrossEntropy".to_string(),
-            })
-            .add_subclass(Self { weight })
-}
+            name: "CrossEntropy".to_string(),
+        })
+        .add_subclass(Self { weight })
+    }
 
     /// Compute the loss.
     ///
@@ -292,15 +288,15 @@ impl PyAdam {
     #[pyo3(signature = (learning_rate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8))]
     fn new(learning_rate: f32, beta1: f32, beta2: f32, epsilon: f32) -> PyClassInitializer<Self> {
         PyClassInitializer::from(PyOptimizer {
-                name: "Adam".to_string(),
-                learning_rate,
-            })
-            .add_subclass(Self {
-                beta1,
-                beta2,
-                epsilon,
-            })
-}
+            name: "Adam".to_string(),
+            learning_rate,
+        })
+        .add_subclass(Self {
+            beta1,
+            beta2,
+            epsilon,
+        })
+    }
 }
 
 /// SGD optimizer
@@ -331,14 +327,14 @@ impl PySGD {
     #[pyo3(signature = (learning_rate=0.01, momentum=0.0, weight_decay=0.0))]
     fn new(learning_rate: f32, momentum: f32, weight_decay: f32) -> PyClassInitializer<Self> {
         PyClassInitializer::from(PyOptimizer {
-                name: "SGD".to_string(),
-                learning_rate,
-            })
-            .add_subclass(Self {
-                momentum,
-                weight_decay,
-            })
-}
+            name: "SGD".to_string(),
+            learning_rate,
+        })
+        .add_subclass(Self {
+            momentum,
+            weight_decay,
+        })
+    }
 }
 
 /// Training callback interface
@@ -423,12 +419,7 @@ impl PyTrainer {
     #[allow(unused_variables)]
     #[new]
     #[pyo3(signature = (model, loss="spike_count", optimizer="adam", learning_rate=0.001))]
-    fn new(
-        model: Py<PyAny>,
-        loss: &str,
-        optimizer: &str,
-        learning_rate: f32,
-    ) -> Self {
+    fn new(model: Py<PyAny>, loss: &str, optimizer: &str, learning_rate: f32) -> Self {
         Self {
             loss_name: loss.to_string(),
             optimizer_name: optimizer.to_string(),
@@ -572,7 +563,10 @@ impl PyLRScheduler {
         match self.schedule_type.as_str() {
             // Multiply by gamma every `step_size` steps.
             "step" => {
-                let decays = self.current_step.checked_div(self.step_size).unwrap_or_default();
+                let decays = self
+                    .current_step
+                    .checked_div(self.step_size)
+                    .unwrap_or_default();
                 self.initial_lr * self.gamma.powi(decays as i32)
             }
             // Multiply by gamma every step.

@@ -425,16 +425,14 @@ impl WebGPUBackend {
         let limits = adapter.limits();
 
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some("DPB Compute Device"),
-                    required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
-                    memory_hints: Default::default(),
-                    experimental_features: Default::default(),
-                    trace: wgpu::Trace::Off,
-                },
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("DPB Compute Device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::default(),
+                memory_hints: Default::default(),
+                experimental_features: Default::default(),
+                trace: wgpu::Trace::Off,
+            })
             .await
             .map_err(|e| DpbError::Gpu(format!("Failed to create device: {}", e)))?;
 
@@ -586,7 +584,11 @@ impl ComputeBackend for WebGPUBackend {
             tx.send(result).unwrap();
         });
 
-        self.device.poll(wgpu::PollType::Wait { submission_index: None, timeout: None })
+        self.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            })
             .map_err(|e| DpbError::Gpu(format!("Device poll failed: {e}")))?;
         rx.recv()
             .unwrap()
@@ -611,26 +613,32 @@ impl ComputeBackend for WebGPUBackend {
     fn compile_kernel(&self, name: &str, source: &str, entry_point: &str) -> Result<KernelHandle> {
         let id = self.next_kernel_id();
 
-        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some(name),
-            source: wgpu::ShaderSource::Wgsl(source.into()),
-        });
+        let shader = self
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some(name),
+                source: wgpu::ShaderSource::Wgsl(source.into()),
+            });
 
         // Create a simple pipeline layout (buffers will be bound at dispatch time)
-        let pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some(&format!("{}_layout", name)),
-            bind_group_layouts: &[],
-            immediate_size: 0,
-        });
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some(&format!("{}_layout", name)),
+                bind_group_layouts: &[],
+                immediate_size: 0,
+            });
 
-        let pipeline = self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some(name),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: Some(entry_point),
-            compilation_options: Default::default(),
-            cache: None,
-        });
+        let pipeline = self
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some(name),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: Some(entry_point),
+                compilation_options: Default::default(),
+                cache: None,
+            });
 
         self.pipelines.write().unwrap().insert(id, pipeline);
 
@@ -672,7 +680,11 @@ impl ComputeBackend for WebGPUBackend {
     }
 
     fn synchronize(&self) -> Result<()> {
-        self.device.poll(wgpu::PollType::Wait { submission_index: None, timeout: None })
+        self.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            })
             .map_err(|e| DpbError::Gpu(format!("Device poll failed: {e}")))?;
         Ok(())
     }
@@ -690,10 +702,11 @@ impl WebGPUBackend {
         &self,
         entries: &[wgpu::BindGroupLayoutEntry],
     ) -> wgpu::BindGroupLayout {
-        self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Compute Bind Group Layout"),
-            entries,
-        })
+        self.device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Compute Bind Group Layout"),
+                entries,
+            })
     }
 
     /// Creates a compute pipeline with the given shader and bind group layout.
@@ -703,36 +716,44 @@ impl WebGPUBackend {
         entry_point: &str,
         bind_group_layout: &wgpu::BindGroupLayout,
     ) -> wgpu::ComputePipeline {
-        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Compute Shader"),
-            source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-        });
+        let shader = self
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Compute Shader"),
+                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
+            });
 
-        let pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Compute Pipeline Layout"),
-            bind_group_layouts: &[Some(bind_group_layout)],
-            immediate_size: 0,
-        });
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Compute Pipeline Layout"),
+                bind_group_layouts: &[Some(bind_group_layout)],
+                immediate_size: 0,
+            });
 
-        self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("Compute Pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: Some(entry_point),
-            compilation_options: Default::default(),
-            cache: None,
-        })
+        self.device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Compute Pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: Some(entry_point),
+                compilation_options: Default::default(),
+                cache: None,
+            })
     }
 }
 
 impl ComputeBackendExt for WebGPUBackend {
     fn add(&self, a: &BufferHandle, b: &BufferHandle, result: &BufferHandle) -> Result<()> {
         let buffers = self.buffers.read().unwrap();
-        let buf_a = buffers.get(&a.id)
+        let buf_a = buffers
+            .get(&a.id)
             .ok_or_else(|| DpbError::Gpu("Buffer A not found".to_string()))?;
-        let buf_b = buffers.get(&b.id)
+        let buf_b = buffers
+            .get(&b.id)
             .ok_or_else(|| DpbError::Gpu("Buffer B not found".to_string()))?;
-        let buf_result = buffers.get(&result.id)
+        let buf_result = buffers
+            .get(&result.id)
             .ok_or_else(|| DpbError::Gpu("Result buffer not found".to_string()))?;
 
         // Create bind group layout
@@ -779,15 +800,26 @@ impl ComputeBackendExt for WebGPUBackend {
             label: Some("Add Bind Group"),
             layout: &bind_group_layout,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: buf_a.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: buf_b.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: buf_result.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: buf_a.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: buf_b.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: buf_result.as_entire_binding(),
+                },
             ],
         });
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Add Encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Add Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -816,11 +848,14 @@ impl ComputeBackendExt for WebGPUBackend {
         k: usize,
     ) -> Result<()> {
         let buffers = self.buffers.read().unwrap();
-        let buf_a = buffers.get(&a.id)
+        let buf_a = buffers
+            .get(&a.id)
             .ok_or_else(|| DpbError::Gpu("Buffer A not found".to_string()))?;
-        let buf_b = buffers.get(&b.id)
+        let buf_b = buffers
+            .get(&b.id)
             .ok_or_else(|| DpbError::Gpu("Buffer B not found".to_string()))?;
-        let buf_result = buffers.get(&result.id)
+        let buf_result = buffers
+            .get(&result.id)
             .ok_or_else(|| DpbError::Gpu("Result buffer not found".to_string()))?;
 
         // Create params buffer
@@ -840,11 +875,13 @@ impl ComputeBackendExt for WebGPUBackend {
             _pad: 0,
         };
 
-        let params_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Matmul Params"),
-            contents: bytemuck::bytes_of(&params),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let params_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Matmul Params"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Create bind group layout
         let bind_group_layout = self.create_compute_bind_group_layout(&[
@@ -900,16 +937,30 @@ impl ComputeBackendExt for WebGPUBackend {
             label: Some("Matmul Bind Group"),
             layout: &bind_group_layout,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: buf_a.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: buf_b.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: buf_result.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: params_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: buf_a.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: buf_b.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: buf_result.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params_buffer.as_entire_binding(),
+                },
             ],
         });
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Matmul Encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Matmul Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -934,9 +985,11 @@ impl ComputeBackendExt for WebGPUBackend {
         // We'll copy to separate real/imag buffers, run FFT stages, then copy back
 
         let buffers = self.buffers.read().unwrap();
-        let _buf_input = buffers.get(&input.id)
+        let _buf_input = buffers
+            .get(&input.id)
             .ok_or_else(|| DpbError::Gpu("Input buffer not found".to_string()))?;
-        let _buf_output = buffers.get(&output.id)
+        let _buf_output = buffers
+            .get(&output.id)
             .ok_or_else(|| DpbError::Gpu("Output buffer not found".to_string()))?;
 
         // Check size is power of 2
@@ -950,14 +1003,18 @@ impl ComputeBackendExt for WebGPUBackend {
         let real_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("FFT Real Buffer"),
             size: (size * std::mem::size_of::<f32>()) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
 
         let imag_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("FFT Imag Buffer"),
             size: (size * std::mem::size_of::<f32>()) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
 
@@ -1011,34 +1068,52 @@ impl ComputeBackendExt for WebGPUBackend {
             &bind_group_layout,
         );
 
-        let n_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("FFT N"),
-            contents: bytemuck::bytes_of(&(size as u32)),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        let n_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("FFT N"),
+                contents: bytemuck::bytes_of(&(size as u32)),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
 
         // Run FFT stages
         for stage in 1..=num_stages {
-            let stage_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("FFT Stage"),
-                contents: bytemuck::bytes_of(&stage),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+            let stage_buffer = self
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("FFT Stage"),
+                    contents: bytemuck::bytes_of(&stage),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                });
 
             let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("FFT Bind Group"),
                 layout: &bind_group_layout,
                 entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: real_buffer.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 1, resource: imag_buffer.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 2, resource: stage_buffer.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 3, resource: n_buffer.as_entire_binding() },
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: real_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: imag_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: stage_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: n_buffer.as_entire_binding(),
+                    },
                 ],
             });
 
-            let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("FFT Encoder"),
-            });
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("FFT Encoder"),
+                });
 
             {
                 let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -1053,8 +1128,12 @@ impl ComputeBackendExt for WebGPUBackend {
             }
 
             self.queue.submit(Some(encoder.finish()));
-            self.device.poll(wgpu::PollType::Wait { submission_index: None, timeout: None })
-            .map_err(|e| DpbError::Gpu(format!("Device poll failed: {e}")))?;
+            self.device
+                .poll(wgpu::PollType::Wait {
+                    submission_index: None,
+                    timeout: None,
+                })
+                .map_err(|e| DpbError::Gpu(format!("Device poll failed: {e}")))?;
         }
 
         Ok(())
@@ -1062,9 +1141,11 @@ impl ComputeBackendExt for WebGPUBackend {
 
     fn reduce_sum(&self, input: &BufferHandle, output: &BufferHandle, size: usize) -> Result<()> {
         let buffers = self.buffers.read().unwrap();
-        let buf_input = buffers.get(&input.id)
+        let buf_input = buffers
+            .get(&input.id)
             .ok_or_else(|| DpbError::Gpu("Input buffer not found".to_string()))?;
-        let buf_output = buffers.get(&output.id)
+        let buf_output = buffers
+            .get(&output.id)
             .ok_or_else(|| DpbError::Gpu("Output buffer not found".to_string()))?;
 
         // Create bind group layout
@@ -1101,14 +1182,22 @@ impl ComputeBackendExt for WebGPUBackend {
             label: Some("Reduce Bind Group"),
             layout: &bind_group_layout,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: buf_input.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: buf_output.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: buf_input.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: buf_output.as_entire_binding(),
+                },
             ],
         });
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Reduce Encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Reduce Encoder"),
+            });
 
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -1156,7 +1245,8 @@ pub mod cuda {
                 .map_err(|e| DpbError::Gpu(format!("CUDA device init failed: {:?}", e)))?;
 
             // Query device properties
-            let name = device.name()
+            let name = device
+                .name()
                 .unwrap_or_else(|_| format!("CUDA Device {}", device_id));
 
             // Get memory info - cudarc doesn't expose this directly, use defaults
@@ -1214,7 +1304,8 @@ pub mod cuda {
             let id = self.next_buffer_id();
 
             // Allocate GPU memory using cudarc
-            let gpu_buffer = self.device
+            let gpu_buffer = self
+                .device
                 .alloc_zeros::<u8>(size)
                 .map_err(|e| DpbError::Gpu(format!("CUDA alloc failed: {:?}", e)))?;
 
@@ -1232,7 +1323,8 @@ pub mod cuda {
             let size = data.len();
 
             // Allocate and copy data to GPU
-            let gpu_buffer = self.device
+            let gpu_buffer = self
+                .device
                 .htod_sync_copy(data)
                 .map_err(|e| DpbError::Gpu(format!("CUDA htod copy failed: {:?}", e)))?;
 
@@ -1266,7 +1358,8 @@ pub mod cuda {
                 .ok_or_else(|| DpbError::Gpu("Buffer not found".to_string()))?;
 
             // Copy device buffer to host
-            let host_data = self.device
+            let host_data = self
+                .device
                 .dtoh_sync_copy(gpu_buffer)
                 .map_err(|e| DpbError::Gpu(format!("CUDA dtoh copy failed: {:?}", e)))?;
 
@@ -1279,7 +1372,12 @@ pub mod cuda {
             Ok(())
         }
 
-        fn compile_kernel(&self, name: &str, source: &str, entry_point: &str) -> Result<KernelHandle> {
+        fn compile_kernel(
+            &self,
+            name: &str,
+            source: &str,
+            entry_point: &str,
+        ) -> Result<KernelHandle> {
             let id = self.next_kernel_id();
 
             // Load PTX module and get function
@@ -1291,7 +1389,8 @@ pub mod cuda {
                 .load_ptx(ptx, name, &[entry_point])
                 .map_err(|e| DpbError::Gpu(format!("PTX load failed: {:?}", e)))?;
 
-            let func = self.device
+            let func = self
+                .device
                 .get_func(name, entry_point)
                 .ok_or_else(|| DpbError::Gpu(format!("Function {} not found", entry_point)))?;
 
@@ -1326,7 +1425,8 @@ pub mod cuda {
 
             // Launch with no arguments for now - real impl would pass buffer pointers
             unsafe {
-                func.clone().launch(cfg, ())
+                func.clone()
+                    .launch(cfg, ())
                     .map_err(|e| DpbError::Gpu(format!("Kernel launch failed: {:?}", e)))?;
             }
 

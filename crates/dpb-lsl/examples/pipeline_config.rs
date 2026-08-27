@@ -45,7 +45,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Level Crossing Pipeline:");
     println!("  Input: {}", pipeline.config().input_stream);
     println!("  Output: {}", pipeline.config().output_name);
-    println!("  Threshold: {}", pipeline.config().encoder_params.threshold);
+    println!(
+        "  Threshold: {}",
+        pipeline.config().encoder_params.threshold
+    );
     println!("  Running: {}\n", pipeline.is_running());
 
     // Method 3: Delta encoder configuration
@@ -64,7 +67,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Delta Pipeline Config:");
     println!("  Encoder type: {:?}", delta_pipeline.config().encoder_type);
-    println!("  Threshold: {}", delta_pipeline.config().encoder_params.threshold);
+    println!(
+        "  Threshold: {}",
+        delta_pipeline.config().encoder_params.threshold
+    );
     println!("  Non-adaptive mode\n");
 
     // Method 4: Temporal contrast configuration
@@ -85,8 +91,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Temporal Contrast Pipeline:");
     println!("  For fast EMG signals");
-    println!("  High threshold: {}", tc_pipeline.config().encoder_params.threshold);
-    println!("  Faster adaptation: {}\n", tc_pipeline.config().encoder_params.adaptation_rate);
+    println!(
+        "  High threshold: {}",
+        tc_pipeline.config().encoder_params.threshold
+    );
+    println!(
+        "  Faster adaptation: {}\n",
+        tc_pipeline.config().encoder_params.adaptation_rate
+    );
 
     // Method 5: Send-on-delta with quantization
     println!("Method 5: Send-on-delta pipeline");
@@ -104,8 +116,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Send-on-Delta Pipeline:");
     println!("  For slow-varying signals (EDA)");
-    println!("  Quantization levels: {}", sod_pipeline.config().encoder_params.num_levels);
-    println!("  Low threshold: {}\n", sod_pipeline.config().encoder_params.threshold);
+    println!(
+        "  Quantization levels: {}",
+        sod_pipeline.config().encoder_params.num_levels
+    );
+    println!(
+        "  Low threshold: {}\n",
+        sod_pipeline.config().encoder_params.threshold
+    );
 
     // Method 6: Encoder parameters overview
     println!("Method 6: Encoder Parameters");
@@ -115,7 +133,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Default EncoderParams:");
     println!("  threshold: {}", default_params.threshold);
     println!("  num_levels: {}", default_params.num_levels);
-    println!("  refractory_period: {} sec", default_params.refractory_period);
+    println!(
+        "  refractory_period: {} sec",
+        default_params.refractory_period
+    );
     println!("  adaptation_rate: {}\n", default_params.adaptation_rate);
 
     // Method 7: Pipeline statistics structure
@@ -161,10 +182,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("---------------------------------");
 
     let encoder_types = [
-        (EncoderType::LevelCrossing, "Level Crossing", "Traditional level quantization"),
+        (
+            EncoderType::LevelCrossing,
+            "Level Crossing",
+            "Traditional level quantization",
+        ),
         (EncoderType::Delta, "Delta", "Change-based encoding"),
-        (EncoderType::TemporalContrast, "Temporal Contrast", "Derivative-based encoding"),
-        (EncoderType::SendOnDelta, "Send-on-Delta", "Quantized change encoding"),
+        (
+            EncoderType::TemporalContrast,
+            "Temporal Contrast",
+            "Derivative-based encoding",
+        ),
+        (
+            EncoderType::SendOnDelta,
+            "Send-on-Delta",
+            "Quantized change encoding",
+        ),
     ];
 
     for (etype, name, desc) in &encoder_types {

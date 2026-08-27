@@ -543,9 +543,9 @@ mod webnn_tests {
 
         fn get_optimal_layout(device: WebNNDeviceType) -> MemoryLayout {
             match device {
-                WebNNDeviceType::Cpu => MemoryLayout::NCHW,  // Better for SIMD
-                WebNNDeviceType::Gpu => MemoryLayout::NHWC,  // Better for GPU texture
-                WebNNDeviceType::Npu => MemoryLayout::NHWC,  // NPUs prefer NHWC
+                WebNNDeviceType::Cpu => MemoryLayout::NCHW, // Better for SIMD
+                WebNNDeviceType::Gpu => MemoryLayout::NHWC, // Better for GPU texture
+                WebNNDeviceType::Npu => MemoryLayout::NHWC, // NPUs prefer NHWC
                 WebNNDeviceType::Default => MemoryLayout::NCHW,
             }
         }

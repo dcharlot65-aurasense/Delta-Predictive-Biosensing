@@ -3,14 +3,14 @@
 //! Provides export capabilities for SpiNNaker and SpiNNaker 2 systems using
 //! PyNN and sPyNNaker frameworks.
 
+use super::constraints::HardwareConstraints;
+use super::{
+    ExportFile, ExportMetadata, ExportResult, HardwareUtilization, NetworkDescription,
+    NetworkStats, NeuromorphicExporter, NeuromorphicTarget,
+};
+use crate::{SNNError, SNNResult};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use super::{
-    NeuromorphicExporter, NeuromorphicTarget, NetworkDescription, ExportResult,
-    ExportFile, ExportMetadata, NetworkStats, HardwareUtilization,
-};
-use super::constraints::HardwareConstraints;
-use crate::{SNNResult, SNNError};
 
 /// SpiNNaker exporter
 pub struct SpiNNakerExporter {
@@ -43,15 +43,15 @@ impl SpiNNakerExporter {
 
         // Setup
         code.push_str("# Setup simulation\n");
-        code.push_str(&format!("sim.setup(timestep={})\n\n", self.config.timestep_ms));
+        code.push_str(&format!(
+            "sim.setup(timestep={})\n\n",
+            self.config.timestep_ms
+        ));
 
         // Create populations
         code.push_str("# Create neuron populations\n");
         for (i, pop) in network.populations.iter().enumerate() {
-            code.push_str(&format!(
-                "pop_{} = sim.Population(\n",
-                i
-            ));
+            code.push_str(&format!("pop_{} = sim.Population(\n", i));
             code.push_str(&format!("    {},\n", pop.size));
             code.push_str(&format!("    sim.{}(**{{}}),\n", pop.cell_type));
             code.push_str(&format!("    label='{}'\n", pop.label));
@@ -73,10 +73,7 @@ impl SpiNNakerExporter {
         // Create projections (connections)
         code.push_str("# Create projections\n");
         for (i, proj) in network.projections.iter().enumerate() {
-            code.push_str(&format!(
-                "proj_{} = sim.Projection(\n",
-                i
-            ));
+            code.push_str(&format!("proj_{} = sim.Projection(\n", i));
             code.push_str(&format!("    pop_{},\n", proj.source));
             code.push_str(&format!("    pop_{},\n", proj.target));
             code.push_str(&format!("    sim.{}(\n", proj.connector_type));
@@ -123,7 +120,10 @@ impl SpiNNakerExporter {
         // Get data
         code.push_str("# Get spike data\n");
         for i in 0..network.populations.len() {
-            code.push_str(&format!("spikes_{} = pop_{}.get_data('spikes').segments[0].spiketrains\n", i, i));
+            code.push_str(&format!(
+                "spikes_{} = pop_{}.get_data('spikes').segments[0].spiketrains\n",
+                i, i
+            ));
         }
 
         // End simulation
@@ -144,7 +144,8 @@ impl SpiNNakerExporter {
         let mut routing = String::new();
 
         routing.push_str("# Routing table configuration\n");
-        routing.push_str("# Format: (source_chip, source_core) -> [(target_chip, target_core)]\n\n");
+        routing
+            .push_str("# Format: (source_chip, source_core) -> [(target_chip, target_core)]\n\n");
 
         routing.push_str("routing_table = {\n");
         for entry in &network.routing_entries {
@@ -394,9 +395,7 @@ impl NeuromorphicExporter for SpiNNakerExporter {
 
         // Check board availability
         if num_neurons > 1_000_000 && self.config.version == SpiNNakerVersion::SpiNNaker {
-            warnings.push(
-                "Network requires large SpiNNaker system (48+ chip board)".to_string()
-            );
+            warnings.push("Network requires large SpiNNaker system (48+ chip board)".to_string());
         }
 
         // Check delays
@@ -512,7 +511,9 @@ pub struct SpiNNakerNetwork {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::neuromorphic::{Population, Connection, NeuronParameters, NetworkParameters, ConnectionType};
+    use crate::neuromorphic::{
+        Connection, ConnectionType, NetworkParameters, NeuronParameters, Population,
+    };
 
     fn create_test_network() -> NetworkDescription {
         NetworkDescription {

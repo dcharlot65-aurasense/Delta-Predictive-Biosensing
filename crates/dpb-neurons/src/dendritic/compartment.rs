@@ -41,12 +41,12 @@ pub struct CompartmentConfig {
 impl Default for CompartmentConfig {
     fn default() -> Self {
         Self {
-            cm: 1.0,           // 1 μF/cm² - typical membrane capacitance
-            g_leak: 0.03,      // 0.03 mS/cm² - leak conductance
-            e_leak: -70.0,     // -70 mV - resting potential
-            length: 50.0,      // 50 μm - compartment length
-            diameter: 2.0,     // 2 μm - dendrite diameter
-            r_axial: 100.0,    // 100 Ω·cm - intracellular resistivity
+            cm: 1.0,        // 1 μF/cm² - typical membrane capacitance
+            g_leak: 0.03,   // 0.03 mS/cm² - leak conductance
+            e_leak: -70.0,  // -70 mV - resting potential
+            length: 50.0,   // 50 μm - compartment length
+            diameter: 2.0,  // 2 μm - dendrite diameter
+            r_axial: 100.0, // 100 Ω·cm - intracellular resistivity
         }
     }
 }
@@ -126,7 +126,10 @@ pub struct AxialCoupling {
 
 impl AxialCoupling {
     /// An isolated compartment: no neighbours, no coupling.
-    pub const NONE: Self = Self { current: 0.0, conductance: 0.0 };
+    pub const NONE: Self = Self {
+        current: 0.0,
+        conductance: 0.0,
+    };
 }
 
 /// Single compartment in a multi-compartment neuron model
@@ -262,8 +265,11 @@ impl Compartment {
     }
 
     pub fn total_current(&self, axial_current: f64, external_current: f64) -> f64 {
-        self.leak_current() + self.ion_currents + axial_current
-            + self.synaptic_current + external_current
+        self.leak_current()
+            + self.ion_currents
+            + axial_current
+            + self.synaptic_current
+            + external_current
     }
 
     /// Update membrane potential using forward Euler

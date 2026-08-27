@@ -1,15 +1,15 @@
 //! Complete SNN architectures
 
-pub mod feedforward;
 pub mod convolutional;
-pub mod recurrent;
+pub mod feedforward;
 pub mod graph;
+pub mod recurrent;
 pub mod transformer;
 
+pub use convolutional::{ConvolutionalSNN, SpikingResNet, SpikingVGG};
 pub use feedforward::FeedforwardSNN;
-pub use convolutional::{ConvolutionalSNN, SpikingVGG, SpikingResNet};
-pub use recurrent::{RecurrentSNN, LiquidStateMachine};
 pub use graph::SpikingGCN;
+pub use recurrent::{LiquidStateMachine, RecurrentSNN};
 pub use transformer::SpikingTransformer;
 
 use crate::{SNNConfig, SNNResult, SpikeTensor};

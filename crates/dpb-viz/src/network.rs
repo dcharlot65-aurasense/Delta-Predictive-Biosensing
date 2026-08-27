@@ -26,10 +26,10 @@
 //! let svg = graph.to_svg();
 //! ```
 
+use crate::{Result, VizError};
+use glam::Vec2;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use glam::Vec2;
-use crate::{Result, VizError};
 
 /// Node positioning algorithms
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -372,7 +372,10 @@ impl NetworkGraph {
 
                     // Clamp to bounds
                     node.position.x = node.position.x.clamp(10.0, self.config.width as f32 - 10.0);
-                    node.position.y = node.position.y.clamp(10.0, self.config.height as f32 - 10.0);
+                    node.position.y = node
+                        .position
+                        .y
+                        .clamp(10.0, self.config.height as f32 - 10.0);
                 }
             }
         }
@@ -380,7 +383,10 @@ impl NetworkGraph {
 
     /// Circular layout
     fn position_circular(&mut self) {
-        let center = Vec2::new(self.config.width as f32 / 2.0, self.config.height as f32 / 2.0);
+        let center = Vec2::new(
+            self.config.width as f32 / 2.0,
+            self.config.height as f32 / 2.0,
+        );
         let radius = (self.config.width.min(self.config.height) as f32 / 2.0) * 0.8;
 
         let total_nodes = self.nodes.len();
@@ -432,9 +438,7 @@ impl NetworkGraph {
     /// Get edge thickness based on weight
     fn edge_thickness(&self, weight: f32) -> f32 {
         match self.config.edge_style {
-            EdgeStyle::WeightBased | EdgeStyle::Full => {
-                0.5 + weight.abs() * 3.0
-            }
+            EdgeStyle::WeightBased | EdgeStyle::Full => 0.5 + weight.abs() * 3.0,
             _ => 1.0,
         }
     }
@@ -475,20 +479,25 @@ impl NetworkGraph {
         svg.push('\n');
 
         // Layer boundaries
-        if self.config.show_layer_boundaries && self.config.positioning == NodePositioning::Hierarchical {
-            svg.push_str(r##"  <g stroke="#E0E0E0" stroke-width="1" stroke-dasharray="5,5" fill="none">"##);
+        if self.config.show_layer_boundaries
+            && self.config.positioning == NodePositioning::Hierarchical
+        {
+            svg.push_str(
+                r##"  <g stroke="#E0E0E0" stroke-width="1" stroke-dasharray="5,5" fill="none">"##,
+            );
             svg.push('\n');
 
             for layer in &self.layers {
                 if !layer.node_ids.is_empty()
-                    && let Some(first_node) = self.nodes.get(&layer.node_ids[0]) {
-                        let y = first_node.position.y;
-                        svg.push_str(&format!(
-                            r#"    <line x1="0" y1="{}" x2="{}" y2="{}"/>"#,
-                            y, self.config.width, y
-                        ));
-                        svg.push('\n');
-                    }
+                    && let Some(first_node) = self.nodes.get(&layer.node_ids[0])
+                {
+                    let y = first_node.position.y;
+                    svg.push_str(&format!(
+                        r#"    <line x1="0" y1="{}" x2="{}" y2="{}"/>"#,
+                        y, self.config.width, y
+                    ));
+                    svg.push('\n');
+                }
             }
 
             svg.push_str("  </g>\n");
@@ -530,33 +539,37 @@ impl NetworkGraph {
 
             // Node labels
             if self.config.show_labels
-                && let Some(label) = &node.label {
-                    svg.push_str(&format!(
+                && let Some(label) = &node.label
+            {
+                svg.push_str(&format!(
                         "    <text x=\"{}\" y=\"{}\" text-anchor=\"middle\" font-size=\"8\" fill=\"#333\">{}</text>\n",
                         node.position.x,
                         node.position.y + self.config.node_radius + 10.0,
                         label
                     ));
-                }
+            }
         }
         svg.push_str("  </g>\n");
 
         // Layer labels
         if self.config.show_labels {
-            svg.push_str(r##"  <g font-family="Arial" font-size="14" font-weight="bold" fill="#333">"##);
+            svg.push_str(
+                r##"  <g font-family="Arial" font-size="14" font-weight="bold" fill="#333">"##,
+            );
             svg.push('\n');
 
             for layer in &self.layers {
                 if !layer.node_ids.is_empty()
-                    && let Some(first_node) = self.nodes.get(&layer.node_ids[0]) {
-                        svg.push_str(&format!(
-                            r#"    <text x="10" y="{}">{} ({})</text>"#,
-                            first_node.position.y - 15.0,
-                            layer.name,
-                            layer.size
-                        ));
-                        svg.push('\n');
-                    }
+                    && let Some(first_node) = self.nodes.get(&layer.node_ids[0])
+                {
+                    svg.push_str(&format!(
+                        r#"    <text x="10" y="{}">{} ({})</text>"#,
+                        first_node.position.y - 15.0,
+                        layer.name,
+                        layer.size
+                    ));
+                    svg.push('\n');
+                }
             }
 
             svg.push_str("  </g>\n");
@@ -682,8 +695,7 @@ mod tests {
 
     #[test]
     fn test_hierarchical_positioning() {
-        let mut graph = NetworkGraph::new()
-            .with_positioning(NodePositioning::Hierarchical);
+        let mut graph = NetworkGraph::new().with_positioning(NodePositioning::Hierarchical);
 
         let layer1 = graph.add_layer("input", 5);
         let layer2 = graph.add_layer("hidden", 3);
@@ -706,8 +718,7 @@ mod tests {
 
     #[test]
     fn test_edge_thickness() {
-        let graph = NetworkGraph::new()
-            .with_edge_style(EdgeStyle::WeightBased);
+        let graph = NetworkGraph::new().with_edge_style(EdgeStyle::WeightBased);
 
         let thickness1 = graph.edge_thickness(0.5);
         let thickness2 = graph.edge_thickness(1.0);
@@ -717,8 +728,7 @@ mod tests {
 
     #[test]
     fn test_edge_color() {
-        let graph = NetworkGraph::new()
-            .with_edge_style(EdgeStyle::ColorCoded);
+        let graph = NetworkGraph::new().with_edge_style(EdgeStyle::ColorCoded);
 
         let color_pos = graph.edge_color(0.5);
         let color_neg = graph.edge_color(-0.5);
@@ -755,8 +765,7 @@ mod tests {
 
     #[test]
     fn test_circular_positioning() {
-        let mut graph = NetworkGraph::new()
-            .with_positioning(NodePositioning::Circular);
+        let mut graph = NetworkGraph::new().with_positioning(NodePositioning::Circular);
 
         graph.add_layer("layer1", 8);
 
@@ -777,8 +786,7 @@ mod tests {
 
     #[test]
     fn test_grid_positioning() {
-        let mut graph = NetworkGraph::new()
-            .with_positioning(NodePositioning::Grid);
+        let mut graph = NetworkGraph::new().with_positioning(NodePositioning::Grid);
 
         graph.add_layer("layer1", 9); // 3x3 grid
 

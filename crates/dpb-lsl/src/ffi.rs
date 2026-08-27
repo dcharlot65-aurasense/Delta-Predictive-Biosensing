@@ -241,7 +241,11 @@ unsafe extern "C" {
     pub fn lsl_close_stream(inlet: lsl_inlet);
 
     /// Get the time correction offset.
-    pub fn lsl_time_correction(inlet: lsl_inlet, timeout: c_double, errcode: *mut c_int) -> c_double;
+    pub fn lsl_time_correction(
+        inlet: lsl_inlet,
+        timeout: c_double,
+        errcode: *mut c_int,
+    ) -> c_double;
 
     /// Set post-processing options.
     pub fn lsl_set_postprocessing(inlet: lsl_inlet, processing_flags: c_int) -> c_int;
@@ -441,14 +445,14 @@ pub fn to_c_string(s: &str) -> std::ffi::CString {
 ///
 /// # Safety
 /// The pointer must be a valid C string pointer.
-pub unsafe fn from_c_string(ptr: *const c_char) -> String { unsafe {
-    if ptr.is_null() {
-        return String::new();
+pub unsafe fn from_c_string(ptr: *const c_char) -> String {
+    unsafe {
+        if ptr.is_null() {
+            return String::new();
+        }
+        std::ffi::CStr::from_ptr(ptr).to_string_lossy().into_owned()
     }
-    std::ffi::CStr::from_ptr(ptr)
-        .to_string_lossy()
-        .into_owned()
-}}
+}
 
 /// Convert channel format enum to liblsl constant.
 pub fn format_to_lsl(format: super::ChannelFormat) -> c_int {
@@ -487,9 +491,15 @@ pub fn check_error(code: c_int) -> super::Result<()> {
             operation: "unknown".to_string(),
             timeout_sec: 0.0,
         }),
-        lsl_error_code::LSL_LOST_ERROR => Err(LslError::ConnectionLost("Stream connection lost".to_string())),
-        lsl_error_code::LSL_ARGUMENT_ERROR => Err(LslError::Configuration("Invalid argument".to_string())),
-        lsl_error_code::LSL_INTERNAL_ERROR => Err(LslError::Internal("Internal LSL error".to_string())),
+        lsl_error_code::LSL_LOST_ERROR => Err(LslError::ConnectionLost(
+            "Stream connection lost".to_string(),
+        )),
+        lsl_error_code::LSL_ARGUMENT_ERROR => {
+            Err(LslError::Configuration("Invalid argument".to_string()))
+        }
+        lsl_error_code::LSL_INTERNAL_ERROR => {
+            Err(LslError::Internal("Internal LSL error".to_string()))
+        }
         _ => Err(LslError::Internal(format!("Unknown error code: {}", code))),
     }
 }
@@ -502,12 +512,27 @@ mod tests {
     fn test_format_conversion() {
         use super::super::ChannelFormat;
 
-        assert_eq!(format_to_lsl(ChannelFormat::Float32), lsl_channel_format::CF_FLOAT32);
-        assert_eq!(format_to_lsl(ChannelFormat::Float64), lsl_channel_format::CF_DOUBLE64);
-        assert_eq!(format_to_lsl(ChannelFormat::Int32), lsl_channel_format::CF_INT32);
+        assert_eq!(
+            format_to_lsl(ChannelFormat::Float32),
+            lsl_channel_format::CF_FLOAT32
+        );
+        assert_eq!(
+            format_to_lsl(ChannelFormat::Float64),
+            lsl_channel_format::CF_DOUBLE64
+        );
+        assert_eq!(
+            format_to_lsl(ChannelFormat::Int32),
+            lsl_channel_format::CF_INT32
+        );
 
-        assert_eq!(format_from_lsl(lsl_channel_format::CF_FLOAT32), ChannelFormat::Float32);
-        assert_eq!(format_from_lsl(lsl_channel_format::CF_DOUBLE64), ChannelFormat::Float64);
+        assert_eq!(
+            format_from_lsl(lsl_channel_format::CF_FLOAT32),
+            ChannelFormat::Float32
+        );
+        assert_eq!(
+            format_from_lsl(lsl_channel_format::CF_DOUBLE64),
+            ChannelFormat::Float64
+        );
         assert_eq!(format_from_lsl(99), ChannelFormat::Undefined);
     }
 

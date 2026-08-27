@@ -9,10 +9,7 @@
 
 use dpb_core::SignalBuffer;
 use dpb_encoders::prelude::*;
-use dpb_snn::{
-    RecurrentSNN, SpikeTensor, GaitScoreDecoder,
-    NeuronModel, NeuronParams, SNNConfig,
-};
+use dpb_snn::{GaitScoreDecoder, NeuronModel, NeuronParams, RecurrentSNN, SNNConfig, SpikeTensor};
 // `forward` and `decode` are trait methods.
 use dpb_snn::architectures::SNNArchitecture;
 use dpb_snn::decoders::Decoder;
@@ -27,14 +24,15 @@ fn test_gait_pipeline_end_to_end() {
     let params = GaitCycleParams {
         duration: 10.0,
         frame_rate: 30.0,
-        cadence: 110.0,      // normal gait
+        cadence: 110.0, // normal gait
         stride_length: 1.4,
         step_width: 0.15,
         height: 1.75,
     };
 
     let generator = GaitCycleGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate gait data");
 
     // Verify gait phases are generated
@@ -53,11 +51,15 @@ fn test_gait_pipeline_end_to_end() {
 
     // Step 2: Extract ankle trajectories for encoding
     // Right ankle is keypoint 28, left ankle is 27
-    let right_ankle_y: Vec<f32> = generated.signal.iter()
+    let right_ankle_y: Vec<f32> = generated
+        .signal
+        .iter()
         .map(|frame| frame[28][1] as f32)
         .collect();
 
-    let left_ankle_y: Vec<f32> = generated.signal.iter()
+    let left_ankle_y: Vec<f32> = generated
+        .signal
+        .iter()
         .map(|frame| frame[27][1] as f32)
         .collect();
 
@@ -72,9 +74,11 @@ fn test_gait_pipeline_end_to_end() {
         ..DerivativeConfig::default()
     };
 
-    let right_spikes = encoder.encode(&right_signal, &encoder_config)
+    let right_spikes = encoder
+        .encode(&right_signal, &encoder_config)
         .expect("Failed to encode right ankle");
-    let left_spikes = encoder.encode(&left_signal, &encoder_config)
+    let left_spikes = encoder
+        .encode(&left_signal, &encoder_config)
         .expect("Failed to encode left ankle");
 
     // Step 4: Verify encoding produced spikes
@@ -99,14 +103,18 @@ fn test_gait_pipeline_end_to_end() {
     for event in &right_spikes {
         let timestep = ((event.timestamp * 100.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = event.channel as usize % (num_channels / 2);
-        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
+        spike_tensor
+            .set_spike(0, timestep, channel, event.magnitude)
+            .ok();
     }
 
     // Map left ankle spikes to second half of channels
     for event in &left_spikes {
         let timestep = ((event.timestamp * 100.0).min((num_timesteps - 1) as f64)) as usize;
         let channel = (num_channels / 2) + (event.channel as usize % (num_channels / 2));
-        spike_tensor.set_spike(0, timestep, channel, event.magnitude).ok();
+        spike_tensor
+            .set_spike(0, timestep, channel, event.magnitude)
+            .ok();
     }
 
     // Step 6: Create and run recurrent SNN
@@ -118,12 +126,14 @@ fn test_gait_pipeline_end_to_end() {
     };
 
     let mut snn = RecurrentSNN::new(num_channels, vec![32], 4, snn_config.clone()).expect("SNN");
-    let output_spikes = snn.forward(&spike_tensor)
+    let output_spikes = snn
+        .forward(&spike_tensor)
         .expect("Failed to run SNN forward pass");
 
     // Step 7: Decode output to gait score
     let decoder = GaitScoreDecoder::new(1);
-    let gait_score = decoder.decode(&output_spikes)
+    let gait_score = decoder
+        .decode(&output_spikes)
         .expect("Failed to decode gait score");
 
     // Step 8: Validate output shape
@@ -161,11 +171,7 @@ fn test_gait_pipeline_end_to_end() {
 #[test]
 fn test_gait_pipeline_cadence_variations() {
     // Test pipeline with different cadences (slow, normal, fast)
-    let cadences = vec![
-        (90.0, "slow"),
-        (110.0, "normal"),
-        (130.0, "fast"),
-    ];
+    let cadences = vec![(90.0, "slow"), (110.0, "normal"), (130.0, "fast")];
 
     for (cadence, label) in cadences {
         let params = GaitCycleParams {
@@ -178,7 +184,8 @@ fn test_gait_pipeline_cadence_variations() {
         };
 
         let generator = GaitCycleGenerator;
-        let generated = generator.generate(&params, TEST_SEED)
+        let generated = generator
+            .generate(&params, TEST_SEED)
             .expect("Failed to generate gait");
 
         let expected_steps = (cadence * params.duration / 60.0) as usize;
@@ -211,16 +218,19 @@ fn test_gait_stance_swing_ratio() {
     };
 
     let generator = GaitCycleGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate gait");
 
     let gait_phases = &generated.ground_truth.gait_phases;
 
-    let stance_count = gait_phases.iter()
+    let stance_count = gait_phases
+        .iter()
         .filter(|p| p.phase_name == "stance")
         .count();
 
-    let swing_count = gait_phases.iter()
+    let swing_count = gait_phases
+        .iter()
         .filter(|p| p.phase_name == "swing")
         .count();
 
@@ -228,12 +238,7 @@ fn test_gait_stance_swing_ratio() {
     let stance_ratio = stance_count as f64 / total as f64;
 
     // Normal gait should be ~60% stance, 40% swing
-    assert_in_range(
-        stance_ratio,
-        0.55,
-        0.65,
-        "Stance phase ratio"
-    );
+    assert_in_range(stance_ratio, 0.55, 0.65, "Stance phase ratio");
 
     println!(
         "Gait phase distribution: {:.1}% stance, {:.1}% swing",
@@ -255,7 +260,8 @@ fn test_gait_joint_angle_ranges() {
     };
 
     let generator = GaitCycleGenerator;
-    let generated = generator.generate(&params, TEST_SEED)
+    let generated = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate gait");
 
     let joint_angles = &generated.ground_truth.joint_angles;
@@ -265,12 +271,13 @@ fn test_gait_joint_angle_ranges() {
         for &angle in knee_angles.iter() {
             assert_in_range(
                 angle,
-                -5.0,  // slight hyperextension ok
-                70.0,  // max flexion in swing
-                "Knee flexion angle"
+                -5.0, // slight hyperextension ok
+                70.0, // max flexion in swing
+                "Knee flexion angle",
             );
         }
-        println!("Knee flexion range: {:.1} to {:.1} degrees",
+        println!(
+            "Knee flexion range: {:.1} to {:.1} degrees",
             knee_angles.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
             knee_angles.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b))
         );
@@ -279,14 +286,10 @@ fn test_gait_joint_angle_ranges() {
     // Check hip flexion (should be -20 to +30 degrees)
     if let Some(hip_angles) = joint_angles.get("hip_flexion") {
         for &angle in hip_angles.iter() {
-            assert_in_range(
-                angle,
-                -25.0,
-                35.0,
-                "Hip flexion angle"
-            );
+            assert_in_range(angle, -25.0, 35.0, "Hip flexion angle");
         }
-        println!("Hip flexion range: {:.1} to {:.1} degrees",
+        println!(
+            "Hip flexion range: {:.1} to {:.1} degrees",
             hip_angles.iter().fold(f64::INFINITY, |a, &b| a.min(b)),
             hip_angles.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b))
         );
@@ -307,12 +310,18 @@ fn test_gait_reproducibility() {
 
     let generator = GaitCycleGenerator;
 
-    let gen1 = generator.generate(&params, TEST_SEED)
+    let gen1 = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate (run 1)");
-    let gen2 = generator.generate(&params, TEST_SEED)
+    let gen2 = generator
+        .generate(&params, TEST_SEED)
         .expect("Failed to generate (run 2)");
 
-    assert_eq!(gen1.signal.len(), gen2.signal.len(), "Frame count should match");
+    assert_eq!(
+        gen1.signal.len(),
+        gen2.signal.len(),
+        "Frame count should match"
+    );
     assert_eq!(
         gen1.ground_truth.gait_phases.len(),
         gen2.ground_truth.gait_phases.len(),
@@ -325,7 +334,7 @@ fn test_gait_reproducibility() {
             assert_approx_eq(
                 gen1.signal[0][kp][coord],
                 gen2.signal[0][kp][coord],
-                &format!("Frame 0, keypoint {}, coord {}", kp, coord)
+                &format!("Frame 0, keypoint {}, coord {}", kp, coord),
             );
         }
     }

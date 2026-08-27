@@ -155,8 +155,7 @@ pub struct TremorFrequencyEncoder;
 impl TremorFrequencyEncoder {
     /// Creates a new [`TremorFrequencyEncoder`].
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn estimate_frequency(&self, window: &[f32], sample_rate: f64) -> f32 {

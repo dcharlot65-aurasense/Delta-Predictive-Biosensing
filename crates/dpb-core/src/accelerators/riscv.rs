@@ -34,8 +34,8 @@ use super::{
     Accelerator, AcceleratorBuffer, AcceleratorCapabilities, AcceleratorError,
     AcceleratorOperation, AcceleratorType, OperationType,
 };
-use std::sync::{atomic::AtomicU64, Mutex};
 use std::collections::HashMap;
+use std::sync::{Mutex, atomic::AtomicU64};
 
 /// RISC-V target architecture.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -64,10 +64,7 @@ impl RiscVArch {
     pub fn has_atomics(&self) -> bool {
         matches!(
             self,
-            RiscVArch::Rv32ima
-                | RiscVArch::Rv32imac
-                | RiscVArch::Rv32imafc
-                | RiscVArch::Rv64gc
+            RiscVArch::Rv32ima | RiscVArch::Rv32imac | RiscVArch::Rv32imafc | RiscVArch::Rv64gc
         )
     }
 
@@ -115,8 +112,8 @@ impl Default for RiscVConfig {
     fn default() -> Self {
         Self {
             arch: RiscVArch::Rv32imac,
-            clock_hz: 160_000_000, // 160 MHz
-            sram_bytes: 320 * 1024, // 320 KB
+            clock_hz: 160_000_000,        // 160 MHz
+            sram_bytes: 320 * 1024,       // 320 KB
             flash_bytes: 4 * 1024 * 1024, // 4 MB
             use_dma: true,
             use_fixed_point: false,
@@ -241,9 +238,7 @@ impl<const FRAC_BITS: u32> FixedPoint<FRAC_BITS> {
     /// Multiply two fixed-point numbers.
     pub fn mul(self, other: Self) -> Self {
         let result = (self.raw as i64 * other.raw as i64) >> FRAC_BITS;
-        Self {
-            raw: result as i32,
-        }
+        Self { raw: result as i32 }
     }
 
     /// Compare with threshold.
@@ -355,23 +350,30 @@ impl RiscVHal {
     /// Encode signal using fixed-point level crossing.
     pub fn encode_level_crossing_fixed(
         &self,
-        signal: &[i16],  // Q15 format
+        signal: &[i16], // Q15 format
         num_channels: usize,
         threshold: i16,
     ) -> Vec<SpikeEvent> {
         let mut spikes = Vec::new();
-        let mut state = self.level_crossing_state.lock().expect("accelerator mutex poisoned");
+        let mut state = self
+            .level_crossing_state
+            .lock()
+            .expect("accelerator mutex poisoned");
 
         // Initialize state if needed
         if state.len() != num_channels {
             *state = vec![Q16::from_f32(0.0); num_channels];
         }
 
-        let threshold_q = Q16 { raw: (threshold as i32) << 1 };
+        let threshold_q = Q16 {
+            raw: (threshold as i32) << 1,
+        };
 
         for (sample_idx, chunk) in signal.chunks(num_channels).enumerate() {
             for (ch, &value) in chunk.iter().enumerate() {
-                let current = Q16 { raw: (value as i32) << 1 };
+                let current = Q16 {
+                    raw: (value as i32) << 1,
+                };
                 let prev = state[ch];
 
                 // Detect crossing
@@ -411,11 +413,15 @@ impl RiscVHal {
             *state = vec![Q16::from_f32(0.0); num_channels];
         }
 
-        let threshold_q = Q16 { raw: (delta_threshold as i32) << 1 };
+        let threshold_q = Q16 {
+            raw: (delta_threshold as i32) << 1,
+        };
 
         for (sample_idx, chunk) in signal.chunks(num_channels).enumerate() {
             for (ch, &value) in chunk.iter().enumerate() {
-                let current = Q16 { raw: (value as i32) << 1 };
+                let current = Q16 {
+                    raw: (value as i32) << 1,
+                };
                 let reference = state[ch];
                 let delta = current.sub(reference);
 
@@ -442,7 +448,10 @@ impl RiscVHal {
 
     /// Configure spike interrupt.
     pub fn configure_interrupt(&self, config: SpikeInterruptConfig) {
-        let mut current = self.interrupt_config.lock().expect("accelerator mutex poisoned");
+        let mut current = self
+            .interrupt_config
+            .lock()
+            .expect("accelerator mutex poisoned");
         *current = config;
     }
 
@@ -506,7 +515,9 @@ impl Accelerator for RiscVHal {
             });
         }
 
-        let id = self.next_buffer_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let id = self
+            .next_buffer_id
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         let mut buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         buffers.insert(id, vec![0u8; size_bytes]);
@@ -514,22 +525,30 @@ impl Accelerator for RiscVHal {
         Ok(AcceleratorBuffer::new(id, size_bytes, AcceleratorType::Cpu))
     }
 
-    fn copy_to_device(&self, buffer: &mut AcceleratorBuffer, data: &[f32]) -> Result<(), AcceleratorError> {
+    fn copy_to_device(
+        &self,
+        buffer: &mut AcceleratorBuffer,
+        data: &[f32],
+    ) -> Result<(), AcceleratorError> {
         let mut buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         if let Some(buf) = buffers.get_mut(&buffer.id) {
             // Convert f32 to bytes
-            let bytes: Vec<u8> = data.iter()
-                .flat_map(|&f| f.to_le_bytes())
-                .collect();
+            let bytes: Vec<u8> = data.iter().flat_map(|&f| f.to_le_bytes()).collect();
             let len = bytes.len().min(buf.len());
             buf[..len].copy_from_slice(&bytes[..len]);
             Ok(())
         } else {
-            Err(AcceleratorError::InvalidOperation("Buffer not found".to_string()))
+            Err(AcceleratorError::InvalidOperation(
+                "Buffer not found".to_string(),
+            ))
         }
     }
 
-    fn copy_from_device(&self, buffer: &AcceleratorBuffer, data: &mut [f32]) -> Result<(), AcceleratorError> {
+    fn copy_from_device(
+        &self,
+        buffer: &AcceleratorBuffer,
+        data: &mut [f32],
+    ) -> Result<(), AcceleratorError> {
         let buffers = self.buffers.lock().expect("accelerator mutex poisoned");
         if let Some(buf) = buffers.get(&buffer.id) {
             // Convert bytes to f32
@@ -543,7 +562,9 @@ impl Accelerator for RiscVHal {
             }
             Ok(())
         } else {
-            Err(AcceleratorError::InvalidOperation("Buffer not found".to_string()))
+            Err(AcceleratorError::InvalidOperation(
+                "Buffer not found".to_string(),
+            ))
         }
     }
 
@@ -557,9 +578,10 @@ impl Accelerator for RiscVHal {
                 tracing::debug!("Execute delta modulation on RISC-V");
                 Ok(())
             }
-            _ => Err(AcceleratorError::Unsupported(
-                format!("Operation {:?} not supported on RISC-V embedded", operation.op_type)
-            ))
+            _ => Err(AcceleratorError::Unsupported(format!(
+                "Operation {:?} not supported on RISC-V embedded",
+                operation.op_type
+            ))),
         }
     }
 

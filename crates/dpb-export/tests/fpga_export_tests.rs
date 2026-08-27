@@ -5,7 +5,6 @@
 
 #[cfg(test)]
 mod fpga_export_tests {
-    
 
     /// FPGA target platforms.
     #[derive(Debug, Clone, Copy, PartialEq)]
@@ -20,8 +19,8 @@ mod fpga_export_tests {
     #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
     enum FpgaDataType {
         Float32,
-        FixedQ16,  // Q16.16 fixed-point
-        FixedQ8,   // Q8.8 fixed-point
+        FixedQ16, // Q16.16 fixed-point
+        FixedQ8,  // Q8.8 fixed-point
         Int32,
         Int16,
     }
@@ -138,10 +137,7 @@ mod fpga_export_tests {
                 data_type
             ));
             code.push_str(&format!("    {} threshold,\n", data_type));
-            code.push_str(&format!(
-                "    {} prev[NUM_CHANNELS],\n",
-                data_type
-            ));
+            code.push_str(&format!("    {} prev[NUM_CHANNELS],\n", data_type));
             code.push_str("    int8_t spikes[NUM_CHANNELS]\n) {\n");
 
             // Add HLS pragmas
@@ -351,7 +347,10 @@ mod fpga_export_tests {
                     )
                 }
                 FpgaTarget::IntelHls => {
-                    format!("set_time_unit ns\nset_global_assignment -name CLOCK_PERIOD {:.3}\n", period_ns)
+                    format!(
+                        "set_time_unit ns\nset_global_assignment -name CLOCK_PERIOD {:.3}\n",
+                        period_ns
+                    )
                 }
                 FpgaTarget::GenericHls => {
                     format!("// Clock period: {:.3} ns ({} MHz)\n", period_ns, clock_mhz)
@@ -378,14 +377,8 @@ mod fpga_export_tests {
             tb.push_str("#include <stdlib.h>\n\n");
 
             tb.push_str("int main() {\n");
-            tb.push_str(&format!(
-                "    {} input[NUM_CHANNELS];\n",
-                data_type
-            ));
-            tb.push_str(&format!(
-                "    {} prev[NUM_CHANNELS] = {{0}};\n",
-                data_type
-            ));
+            tb.push_str(&format!("    {} input[NUM_CHANNELS];\n", data_type));
+            tb.push_str(&format!("    {} prev[NUM_CHANNELS] = {{0}};\n", data_type));
             tb.push_str("    int8_t spikes[NUM_CHANNELS];\n\n");
 
             tb.push_str("    // Test pattern\n");
@@ -431,9 +424,9 @@ mod fpga_export_tests {
                     "#pragma unroll".to_string(),
                     format!("hls_register {} {}[{}]", "int", var_name, array_size),
                 ],
-                FpgaTarget::GenericHls => vec![
-                    format!("// Optimize: unroll loop for {}", var_name),
-                ],
+                FpgaTarget::GenericHls => {
+                    vec![format!("// Optimize: unroll loop for {}", var_name)]
+                }
             }
         }
 

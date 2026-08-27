@@ -2,16 +2,18 @@
 //!
 //! Exports SNN models to TensorFlow Lite format with quantization support.
 
-use super::super::config::{LayerConfig, ExportMetadata};
+use super::super::config::{ExportMetadata, LayerConfig};
 use super::super::weights::ModelWeights;
 use super::flatbuffer::{FlatBufferBuilder, SubgraphBuilder};
-use super::metadata::{TFLiteMetadata, TensorMetadata, ContentType};
-use super::operators::{TFLiteOperator, OperatorRegistry, OperatorType, BuiltinOperator, OperatorOptions};
-use super::quantization::{QuantizationConfig, PostTrainingQuantizer};
-use super::tensors::{TFLiteTensor, TensorType, TensorShape};
+use super::metadata::{ContentType, TFLiteMetadata, TensorMetadata};
+use super::operators::{
+    BuiltinOperator, OperatorOptions, OperatorRegistry, OperatorType, TFLiteOperator,
+};
+use super::quantization::{PostTrainingQuantizer, QuantizationConfig};
+use super::tensors::{TFLiteTensor, TensorShape, TensorType};
 use super::validation::{TFLiteValidator, ValidationResult};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// TensorFlow Lite export configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -99,8 +101,7 @@ pub struct TFLiteExportResult {
 impl TFLiteExportResult {
     /// Save model to file
     pub fn save_to_file(&self, path: &str) -> Result<(), String> {
-        std::fs::write(path, &self.model_bytes)
-            .map_err(|e| format!("Failed to write file: {}", e))
+        std::fs::write(path, &self.model_bytes).map_err(|e| format!("Failed to write file: {}", e))
     }
 
     /// Get model size in bytes
@@ -157,23 +158,33 @@ impl TFLiteExporter {
 
         // Add input tensor
         let input_tensor = TFLiteTensor::new(
-            self.config.input_names.first().unwrap_or(&"input".to_string()).clone(),
+            self.config
+                .input_names
+                .first()
+                .unwrap_or(&"input".to_string())
+                .clone(),
             TensorShape::from_usize(input_shape.to_vec()),
             TensorType::Float32,
         );
         subgraph_builder.add_tensor(input_tensor);
 
         // Convert layers to TFLite operators
-        let mut prev_output = self.config.input_names.first().unwrap_or(&"input".to_string()).clone();
+        let mut prev_output = self
+            .config
+            .input_names
+            .first()
+            .unwrap_or(&"input".to_string())
+            .clone();
 
-        for (i, (layer_config, layer_weights)) in layer_configs.iter()
-            .zip(weights.layers.iter())
-            .enumerate()
+        for (i, (layer_config, layer_weights)) in
+            layer_configs.iter().zip(weights.layers.iter()).enumerate()
         {
             let layer_name = format!("layer_{}", i);
 
             // Get operator type from registry
-            let op_type = self.config.operator_registry
+            let op_type = self
+                .config
+                .operator_registry
                 .get_operator(&layer_config.layer_type.to_string())
                 .cloned()
                 .unwrap_or(OperatorType::Builtin(BuiltinOperator::FullyConnected));
@@ -182,12 +193,18 @@ impl TFLiteExporter {
             let _weight_buffer_idx = if let Some(ref quantizer) = quantizer {
                 // Quantize weights
                 let (quantized_weights, quant_params) = quantizer.quantize_weights(
-                    &layer_weights.weights.iter().map(|&w| w as f32).collect::<Vec<_>>(),
+                    &layer_weights
+                        .weights
+                        .iter()
+                        .map(|&w| w as f32)
+                        .collect::<Vec<_>>(),
                     &layer_weights.shape,
                 )?;
 
                 // Add quantized weights to buffer
-                let buffer_idx = fb_builder.buffer_manager().add_i8_buffer(&quantized_weights);
+                let buffer_idx = fb_builder
+                    .buffer_manager()
+                    .add_i8_buffer(&quantized_weights);
 
                 // Create weight tensor with quantization
                 let weight_tensor = TFLiteTensor::new(
@@ -202,7 +219,8 @@ impl TFLiteExporter {
                 buffer_idx
             } else {
                 // Add float weights to buffer
-                let float_weights: Vec<f32> = layer_weights.weights.iter().map(|&w| w as f32).collect();
+                let float_weights: Vec<f32> =
+                    layer_weights.weights.iter().map(|&w| w as f32).collect();
                 let buffer_idx = fb_builder.buffer_manager().add_f32_buffer(&float_weights);
 
                 // Create weight tensor
@@ -222,9 +240,7 @@ impl TFLiteExporter {
                 let bias_buffer_idx = if quantizer.is_some() {
                     // For quantized models, bias is typically Int32
                     let bias_i32: Vec<i32> = bias.iter().map(|&b| (b * 1000.0) as i32).collect();
-                    let bytes: Vec<u8> = bias_i32.iter()
-                        .flat_map(|&i| i.to_le_bytes())
-                        .collect();
+                    let bytes: Vec<u8> = bias_i32.iter().flat_map(|&i| i.to_le_bytes()).collect();
                     fb_builder.buffer_manager().add_buffer(bytes)
                 } else {
                     let bias_f32: Vec<f32> = bias.iter().map(|&b| b as f32).collect();
@@ -234,7 +250,11 @@ impl TFLiteExporter {
                 let bias_tensor = TFLiteTensor::new(
                     format!("{}_bias", layer_name),
                     TensorShape::from_usize(vec![bias.len()]),
-                    if quantizer.is_some() { TensorType::Int32 } else { TensorType::Float32 },
+                    if quantizer.is_some() {
+                        TensorType::Int32
+                    } else {
+                        TensorType::Float32
+                    },
                 )
                 .with_buffer(bias_buffer_idx);
 
@@ -243,7 +263,11 @@ impl TFLiteExporter {
 
             // Create output tensor
             let output_name = if i == layer_configs.len() - 1 {
-                self.config.output_names.first().unwrap_or(&"output".to_string()).clone()
+                self.config
+                    .output_names
+                    .first()
+                    .unwrap_or(&"output".to_string())
+                    .clone()
             } else {
                 format!("{}_output", layer_name)
             };
@@ -257,20 +281,21 @@ impl TFLiteExporter {
 
             // Create operator
             let input_idx = subgraph_builder.get_tensor_index(&prev_output).unwrap();
-            let weight_idx = subgraph_builder.get_tensor_index(&format!("{}_weight", layer_name)).unwrap();
+            let weight_idx = subgraph_builder
+                .get_tensor_index(&format!("{}_weight", layer_name))
+                .unwrap();
             let output_idx = subgraph_builder.get_tensor_index(&output_name).unwrap();
 
             let mut operator_inputs = vec![input_idx, weight_idx];
             if layer_weights.bias.is_some() {
-                let bias_idx = subgraph_builder.get_tensor_index(&format!("{}_bias", layer_name)).unwrap();
+                let bias_idx = subgraph_builder
+                    .get_tensor_index(&format!("{}_bias", layer_name))
+                    .unwrap();
                 operator_inputs.push(bias_idx);
             }
 
-            let operator = TFLiteOperator::new(
-                op_type.clone(),
-                operator_inputs,
-                vec![output_idx],
-            ).with_options(OperatorOptions::None);
+            let operator = TFLiteOperator::new(op_type.clone(), operator_inputs, vec![output_idx])
+                .with_options(OperatorOptions::None);
 
             subgraph_builder.add_operator(operator);
 
@@ -326,7 +351,10 @@ impl TFLiteExporter {
 
         // Create export metadata
         let export_metadata = ExportMetadata::new(&self.config.model_name, "tflite")
-            .with_shapes(input_shape.to_vec(), vec![layer_configs.last().map(|l| l.output_size).unwrap_or(0)])
+            .with_shapes(
+                input_shape.to_vec(),
+                vec![layer_configs.last().map(|l| l.output_size).unwrap_or(0)],
+            )
             .with_total_params(weights.total_params())
             .with_quantization(self.config.quantization.is_some());
 
@@ -342,14 +370,21 @@ impl TFLiteExporter {
     fn create_metadata(&self, input_shape: &[usize], weights: &ModelWeights) -> TFLiteMetadata {
         let mut metadata = TFLiteMetadata::new(
             self.config.model_name.clone(),
-            format!("SNN model exported to TFLite: {}", weights.metadata.model_name),
+            format!(
+                "SNN model exported to TFLite: {}",
+                weights.metadata.model_name
+            ),
         )
         .with_version("1.0.0".to_string())
         .with_author("dpb-snn framework".to_string());
 
         // Add input metadata
         let input_meta = TensorMetadata::new(
-            self.config.input_names.first().unwrap_or(&"input".to_string()).clone(),
+            self.config
+                .input_names
+                .first()
+                .unwrap_or(&"input".to_string())
+                .clone(),
             ContentType::FeatureVector,
         )
         .with_description(format!("Input tensor of shape {:?}", input_shape));
@@ -358,7 +393,11 @@ impl TFLiteExporter {
 
         // Add output metadata
         let output_meta = TensorMetadata::new(
-            self.config.output_names.first().unwrap_or(&"output".to_string()).clone(),
+            self.config
+                .output_names
+                .first()
+                .unwrap_or(&"output".to_string())
+                .clone(),
             ContentType::FeatureVector,
         )
         .with_description("Model output".to_string());
@@ -412,7 +451,8 @@ mod tests {
             "Linear".to_string(),
             vec![1.0, 2.0, 3.0, 4.0],
             vec![2, 2],
-        ).with_bias(vec![0.1, 0.2]);
+        )
+        .with_bias(vec![0.1, 0.2]);
 
         weights.add_layer(layer);
         weights.update_checksum();
@@ -421,14 +461,12 @@ mod tests {
     }
 
     fn create_test_layers() -> Vec<LayerConfig> {
-        vec![
-            LayerConfig::new(
-                "layer1".to_string(),
-                LayerType::SpikingLinear,
-                128,
-                64,
-            ),
-        ]
+        vec![LayerConfig::new(
+            "layer1".to_string(),
+            LayerType::SpikingLinear,
+            128,
+            64,
+        )]
     }
 
     #[test]
@@ -458,8 +496,7 @@ mod tests {
     #[test]
     fn test_tflite_config_with_quantization() {
         let quant = QuantizationConfig::int8();
-        let config = TFLiteConfig::new("test".to_string())
-            .with_quantization(quant);
+        let config = TFLiteConfig::new("test".to_string()).with_quantization(quant);
 
         assert!(config.quantization.is_some());
     }
@@ -508,8 +545,7 @@ mod tests {
     #[test]
     fn test_tflite_export_with_quantization() {
         let quant = QuantizationConfig::int8();
-        let config = TFLiteConfig::new("test_model".to_string())
-            .with_quantization(quant);
+        let config = TFLiteConfig::new("test_model".to_string()).with_quantization(quant);
         let exporter = TFLiteExporter::new(config);
 
         let weights = create_test_weights();
@@ -525,8 +561,7 @@ mod tests {
 
     #[test]
     fn test_tflite_export_without_validation() {
-        let config = TFLiteConfig::new("test_model".to_string())
-            .without_validation();
+        let config = TFLiteConfig::new("test_model".to_string()).without_validation();
         let exporter = TFLiteExporter::new(config);
 
         let weights = create_test_weights();
@@ -549,7 +584,9 @@ mod tests {
         let layers = create_test_layers();
         let input_shape = vec![128];
 
-        let result = exporter.export_model(&weights, &layers, &input_shape).unwrap();
+        let result = exporter
+            .export_model(&weights, &layers, &input_shape)
+            .unwrap();
 
         assert!(result.size_bytes() > 0);
         assert!(result.size_mb() > 0.0);

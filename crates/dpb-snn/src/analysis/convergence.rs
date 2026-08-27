@@ -48,7 +48,8 @@ impl ConvergenceAnalyzer for LossPlateauDetector {
 
         if self.loss_history.len() == self.window_size {
             let mean: f64 = self.loss_history.iter().sum::<f64>() / self.window_size as f64;
-            let variance: f64 = self.loss_history
+            let variance: f64 = self
+                .loss_history
                 .iter()
                 .map(|&x| (x - mean).powi(2))
                 .sum::<f64>()
@@ -85,7 +86,8 @@ impl ConvergenceAnalyzer for LossPlateauDetector {
 
         if self.loss_history.len() == self.window_size {
             let mean: f64 = self.loss_history.iter().sum::<f64>() / self.window_size as f64;
-            let variance: f64 = self.loss_history
+            let variance: f64 = self
+                .loss_history
                 .iter()
                 .map(|&x| (x - mean).powi(2))
                 .sum::<f64>()
@@ -96,7 +98,9 @@ impl ConvergenceAnalyzer for LossPlateauDetector {
         report.add_metric("plateau_count", self.plateau_count as f64);
 
         if self.converged {
-            report.add_recommendation("Training has plateaued. Consider stopping or adjusting hyperparameters.");
+            report.add_recommendation(
+                "Training has plateaued. Consider stopping or adjusting hyperparameters.",
+            );
         }
 
         report
@@ -156,7 +160,8 @@ impl ConvergenceAnalyzer for AccuracyPlateauDetector {
 
         if self.accuracy_history.len() == self.window_size {
             let mean: f64 = self.accuracy_history.iter().sum::<f64>() / self.window_size as f64;
-            let variance: f64 = self.accuracy_history
+            let variance: f64 = self
+                .accuracy_history
                 .iter()
                 .map(|&x| (x - mean).powi(2))
                 .sum::<f64>()
@@ -193,7 +198,8 @@ impl ConvergenceAnalyzer for AccuracyPlateauDetector {
 
         if self.accuracy_history.len() == self.window_size {
             let mean: f64 = self.accuracy_history.iter().sum::<f64>() / self.window_size as f64;
-            let variance: f64 = self.accuracy_history
+            let variance: f64 = self
+                .accuracy_history
                 .iter()
                 .map(|&x| (x - mean).powi(2))
                 .sum::<f64>()
@@ -202,7 +208,8 @@ impl ConvergenceAnalyzer for AccuracyPlateauDetector {
         }
 
         if self.converged {
-            report.add_recommendation("Accuracy has plateaued. Model may have reached its capacity.");
+            report
+                .add_recommendation("Accuracy has plateaued. Model may have reached its capacity.");
         }
 
         report
@@ -373,7 +380,9 @@ impl ConvergenceAnalyzer for ConvergenceRateAnalyzer {
         }
 
         if self.convergence_rate < 1e-6 {
-            report.add_recommendation("Convergence rate is very slow. Consider increasing learning rate.");
+            report.add_recommendation(
+                "Convergence rate is very slow. Consider increasing learning rate.",
+            );
         } else if self.convergence_rate > 0.1 {
             report.add_recommendation("Convergence rate is fast. Training is progressing well.");
         }
@@ -471,7 +480,9 @@ impl ConvergenceAnalyzer for OscillationDetector {
         report.add_metric("oscillation_count", self.oscillation_count as f64);
 
         if self.detected {
-            report.add_recommendation("Training is oscillating. Consider reducing learning rate or adjusting optimizer.");
+            report.add_recommendation(
+                "Training is oscillating. Consider reducing learning rate or adjusting optimizer.",
+            );
         }
 
         report
@@ -530,10 +541,11 @@ impl ConvergenceAnalyzer for DivergenceDetector {
 
             // Check if loss has increased beyond threshold or is NaN/infinite
             if (last.is_nan() || last.is_infinite() || (last / first > self.divergence_threshold))
-                && !self.detected {
-                    self.detected = true;
-                    self.detection_epoch = Some(epoch);
-                }
+                && !self.detected
+            {
+                self.detected = true;
+                self.detection_epoch = Some(epoch);
+            }
         }
     }
 
@@ -557,7 +569,9 @@ impl ConvergenceAnalyzer for DivergenceDetector {
         }
 
         if self.detected {
-            report.add_recommendation("Training is diverging! Reduce learning rate significantly or restart training.");
+            report.add_recommendation(
+                "Training is diverging! Reduce learning rate significantly or restart training.",
+            );
         }
 
         report

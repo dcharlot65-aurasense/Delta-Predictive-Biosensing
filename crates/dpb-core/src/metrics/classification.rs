@@ -33,7 +33,9 @@ impl MetricTrait for Accuracy {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
         if predictions.is_empty() {
             return Ok(0.0);
@@ -103,7 +105,9 @@ impl MetricTrait for Precision {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
 
         let mut tp = 0.0;
@@ -184,7 +188,9 @@ impl MetricTrait for Recall {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
 
         let mut tp = 0.0;
@@ -318,7 +324,9 @@ impl AucRoc {
         }
 
         // Create pairs and sort by prediction (descending)
-        let mut pairs: Vec<(f32, f32)> = predictions.iter().zip(targets.iter())
+        let mut pairs: Vec<(f32, f32)> = predictions
+            .iter()
+            .zip(targets.iter())
             .map(|(&p, &t)| (p, t))
             .collect();
         pairs.sort_by(|a, b| b.0.total_cmp(&a.0));
@@ -363,7 +371,9 @@ impl MetricTrait for AucRoc {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
         Ok(Self::compute_auc(predictions, targets))
     }
@@ -405,7 +415,9 @@ impl AucPr {
         }
 
         // Create pairs and sort by prediction (descending)
-        let mut pairs: Vec<(f32, f32)> = predictions.iter().zip(targets.iter())
+        let mut pairs: Vec<(f32, f32)> = predictions
+            .iter()
+            .zip(targets.iter())
             .map(|(&p, &t)| (p, t))
             .collect();
         pairs.sort_by(|a, b| b.0.total_cmp(&a.0));
@@ -453,7 +465,9 @@ impl MetricTrait for AucPr {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
         Ok(Self::compute_auc(predictions, targets))
     }
@@ -518,7 +532,9 @@ impl MetricTrait for MatthewsCorrelation {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
 
         let mut tp = 0.0;
@@ -599,8 +615,8 @@ impl CohenKappa {
             return 0.0;
         }
 
-        let po = (tp + tn) / n;  // Observed agreement
-        let pe = ((tp + fp) * (tp + fn_) + (tn + fn_) * (tn + fp)) / (n * n);  // Expected agreement
+        let po = (tp + tn) / n; // Observed agreement
+        let pe = ((tp + fp) * (tp + fn_) + (tn + fn_) * (tn + fp)) / (n * n); // Expected agreement
 
         if pe == 1.0 {
             0.0
@@ -623,7 +639,9 @@ impl MetricTrait for CohenKappa {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
 
         let mut tp = 0.0;
@@ -712,7 +730,9 @@ impl MetricTrait for BalancedAccuracy {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
 
         let mut tp = 0.0;
@@ -811,7 +831,9 @@ impl MetricTrait for Specificity {
 
     fn compute(&self, predictions: &[f32], targets: &[f32]) -> Result<f64> {
         if predictions.len() != targets.len() {
-            return Err(DpbError::Other("Predictions and targets must have the same length".to_string()));
+            return Err(DpbError::Other(
+                "Predictions and targets must have the same length".to_string(),
+            ));
         }
 
         let mut tn = 0.0;
@@ -920,7 +942,7 @@ mod tests {
         // AUC = (0 + 0) / (2 * 2) = 0
         // We need to invert: if all positives ranked higher, count total negatives
         // Expected AUC = 1.0 for perfect ranking
-        assert!((0.0..=1.0).contains(&score));  // Valid AUC range
+        assert!((0.0..=1.0).contains(&score)); // Valid AUC range
 
         auc.update(&preds, &targets);
         assert!(auc.result() >= 0.0 && auc.result() <= 1.0);
@@ -933,7 +955,7 @@ mod tests {
         let targets = vec![1.0, 0.0, 1.0, 0.0];
 
         let score = mcc.compute(&preds, &targets).unwrap();
-        assert_eq!(score, 1.0);  // Perfect correlation
+        assert_eq!(score, 1.0); // Perfect correlation
     }
 
     #[test]
@@ -943,6 +965,6 @@ mod tests {
         let targets = vec![1.0, 0.0, 0.0, 1.0];
 
         let score = bal_acc.compute(&preds, &targets).unwrap();
-        assert_eq!(score, 0.5);  // Perfectly balanced errors
+        assert_eq!(score, 0.5); // Perfectly balanced errors
     }
 }

@@ -64,9 +64,9 @@ impl Default for DiffusionConfig {
         Self {
             model_id: "Lightricks/LTX-Video".to_string(),
             output_dir: PathBuf::from("output/video"),
-            resolution: (704, 480),  // Lower default for faster generation
+            resolution: (704, 480), // Lower default for faster generation
             fps: 24,
-            num_frames: 49,  // ~2 seconds at 24fps
+            num_frames: 49, // ~2 seconds at 24fps
             num_inference_steps: 30,
             guidance_scale: 7.5,
             device: 0,
@@ -123,8 +123,9 @@ impl BiomechanicalPrompts {
         VideoPrompt::text(
             "A person walking naturally in a clinical room, side view, \
              full body visible, neutral lighting, white background, \
-             medical examination setting, smooth continuous motion"
-        ).with_negative("blurry, distorted, multiple people, partial body")
+             medical examination setting, smooth continuous motion",
+        )
+        .with_negative("blurry, distorted, multiple people, partial body")
     }
 
     /// Parkinsonian gait prompt
@@ -132,8 +133,9 @@ impl BiomechanicalPrompts {
         VideoPrompt::text(
             "An elderly person walking with shuffling gait, reduced arm swing, \
              slightly stooped posture, clinical room, side view, full body visible, \
-             slow careful steps, medical examination"
-        ).with_negative("running, jumping, blurry, distorted")
+             slow careful steps, medical examination",
+        )
+        .with_negative("running, jumping, blurry, distorted")
     }
 
     /// Hand tremor prompt
@@ -141,8 +143,9 @@ impl BiomechanicalPrompts {
         VideoPrompt::text(
             "Close-up of a hand with visible tremor shaking, \
              fingers extended, medical examination, neutral background, \
-             clear focus on hand movement, clinical lighting"
-        ).with_negative("blurry, multiple hands, face")
+             clear focus on hand movement, clinical lighting",
+        )
+        .with_negative("blurry, multiple hands, face")
     }
 
     /// Finger tapping task
@@ -150,8 +153,9 @@ impl BiomechanicalPrompts {
         VideoPrompt::text(
             "Close-up of hand performing finger tapping task, \
              index finger repeatedly touching thumb, clinical setting, \
-             clear view of finger movement, medical examination"
-        ).with_negative("blurry, face, full body")
+             clear view of finger movement, medical examination",
+        )
+        .with_negative("blurry, face, full body")
     }
 
     /// Standing balance/postural
@@ -159,8 +163,9 @@ impl BiomechanicalPrompts {
         VideoPrompt::text(
             "Person standing still maintaining balance, front view, \
              full body visible, clinical room, subtle body sway, \
-             medical examination, neutral expression"
-        ).with_negative("walking, sitting, multiple people")
+             medical examination, neutral expression",
+        )
+        .with_negative("walking, sitting, multiple people")
     }
 }
 
@@ -199,11 +204,10 @@ impl LTXVideoGenerator {
             }
         }
 
-        let python_path = which::which("python3")
-            .map_err(|_| MediaError::ToolNotFound {
-                tool: "python3".to_string(),
-                install_url: "https://www.python.org/downloads/".to_string(),
-            })?;
+        let python_path = which::which("python3").map_err(|_| MediaError::ToolNotFound {
+            tool: "python3".to_string(),
+            install_url: "https://www.python.org/downloads/".to_string(),
+        })?;
 
         std::fs::create_dir_all(&config.output_dir)?;
 
@@ -216,7 +220,10 @@ impl LTXVideoGenerator {
     /// Check if LTX-Video dependencies are available
     pub fn is_available() -> bool {
         Command::new("python3")
-            .args(["-c", "import diffusers; from diffusers import DiffusionPipeline"])
+            .args([
+                "-c",
+                "import diffusers; from diffusers import DiffusionPipeline",
+            ])
             .output()
             .map(|o| o.status.success())
             .unwrap_or(false)
@@ -243,17 +250,22 @@ impl LTXVideoGenerator {
 
     /// Generate text-to-video script
     fn generate_t2v_script(&self, prompt: &VideoPrompt, output_path: &Path) -> Result<String> {
-        let negative = prompt.negative_prompt
+        let negative = prompt
+            .negative_prompt
             .as_deref()
             .unwrap_or("low quality, blurry, distorted");
 
         let seed_code = if let Some(seed) = self.config.seed {
-            format!("generator = torch.Generator(device=device).manual_seed({})", seed)
+            format!(
+                "generator = torch.Generator(device=device).manual_seed({})",
+                seed
+            )
         } else {
             "import random; seed = random.randint(0, 2**32-1); generator = torch.Generator(device=device).manual_seed(seed)".to_string()
         };
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import torch
 from diffusers import LTXPipeline
 from diffusers.utils import export_to_video
@@ -333,11 +345,12 @@ print('RESULT_JSON:' + json.dumps(result))
 
     /// Generate image-to-video script
     fn generate_i2v_script(&self, prompt: &VideoPrompt, output_path: &Path) -> Result<String> {
-        let reference_image = prompt.reference_image
-            .as_ref()
-            .ok_or_else(|| MediaError::InvalidConfig("Reference image required for I2V".to_string()))?;
+        let reference_image = prompt.reference_image.as_ref().ok_or_else(|| {
+            MediaError::InvalidConfig("Reference image required for I2V".to_string())
+        })?;
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import torch
 from diffusers import LTXImageToVideoPipeline
 from diffusers.utils import export_to_video, load_image
@@ -414,7 +427,8 @@ print('RESULT_JSON:' + json.dumps(result))
 
         // Parse result from stdout
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result_line = stdout.lines()
+        let result_line = stdout
+            .lines()
             .find(|l| l.starts_with("RESULT_JSON:"))
             .ok_or_else(|| MediaError::SerializationError("No result found".to_string()))?;
 
@@ -514,8 +528,7 @@ mod tests {
 
     #[test]
     fn test_prompt_builder() {
-        let prompt = VideoPrompt::text("test")
-            .with_negative("bad quality");
+        let prompt = VideoPrompt::text("test").with_negative("bad quality");
         assert_eq!(prompt.prompt, "test");
         assert_eq!(prompt.negative_prompt, Some("bad quality".to_string()));
     }

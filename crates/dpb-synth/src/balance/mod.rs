@@ -14,16 +14,14 @@ pub mod perturbation;
 pub mod sensory;
 
 pub use cop::{
-    CopGenerator, CopConfig, CopOutput, CopGroundTruth,
-    StanceCondition, PathologicalBalance, CopMetrics,
-    SwaySummary,
+    CopConfig, CopGenerator, CopGroundTruth, CopMetrics, CopOutput, PathologicalBalance,
+    StanceCondition, SwaySummary,
 };
 pub use perturbation::{
-    PerturbationGenerator, PerturbationConfig, PerturbationOutput,
-    PerturbationGroundTruth, PerturbationType, PerturbationDirection,
-    RecoveryStrategy,
+    PerturbationConfig, PerturbationDirection, PerturbationGenerator, PerturbationGroundTruth,
+    PerturbationOutput, PerturbationType, RecoveryStrategy,
 };
 pub use sensory::{
-    SensoryManipulationGenerator, SensoryConfig, SensoryOutput,
-    SensoryCondition, SensoryGroundTruth,
+    SensoryCondition, SensoryConfig, SensoryGroundTruth, SensoryManipulationGenerator,
+    SensoryOutput,
 };

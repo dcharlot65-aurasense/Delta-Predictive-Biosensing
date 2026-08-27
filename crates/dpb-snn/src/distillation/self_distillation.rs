@@ -42,12 +42,12 @@ impl SelfDistillationConfig {
     pub fn validate(&self) -> SNNResult<()> {
         if self.temperature <= 0.0 {
             return Err(SNNError::InvalidConfig(
-                "Temperature must be positive".to_string()
+                "Temperature must be positive".to_string(),
             ));
         }
         if (self.soft_weight + self.hard_weight - 1.0).abs() > 1e-5 {
             return Err(SNNError::InvalidConfig(
-                "Soft and hard weights should sum to 1.0".to_string()
+                "Soft and hard weights should sum to 1.0".to_string(),
             ));
         }
         Ok(())
@@ -139,11 +139,7 @@ impl SelfDistillation {
     }
 
     /// Compute hard target loss
-    fn compute_hard_loss(
-        &self,
-        output: &Array2<f32>,
-        labels: &Array1<usize>,
-    ) -> SNNResult<f32> {
+    fn compute_hard_loss(&self, output: &Array2<f32>, labels: &Array1<usize>) -> SNNResult<f32> {
         let batch_size = output.shape()[0];
         let mut loss = 0.0;
         let eps = 1e-8;
@@ -155,9 +151,10 @@ impl SelfDistillation {
 
             let label = labels[b];
             if label >= output.shape()[1] {
-                return Err(SNNError::InvalidConfig(
-                    format!("Label {} out of range", label)
-                ));
+                return Err(SNNError::InvalidConfig(format!(
+                    "Label {} out of range",
+                    label
+                )));
             }
 
             // Softmax
@@ -342,25 +339,25 @@ impl ProgressiveConfig {
     pub fn validate(&self) -> SNNResult<()> {
         if self.num_stages == 0 {
             return Err(SNNError::InvalidConfig(
-                "Number of stages must be positive".to_string()
+                "Number of stages must be positive".to_string(),
             ));
         }
 
         if self.stage_compression.len() != self.num_stages {
             return Err(SNNError::InvalidConfig(
-                "Stage compression ratios must match number of stages".to_string()
+                "Stage compression ratios must match number of stages".to_string(),
             ));
         }
 
         if self.epochs_per_stage.len() != self.num_stages {
             return Err(SNNError::InvalidConfig(
-                "Epochs per stage must match number of stages".to_string()
+                "Epochs per stage must match number of stages".to_string(),
             ));
         }
 
         if self.temperature_schedule.len() != self.num_stages {
             return Err(SNNError::InvalidConfig(
-                "Temperature schedule must match number of stages".to_string()
+                "Temperature schedule must match number of stages".to_string(),
             ));
         }
 
@@ -368,7 +365,7 @@ impl ProgressiveConfig {
         for i in 1..self.stage_compression.len() {
             if self.stage_compression[i] >= self.stage_compression[i - 1] {
                 return Err(SNNError::InvalidConfig(
-                    "Stage compression ratios should be decreasing".to_string()
+                    "Stage compression ratios should be decreasing".to_string(),
                 ));
             }
         }
@@ -525,10 +522,7 @@ mod tests {
         let config = SelfDistillationConfig::default();
         let distiller = SelfDistillation::new(config).unwrap();
 
-        let output = Array2::from_shape_vec((2, 3), vec![
-            2.0, 1.0, 0.5,
-            0.5, 2.0, 1.0,
-        ]).unwrap();
+        let output = Array2::from_shape_vec((2, 3), vec![2.0, 1.0, 0.5, 0.5, 2.0, 1.0]).unwrap();
 
         let labels = Array1::from_vec(vec![0, 1]);
 
@@ -542,19 +536,15 @@ mod tests {
         let config = SelfDistillationConfig::default();
         let distiller = SelfDistillation::new(config).unwrap();
 
-        let current = Array2::from_shape_vec((2, 3), vec![
-            2.0, 1.0, 0.5,
-            0.5, 2.0, 1.0,
-        ]).unwrap();
+        let current = Array2::from_shape_vec((2, 3), vec![2.0, 1.0, 0.5, 0.5, 2.0, 1.0]).unwrap();
 
-        let previous = Array2::from_shape_vec((2, 3), vec![
-            1.8, 1.2, 0.6,
-            0.6, 1.9, 1.1,
-        ]).unwrap();
+        let previous = Array2::from_shape_vec((2, 3), vec![1.8, 1.2, 0.6, 0.6, 1.9, 1.1]).unwrap();
 
         let labels = Array1::from_vec(vec![0, 1]);
 
-        let loss = distiller.compute_loss(&current, &labels, &[previous]).unwrap();
+        let loss = distiller
+            .compute_loss(&current, &labels, &[previous])
+            .unwrap();
         assert!(loss > 0.0);
         assert!(loss.is_finite());
     }
@@ -656,10 +646,7 @@ mod tests {
         let config = SelfDistillationConfig::default();
         let distiller = SelfDistillation::new(config).unwrap();
 
-        let logits = Array2::from_shape_vec((2, 3), vec![
-            1.0, 2.0, 3.0,
-            4.0, 5.0, 6.0,
-        ]).unwrap();
+        let logits = Array2::from_shape_vec((2, 3), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).unwrap();
 
         let softmax = distiller.temperature_softmax(&logits);
 

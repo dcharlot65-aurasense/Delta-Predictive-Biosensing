@@ -173,8 +173,8 @@ impl Medication {
         }
 
         // Bateman equation
-        let level = (ka / (ka - ke)) *
-            ((-ke * hours_since_dose).exp() - (-ka * hours_since_dose).exp());
+        let level =
+            (ka / (ka - ke)) * ((-ke * hours_since_dose).exp() - (-ka * hours_since_dose).exp());
 
         (level * self.current_level).clamp(0.0, 1.0)
     }
@@ -216,141 +216,140 @@ impl MedicationEffect {
         let level = medication.current_level;
         let dose_factor = medication.relative_dose();
 
-        let (hr, hrv, tremor, tone, rt, alert, alpha, beta, pupil) =
-            match medication.class {
-                MedicationClass::Dopaminergic => (
-                    0.0,           // minimal HR effect
-                    1.0,           // HRV unchanged
-                    0.6,           // reduce tremor 40%
-                    0.9,           // slight tone reduction
-                    0.85,          // improve RT 15%
-                    1.1,           // slight alertness increase
-                    1.0,           // alpha unchanged
-                    1.1,           // slight beta increase
-                    1.0,           // pupil unchanged
-                ),
-                MedicationClass::BetaBlocker => (
-                    -15.0 * dose_factor, // reduce HR
-                    1.2,                  // increase HRV
-                    0.5,                  // reduce tremor 50%
-                    1.0,                  // tone unchanged
-                    1.1,                  // slight RT slowing
-                    0.95,                 // slight sedation
-                    1.0,                  // alpha unchanged
-                    0.9,                  // reduce beta
-                    1.0,                  // pupil unchanged
-                ),
-                MedicationClass::Anticholinergic => (
-                    10.0 * dose_factor, // increase HR
-                    0.7,                 // reduce HRV
-                    0.8,                 // slight tremor reduction
-                    0.85,                // reduce tone
-                    1.2,                 // slow RT (cognitive)
-                    0.9,                 // reduce alertness
-                    0.9,                 // reduce alpha
-                    0.95,                // slight beta reduction
-                    1.3,                 // mydriasis
-                ),
-                MedicationClass::Benzodiazepine => (
-                    -5.0 * dose_factor, // slight HR reduction
-                    1.1,                 // slight HRV increase
-                    0.7,                 // reduce tremor
-                    0.6,                 // reduce tone
-                    1.4,                 // slow RT significantly
-                    0.6,                 // reduce alertness
-                    0.7,                 // reduce alpha
-                    1.3,                 // increase beta (fast activity)
-                    1.0,                 // pupil unchanged
-                ),
-                MedicationClass::Stimulant => (
-                    15.0 * dose_factor, // increase HR
-                    0.8,                 // reduce HRV
-                    1.2,                 // may increase tremor
-                    1.1,                 // increase tone
-                    0.7,                 // improve RT 30%
-                    1.5,                 // increase alertness
-                    0.8,                 // reduce alpha
-                    1.4,                 // increase beta
-                    1.2,                 // mydriasis
-                ),
-                MedicationClass::MuscleRelaxant => (
-                    0.0,            // HR unchanged
-                    1.0,            // HRV unchanged
-                    0.6,            // reduce tremor
-                    0.5,            // significant tone reduction
-                    1.1,            // slight RT slowing
-                    0.9,            // slight sedation
-                    1.0,            // alpha unchanged
-                    1.0,            // beta unchanged
-                    1.0,            // pupil unchanged
-                ),
-                MedicationClass::Anticonvulsant => (
-                    0.0,            // HR unchanged
-                    1.0,            // HRV unchanged
-                    0.8,            // slight tremor reduction
-                    1.0,            // tone unchanged
-                    1.15,           // slight RT slowing
-                    0.9,            // slight sedation
-                    1.0,            // alpha unchanged
-                    0.85,           // reduce beta (stabilize)
-                    1.0,            // pupil unchanged
-                ),
-                MedicationClass::Opioid => (
-                    -10.0 * dose_factor, // reduce HR
-                    0.8,                  // reduce HRV
-                    1.0,                  // tremor unchanged
-                    0.8,                  // reduce tone
-                    1.5,                  // slow RT significantly
-                    0.5,                  // significant sedation
-                    0.8,                  // reduce alpha
-                    0.9,                  // reduce beta
-                    0.7,                  // miosis
-                ),
-                MedicationClass::SSRI => (
-                    5.0 * dose_factor, // slight HR increase
-                    0.9,                // slight HRV reduction
-                    1.1,                // may increase tremor
-                    1.0,                // tone unchanged
-                    1.0,                // RT unchanged
-                    1.0,                // alertness unchanged
-                    1.0,                // alpha unchanged
-                    1.0,                // beta unchanged
-                    1.1,                // slight mydriasis
-                ),
-                MedicationClass::Antipsychotic => (
-                    0.0,            // HR unchanged
-                    0.9,            // slight HRV reduction
-                    0.7,            // reduce tremor (but may cause EPS)
-                    1.2,            // may increase tone (EPS)
-                    1.2,            // slow RT
-                    0.7,            // sedation
-                    0.9,            // reduce alpha
-                    0.95,           // slight beta reduction
-                    1.0,            // pupil unchanged
-                ),
-                MedicationClass::Alpha2Agonist => (
-                    -10.0 * dose_factor, // reduce HR
-                    1.1,                  // increase HRV
-                    0.8,                  // reduce tremor
-                    0.9,                  // reduce tone
-                    1.1,                  // slight RT slowing
-                    0.8,                  // sedation
-                    1.0,                  // alpha unchanged
-                    0.9,                  // reduce beta
-                    1.0,                  // pupil unchanged
-                ),
-                MedicationClass::CholinesteraseInhibitor => (
-                    -5.0 * dose_factor, // slight HR reduction
-                    1.1,                 // increase HRV
-                    1.1,                 // may increase tremor
-                    1.0,                 // tone unchanged
-                    0.9,                 // improve RT
-                    1.1,                 // improve alertness
-                    1.1,                 // increase alpha
-                    1.0,                 // beta unchanged
-                    0.9,                 // slight miosis
-                ),
-            };
+        let (hr, hrv, tremor, tone, rt, alert, alpha, beta, pupil) = match medication.class {
+            MedicationClass::Dopaminergic => (
+                0.0,  // minimal HR effect
+                1.0,  // HRV unchanged
+                0.6,  // reduce tremor 40%
+                0.9,  // slight tone reduction
+                0.85, // improve RT 15%
+                1.1,  // slight alertness increase
+                1.0,  // alpha unchanged
+                1.1,  // slight beta increase
+                1.0,  // pupil unchanged
+            ),
+            MedicationClass::BetaBlocker => (
+                -15.0 * dose_factor, // reduce HR
+                1.2,                 // increase HRV
+                0.5,                 // reduce tremor 50%
+                1.0,                 // tone unchanged
+                1.1,                 // slight RT slowing
+                0.95,                // slight sedation
+                1.0,                 // alpha unchanged
+                0.9,                 // reduce beta
+                1.0,                 // pupil unchanged
+            ),
+            MedicationClass::Anticholinergic => (
+                10.0 * dose_factor, // increase HR
+                0.7,                // reduce HRV
+                0.8,                // slight tremor reduction
+                0.85,               // reduce tone
+                1.2,                // slow RT (cognitive)
+                0.9,                // reduce alertness
+                0.9,                // reduce alpha
+                0.95,               // slight beta reduction
+                1.3,                // mydriasis
+            ),
+            MedicationClass::Benzodiazepine => (
+                -5.0 * dose_factor, // slight HR reduction
+                1.1,                // slight HRV increase
+                0.7,                // reduce tremor
+                0.6,                // reduce tone
+                1.4,                // slow RT significantly
+                0.6,                // reduce alertness
+                0.7,                // reduce alpha
+                1.3,                // increase beta (fast activity)
+                1.0,                // pupil unchanged
+            ),
+            MedicationClass::Stimulant => (
+                15.0 * dose_factor, // increase HR
+                0.8,                // reduce HRV
+                1.2,                // may increase tremor
+                1.1,                // increase tone
+                0.7,                // improve RT 30%
+                1.5,                // increase alertness
+                0.8,                // reduce alpha
+                1.4,                // increase beta
+                1.2,                // mydriasis
+            ),
+            MedicationClass::MuscleRelaxant => (
+                0.0, // HR unchanged
+                1.0, // HRV unchanged
+                0.6, // reduce tremor
+                0.5, // significant tone reduction
+                1.1, // slight RT slowing
+                0.9, // slight sedation
+                1.0, // alpha unchanged
+                1.0, // beta unchanged
+                1.0, // pupil unchanged
+            ),
+            MedicationClass::Anticonvulsant => (
+                0.0,  // HR unchanged
+                1.0,  // HRV unchanged
+                0.8,  // slight tremor reduction
+                1.0,  // tone unchanged
+                1.15, // slight RT slowing
+                0.9,  // slight sedation
+                1.0,  // alpha unchanged
+                0.85, // reduce beta (stabilize)
+                1.0,  // pupil unchanged
+            ),
+            MedicationClass::Opioid => (
+                -10.0 * dose_factor, // reduce HR
+                0.8,                 // reduce HRV
+                1.0,                 // tremor unchanged
+                0.8,                 // reduce tone
+                1.5,                 // slow RT significantly
+                0.5,                 // significant sedation
+                0.8,                 // reduce alpha
+                0.9,                 // reduce beta
+                0.7,                 // miosis
+            ),
+            MedicationClass::SSRI => (
+                5.0 * dose_factor, // slight HR increase
+                0.9,               // slight HRV reduction
+                1.1,               // may increase tremor
+                1.0,               // tone unchanged
+                1.0,               // RT unchanged
+                1.0,               // alertness unchanged
+                1.0,               // alpha unchanged
+                1.0,               // beta unchanged
+                1.1,               // slight mydriasis
+            ),
+            MedicationClass::Antipsychotic => (
+                0.0,  // HR unchanged
+                0.9,  // slight HRV reduction
+                0.7,  // reduce tremor (but may cause EPS)
+                1.2,  // may increase tone (EPS)
+                1.2,  // slow RT
+                0.7,  // sedation
+                0.9,  // reduce alpha
+                0.95, // slight beta reduction
+                1.0,  // pupil unchanged
+            ),
+            MedicationClass::Alpha2Agonist => (
+                -10.0 * dose_factor, // reduce HR
+                1.1,                 // increase HRV
+                0.8,                 // reduce tremor
+                0.9,                 // reduce tone
+                1.1,                 // slight RT slowing
+                0.8,                 // sedation
+                1.0,                 // alpha unchanged
+                0.9,                 // reduce beta
+                1.0,                 // pupil unchanged
+            ),
+            MedicationClass::CholinesteraseInhibitor => (
+                -5.0 * dose_factor, // slight HR reduction
+                1.1,                // increase HRV
+                1.1,                // may increase tremor
+                1.0,                // tone unchanged
+                0.9,                // improve RT
+                1.1,                // improve alertness
+                1.1,                // increase alpha
+                1.0,                // beta unchanged
+                0.9,                // slight miosis
+            ),
+        };
 
         Self {
             medication,
@@ -393,7 +392,11 @@ impl MedicationEffect {
     pub fn to_eeg_modulation(&self) -> SignalModulation {
         SignalModulation {
             amplitude_factor: (self.eeg_alpha_change + self.eeg_beta_change) / 2.0,
-            frequency_shift: if self.alertness_change < 0.8 { -1.0 } else { 0.0 },
+            frequency_shift: if self.alertness_change < 0.8 {
+                -1.0
+            } else {
+                0.0
+            },
             latency_increase: (self.reaction_time_change - 1.0) * 0.05,
             ..Default::default()
         }
@@ -473,10 +476,7 @@ impl PolypharmacyProfile {
             .collect();
 
         // Calculate net effects (simplified additive model)
-        let net_heart_rate_change = effects
-            .iter()
-            .map(|e| e.heart_rate_change)
-            .sum::<f64>();
+        let net_heart_rate_change = effects.iter().map(|e| e.heart_rate_change).sum::<f64>();
 
         let net_hrv_change = effects
             .iter()
@@ -521,9 +521,7 @@ impl PolypharmacyProfile {
                 let name2 = &effects[j].medication.name;
 
                 // Check for known interaction patterns
-                if class1 == MedicationClass::Benzodiazepine
-                    && class2 == MedicationClass::Opioid
-                {
+                if class1 == MedicationClass::Benzodiazepine && class2 == MedicationClass::Opioid {
                     interactions.push(DrugInteraction {
                         drug1: name1.clone(),
                         drug2: name2.clone(),

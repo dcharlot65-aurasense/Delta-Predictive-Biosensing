@@ -2,8 +2,8 @@
 
 use super::SNNArchitecture;
 use crate::{
-    layers::{SpikingConv2d, SpikingLayer, SpikingLinear, SpikingSumPool2d},
     SNNConfig, SNNResult, SpikeTensor,
+    layers::{SpikingConv2d, SpikingLayer, SpikingLinear, SpikingSumPool2d},
 };
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
@@ -38,11 +38,7 @@ impl ConvolutionalSNN {
     /// width itself -- it depends on the input's spatial extent after two
     /// conv/pool stages. The placeholder below is replaced by
     /// [`ensure_fc_head`](Self::ensure_fc_head) before it is ever used.
-    pub fn new(
-        input_channels: usize,
-        num_classes: usize,
-        config: SNNConfig,
-    ) -> Self {
+    pub fn new(input_channels: usize, num_classes: usize, config: SNNConfig) -> Self {
         // Simple architecture: Conv -> Pool -> Conv -> Pool -> FC -> FC
         let mut conv_layers = Vec::new();
         let mut pool_layers = Vec::new();
@@ -233,8 +229,8 @@ impl SpikingVGG {
     /// Create VGG11-like architecture
     pub fn vgg11(num_classes: usize, config: SNNConfig) -> Self {
         let conv_configs = vec![
-            (3, 64, 1),   // Block 1: 3->64, 1 layer
-            (64, 128, 1), // Block 2: 64->128, 1 layer
+            (3, 64, 1),    // Block 1: 3->64, 1 layer
+            (64, 128, 1),  // Block 2: 64->128, 1 layer
             (128, 256, 2), // Block 3: 128->256, 2 layers
             (256, 512, 2), // Block 4: 256->512, 2 layers
             (512, 512, 2), // Block 5: 512->512, 2 layers
@@ -269,21 +265,21 @@ impl SpikingVGG {
         // Classifier
         let classifier = vec![
             SpikingLinear::new(
-            512, // Flattened feature size
-            256,
-            true,
-            config.neuron_params.clone(),
-            config.dt,
-            false,
-        ),
+                512, // Flattened feature size
+                256,
+                true,
+                config.neuron_params.clone(),
+                config.dt,
+                false,
+            ),
             SpikingLinear::new(
-            256,
-            num_classes,
-            true,
-            config.neuron_params.clone(),
-            config.dt,
-            false,
-        ),
+                256,
+                num_classes,
+                true,
+                config.neuron_params.clone(),
+                config.dt,
+                false,
+            ),
         ];
 
         Self {

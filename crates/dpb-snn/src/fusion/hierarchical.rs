@@ -6,8 +6,8 @@
 //! - High-level: Decision fusion
 use crate::layers::SpikingLayer;
 
-use super::{FusionNetwork, FusionConfig, Modality, concatenate_spikes};
-use crate::{SpikeTensor, SpikingLinear, SNNResult, SNNError, NeuronParams};
+use super::{FusionConfig, FusionNetwork, Modality, concatenate_spikes};
+use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor, SpikingLinear};
 use ndarray::Array3;
 use std::collections::HashMap;
 
@@ -74,7 +74,14 @@ impl HierarchicalFusionSNN {
                 config.hidden_size
             };
 
-            high_level.push(SpikingLinear::new(prev_size, next_size, true, neuron_params.clone(), dt, adaptive));
+            high_level.push(SpikingLinear::new(
+                prev_size,
+                next_size,
+                true,
+                neuron_params.clone(),
+                dt,
+                adaptive,
+            ));
 
             prev_size = next_size;
         }
@@ -124,14 +131,15 @@ impl FusionNetwork for HierarchicalFusionSNN {
                         crate::SpikeRepresentation::Dense(arr) => {
                             (arr.dim().0, arr.dim().1, self.config.hidden_size / 2)
                         }
-                        _ => return Err(SNNError::InvalidConfig("Sparse not supported".to_string())),
+                        _ => {
+                            return Err(SNNError::InvalidConfig(
+                                "Sparse not supported".to_string(),
+                            ));
+                        }
                     },
                     None => return Err(SNNError::InvalidConfig("No inputs".to_string())),
                 };
-                low_features.push(SpikeTensor::from_dense(
-                    Array3::<f32>::zeros(shape),
-                    false,
-                ));
+                low_features.push(SpikeTensor::from_dense(Array3::<f32>::zeros(shape), false));
             }
         }
 
@@ -153,21 +161,24 @@ impl FusionNetwork for HierarchicalFusionSNN {
 
         // Low-level parameters
         for processor in self.low_level.values() {
-            total += processor.parameters().iter()
+            total += processor
+                .parameters()
+                .iter()
                 .map(|p| p.len())
                 .sum::<usize>();
         }
 
         // Mid-level parameters
-        total += self.mid_level.parameters().iter()
+        total += self
+            .mid_level
+            .parameters()
+            .iter()
             .map(|p| p.len())
             .sum::<usize>();
 
         // High-level parameters
         for layer in &self.high_level {
-            total += layer.parameters().iter()
-                .map(|p| p.len())
-                .sum::<usize>();
+            total += layer.parameters().iter().map(|p| p.len()).sum::<usize>();
         }
 
         total
@@ -186,7 +197,7 @@ impl FusionNetwork for HierarchicalFusionSNN {
     }
 
     fn handles_missing_modalities(&self) -> bool {
-        true  // Hierarchical fusion handles missing modalities with zeros
+        true // Hierarchical fusion handles missing modalities with zeros
     }
 }
 

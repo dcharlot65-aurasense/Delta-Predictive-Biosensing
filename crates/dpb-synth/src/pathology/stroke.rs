@@ -74,13 +74,8 @@ impl StrokeLocation {
                 StrokeDeficit::Vertigo,
                 StrokeDeficit::Dysarthria,
             ],
-            StrokeLocation::Lacunar => vec![
-                StrokeDeficit::PureMotor,
-            ],
-            StrokeLocation::Thalamic => vec![
-                StrokeDeficit::SensoryLoss,
-                StrokeDeficit::Pain,
-            ],
+            StrokeLocation::Lacunar => vec![StrokeDeficit::PureMotor],
+            StrokeLocation::Thalamic => vec![StrokeDeficit::SensoryLoss, StrokeDeficit::Pain],
         }
     }
 }
@@ -471,17 +466,17 @@ impl StrokeModel {
         };
 
         // Voice: dysarthria
-        let voice_mod = if self.deficits.contains(&StrokeDeficit::Dysarthria) ||
-                          self.aphasia_type.is_some() {
-            SignalModulation {
-                amplitude_factor: 0.7,
-                variability_factor: 1.5,
-                latency_increase: 0.1,
-                ..Default::default()
-            }
-        } else {
-            SignalModulation::default()
-        };
+        let voice_mod =
+            if self.deficits.contains(&StrokeDeficit::Dysarthria) || self.aphasia_type.is_some() {
+                SignalModulation {
+                    amplitude_factor: 0.7,
+                    variability_factor: 1.5,
+                    latency_increase: 0.1,
+                    ..Default::default()
+                }
+            } else {
+                SignalModulation::default()
+            };
 
         // Eye: gaze preference, saccade abnormalities
         let eye_mod = SignalModulation {
@@ -491,17 +486,27 @@ impl StrokeModel {
         };
 
         // Map deficits to body regions
-        let affected_regions: Vec<BodyRegion> = self.deficits.iter().filter_map(|d| {
-            match d {
-                StrokeDeficit::Hemiparesis | StrokeDeficit::PureMotor => Some(BodyRegion::UpperLimb),
+        let affected_regions: Vec<BodyRegion> = self
+            .deficits
+            .iter()
+            .filter_map(|d| match d {
+                StrokeDeficit::Hemiparesis | StrokeDeficit::PureMotor => {
+                    Some(BodyRegion::UpperLimb)
+                }
                 StrokeDeficit::LegWeakness => Some(BodyRegion::LowerLimb),
-                StrokeDeficit::Aphasia | StrokeDeficit::Dysarthria | StrokeDeficit::Dysphagia => Some(BodyRegion::Bulbar),
-                StrokeDeficit::Neglect | StrokeDeficit::MemoryImpairment | StrokeDeficit::ExecutiveDysfunction => Some(BodyRegion::Cognitive),
-                StrokeDeficit::VisualFieldDefect | StrokeDeficit::SensoryLoss => Some(BodyRegion::Sensory),
+                StrokeDeficit::Aphasia | StrokeDeficit::Dysarthria | StrokeDeficit::Dysphagia => {
+                    Some(BodyRegion::Bulbar)
+                }
+                StrokeDeficit::Neglect
+                | StrokeDeficit::MemoryImpairment
+                | StrokeDeficit::ExecutiveDysfunction => Some(BodyRegion::Cognitive),
+                StrokeDeficit::VisualFieldDefect | StrokeDeficit::SensoryLoss => {
+                    Some(BodyRegion::Sensory)
+                }
                 StrokeDeficit::Ataxia => Some(BodyRegion::Trunk),
                 _ => None,
-            }
-        }).collect();
+            })
+            .collect();
 
         DiseaseSignature {
             disease: "stroke".to_string(),
@@ -540,7 +545,10 @@ mod tests {
 
     #[test]
     fn test_brunnstrom_progression() {
-        assert!(BrunnstromStage::Stage1.voluntary_control() < BrunnstromStage::Stage6.voluntary_control());
+        assert!(
+            BrunnstromStage::Stage1.voluntary_control()
+                < BrunnstromStage::Stage6.voluntary_control()
+        );
         assert!(BrunnstromStage::Stage3.spasticity() > BrunnstromStage::Stage6.spasticity());
     }
 

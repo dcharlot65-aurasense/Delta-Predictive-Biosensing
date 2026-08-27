@@ -3,14 +3,14 @@
 //! Provides export capabilities for BrainScaleS and BrainScaleS-2 analog
 //! neuromorphic hardware using PyHMF framework.
 
-use serde::{Deserialize, Serialize};
-use super::{
-    NeuromorphicExporter, NeuromorphicTarget, NetworkDescription, ExportResult,
-    ExportFile, ExportMetadata, NetworkStats, HardwareUtilization,
-};
 use super::constraints::HardwareConstraints;
-use super::quantization::{WeightQuantizer, QuantizationScheme};
-use crate::{SNNResult, SNNError};
+use super::quantization::{QuantizationScheme, WeightQuantizer};
+use super::{
+    ExportFile, ExportMetadata, ExportResult, HardwareUtilization, NetworkDescription,
+    NetworkStats, NeuromorphicExporter, NeuromorphicTarget,
+};
+use crate::{SNNError, SNNResult};
+use serde::{Deserialize, Serialize};
 
 /// BrainScaleS exporter
 pub struct BrainScaleSExporter {
@@ -92,15 +92,24 @@ impl BrainScaleSExporter {
             match synapse.connector_type.as_str() {
                 "all_to_all" => {
                     code.push_str("    pynn.AllToAllConnector(),\n");
-                    code.push_str(&format!("    synapse_type=pynn.StaticSynapse(weight={}),\n", synapse.weight));
+                    code.push_str(&format!(
+                        "    synapse_type=pynn.StaticSynapse(weight={}),\n",
+                        synapse.weight
+                    ));
                 }
                 "one_to_one" => {
                     code.push_str("    pynn.OneToOneConnector(),\n");
-                    code.push_str(&format!("    synapse_type=pynn.StaticSynapse(weight={}),\n", synapse.weight));
+                    code.push_str(&format!(
+                        "    synapse_type=pynn.StaticSynapse(weight={}),\n",
+                        synapse.weight
+                    ));
                 }
                 _ => {
                     code.push_str("    pynn.AllToAllConnector(),\n");
-                    code.push_str(&format!("    synapse_type=pynn.StaticSynapse(weight={}),\n", synapse.weight));
+                    code.push_str(&format!(
+                        "    synapse_type=pynn.StaticSynapse(weight={}),\n",
+                        synapse.weight
+                    ));
                 }
             }
 
@@ -142,9 +151,18 @@ impl BrainScaleSExporter {
         calib.push_str("    'neurons': {\n");
         for (i, neuron_group) in network.neurons.iter().enumerate() {
             calib.push_str(&format!("        'group_{}': {{\n", i));
-            calib.push_str(&format!("            'threshold_calib': {},\n", neuron_group.threshold_calib));
-            calib.push_str(&format!("            'leak_calib': {},\n", neuron_group.leak_calib));
-            calib.push_str(&format!("            'reset_calib': {},\n", neuron_group.reset_calib));
+            calib.push_str(&format!(
+                "            'threshold_calib': {},\n",
+                neuron_group.threshold_calib
+            ));
+            calib.push_str(&format!(
+                "            'leak_calib': {},\n",
+                neuron_group.leak_calib
+            ));
+            calib.push_str(&format!(
+                "            'reset_calib': {},\n",
+                neuron_group.reset_calib
+            ));
             calib.push_str("        },\n");
         }
         calib.push_str("    },\n");
@@ -153,8 +171,14 @@ impl BrainScaleSExporter {
         calib.push_str("    'synapses': {\n");
         for (i, synapse) in network.synapses.iter().enumerate() {
             calib.push_str(&format!("        'synapse_{}': {{\n", i));
-            calib.push_str(&format!("            'weight_calib': {},\n", synapse.weight_calib));
-            calib.push_str(&format!("            'dac_value': {},\n", synapse.dac_value));
+            calib.push_str(&format!(
+                "            'weight_calib': {},\n",
+                synapse.weight_calib
+            ));
+            calib.push_str(&format!(
+                "            'dac_value': {},\n",
+                synapse.dac_value
+            ));
             calib.push_str("        },\n");
         }
         calib.push_str("    },\n");
@@ -474,7 +498,9 @@ pub struct BrainScaleSNetwork {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::neuromorphic::{Population, Connection, NeuronParameters, NetworkParameters, ConnectionType};
+    use crate::neuromorphic::{
+        Connection, ConnectionType, NetworkParameters, NeuronParameters, Population,
+    };
 
     fn create_test_network() -> NetworkDescription {
         NetworkDescription {

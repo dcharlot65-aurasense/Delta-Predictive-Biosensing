@@ -48,8 +48,8 @@ use std::panic;
 use std::ptr;
 use std::slice;
 
-use dpb_core::{SpikeEvent, SpikeTrain};
 use dpb_core::traits::{EventEncoder, Signal};
+use dpb_core::{SpikeEvent, SpikeTrain};
 use dpb_encoders::base::LevelCrossingConfig;
 
 use types::{DpbEncoder, DpbErrorCode, DpbSpikeTrain, DpbTimeSeries};

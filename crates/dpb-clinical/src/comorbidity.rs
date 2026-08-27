@@ -68,11 +68,7 @@ impl ComorbidityModel {
     }
 
     /// Calculate combined effect of multiple conditions on a measure.
-    pub fn combined_effect(
-        &self,
-        conditions: &[&str],
-        measure: &str,
-    ) -> Result<CombinedEffect> {
+    pub fn combined_effect(&self, conditions: &[&str], measure: &str) -> Result<CombinedEffect> {
         if conditions.is_empty() {
             return Ok(CombinedEffect::none());
         }
@@ -81,9 +77,10 @@ impl ComorbidityModel {
         let mut individual_effects = Vec::new();
         for code in conditions {
             if let Some(cond) = self.conditions.get(*code)
-                && let Some(effect) = cond.effects.get(measure) {
-                    individual_effects.push(*effect);
-                }
+                && let Some(effect) = cond.effects.get(measure)
+            {
+                individual_effects.push(*effect);
+            }
         }
 
         // Start with sum of individual effects (additive model)
@@ -94,9 +91,10 @@ impl ComorbidityModel {
         for i in 0..conditions.len() {
             for j in i + 1..conditions.len() {
                 if let Some(interaction) = self.get_interaction(conditions[i], conditions[j])
-                    && let Some(effect_mod) = interaction.effect_modifiers.get(measure) {
-                        interaction_effect += effect_mod;
-                    }
+                    && let Some(effect_mod) = interaction.effect_modifiers.get(measure)
+                {
+                    interaction_effect += effect_mod;
+                }
             }
         }
 
@@ -104,11 +102,13 @@ impl ComorbidityModel {
         let condition_set: HashSet<&str> = conditions.iter().copied().collect();
         let mut complex_effect = 0.0;
         for complex in &self.complex_interactions {
-            let complex_set: HashSet<&str> = complex.conditions.iter().map(|s| s.as_str()).collect();
+            let complex_set: HashSet<&str> =
+                complex.conditions.iter().map(|s| s.as_str()).collect();
             if complex_set.is_subset(&condition_set)
-                && let Some(effect_mod) = complex.effect_modifiers.get(measure) {
-                    complex_effect += effect_mod;
-                }
+                && let Some(effect_mod) = complex.effect_modifiers.get(measure)
+            {
+                complex_effect += effect_mod;
+            }
         }
 
         let total_effect = additive_effect + interaction_effect + complex_effect;
@@ -162,7 +162,8 @@ impl ComorbidityModel {
         let noise_level = noise_effect.total_effect.abs();
 
         // Apply effects to signal
-        let modified: Vec<f64> = baseline_signal.iter()
+        let modified: Vec<f64> = baseline_signal
+            .iter()
             .map(|&v| {
                 let scaled = v * amplitude_multiplier;
                 // Add simulated noise (deterministic for reproducibility)
@@ -569,7 +570,8 @@ mod tests {
         let model = create_test_model();
 
         let mut profile = ComorbidityProfile::new("P001");
-        profile.add_condition(PatientCondition::new("E11").with_severity(ConditionSeverity::Moderate));
+        profile
+            .add_condition(PatientCondition::new("E11").with_severity(ConditionSeverity::Moderate));
         profile.add_condition(PatientCondition::new("I10"));
 
         assert_eq!(profile.condition_count(), 2);
@@ -585,7 +587,9 @@ mod tests {
         let model = create_test_model();
         let baseline = vec![1.0, 0.5, -0.5, -1.0, 0.0];
 
-        let modified = model.simulate_biosignal_effect(&["E11"], &baseline).unwrap();
+        let modified = model
+            .simulate_biosignal_effect(&["E11"], &baseline)
+            .unwrap();
 
         // Signal should be modified (amplitude reduced by 10%)
         assert_eq!(modified.len(), baseline.len());
@@ -605,11 +609,14 @@ mod tests {
             "E11".to_string(),
             "I10".to_string(),
             "F32".to_string(),
-        ]).with_effect("amplitude", -0.1);
+        ])
+        .with_effect("amplitude", -0.1);
 
         model.add_complex_interaction(complex);
 
-        let effect = model.combined_effect(&["E11", "I10", "F32"], "amplitude").unwrap();
+        let effect = model
+            .combined_effect(&["E11", "I10", "F32"], "amplitude")
+            .unwrap();
 
         // Should include complex interaction effect
         assert!(effect.complex_effect.abs() > 0.0);

@@ -15,7 +15,7 @@
 //! - Python 3.8+
 //! - `pip install pybullet`
 
-use super::{MediaError, Result, MotionTrajectory, GaitGroundTruth};
+use super::{GaitGroundTruth, MediaError, MotionTrajectory, Result};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -199,11 +199,10 @@ impl PyBulletSimulator {
             }
         }
 
-        let python_path = which::which("python3")
-            .map_err(|_| MediaError::ToolNotFound {
-                tool: "python3".to_string(),
-                install_url: "https://www.python.org/downloads/".to_string(),
-            })?;
+        let python_path = which::which("python3").map_err(|_| MediaError::ToolNotFound {
+            tool: "python3".to_string(),
+            install_url: "https://www.python.org/downloads/".to_string(),
+        })?;
 
         std::fs::create_dir_all(&config.output_dir)?;
 
@@ -249,7 +248,8 @@ impl PyBulletSimulator {
     ) -> Result<String> {
         let model_path = model.urdf_path();
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import pybullet as p
 import pybullet_data
 import numpy as np
@@ -419,7 +419,8 @@ p.disconnect()
         let joints_json = serde_json::to_string(&params.affected_joints)
             .map_err(|e| MediaError::SerializationError(e.to_string()))?;
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import pybullet as p
 import pybullet_data
 import numpy as np
@@ -544,7 +545,8 @@ p.disconnect()
 
         // Parse result
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result_line = stdout.lines()
+        let result_line = stdout
+            .lines()
             .find(|l| l.starts_with("RESULT_JSON:"))
             .ok_or_else(|| MediaError::SerializationError("No result found".to_string()))?;
 
@@ -568,9 +570,7 @@ p.disconnect()
                     trajectory.times.push(t);
                 }
                 if let Some(angles) = frame["angles"].as_array() {
-                    let angle_vec: Vec<f64> = angles.iter()
-                        .filter_map(|v| v.as_f64())
-                        .collect();
+                    let angle_vec: Vec<f64> = angles.iter().filter_map(|v| v.as_f64()).collect();
                     trajectory.joint_angles.push(angle_vec);
                     trajectory.joint_velocities.push(Vec::new());
                     trajectory.end_effector_positions.push(Vec::new());
@@ -580,26 +580,27 @@ p.disconnect()
         }
 
         // Parse gait ground truth if available
-        let gait_ground_truth = data["gait_metrics"].as_object().map(|metrics| {
-            GaitGroundTruth {
-                stride_length: metrics.get("stride_length")
+        let gait_ground_truth = data["gait_metrics"]
+            .as_object()
+            .map(|metrics| GaitGroundTruth {
+                stride_length: metrics
+                    .get("stride_length")
                     .and_then(|v| v.as_f64())
                     .unwrap_or(0.0) as f32,
-                cadence: metrics.get("cadence")
+                cadence: metrics
+                    .get("cadence")
                     .and_then(|v| v.as_f64())
                     .unwrap_or(0.0) as f32,
-                speed: metrics.get("speed")
-                    .and_then(|v| v.as_f64())
-                    .unwrap_or(0.0) as f32,
+                speed: metrics.get("speed").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32,
                 double_support_fraction: 0.3,
                 step_width: 0.1,
                 arm_swing_asymmetry: 0.0,
-                festination: metrics.get("festination")
+                festination: metrics
+                    .get("festination")
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false),
                 freezing_episodes: Vec::new(),
-            }
-        });
+            });
 
         // Parse COM trajectory
         let com_trajectory = data["com_trajectory"]
@@ -688,7 +689,7 @@ mod tests {
     #[test]
     fn test_config_default() {
         let config = PyBulletConfig::default();
-        assert!((config.time_step - 1.0/240.0).abs() < 1e-6);
+        assert!((config.time_step - 1.0 / 240.0).abs() < 1e-6);
         assert!(!config.use_gui);
     }
 
@@ -708,7 +709,10 @@ mod tests {
 
     #[test]
     fn test_model_paths() {
-        assert_eq!(HumanoidModel::SimpleHumanoid.urdf_path(), "humanoid/humanoid.urdf");
+        assert_eq!(
+            HumanoidModel::SimpleHumanoid.urdf_path(),
+            "humanoid/humanoid.urdf"
+        );
         assert_eq!(HumanoidModel::GymHumanoid.urdf_path(), "humanoid.xml");
     }
 }

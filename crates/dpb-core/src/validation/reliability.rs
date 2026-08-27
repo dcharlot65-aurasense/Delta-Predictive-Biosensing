@@ -175,9 +175,7 @@ impl TestRetestReliability {
 
         // Calculate subject means
         let subject_means: Vec<f64> = (0..n_subjects)
-            .map(|s| {
-                rater_scores.iter().map(|r| r[s]).sum::<f64>() / n_raters as f64
-            })
+            .map(|s| rater_scores.iter().map(|r| r[s]).sum::<f64>() / n_raters as f64)
             .collect();
 
         // Between-subjects sum of squares
@@ -219,10 +217,13 @@ impl TestRetestReliability {
         let n = items[0].len();
 
         // Calculate variance of each item
-        let item_variances: Vec<f64> = items.iter().map(|item| {
-            let mean = item.iter().sum::<f64>() / n as f64;
-            item.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (n - 1) as f64
-        }).collect();
+        let item_variances: Vec<f64> = items
+            .iter()
+            .map(|item| {
+                let mean = item.iter().sum::<f64>() / n as f64;
+                item.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (n - 1) as f64
+            })
+            .collect();
 
         // Calculate total score variance
         let total_scores: Vec<f64> = (0..n)
@@ -410,9 +411,21 @@ mod tests {
 
     #[test]
     fn test_icc_interpretation() {
-        assert_eq!(TestRetestReliability::interpret_icc(0.3), IccInterpretation::Poor);
-        assert_eq!(TestRetestReliability::interpret_icc(0.6), IccInterpretation::Moderate);
-        assert_eq!(TestRetestReliability::interpret_icc(0.8), IccInterpretation::Good);
-        assert_eq!(TestRetestReliability::interpret_icc(0.95), IccInterpretation::Excellent);
+        assert_eq!(
+            TestRetestReliability::interpret_icc(0.3),
+            IccInterpretation::Poor
+        );
+        assert_eq!(
+            TestRetestReliability::interpret_icc(0.6),
+            IccInterpretation::Moderate
+        );
+        assert_eq!(
+            TestRetestReliability::interpret_icc(0.8),
+            IccInterpretation::Good
+        );
+        assert_eq!(
+            TestRetestReliability::interpret_icc(0.95),
+            IccInterpretation::Excellent
+        );
     }
 }

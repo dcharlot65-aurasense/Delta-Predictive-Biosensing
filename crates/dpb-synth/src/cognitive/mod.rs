@@ -185,9 +185,15 @@ pub struct SequentialEffects {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum CognitivePathology {
     /// ADHD pattern (high variability, lapses)
-    Adhd { variability_increase: f64, lapse_rate: f64 },
+    Adhd {
+        variability_increase: f64,
+        lapse_rate: f64,
+    },
     /// Mild cognitive impairment
-    Mci { slowdown: f64, accuracy_reduction: f64 },
+    Mci {
+        slowdown: f64,
+        accuracy_reduction: f64,
+    },
     /// Traumatic brain injury
     Tbi { severity: f64 },
     /// Depression (psychomotor slowing)
@@ -285,7 +291,11 @@ impl CognitiveGenerator {
     }
 
     /// Generate flanker task
-    pub fn generate_flanker(&mut self, n_trials: usize, congruent_proportion: f64) -> CognitiveOutput {
+    pub fn generate_flanker(
+        &mut self,
+        n_trials: usize,
+        congruent_proportion: f64,
+    ) -> CognitiveOutput {
         let mut trial = Vec::with_capacity(n_trials);
         let mut reaction_time = Vec::with_capacity(n_trials);
         let mut correct = Vec::with_capacity(n_trials);
@@ -362,13 +372,18 @@ impl CognitiveGenerator {
         let mut stimulus = Vec::with_capacity(n_trials);
         let mut response = Vec::with_capacity(n_trials);
 
-        let rt_dist = Normal::new(self.config.mean_rt, self.config.mean_rt * self.config.rt_cv).unwrap();
+        let rt_dist =
+            Normal::new(self.config.mean_rt, self.config.mean_rt * self.config.rt_cv).unwrap();
 
         for i in 0..n_trials {
             trial.push(i);
 
             let is_go = self.rng.random::<f64>() < go_proportion;
-            stimulus.push(if is_go { StimulusType::Target } else { StimulusType::NonTarget });
+            stimulus.push(if is_go {
+                StimulusType::Target
+            } else {
+                StimulusType::NonTarget
+            });
 
             if is_go {
                 // Go trial
@@ -427,7 +442,12 @@ impl CognitiveGenerator {
     }
 
     /// Generate N-back working memory task
-    pub fn generate_nback(&mut self, n_trials: usize, n: usize, target_proportion: f64) -> CognitiveOutput {
+    pub fn generate_nback(
+        &mut self,
+        n_trials: usize,
+        n: usize,
+        target_proportion: f64,
+    ) -> CognitiveOutput {
         let mut trial = Vec::with_capacity(n_trials);
         let mut reaction_time = Vec::with_capacity(n_trials);
         let mut correct = Vec::with_capacity(n_trials);
@@ -445,7 +465,11 @@ impl CognitiveGenerator {
             trial.push(i);
 
             let is_target = self.rng.random::<f64>() < target_proportion;
-            stimulus.push(if is_target { StimulusType::Target } else { StimulusType::NonTarget });
+            stimulus.push(if is_target {
+                StimulusType::Target
+            } else {
+                StimulusType::NonTarget
+            });
 
             if is_target {
                 let hit = self.rng.random::<f64>() < nback_accuracy;
@@ -510,11 +534,17 @@ impl CognitiveGenerator {
         let original_config = self.config.clone();
 
         match pathology {
-            CognitivePathology::Adhd { variability_increase, lapse_rate } => {
+            CognitivePathology::Adhd {
+                variability_increase,
+                lapse_rate,
+            } => {
                 self.config.rt_cv *= 1.0 + variability_increase;
                 self.config.accuracy *= 1.0 - lapse_rate * 0.5;
             }
-            CognitivePathology::Mci { slowdown, accuracy_reduction } => {
+            CognitivePathology::Mci {
+                slowdown,
+                accuracy_reduction,
+            } => {
                 self.config.mean_rt *= 1.0 + slowdown;
                 self.config.accuracy *= 1.0 - accuracy_reduction;
             }
@@ -526,7 +556,10 @@ impl CognitiveGenerator {
             CognitivePathology::Depression { slowdown } => {
                 self.config.mean_rt *= 1.0 + slowdown;
             }
-            CognitivePathology::Parkinsons { slowdown, variability } => {
+            CognitivePathology::Parkinsons {
+                slowdown,
+                variability,
+            } => {
                 self.config.mean_rt *= 1.0 + slowdown;
                 self.config.rt_cv *= 1.0 + variability;
             }
@@ -567,7 +600,8 @@ impl CognitiveGenerator {
         response: &[ResponseType],
     ) -> PerformanceMetrics {
         // Filter valid RTs (exclude timeouts)
-        let valid_rts: Vec<f64> = reaction_time.iter()
+        let valid_rts: Vec<f64> = reaction_time
+            .iter()
             .zip(correct.iter())
             .filter(|(rt, c)| **c && **rt < 2500.0 && **rt > 0.0)
             .map(|(rt, _)| *rt)
@@ -588,9 +622,11 @@ impl CognitiveGenerator {
         };
 
         let sd_rt = if !valid_rts.is_empty() {
-            let variance = valid_rts.iter()
+            let variance = valid_rts
+                .iter()
                 .map(|rt| (rt - mean_rt).powi(2))
-                .sum::<f64>() / valid_rts.len() as f64;
+                .sum::<f64>()
+                / valid_rts.len() as f64;
             variance.sqrt()
         } else {
             0.0
@@ -602,9 +638,18 @@ impl CognitiveGenerator {
 
         // Signal detection
         let hits = response.iter().filter(|&&r| r == ResponseType::Hit).count();
-        let misses = response.iter().filter(|&&r| r == ResponseType::Miss).count();
-        let fas = response.iter().filter(|&&r| r == ResponseType::FalseAlarm).count();
-        let crs = response.iter().filter(|&&r| r == ResponseType::CorrectRejection).count();
+        let misses = response
+            .iter()
+            .filter(|&&r| r == ResponseType::Miss)
+            .count();
+        let fas = response
+            .iter()
+            .filter(|&&r| r == ResponseType::FalseAlarm)
+            .count();
+        let crs = response
+            .iter()
+            .filter(|&&r| r == ResponseType::CorrectRejection)
+            .count();
 
         let hit_rate = if hits + misses > 0 {
             hits as f64 / (hits + misses) as f64
@@ -625,7 +670,8 @@ impl CognitiveGenerator {
         let criterion = -0.5 * (Self::z_score(hr_adj) + Self::z_score(far_adj));
 
         // Congruency effect
-        let congruent_rts: Vec<f64> = reaction_time.iter()
+        let congruent_rts: Vec<f64> = reaction_time
+            .iter()
             .zip(stimulus.iter())
             .zip(correct.iter())
             .filter(|((_, s), c)| **s == StimulusType::Congruent && **c)
@@ -633,7 +679,8 @@ impl CognitiveGenerator {
             .filter(|rt| *rt > 0.0 && *rt < 2500.0)
             .collect();
 
-        let incongruent_rts: Vec<f64> = reaction_time.iter()
+        let incongruent_rts: Vec<f64> = reaction_time
+            .iter()
             .zip(stimulus.iter())
             .zip(correct.iter())
             .filter(|((_, s), c)| **s == StimulusType::Incongruent && **c)
@@ -653,7 +700,8 @@ impl CognitiveGenerator {
         let mut post_error_slowing = 0.0;
         let mut post_error_count = 0;
         for i in 1..correct.len() {
-            if !correct[i - 1] && correct[i] && reaction_time[i] > 0.0 && reaction_time[i] < 2500.0 {
+            if !correct[i - 1] && correct[i] && reaction_time[i] > 0.0 && reaction_time[i] < 2500.0
+            {
                 post_error_slowing += reaction_time[i] - mean_rt;
                 post_error_count += 1;
             }
@@ -681,7 +729,8 @@ impl CognitiveGenerator {
         // Check for post-error slowing
         let mut pes_sum = 0.0;
         let mut pes_count = 0;
-        let valid_rts: Vec<f64> = reaction_time.iter()
+        let valid_rts: Vec<f64> = reaction_time
+            .iter()
             .filter(|&&rt| rt > 0.0 && rt < 2500.0)
             .cloned()
             .collect();
@@ -703,17 +752,21 @@ impl CognitiveGenerator {
         // Simplified fatigue detection
         let n = reaction_time.len();
         let early_mean = if n > 20 {
-            reaction_time[0..20].iter()
+            reaction_time[0..20]
+                .iter()
                 .filter(|&&rt| rt > 0.0 && rt < 2500.0)
-                .sum::<f64>() / 20.0
+                .sum::<f64>()
+                / 20.0
         } else {
             mean_rt
         };
 
         let late_mean = if n > 20 {
-            reaction_time[n - 20..].iter()
+            reaction_time[n - 20..]
+                .iter()
                 .filter(|&&rt| rt > 0.0 && rt < 2500.0)
-                .sum::<f64>() / 20.0
+                .sum::<f64>()
+                / 20.0
         } else {
             mean_rt
         };
@@ -792,8 +845,16 @@ mod tests {
         let output = generator.generate_go_nogo(200, 0.7);
 
         // Should have hits and correct rejections
-        let hits = output.response.iter().filter(|&&r| r == ResponseType::Hit).count();
-        let crs = output.response.iter().filter(|&&r| r == ResponseType::CorrectRejection).count();
+        let hits = output
+            .response
+            .iter()
+            .filter(|&&r| r == ResponseType::Hit)
+            .count();
+        let crs = output
+            .response
+            .iter()
+            .filter(|&&r| r == ResponseType::CorrectRejection)
+            .count();
         assert!(hits > 0);
         assert!(crs > 0);
     }

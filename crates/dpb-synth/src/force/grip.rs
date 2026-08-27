@@ -159,9 +159,8 @@ impl GripGenerator {
         let mut events = Vec::new();
 
         // Effective MVC considering all factors
-        let effective_mvc = self.config.mvc_newtons
-            * self.config.age_factor
-            * self.config.sex_factor;
+        let effective_mvc =
+            self.config.mvc_newtons * self.config.age_factor * self.config.sex_factor;
 
         // Phase timing (as fractions of total duration)
         let ramp_up_end = 0.3;
@@ -256,9 +255,11 @@ impl GripGenerator {
         };
 
         let force_variability = if !hold_forces.is_empty() && mean_sustained > 0.0 {
-            let variance = hold_forces.iter()
+            let variance = hold_forces
+                .iter()
                 .map(|f| (f - mean_sustained).powi(2))
-                .sum::<f64>() / hold_forces.len() as f64;
+                .sum::<f64>()
+                / hold_forces.len() as f64;
             (variance.sqrt() / mean_sustained) * 100.0
         } else {
             0.0
@@ -299,9 +300,8 @@ impl GripGenerator {
         let dt = 1.0 / self.config.sample_rate;
         let n_samples = (duration * self.config.sample_rate) as usize;
 
-        let effective_mvc = self.config.mvc_newtons
-            * self.config.age_factor
-            * self.config.sex_factor;
+        let effective_mvc =
+            self.config.mvc_newtons * self.config.age_factor * self.config.sex_factor;
         let target_force = effective_mvc * target_percent_mvc;
 
         let mut time = Vec::with_capacity(n_samples);
@@ -336,7 +336,8 @@ impl GripGenerator {
             } else {
                 // Sustained with fatigue
                 let fatigue_time = t - ramp_duration;
-                let fatigue_factor = 1.0 - max_fatigue * (1.0 - (-fatigue_time / fatigue_time_constant).exp());
+                let fatigue_factor =
+                    1.0 - max_fatigue * (1.0 - (-fatigue_time / fatigue_time_constant).exp());
                 target_force * fatigue_factor
             };
 
@@ -380,9 +381,11 @@ impl GripGenerator {
         };
 
         let force_variability = if !hold_forces.is_empty() && mean_sustained > 0.0 {
-            let variance = hold_forces.iter()
+            let variance = hold_forces
+                .iter()
                 .map(|f| (f - mean_sustained).powi(2))
-                .sum::<f64>() / hold_forces.len() as f64;
+                .sum::<f64>()
+                / hold_forces.len() as f64;
             (variance.sqrt() / mean_sustained) * 100.0
         } else {
             0.0
@@ -425,9 +428,8 @@ impl GripGenerator {
         let dt = 1.0 / self.config.sample_rate;
         let n_samples = (total_duration * self.config.sample_rate) as usize;
 
-        let effective_mvc = self.config.mvc_newtons
-            * self.config.age_factor
-            * self.config.sex_factor;
+        let effective_mvc =
+            self.config.mvc_newtons * self.config.age_factor * self.config.sex_factor;
         let target_force = effective_mvc * target_percent_mvc;
 
         let mut time = Vec::with_capacity(n_samples);
@@ -458,7 +460,10 @@ impl GripGenerator {
             } else {
                 // Release phase
                 let release_progress = (cycle_phase - 0.5) / 0.5;
-                target_force * (std::f64::consts::PI * (1.0 - release_progress)).sin().max(0.0)
+                target_force
+                    * (std::f64::consts::PI * (1.0 - release_progress))
+                        .sin()
+                        .max(0.0)
             };
 
             let noise: f64 = self.rng.sample(noise_dist);
@@ -492,9 +497,11 @@ impl GripGenerator {
             peak_rfd: force_rate.iter().cloned().fold(0.0_f64, f64::max),
             mean_sustained_force: mean_peak,
             force_variability: if mean_peak > 0.0 {
-                let variance = peak_forces.iter()
+                let variance = peak_forces
+                    .iter()
                     .map(|f| (f - mean_peak).powi(2))
-                    .sum::<f64>() / peak_forces.len() as f64;
+                    .sum::<f64>()
+                    / peak_forces.len() as f64;
                 (variance.sqrt() / mean_peak) * 100.0
             } else {
                 0.0
@@ -546,9 +553,8 @@ impl GripGenerator {
         let dt = 1.0 / self.config.sample_rate;
         let n_samples = (trial_duration * self.config.sample_rate) as usize;
 
-        let effective_mvc = self.config.mvc_newtons
-            * self.config.age_factor
-            * self.config.sex_factor;
+        let effective_mvc =
+            self.config.mvc_newtons * self.config.age_factor * self.config.sex_factor;
 
         let mut time = Vec::with_capacity(n_samples);
         let mut force = Vec::with_capacity(n_samples);
@@ -593,9 +599,7 @@ impl GripGenerator {
 
             // Apply pathological modifications
             base_force = match pathology {
-                PathologicalGrip::Weakness { severity } => {
-                    base_force * (1.0 - severity)
-                }
+                PathologicalGrip::Weakness { severity } => base_force * (1.0 - severity),
                 PathologicalGrip::RapidFatigue { fatigue_rate } => {
                     if phase_fraction >= ramp_up_end && phase_fraction < hold_end {
                         let hold_time = (phase_fraction - ramp_up_end) * trial_duration;
@@ -604,15 +608,23 @@ impl GripGenerator {
                         base_force
                     }
                 }
-                PathologicalGrip::Tremor { frequency, amplitude } => {
-                    let tremor = amplitude * effective_mvc
+                PathologicalGrip::Tremor {
+                    frequency,
+                    amplitude,
+                } => {
+                    let tremor = amplitude
+                        * effective_mvc
                         * (2.0 * std::f64::consts::PI * frequency * t).sin();
                     base_force + tremor
                 }
                 PathologicalGrip::CogwheelRigidity { frequency } => {
                     // Sawtooth-like resistance pattern
                     let phase = (t * frequency) % 1.0;
-                    let cogwheel = if phase < 0.5 { phase * 2.0 } else { 2.0 - phase * 2.0 };
+                    let cogwheel = if phase < 0.5 {
+                        phase * 2.0
+                    } else {
+                        2.0 - phase * 2.0
+                    };
                     base_force * (0.8 + 0.4 * cogwheel)
                 }
                 PathologicalGrip::SlowRelease { time_constant } => {
@@ -639,8 +651,9 @@ impl GripGenerator {
                 }
                 PathologicalGrip::Spasticity { gain } => {
                     // Higher resistance during movement phases
-                    if phase_fraction < ramp_up_end ||
-                       (phase_fraction >= hold_end && phase_fraction < ramp_down_end) {
+                    if phase_fraction < ramp_up_end
+                        || (phase_fraction >= hold_end && phase_fraction < ramp_down_end)
+                    {
                         base_force * (1.0 + gain)
                     } else {
                         base_force
@@ -683,9 +696,11 @@ impl GripGenerator {
         };
 
         let force_variability = if !hold_forces.is_empty() && mean_sustained > 0.0 {
-            let variance = hold_forces.iter()
+            let variance = hold_forces
+                .iter()
                 .map(|f| (f - mean_sustained).powi(2))
-                .sum::<f64>() / hold_forces.len() as f64;
+                .sum::<f64>()
+                / hold_forces.len() as f64;
             (variance.sqrt() / mean_sustained) * 100.0
         } else {
             0.0
@@ -802,10 +817,8 @@ mod tests {
         let mut generator = GripGenerator::new(config);
 
         let normal = generator.generate_mvc_trial(5.0);
-        let weak = generator.generate_pathological(
-            PathologicalGrip::Weakness { severity: 0.5 },
-            5.0,
-        );
+        let weak =
+            generator.generate_pathological(PathologicalGrip::Weakness { severity: 0.5 }, 5.0);
 
         // Weak grip should have lower peak force
         assert!(weak.ground_truth.peak_force < normal.ground_truth.peak_force);

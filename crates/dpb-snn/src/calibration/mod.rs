@@ -155,17 +155,17 @@
 //! - **Decision Making**: When probabilities guide downstream decisions
 //! - **Model Comparison**: Fair comparison of different architectures
 
-pub mod temperature;
 pub mod isotonic;
-pub mod uncertainty;
 pub mod metrics;
+pub mod temperature;
+pub mod uncertainty;
 
-pub use temperature::{TemperatureScaling, PlattScaling};
 pub use isotonic::IsotonicCalibration;
-pub use uncertainty::{
-    UncertaintyEstimator, MCDropout, EnsembleUncertainty, ConfidenceInterval, bootstrap_ci,
-};
 pub use metrics::{
-    expected_calibration_error, maximum_calibration_error, reliability_diagram, brier_score,
-    negative_log_likelihood, ReliabilityBin,
+    ReliabilityBin, brier_score, expected_calibration_error, maximum_calibration_error,
+    negative_log_likelihood, reliability_diagram,
+};
+pub use temperature::{PlattScaling, TemperatureScaling};
+pub use uncertainty::{
+    ConfidenceInterval, EnsembleUncertainty, MCDropout, UncertaintyEstimator, bootstrap_ci,
 };

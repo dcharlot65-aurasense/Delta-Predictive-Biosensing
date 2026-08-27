@@ -71,12 +71,12 @@
 // Note: We use std for now as the runtime requires allocation and platform features
 // A future no_std version could be created for embedded targets
 
-pub mod runtime;
-pub mod model;
-pub mod ffi;
-pub mod optimization;
 pub mod benchmark;
+pub mod ffi;
+pub mod model;
 pub mod npu;
+pub mod optimization;
+pub mod runtime;
 
 #[cfg(target_os = "ios")]
 pub mod ios;
@@ -85,10 +85,10 @@ pub mod ios;
 pub mod android;
 
 // Re-exports for convenience
-pub use runtime::{MobileRuntime, RuntimeConfig, RuntimeError};
-pub use model::{MobileModel, ModelFormat, QuantizationType};
-pub use optimization::{OptimizationLevel, WeightPruner, OperatorFusion};
 pub use benchmark::{BenchmarkResult, LatencyMetrics, MemoryMetrics};
+pub use model::{MobileModel, ModelFormat, QuantizationType};
+pub use optimization::{OperatorFusion, OptimizationLevel, WeightPruner};
+pub use runtime::{MobileRuntime, RuntimeConfig, RuntimeError};
 
 /// Library version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

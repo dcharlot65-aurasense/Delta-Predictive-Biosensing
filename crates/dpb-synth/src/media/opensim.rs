@@ -22,7 +22,7 @@
 //! - OpenSim: https://simtk.org/projects/opensim
 //! - Pathological tremor model: DOI:10.1016/j.jbiomech.2024.111962
 
-use super::{MediaError, Result, TremorType, TremorGroundTruth};
+use super::{MediaError, Result, TremorGroundTruth, TremorType};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -165,7 +165,10 @@ pub enum Symptom {
     /// Festinating gait
     Festination,
     /// Freezing of gait
-    FreezingOfGait { probability: f64, duration_range: (f64, f64) },
+    FreezingOfGait {
+        probability: f64,
+        duration_range: (f64, f64),
+    },
     /// Reduced arm swing
     ReducedArmSwing { reduction: f64 },
     /// Postural instability
@@ -228,11 +231,10 @@ impl OpenSimBridge {
             }
         }
 
-        let python_path = which::which("python3")
-            .map_err(|_| MediaError::ToolNotFound {
-                tool: "python3".to_string(),
-                install_url: "https://www.python.org/downloads/".to_string(),
-            })?;
+        let python_path = which::which("python3").map_err(|_| MediaError::ToolNotFound {
+            tool: "python3".to_string(),
+            install_url: "https://www.python.org/downloads/".to_string(),
+        })?;
 
         // Ensure output directory exists
         std::fs::create_dir_all(&config.output_dir)?;
@@ -281,7 +283,8 @@ impl OpenSimBridge {
         subject_height: f64,
         _marker_data: Option<&Path>,
     ) -> Result<PathBuf> {
-        let script = format!(r#"
+        let script = format!(
+            r#"
 import opensim as osim
 
 # Load base model
@@ -327,7 +330,8 @@ print(output_path)
             String::new()
         };
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import opensim as osim
 import numpy as np
 import json
@@ -399,28 +403,37 @@ print(json.dumps(result))
         for symptom in &params.symptoms {
             match symptom {
                 Symptom::Bradykinesia { severity } => {
-                    code.push_str(&format!(r#"
+                    code.push_str(&format!(
+                        r#"
 # Apply bradykinesia - reduce muscle max forces
 bradykinesia_factor = 1.0 - {} * 0.5
 for muscle in model.getMuscles():
     muscle.setMaxIsometricForce(muscle.getMaxIsometricForce() * bradykinesia_factor)
-"#, severity));
+"#,
+                        severity
+                    ));
                 }
                 Symptom::Rigidity { severity } => {
-                    code.push_str(&format!(r#"
+                    code.push_str(&format!(
+                        r#"
 # Apply rigidity - increase passive joint stiffness
 rigidity_factor = 1.0 + {} * 2.0
 for coord in model.getCoordinateSet():
     # Increase damping
     pass  # OpenSim API for damping adjustment
-"#, severity));
+"#,
+                        severity
+                    ));
                 }
                 Symptom::ReducedArmSwing { reduction } => {
-                    code.push_str(&format!(r#"
+                    code.push_str(&format!(
+                        r#"
 # Reduce arm swing amplitude
 arm_swing_factor = 1.0 - {}
 # Apply to shoulder flexion limits
-"#, reduction));
+"#,
+                        reduction
+                    ));
                 }
                 _ => {}
             }
@@ -431,13 +444,15 @@ arm_swing_factor = 1.0 - {}
 
     /// Generate Python script for tremor simulation
     fn generate_tremor_script(&self, tremor: &TremorModel, duration: f64) -> Result<String> {
-        let affected_dofs_str = tremor.affected_dofs
+        let affected_dofs_str = tremor
+            .affected_dofs
             .iter()
             .map(|d| format!("'{}'", d))
             .collect::<Vec<_>>()
             .join(", ");
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import opensim as osim
 import numpy as np
 import json
@@ -581,11 +596,11 @@ print(json.dumps(result))
             .map_err(|e| MediaError::SerializationError(e.to_string()))?;
 
         Ok(GaitSimulationResult {
-            times: data["times"].as_array()
+            times: data["times"]
+                .as_array()
                 .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
                 .unwrap_or_default(),
-            joint_angles: serde_json::from_value(data["joint_angles"].clone())
-                .unwrap_or_default(),
+            joint_angles: serde_json::from_value(data["joint_angles"].clone()).unwrap_or_default(),
             duration: data["duration"].as_f64().unwrap_or(0.0),
         })
     }
@@ -598,13 +613,16 @@ print(json.dumps(result))
             .map_err(|e| MediaError::SerializationError(e.to_string()))?;
 
         Ok(TremorSimulationResult {
-            times: data["times"].as_array()
+            times: data["times"]
+                .as_array()
                 .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
                 .unwrap_or_default(),
-            angles: data["angles"].as_array()
+            angles: data["angles"]
+                .as_array()
                 .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
                 .unwrap_or_default(),
-            velocities: data["velocities"].as_array()
+            velocities: data["velocities"]
+                .as_array()
                 .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
                 .unwrap_or_default(),
             dominant_frequency: data["dominant_frequency"].as_f64().unwrap_or(0.0),

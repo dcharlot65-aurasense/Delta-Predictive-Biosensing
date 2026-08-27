@@ -10,7 +10,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::modulators::{ModulatorySystem, Dopamine};
+use super::modulators::{Dopamine, ModulatorySystem};
 use super::{NeuromodError, NeuromodResult};
 
 /// Dopamine release mode
@@ -376,9 +376,9 @@ impl DopamineSystem {
         // Positive dopamine (phasic) → enhance plasticity
         // Low dopamine (pause) → reduce plasticity
         let modulation = match self.mode {
-            DopamineMode::Phasic => 2.0,    // Enhance
-            DopamineMode::Tonic => 1.0,     // Normal
-            DopamineMode::Pause => 0.1,     // Suppress
+            DopamineMode::Phasic => 2.0, // Enhance
+            DopamineMode::Tonic => 1.0,  // Normal
+            DopamineMode::Pause => 0.1,  // Suppress
         };
 
         // The receptor term keeps its SIGN. `d2_weight` is negative by
@@ -547,7 +547,10 @@ mod tests {
 
         assert!(phasic > tonic, "phasic {phasic} must exceed tonic {tonic}");
         assert!(tonic > pause, "tonic {tonic} must exceed pause {pause}");
-        assert!(pause < base_change, "pause {pause} must suppress below {base_change}");
+        assert!(
+            pause < base_change,
+            "pause {pause} must suppress below {base_change}"
+        );
 
         // D2 dominance inverts the sign: dopamine acting through D2 drives
         // depression, not potentiation.
@@ -621,5 +624,4 @@ mod tests {
             "omitting a predicted reward must give a negative error, got {omitted}"
         );
     }
-
 }

@@ -485,7 +485,13 @@ pub struct StreamingStats {
 
 impl StreamingStats {
     /// Update statistics
-    pub fn update(&mut self, samples: u64, elapsed: f64, buffer_len: usize, buffer_capacity: usize) {
+    pub fn update(
+        &mut self,
+        samples: u64,
+        elapsed: f64,
+        buffer_len: usize,
+        buffer_capacity: usize,
+    ) {
         self.samples_generated += samples;
         self.elapsed_time = elapsed;
         self.samples_per_second = if elapsed > 0.0 {
@@ -752,7 +758,7 @@ impl Default for StreamingTremorParams {
     fn default() -> Self {
         Self {
             sampling_rate: 100.0,
-            frequency: 5.0,       // 5 Hz typical for Parkinson's
+            frequency: 5.0, // 5 Hz typical for Parkinson's
             amplitude: 1.0,
             amplitude_variation: 0.2,
             duration: None,
@@ -837,13 +843,11 @@ pub struct MultiModalState {
 }
 
 /// Combined parameters
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct MultiModalParams {
     pub ecg: StreamingEcgParams,
     pub tremor: StreamingTremorParams,
 }
-
 
 /// Multi-modal sample output
 #[derive(Debug, Clone)]
@@ -986,16 +990,13 @@ impl StreamingGenerator for StreamingPpg {
         }
 
         // Systolic peak (Gaussian centered at phase ~0.2)
-        let systolic = 1.0 *
-            (-(phase - 0.2_f64).powi(2) / (2.0 * 0.05_f64.powi(2))).exp();
+        let systolic = 1.0 * (-(phase - 0.2_f64).powi(2) / (2.0 * 0.05_f64.powi(2))).exp();
 
         // Dicrotic notch (inverted Gaussian at phase ~0.4)
-        let dicrotic = -0.15 *
-            (-(phase - 0.4_f64).powi(2) / (2.0 * 0.03_f64.powi(2))).exp();
+        let dicrotic = -0.15 * (-(phase - 0.4_f64).powi(2) / (2.0 * 0.03_f64.powi(2))).exp();
 
         // Diastolic wave (Gaussian at phase ~0.5)
-        let diastolic = 0.3 *
-            (-(phase - 0.5_f64).powi(2) / (2.0 * 0.1_f64.powi(2))).exp();
+        let diastolic = 0.3 * (-(phase - 0.5_f64).powi(2) / (2.0 * 0.1_f64.powi(2))).exp();
 
         // Baseline decay
         let baseline = 0.1 * (1.0 - phase);
@@ -1089,12 +1090,12 @@ impl StreamingGenerator for StreamingEmg {
     type Sample = f64;
 
     fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
-        use rand::SeedableRng;
         use rand::RngExt;
+        use rand::SeedableRng;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let amplitude = params.baseline_amplitude +
-            params.contraction_level * params.baseline_amplitude * 10.0;
+        let amplitude =
+            params.baseline_amplitude + params.contraction_level * params.baseline_amplitude * 10.0;
 
         // MUAP rate depends on contraction level
         let muap_rate = params.contraction_level.max(0.1) * 50.0; // spikes per second
@@ -1135,7 +1136,9 @@ impl StreamingGenerator for StreamingEmg {
             state.muap_phase = 1;
 
             // Schedule next MUAP with some randomness
-            let jitter = state.rng.random_range(-state.muap_interval * 0.3..state.muap_interval * 0.3);
+            let jitter = state
+                .rng
+                .random_range(-state.muap_interval * 0.3..state.muap_interval * 0.3);
             state.next_muap_sample += state.muap_interval + jitter;
         }
 
@@ -1243,7 +1246,7 @@ impl Default for StreamingEdaParams {
     fn default() -> Self {
         Self {
             sampling_rate: 10.0,
-            baseline_scl: 5.0,     // microsiemens
+            baseline_scl: 5.0, // microsiemens
             drift_magnitude: 0.5,
             drift_frequency: 0.01, // Very slow drift
             scr_rate: 3.0,         // 3 SCRs per minute
@@ -1262,8 +1265,8 @@ impl StreamingGenerator for StreamingEda {
     type Sample = f64;
 
     fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
-        use rand::SeedableRng;
         use rand::RngExt;
+        use rand::SeedableRng;
         use rand_distr::{Distribution, Exp};
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -1288,7 +1291,7 @@ impl StreamingGenerator for StreamingEda {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand_distr::{Distribution, Normal, Exp};
+        use rand_distr::{Distribution, Exp, Normal};
         use std::f64::consts::PI;
 
         let t = state.sample_idx as f64 * state.dt;
@@ -1324,9 +1327,8 @@ impl StreamingGenerator for StreamingEda {
             if t >= scr.onset_time {
                 let delta_t = t - scr.onset_time;
                 // Bateman function: A * (exp(-t/tau2) - exp(-t/tau1))
-                let response = scr.amplitude *
-                    ((-delta_t / scr.recovery_time).exp() -
-                     (-delta_t / scr.rise_time).exp());
+                let response = scr.amplitude
+                    * ((-delta_t / scr.recovery_time).exp() - (-delta_t / scr.rise_time).exp());
                 phasic += response;
             }
         }
@@ -1587,8 +1589,8 @@ pub struct StreamingThermalParams {
 impl Default for StreamingThermalParams {
     fn default() -> Self {
         Self {
-            sampling_rate: 1.0,     // 1 Hz
-            baseline_temp: 33.0,    // °C
+            sampling_rate: 1.0,  // 1 Hz
+            baseline_temp: 33.0, // °C
             vasomotor_amplitude: 0.2,
             vasomotor_frequency: 0.05, // 20 second period
             noise_amplitude: 0.05,
@@ -1603,8 +1605,8 @@ impl StreamingGenerator for StreamingThermal {
     type Sample = f64;
 
     fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
-        use rand::SeedableRng;
         use rand::RngExt;
+        use rand::SeedableRng;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let vasomotor_phase = rng.random_range(0.0..2.0 * std::f64::consts::PI);
@@ -1627,8 +1629,8 @@ impl StreamingGenerator for StreamingThermal {
         let t = state.sample_idx as f64 * state.dt;
 
         // Vasomotor oscillations (blood flow regulation)
-        let vasomotor = state.vasomotor_amplitude *
-            (2.0 * PI * state.vasomotor_frequency * t + state.vasomotor_phase).sin();
+        let vasomotor = state.vasomotor_amplitude
+            * (2.0 * PI * state.vasomotor_frequency * t + state.vasomotor_phase).sin();
 
         // Measurement noise
         let noise_dist = Normal::new(0.0, 0.05).unwrap();
@@ -1716,7 +1718,7 @@ pub struct StreamingGazeParams {
 impl Default for StreamingGazeParams {
     fn default() -> Self {
         Self {
-            frame_rate: 60.0,        // 60 Hz
+            frame_rate: 60.0, // 60 Hz
             fixation_duration_mean: 0.3,
             fixation_duration_std: 0.1,
             saccade_duration: 0.03,
@@ -1743,21 +1745,20 @@ impl StreamingGenerator for StreamingGaze {
     type Sample = GazeSample;
 
     fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
-        use rand::SeedableRng;
         use rand::RngExt;
+        use rand::SeedableRng;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         // Start with random fixation target
-        let target = [
-            rng.random_range(-0.8..0.8),
-            rng.random_range(-0.8..0.8),
-        ];
+        let target = [rng.random_range(-0.8..0.8), rng.random_range(-0.8..0.8)];
 
-        let fixation_duration = rng.random_range(
-            (params.fixation_duration_mean - params.fixation_duration_std)
-                ..(params.fixation_duration_mean + params.fixation_duration_std)
-        ).max(0.1);
+        let fixation_duration = rng
+            .random_range(
+                (params.fixation_duration_mean - params.fixation_duration_std)
+                    ..(params.fixation_duration_mean + params.fixation_duration_std),
+            )
+            .max(0.1);
 
         StreamingGazeState {
             frame_idx: 0,
@@ -1804,10 +1805,10 @@ impl StreamingGenerator for StreamingGaze {
                 let t = state.saccade_progress;
                 let smooth_t = t * t * (3.0 - 2.0 * t); // smoothstep
 
-                state.gaze_position[0] = state.gaze_position[0] +
-                    (state.target_position[0] - state.gaze_position[0]) * smooth_t;
-                state.gaze_position[1] = state.gaze_position[1] +
-                    (state.target_position[1] - state.gaze_position[1]) * smooth_t;
+                state.gaze_position[0] = state.gaze_position[0]
+                    + (state.target_position[0] - state.gaze_position[0]) * smooth_t;
+                state.gaze_position[1] = state.gaze_position[1]
+                    + (state.target_position[1] - state.gaze_position[1]) * smooth_t;
             }
         } else {
             // Fixation - small jitter around target
@@ -1906,10 +1907,10 @@ impl Default for StreamingPoseParams {
     fn default() -> Self {
         Self {
             frame_rate: 30.0,
-            cadence: 110.0,       // steps/minute
-            stride_length: 1.4,   // meters
-            step_width: 0.15,     // meters
-            height: 1.75,         // meters
+            cadence: 110.0,     // steps/minute
+            stride_length: 1.4, // meters
+            step_width: 0.15,   // meters
+            height: 1.75,       // meters
             noise: 0.01,
             duration: None,
         }
@@ -1948,7 +1949,6 @@ impl FrameStreamingGenerator for StreamingPose {
 
     fn next_frame(&self, state: &mut Self::State) -> Self::Frame {
         use rand::RngExt;
-        
 
         let t = state.frame_idx as f64 * state.dt;
         let gait_phase = (t % state.cycle_duration) / state.cycle_duration;
@@ -1965,7 +1965,7 @@ impl FrameStreamingGenerator for StreamingPose {
 
         // Hips
         keypoints[23] = [-state.step_width / 2.0, pelvis_y, pelvis_z]; // Left hip
-        keypoints[24] = [state.step_width / 2.0, pelvis_y, pelvis_z];  // Right hip
+        keypoints[24] = [state.step_width / 2.0, pelvis_y, pelvis_z]; // Right hip
 
         // Knees (simplified Winter's model)
         let thigh_length = state.height * 0.245;
@@ -1987,7 +1987,7 @@ impl FrameStreamingGenerator for StreamingPose {
 
         // Ankles
         keypoints[28] = [right_knee_x, right_knee_y - shank_length, pelvis_z]; // Right
-        keypoints[27] = [left_knee_x, left_knee_y - shank_length, pelvis_z];   // Left
+        keypoints[27] = [left_knee_x, left_knee_y - shank_length, pelvis_z]; // Left
 
         // Upper body (simplified - roughly stationary relative to pelvis)
         let torso_height = state.height * 0.3;
@@ -2001,7 +2001,7 @@ impl FrameStreamingGenerator for StreamingPose {
 
         // Shoulders
         keypoints[11] = [-0.2, state.height * 0.82, pelvis_z]; // Left
-        keypoints[12] = [0.2, state.height * 0.82, pelvis_z];  // Right
+        keypoints[12] = [0.2, state.height * 0.82, pelvis_z]; // Right
 
         // Add noise
         for kp in keypoints.iter_mut() {
@@ -2161,19 +2161,19 @@ impl FrameStreamingGenerator for StreamingHand {
 
         // Finger lengths (approximate, in meters)
         let finger_bases = [
-            [0.04, 0.0, 0.0],    // Thumb base
-            [0.03, 0.02, 0.0],   // Index MCP
-            [0.03, 0.0, 0.0],    // Middle MCP
-            [0.03, -0.02, 0.0],  // Ring MCP
-            [0.03, -0.04, 0.0],  // Pinky MCP
+            [0.04, 0.0, 0.0],   // Thumb base
+            [0.03, 0.02, 0.0],  // Index MCP
+            [0.03, 0.0, 0.0],   // Middle MCP
+            [0.03, -0.02, 0.0], // Ring MCP
+            [0.03, -0.04, 0.0], // Pinky MCP
         ];
 
         let finger_lengths = [
-            [0.03, 0.02, 0.015],  // Thumb: metacarpal, proximal, distal
-            [0.04, 0.025, 0.02],  // Index
-            [0.045, 0.03, 0.02],  // Middle
-            [0.04, 0.025, 0.02],  // Ring
-            [0.03, 0.02, 0.015],  // Pinky
+            [0.03, 0.02, 0.015], // Thumb: metacarpal, proximal, distal
+            [0.04, 0.025, 0.02], // Index
+            [0.045, 0.03, 0.02], // Middle
+            [0.04, 0.025, 0.02], // Ring
+            [0.03, 0.02, 0.015], // Pinky
         ];
 
         // Update finger states based on motion type
@@ -2333,9 +2333,9 @@ impl Default for StreamingRppgParams {
             heart_rate: 72.0,
             hrv: 0.05,
             skin_tone: [0.76, 0.60, 0.49], // Typical Caucasian skin
-            rppg_amplitude: 0.005,          // 0.5% color change
-            motion_amplitude: 0.5,          // Subtle head motion
-            illumination_variation: 0.02,   // 2% illumination change
+            rppg_amplitude: 0.005,         // 0.5% color change
+            motion_amplitude: 0.5,         // Subtle head motion
+            illumination_variation: 0.02,  // 2% illumination change
             spatial_variation: true,
             duration: None,
         }
@@ -2384,7 +2384,7 @@ impl StreamingGenerator for StreamingRppg {
         let mut skin_mask = vec![0.0; params.roi_width * params.roi_height];
         let cx = params.roi_width as f64 / 2.0;
         let cy = params.roi_height as f64 / 2.0;
-        let rx = params.roi_width as f64 / 2.5;  // Face width
+        let rx = params.roi_width as f64 / 2.5; // Face width
         let ry = params.roi_height as f64 / 2.0; // Face height
 
         for y in 0..params.roi_height {
@@ -2406,8 +2406,8 @@ impl StreamingGenerator for StreamingRppg {
                 let is_eye = (y as f64 - cy * 0.7).abs() < cy * 0.15
                     && (x as f64 - cx).abs() > cx * 0.1
                     && (x as f64 - cx).abs() < cx * 0.5;
-                let is_mouth = (y as f64 - cy * 1.4).abs() < cy * 0.1
-                    && (x as f64 - cx).abs() < cx * 0.3;
+                let is_mouth =
+                    (y as f64 - cy * 1.4).abs() < cy * 0.1 && (x as f64 - cx).abs() < cx * 0.3;
 
                 skin_mask[y * params.roi_width + x] = if is_eye || is_mouth { 0.0 } else { mask };
             }
@@ -2521,11 +2521,12 @@ impl StreamingGenerator for StreamingRppg {
                     // Blue channel has weak signal
                     let rppg_mod = state.rppg_amplitude * bvp * spatial_weight;
                     let r_mod = rppg_mod * 0.7;
-                    let g_mod = rppg_mod * 1.0;  // Green strongest
+                    let g_mod = rppg_mod * 1.0; // Green strongest
                     let b_mod = rppg_mod * 0.3;
 
                     // Motion artifact (slight color shift based on head position)
-                    let motion_artifact = 0.001 * (state.head_offset_x * dx + state.head_offset_y * dy);
+                    let motion_artifact =
+                        0.001 * (state.head_offset_x * dx + state.head_offset_y * dy);
 
                     // Base skin color with modulations
                     let mut r = state.skin_tone[0] * state.illumination_factor;
@@ -3067,7 +3068,6 @@ impl StreamingGenerator for StreamingDdk {
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
         use rand::RngExt;
-        
 
         let t = state.sample_idx as f64 * state.dt;
 
@@ -3142,7 +3142,8 @@ impl StreamingGenerator for StreamingDdk {
             } else {
                 // End of syllable
                 state.in_syllable = false;
-                state.current_syllable_idx = (state.current_syllable_idx + 1) % state.syllable_sequence.len();
+                state.current_syllable_idx =
+                    (state.current_syllable_idx + 1) % state.syllable_sequence.len();
 
                 if state.current_syllable_idx == 0 {
                     state.repetition_count += 1;
@@ -3159,8 +3160,16 @@ impl StreamingGenerator for StreamingDdk {
 
         AudioSample {
             value: output,
-            f0: if state.in_syllable { state.current_f0 } else { 0.0 },
-            amplitude: if state.in_syllable { state.current_amplitude } else { 0.0 },
+            f0: if state.in_syllable {
+                state.current_f0
+            } else {
+                0.0
+            },
+            amplitude: if state.in_syllable {
+                state.current_amplitude
+            } else {
+                0.0
+            },
             timestamp: t,
         }
     }
@@ -3183,13 +3192,15 @@ impl StreamingGenerator for StreamingDdk {
 
     fn is_complete(&self, state: &Self::State, params: &Self::Parameters) -> bool {
         if let Some(duration) = params.duration
-            && self.current_time(state) >= duration {
-                return true;
-            }
+            && self.current_time(state) >= duration
+        {
+            return true;
+        }
         if let Some(reps) = params.repetitions
-            && state.repetition_count >= reps {
-                return true;
-            }
+            && state.repetition_count >= reps
+        {
+            return true;
+        }
         false
     }
 }
@@ -3209,8 +3220,7 @@ fn get_syllable_formants(syllable: &str) -> ([f64; 4], [f64; 4]) {
 // ============================================================================
 
 /// Clinical gait type
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum ClinicalGaitType {
     /// Normal healthy gait
     #[default]
@@ -3222,7 +3232,6 @@ pub enum ClinicalGaitType {
     /// Freezing of gait episodes
     FreezingEpisodes,
 }
-
 
 /// Clinical pose frame with additional gait metrics
 #[derive(Debug, Clone)]
@@ -3428,7 +3437,9 @@ impl FrameStreamingGenerator for StreamingClinicalPose {
             // Check for new freezing episode at step boundaries
             if state.rng.random_range(0.0..1.0) < state.freeze_prob {
                 state.is_frozen = true;
-                let freeze_dur = state.rng.random_range(state.freeze_dur.0..state.freeze_dur.1);
+                let freeze_dur = state
+                    .rng
+                    .random_range(state.freeze_dur.0..state.freeze_dur.1);
                 state.freeze_end_time = t + freeze_dur;
             }
         }
@@ -3463,7 +3474,11 @@ impl FrameStreamingGenerator for StreamingClinicalPose {
         let foot_lift_max = 0.1 * (1.0 - state.shuffling * 0.8);
 
         // Calculate leg positions
-        let swing_leg_phase = if phase < 0.6 { 0.0 } else { (phase - 0.6) / 0.4 };
+        let swing_leg_phase = if phase < 0.6 {
+            0.0
+        } else {
+            (phase - 0.6) / 0.4
+        };
         let swing_foot_lift = foot_lift_max * (PI * swing_leg_phase).sin();
 
         // Arm swing (reduced and asymmetric)
@@ -3487,7 +3502,7 @@ impl FrameStreamingGenerator for StreamingClinicalPose {
         // Hips
         let hip_width = 0.2;
         keypoints[23] = [-hip_width / 2.0, pelvis_y, state.position_z]; // Left hip
-        keypoints[24] = [hip_width / 2.0, pelvis_y, state.position_z];  // Right hip
+        keypoints[24] = [hip_width / 2.0, pelvis_y, state.position_z]; // Right hip
 
         // Legs with gait animation
         let knee_height = pelvis_y - state.leg_length * 0.5;
@@ -3499,9 +3514,17 @@ impl FrameStreamingGenerator for StreamingClinicalPose {
         } else {
             state.position_z - state.current_stride_length * 0.5 * phase / 0.6
         };
-        let left_foot_y = if phase >= 0.6 { swing_foot_lift + ankle_height } else { ankle_height };
+        let left_foot_y = if phase >= 0.6 {
+            swing_foot_lift + ankle_height
+        } else {
+            ankle_height
+        };
 
-        keypoints[25] = [-hip_width / 2.0, knee_height, (left_foot_z + state.position_z) / 2.0];
+        keypoints[25] = [
+            -hip_width / 2.0,
+            knee_height,
+            (left_foot_z + state.position_z) / 2.0,
+        ];
         keypoints[27] = [-hip_width / 2.0, left_foot_y, left_foot_z];
         keypoints[29] = [-hip_width / 2.0, left_foot_y - 0.02, left_foot_z + 0.1];
         keypoints[31] = [-hip_width / 2.0, left_foot_y - 0.02, left_foot_z + 0.15];
@@ -3518,7 +3541,11 @@ impl FrameStreamingGenerator for StreamingClinicalPose {
             ankle_height
         };
 
-        keypoints[26] = [hip_width / 2.0, knee_height, (right_foot_z + state.position_z) / 2.0];
+        keypoints[26] = [
+            hip_width / 2.0,
+            knee_height,
+            (right_foot_z + state.position_z) / 2.0,
+        ];
         keypoints[28] = [hip_width / 2.0, right_foot_y, right_foot_z];
         keypoints[30] = [hip_width / 2.0, right_foot_y - 0.02, right_foot_z + 0.1];
         keypoints[32] = [hip_width / 2.0, right_foot_y - 0.02, right_foot_z + 0.15];
@@ -3530,24 +3557,48 @@ impl FrameStreamingGenerator for StreamingClinicalPose {
         // Apply trunk flexion (forward lean)
         let spine_forward_offset = trunk_lean.sin() * (shoulder_height - pelvis_y);
 
-        keypoints[11] = [-0.18, shoulder_height, state.position_z + spine_forward_offset]; // Left shoulder
-        keypoints[12] = [0.18, shoulder_height, state.position_z + spine_forward_offset];  // Right shoulder
+        keypoints[11] = [
+            -0.18,
+            shoulder_height,
+            state.position_z + spine_forward_offset,
+        ]; // Left shoulder
+        keypoints[12] = [
+            0.18,
+            shoulder_height,
+            state.position_z + spine_forward_offset,
+        ]; // Right shoulder
 
         // Arms with reduced swing
         let arm_length = 0.6;
-        keypoints[13] = [-0.25, shoulder_height - arm_length * 0.5 * (1.0 + left_arm_angle),
-                         state.position_z + spine_forward_offset + arm_length * 0.3 * left_arm_angle];
-        keypoints[15] = [-0.25, shoulder_height - arm_length * (1.0 + left_arm_angle * 0.5),
-                         state.position_z + spine_forward_offset + arm_length * 0.5 * left_arm_angle];
+        keypoints[13] = [
+            -0.25,
+            shoulder_height - arm_length * 0.5 * (1.0 + left_arm_angle),
+            state.position_z + spine_forward_offset + arm_length * 0.3 * left_arm_angle,
+        ];
+        keypoints[15] = [
+            -0.25,
+            shoulder_height - arm_length * (1.0 + left_arm_angle * 0.5),
+            state.position_z + spine_forward_offset + arm_length * 0.5 * left_arm_angle,
+        ];
 
-        keypoints[14] = [0.25, shoulder_height - arm_length * 0.5 * (1.0 + right_arm_angle),
-                         state.position_z + spine_forward_offset + arm_length * 0.3 * right_arm_angle];
-        keypoints[16] = [0.25, shoulder_height - arm_length * (1.0 + right_arm_angle * 0.5),
-                         state.position_z + spine_forward_offset + arm_length * 0.5 * right_arm_angle];
+        keypoints[14] = [
+            0.25,
+            shoulder_height - arm_length * 0.5 * (1.0 + right_arm_angle),
+            state.position_z + spine_forward_offset + arm_length * 0.3 * right_arm_angle,
+        ];
+        keypoints[16] = [
+            0.25,
+            shoulder_height - arm_length * (1.0 + right_arm_angle * 0.5),
+            state.position_z + spine_forward_offset + arm_length * 0.5 * right_arm_angle,
+        ];
 
         // Head (with forward lean)
         let head_forward = spine_forward_offset * 1.2;
-        keypoints[0] = [0.0, head_height - trunk_lean.sin() * 0.1, state.position_z + head_forward];
+        keypoints[0] = [
+            0.0,
+            head_height - trunk_lean.sin() * 0.1,
+            state.position_z + head_forward,
+        ];
 
         // Fill remaining keypoints (face, hands) with reasonable positions
         for i in 1..11 {
@@ -3580,7 +3631,11 @@ impl FrameStreamingGenerator for StreamingClinicalPose {
         ClinicalPoseFrame {
             keypoints,
             gait_phase: phase,
-            phase_name: if is_stance { "stance".to_string() } else { "swing".to_string() },
+            phase_name: if is_stance {
+                "stance".to_string()
+            } else {
+                "swing".to_string()
+            },
             step_length: state.current_stride_length,
             arm_swing: base_arm_swing,
             freezing: state.is_frozen,
@@ -3602,7 +3657,12 @@ impl FrameStreamingGenerator for StreamingClinicalPose {
 }
 
 /// Calculate simplified UPDRS gait score (0-4)
-fn calculate_updrs_gait_score(shuffling: f64, arm_swing_red: f64, trunk_flex: f64, freezing: bool) -> u8 {
+fn calculate_updrs_gait_score(
+    shuffling: f64,
+    arm_swing_red: f64,
+    trunk_flex: f64,
+    freezing: bool,
+) -> u8 {
     if freezing {
         return 4; // Severe - freezing
     }
@@ -3627,8 +3687,7 @@ fn calculate_updrs_gait_score(shuffling: f64, arm_swing_red: f64, trunk_flex: f6
 // ============================================================================
 
 /// Clinical hand task type
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum ClinicalHandTask {
     /// Rest tremor assessment
     RestTremor,
@@ -3642,7 +3701,6 @@ pub enum ClinicalHandTask {
     /// Spiral drawing task
     SpiralDrawing,
 }
-
 
 /// Clinical hand frame with task-specific metrics
 #[derive(Debug, Clone)]
@@ -3755,8 +3813,8 @@ impl StreamingClinicalHandParams {
             task: ClinicalHandTask::SpiralDrawing,
             tremor_frequency: 5.0,
             tremor_amplitude: 0.003,
-            task_frequency: 0.5,    // Spiral rotation frequency
-            task_amplitude: 0.15,   // Spiral radius growth
+            task_frequency: 0.5,  // Spiral rotation frequency
+            task_amplitude: 0.15, // Spiral radius growth
             ..Default::default()
         }
     }
@@ -3844,10 +3902,9 @@ impl FrameStreamingGenerator for StreamingClinicalHand {
         let t = state.frame_idx as f64 * state.dt;
 
         // Check for hesitation
-        if state.is_hesitating
-            && t >= state.hesitation_end_time {
-                state.is_hesitating = false;
-            }
+        if state.is_hesitating && t >= state.hesitation_end_time {
+            state.is_hesitating = false;
+        }
 
         // Generate tremor
         let tremor_x = state.tremor_amp * (2.0 * PI * state.tremor_freq * t).sin();
@@ -3891,7 +3948,8 @@ impl FrameStreamingGenerator for StreamingClinicalHand {
 
                     // Index finger tapping motion
                     let tap_extension = (PI * state.task_phase).sin() * state.current_amplitude;
-                    state.finger_states[1] = 0.3 + 0.7 * (1.0 - tap_extension / state.current_amplitude.max(0.01));
+                    state.finger_states[1] =
+                        0.3 + 0.7 * (1.0 - tap_extension / state.current_amplitude.max(0.01));
                 }
                 ClinicalHandTask::HandMovements => {
                     if state.current_frequency > 0.0 {
@@ -3934,10 +3992,7 @@ impl FrameStreamingGenerator for StreamingClinicalHand {
                     let spiral_y = state.spiral_radius * state.spiral_angle.sin();
 
                     // Add tremor to spiral
-                    spiral_pos = Some([
-                        spiral_x + tremor_x * 0.5,
-                        spiral_y + tremor_y * 0.5,
-                    ]);
+                    spiral_pos = Some([spiral_x + tremor_x * 0.5, spiral_y + tremor_y * 0.5]);
 
                     // Point with index finger
                     state.finger_states[1] = 1.0;
@@ -4025,11 +4080,11 @@ fn generate_hand_landmarks(
 
     // Finger base positions relative to wrist
     let finger_bases = [
-        [-0.02, 0.0, 0.03],   // Thumb
-        [-0.015, 0.0, 0.08],  // Index
-        [0.0, 0.0, 0.085],    // Middle
-        [0.015, 0.0, 0.08],   // Ring
-        [0.03, 0.0, 0.07],    // Pinky
+        [-0.02, 0.0, 0.03],  // Thumb
+        [-0.015, 0.0, 0.08], // Index
+        [0.0, 0.0, 0.085],   // Middle
+        [0.015, 0.0, 0.08],  // Ring
+        [0.03, 0.0, 0.07],   // Pinky
     ];
 
     let finger_lengths = [
@@ -4084,29 +4139,52 @@ fn calculate_updrs_hand_score(
 ) -> u8 {
     match task {
         ClinicalHandTask::RestTremor => {
-            if tremor_amp < 0.002 { 0 }
-            else if tremor_amp < 0.005 { 1 }
-            else if tremor_amp < 0.01 { 2 }
-            else if tremor_amp < 0.02 { 3 }
-            else { 4 }
+            if tremor_amp < 0.002 {
+                0
+            } else if tremor_amp < 0.005 {
+                1
+            } else if tremor_amp < 0.01 {
+                2
+            } else if tremor_amp < 0.02 {
+                3
+            } else {
+                4
+            }
         }
         ClinicalHandTask::FingerTapping | ClinicalHandTask::HandMovements => {
-            let amp_score = if amplitude > 0.04 { 0.0 }
-                else if amplitude > 0.03 { 1.0 }
-                else if amplitude > 0.02 { 2.0 }
-                else if amplitude > 0.01 { 3.0 }
-                else { 4.0 };
+            let amp_score = if amplitude > 0.04 {
+                0.0
+            } else if amplitude > 0.03 {
+                1.0
+            } else if amplitude > 0.02 {
+                2.0
+            } else if amplitude > 0.01 {
+                3.0
+            } else {
+                4.0
+            };
 
-            let freq_score = if frequency > 3.5 { 0.0 }
-                else if frequency > 2.5 { 1.0 }
-                else if frequency > 1.5 { 2.0 }
-                else if frequency > 0.5 { 3.0 }
-                else { 4.0 };
+            let freq_score = if frequency > 3.5 {
+                0.0
+            } else if frequency > 2.5 {
+                1.0
+            } else if frequency > 1.5 {
+                2.0
+            } else if frequency > 0.5 {
+                3.0
+            } else {
+                4.0
+            };
 
-            let hesit_score: f64 = if hesitations == 0 { 0.0 }
-                else if hesitations < 3 { 1.0 }
-                else if hesitations < 6 { 2.0 }
-                else { 3.0 };
+            let hesit_score: f64 = if hesitations == 0 {
+                0.0
+            } else if hesitations < 3 {
+                1.0
+            } else if hesitations < 6 {
+                2.0
+            } else {
+                3.0
+            };
 
             let avg = (amp_score + freq_score + hesit_score) / 3.0;
             avg.round() as u8
@@ -4123,7 +4201,7 @@ impl StreamingConfig {
             buffer_size: 16000, // 1 second
             batch_size: 1600,   // 100ms
             realtime_pacing: true,
-            max_latency: 0.05,  // 50ms
+            max_latency: 0.05, // 50ms
         }
     }
 
@@ -4131,8 +4209,8 @@ impl StreamingConfig {
     pub fn clinical_pose() -> Self {
         Self {
             sample_rate: 30.0,
-            buffer_size: 90,  // 3 seconds
-            batch_size: 30,   // 1 second
+            buffer_size: 90, // 3 seconds
+            batch_size: 30,  // 1 second
             realtime_pacing: true,
             max_latency: 0.1,
         }
@@ -4142,8 +4220,8 @@ impl StreamingConfig {
     pub fn eeg() -> Self {
         Self {
             sample_rate: 256.0,
-            buffer_size: 512,  // 2 seconds
-            batch_size: 64,    // 250ms
+            buffer_size: 512, // 2 seconds
+            batch_size: 64,   // 250ms
             realtime_pacing: true,
             max_latency: 0.05,
         }
@@ -4478,7 +4556,8 @@ impl StreamingGenerator for StreamingEeg {
 
             // Add artifact if active
             if state.in_artifact {
-                let artifact_progress = 1.0 - (state.artifact_samples_remaining as f64 * state.dt / 0.2);
+                let artifact_progress =
+                    1.0 - (state.artifact_samples_remaining as f64 * state.dt / 0.2);
                 let envelope = (-4.0 * (artifact_progress - 0.5).powi(2)).exp();
 
                 match state.artifact_type {
@@ -4489,11 +4568,21 @@ impl StreamingGenerator for StreamingEeg {
             }
 
             // Keep phase bounded
-            if state.delta_phases[ch] > 2.0 * PI { state.delta_phases[ch] -= 2.0 * PI; }
-            if state.theta_phases[ch] > 2.0 * PI { state.theta_phases[ch] -= 2.0 * PI; }
-            if state.alpha_phases[ch] > 2.0 * PI { state.alpha_phases[ch] -= 2.0 * PI; }
-            if state.beta_phases[ch] > 2.0 * PI { state.beta_phases[ch] -= 2.0 * PI; }
-            if state.gamma_phases[ch] > 2.0 * PI { state.gamma_phases[ch] -= 2.0 * PI; }
+            if state.delta_phases[ch] > 2.0 * PI {
+                state.delta_phases[ch] -= 2.0 * PI;
+            }
+            if state.theta_phases[ch] > 2.0 * PI {
+                state.theta_phases[ch] -= 2.0 * PI;
+            }
+            if state.alpha_phases[ch] > 2.0 * PI {
+                state.alpha_phases[ch] -= 2.0 * PI;
+            }
+            if state.beta_phases[ch] > 2.0 * PI {
+                state.beta_phases[ch] -= 2.0 * PI;
+            }
+            if state.gamma_phases[ch] > 2.0 * PI {
+                state.gamma_phases[ch] -= 2.0 * PI;
+            }
 
             channels.push(signal);
         }
@@ -4509,11 +4598,16 @@ impl StreamingGenerator for StreamingEeg {
 
         // Update running power estimates (exponential moving average)
         let alpha = 0.99;
-        state.alpha_power_est = alpha * state.alpha_power_est + (1.0 - alpha) * state.alpha_amp.powi(2);
-        state.beta_power_est = alpha * state.beta_power_est + (1.0 - alpha) * state.beta_amp.powi(2);
-        state.theta_power_est = alpha * state.theta_power_est + (1.0 - alpha) * state.theta_amp.powi(2);
-        state.delta_power_est = alpha * state.delta_power_est + (1.0 - alpha) * state.delta_amp.powi(2);
-        state.gamma_power_est = alpha * state.gamma_power_est + (1.0 - alpha) * state.gamma_amp.powi(2);
+        state.alpha_power_est =
+            alpha * state.alpha_power_est + (1.0 - alpha) * state.alpha_amp.powi(2);
+        state.beta_power_est =
+            alpha * state.beta_power_est + (1.0 - alpha) * state.beta_amp.powi(2);
+        state.theta_power_est =
+            alpha * state.theta_power_est + (1.0 - alpha) * state.theta_amp.powi(2);
+        state.delta_power_est =
+            alpha * state.delta_power_est + (1.0 - alpha) * state.delta_amp.powi(2);
+        state.gamma_power_est =
+            alpha * state.gamma_power_est + (1.0 - alpha) * state.gamma_amp.powi(2);
 
         state.sample_idx += 1;
 
@@ -4665,10 +4759,8 @@ mod tests {
 
     #[test]
     fn test_multi_channel_buffer() {
-        let mut buffer: MultiChannelBuffer<f64> = MultiChannelBuffer::new(
-            vec!["ecg".to_string(), "emg".to_string()],
-            100,
-        );
+        let mut buffer: MultiChannelBuffer<f64> =
+            MultiChannelBuffer::new(vec!["ecg".to_string(), "emg".to_string()], 100);
 
         buffer.push_to_named_channel("ecg", 1.0);
         buffer.push_to_named_channel("emg", 2.0);
@@ -4746,7 +4838,8 @@ mod tests {
 
         // ECG should have variation (not constant)
         let mean: f64 = samples.iter().sum::<f64>() / samples.len() as f64;
-        let variance: f64 = samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / samples.len() as f64;
+        let variance: f64 =
+            samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / samples.len() as f64;
         assert!(variance > 0.0, "ECG should have non-zero variance");
     }
 
@@ -4769,7 +4862,10 @@ mod tests {
 
         // Should produce identical results
         for (a, b) in first_samples.iter().zip(second_samples.iter()) {
-            assert!((a - b).abs() < 1e-10, "Reset should produce identical output");
+            assert!(
+                (a - b).abs() < 1e-10,
+                "Reset should produce identical output"
+            );
         }
     }
 
@@ -4816,13 +4912,17 @@ mod tests {
 
         // At 5 Hz, we should see ~5 complete cycles in 1 second
         // Count zero crossings (rough frequency estimate)
-        let zero_crossings: usize = samples.windows(2)
+        let zero_crossings: usize = samples
+            .windows(2)
             .filter(|w| (w[0] >= 0.0) != (w[1] >= 0.0))
             .count();
 
         // Should be roughly 10 zero crossings (2 per cycle * 5 cycles)
-        assert!((8..=12).contains(&zero_crossings),
-            "Expected ~10 zero crossings, got {}", zero_crossings);
+        assert!(
+            (8..=12).contains(&zero_crossings),
+            "Expected ~10 zero crossings, got {}",
+            zero_crossings
+        );
     }
 
     #[test]
@@ -4842,7 +4942,9 @@ mod tests {
         while !generator.is_complete(&state, &params) {
             generator.next_sample(&mut state);
             count += 1;
-            if count > 1000 { break; } // Safety limit
+            if count > 1000 {
+                break;
+            } // Safety limit
         }
 
         assert!(generator.is_complete(&state, &params));
@@ -4871,7 +4973,10 @@ mod tests {
 
         // Timestamps should be increasing
         for w in samples.windows(2) {
-            assert!(w[1].timestamp > w[0].timestamp, "Timestamps should increase");
+            assert!(
+                w[1].timestamp > w[0].timestamp,
+                "Timestamps should increase"
+            );
         }
     }
 
@@ -4886,10 +4991,8 @@ mod tests {
         let mut ecg_state = ecg_gen.init_state(&ecg_params, 42);
         let mut tremor_state = tremor_gen.init_state(&tremor_params, 43);
 
-        let mut buffer: MultiChannelBuffer<f64> = MultiChannelBuffer::new(
-            vec!["ecg".to_string(), "tremor".to_string()],
-            100,
-        );
+        let mut buffer: MultiChannelBuffer<f64> =
+            MultiChannelBuffer::new(vec!["ecg".to_string(), "tremor".to_string()], 100);
 
         // Simulate synchronized streaming
         for _ in 0..50 {
@@ -4944,7 +5047,8 @@ mod tests {
 
         // PPG should have variation (not constant)
         let mean: f64 = samples.iter().sum::<f64>() / samples.len() as f64;
-        let variance: f64 = samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / samples.len() as f64;
+        let variance: f64 =
+            samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / samples.len() as f64;
         assert!(variance > 0.0, "PPG should have non-zero variance");
     }
 
@@ -4954,7 +5058,7 @@ mod tests {
         let params = StreamingPpgParams {
             sampling_rate: 100.0,
             heart_rate: 60.0, // 1 Hz = 1 beat per second
-            hrv: 0.0,        // No HRV for predictable test
+            hrv: 0.0,         // No HRV for predictable test
             ..StreamingPpgParams::default()
         };
         let mut state = generator.init_state(&params, 42);
@@ -4973,8 +5077,11 @@ mod tests {
         }
 
         // At 60 BPM, should see ~5 peaks in 5 seconds
-        assert!((4..=6).contains(&peak_count),
-            "Expected ~5 peaks at 60 BPM, got {}", peak_count);
+        assert!(
+            (4..=6).contains(&peak_count),
+            "Expected ~5 peaks at 60 BPM, got {}",
+            peak_count
+        );
     }
 
     #[test]
@@ -4986,13 +5093,20 @@ mod tests {
         };
         let mut state = generator.init_state(&params, 42);
 
-        let first: Vec<f64> = (0..100).map(|_| generator.next_sample(&mut state)).collect();
+        let first: Vec<f64> = (0..100)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
 
         generator.reset_state(&mut state, &params, 42);
-        let second: Vec<f64> = (0..100).map(|_| generator.next_sample(&mut state)).collect();
+        let second: Vec<f64> = (0..100)
+            .map(|_| generator.next_sample(&mut state))
+            .collect();
 
         for (a, b) in first.iter().zip(second.iter()) {
-            assert!((a - b).abs() < 1e-10, "Reset should produce identical output");
+            assert!(
+                (a - b).abs() < 1e-10,
+                "Reset should produce identical output"
+            );
         }
     }
 
@@ -5021,7 +5135,8 @@ mod tests {
 
         // EMG should have significant variation (noisy signal)
         let mean: f64 = samples.iter().sum::<f64>() / samples.len() as f64;
-        let variance: f64 = samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / samples.len() as f64;
+        let variance: f64 =
+            samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / samples.len() as f64;
         assert!(variance > 0.0, "EMG should have non-zero variance");
     }
 
@@ -5058,8 +5173,12 @@ mod tests {
         };
 
         // High contraction should have much more variance
-        assert!(variance_high > variance_low * 2.0,
-            "High contraction EMG should have more variance: {} vs {}", variance_high, variance_low);
+        assert!(
+            variance_high > variance_low * 2.0,
+            "High contraction EMG should have more variance: {} vs {}",
+            variance_high,
+            variance_low
+        );
     }
 
     #[test]
@@ -5082,7 +5201,11 @@ mod tests {
         let spike_count = samples.iter().filter(|x| x.abs() > threshold).count();
 
         // At 0.5 contraction, MUAP rate ~25/s, so expect ~25 spikes * ~5 samples each
-        assert!(spike_count > 20, "Should have MUAP spikes, got {}", spike_count);
+        assert!(
+            spike_count > 20,
+            "Should have MUAP spikes, got {}",
+            spike_count
+        );
     }
 
     // ========== StreamingEDA Tests ==========
@@ -5103,7 +5226,11 @@ mod tests {
 
         // EDA should be around baseline with some variation
         let mean: f64 = samples.iter().sum::<f64>() / samples.len() as f64;
-        assert!((mean - 5.0).abs() < 2.0, "Mean should be near baseline SCL of 5, got {}", mean);
+        assert!(
+            (mean - 5.0).abs() < 2.0,
+            "Mean should be near baseline SCL of 5, got {}",
+            mean
+        );
     }
 
     #[test]
@@ -5123,8 +5250,11 @@ mod tests {
 
         // All samples should be around baseline (tonic only)
         for sample in &samples {
-            assert!((sample - 5.0).abs() < 1.5,
-                "Tonic-only EDA should stay near baseline, got {}", sample);
+            assert!(
+                (sample - 5.0).abs() < 1.5,
+                "Tonic-only EDA should stay near baseline, got {}",
+                sample
+            );
         }
     }
 
@@ -5144,7 +5274,8 @@ mod tests {
 
         // Find peaks (SCR events cause increases above baseline)
         let baseline = params.baseline_scl;
-        let peaks: usize = samples.windows(3)
+        let peaks: usize = samples
+            .windows(3)
             .filter(|w| w[1] > w[0] && w[1] > w[2] && w[1] > baseline + 0.3)
             .count();
 
@@ -5167,7 +5298,10 @@ mod tests {
         let second: Vec<f64> = (0..50).map(|_| generator.next_sample(&mut state)).collect();
 
         for (a, b) in first.iter().zip(second.iter()) {
-            assert!((a - b).abs() < 1e-10, "Reset should produce identical output");
+            assert!(
+                (a - b).abs() < 1e-10,
+                "Reset should produce identical output"
+            );
         }
     }
 
@@ -5195,7 +5329,9 @@ mod tests {
         while !generator.is_complete(&state, &params) {
             generator.next_sample(&mut state);
             count += 1;
-            if count > 100 { break; } // Safety limit
+            if count > 100 {
+                break;
+            } // Safety limit
         }
 
         assert!(generator.is_complete(&state, &params));
@@ -5231,9 +5367,9 @@ mod tests {
 
         // Verify times are advancing correctly (at different rates)
         assert!((ecg_gen.current_time(&ecg_state) - 0.1).abs() < 0.001); // 1000 Hz
-        assert!((ppg_gen.current_time(&ppg_state) - 1.0).abs() < 0.01);  // 100 Hz
+        assert!((ppg_gen.current_time(&ppg_state) - 1.0).abs() < 0.01); // 100 Hz
         assert!((emg_gen.current_time(&emg_state) - 0.05).abs() < 0.001); // 2000 Hz
-        assert!((eda_gen.current_time(&eda_state) - 10.0).abs() < 0.1);  // 10 Hz
+        assert!((eda_gen.current_time(&eda_state) - 10.0).abs() < 0.1); // 10 Hz
     }
 
     #[test]
@@ -5296,11 +5432,15 @@ mod tests {
 
         // Respiratory signal is always positive (0 to amplitude), mean ~0.5-0.7
         let mean: f64 = samples.iter().sum::<f64>() / samples.len() as f64;
-        assert!(mean > 0.3 && mean < 0.9,
-            "Respiratory mean should be ~0.6, got {}", mean);
+        assert!(
+            mean > 0.3 && mean < 0.9,
+            "Respiratory mean should be ~0.6, got {}",
+            mean
+        );
 
         // Should have variance (oscillation)
-        let variance: f64 = samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / samples.len() as f64;
+        let variance: f64 =
+            samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / samples.len() as f64;
         assert!(variance > 0.05, "Should have respiratory variation");
     }
 
@@ -5327,8 +5467,11 @@ mod tests {
         }
 
         // At 15 bpm over 8 seconds, expect ~2 breath cycles = ~2 troughs
-        assert!((1..=4).contains(&trough_count),
-            "Expected ~2 breath troughs, got {}", trough_count);
+        assert!(
+            (1..=4).contains(&trough_count),
+            "Expected ~2 breath troughs, got {}",
+            trough_count
+        );
     }
 
     #[test]
@@ -5347,17 +5490,18 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 60 samples (60 seconds at 1 Hz)
-        let samples: Vec<f64> = (0..60)
-            .map(|_| generator.next_sample(&mut state))
-            .collect();
+        let samples: Vec<f64> = (0..60).map(|_| generator.next_sample(&mut state)).collect();
 
         assert_eq!(samples.len(), 60);
         assert!((generator.current_time(&state) - 60.0).abs() < 0.1);
 
         // Temperature should be around baseline
         let mean: f64 = samples.iter().sum::<f64>() / samples.len() as f64;
-        assert!((mean - 33.0).abs() < 1.0,
-            "Mean temp should be near baseline 33°C, got {}", mean);
+        assert!(
+            (mean - 33.0).abs() < 1.0,
+            "Mean temp should be near baseline 33°C, got {}",
+            mean
+        );
     }
 
     #[test]
@@ -5373,8 +5517,11 @@ mod tests {
 
         // All temps should be physiologically reasonable (30-36°C)
         for sample in &samples {
-            assert!(*sample > 30.0 && *sample < 36.0,
-                "Temperature {} outside reasonable range", sample);
+            assert!(
+                *sample > 30.0 && *sample < 36.0,
+                "Temperature {} outside reasonable range",
+                sample
+            );
         }
     }
 
@@ -5394,19 +5541,28 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 60 samples (1 second at 60 Hz)
-        let samples: Vec<GazeSample> = (0..60)
-            .map(|_| generator.next_sample(&mut state))
-            .collect();
+        let samples: Vec<GazeSample> = (0..60).map(|_| generator.next_sample(&mut state)).collect();
 
         assert_eq!(samples.len(), 60);
         assert!((generator.current_time(&state) - 1.0).abs() < 0.02);
 
         // Gaze positions should be within screen bounds
         for sample in &samples {
-            assert!(sample.x >= -1.1 && sample.x <= 1.1, "X out of bounds: {}", sample.x);
-            assert!(sample.y >= -1.1 && sample.y <= 1.1, "Y out of bounds: {}", sample.y);
-            assert!(sample.pupil_diameter > 2.0 && sample.pupil_diameter < 6.0,
-                "Pupil diameter {} out of range", sample.pupil_diameter);
+            assert!(
+                sample.x >= -1.1 && sample.x <= 1.1,
+                "X out of bounds: {}",
+                sample.x
+            );
+            assert!(
+                sample.y >= -1.1 && sample.y <= 1.1,
+                "Y out of bounds: {}",
+                sample.y
+            );
+            assert!(
+                sample.pupil_diameter > 2.0 && sample.pupil_diameter < 6.0,
+                "Pupil diameter {} out of range",
+                sample.pupil_diameter
+            );
         }
     }
 
@@ -5424,16 +5580,21 @@ mod tests {
         // Calculate gaze velocity to detect saccades
         let mut large_movements = 0;
         for i in 1..samples.len() {
-            let dx = samples[i].x - samples[i-1].x;
-            let dy = samples[i].y - samples[i-1].y;
-            let distance = (dx*dx + dy*dy).sqrt();
-            if distance > 0.1 { // Threshold for saccade
+            let dx = samples[i].x - samples[i - 1].x;
+            let dy = samples[i].y - samples[i - 1].y;
+            let distance = (dx * dx + dy * dy).sqrt();
+            if distance > 0.1 {
+                // Threshold for saccade
                 large_movements += 1;
             }
         }
 
         // Over 5 seconds with ~300ms fixations, expect several saccades
-        assert!(large_movements > 5, "Should have saccades, got {} large movements", large_movements);
+        assert!(
+            large_movements > 5,
+            "Should have saccades, got {} large movements",
+            large_movements
+        );
     }
 
     // ========== StreamingPose Tests ==========
@@ -5445,16 +5606,18 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 30 frames (1 second at 30 fps)
-        let frames: Vec<PoseFrame> = (0..30)
-            .map(|_| generator.next_frame(&mut state))
-            .collect();
+        let frames: Vec<PoseFrame> = (0..30).map(|_| generator.next_frame(&mut state)).collect();
 
         assert_eq!(frames.len(), 30);
         assert_eq!(generator.current_frame(&state), 30);
 
         // Check keypoints structure
         for frame in &frames {
-            assert_eq!(frame.keypoints.len(), 33, "Should have 33 MediaPipe keypoints");
+            assert_eq!(
+                frame.keypoints.len(),
+                33,
+                "Should have 33 MediaPipe keypoints"
+            );
             assert!(frame.gait_phase >= 0.0 && frame.gait_phase <= 1.0);
             assert!(frame.phase_name == "stance" || frame.phase_name == "swing");
         }
@@ -5470,9 +5633,7 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 60 frames (2 seconds = 2 gait cycles)
-        let frames: Vec<PoseFrame> = (0..60)
-            .map(|_| generator.next_frame(&mut state))
-            .collect();
+        let frames: Vec<PoseFrame> = (0..60).map(|_| generator.next_frame(&mut state)).collect();
 
         // Should see both stance and swing phases
         let stance_count = frames.iter().filter(|f| f.phase_name == "stance").count();
@@ -5497,7 +5658,12 @@ mod tests {
         // Pelvis Z should increase (forward walking)
         let z1 = frame1.keypoints[0][2];
         let z30 = frame30.keypoints[24][2]; // Right hip Z
-        assert!(z30 > z1, "Should be walking forward: z1={}, z30={}", z1, z30);
+        assert!(
+            z30 > z1,
+            "Should be walking forward: z1={}, z30={}",
+            z1,
+            z30
+        );
     }
 
     // ========== StreamingHand Tests ==========
@@ -5509,9 +5675,7 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 30 frames (1 second at 30 fps)
-        let frames: Vec<HandFrame> = (0..30)
-            .map(|_| generator.next_frame(&mut state))
-            .collect();
+        let frames: Vec<HandFrame> = (0..30).map(|_| generator.next_frame(&mut state)).collect();
 
         assert_eq!(frames.len(), 30);
         assert_eq!(generator.current_frame(&state), 30);
@@ -5534,22 +5698,20 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 60 frames (2 seconds at 30 fps)
-        let frames: Vec<HandFrame> = (0..60)
-            .map(|_| generator.next_frame(&mut state))
-            .collect();
+        let frames: Vec<HandFrame> = (0..60).map(|_| generator.next_frame(&mut state)).collect();
 
         // Index finger (finger 1) should change extension state
-        let index_states: Vec<bool> = frames.iter()
-            .map(|f| f.fingers_extended[1])
-            .collect();
+        let index_states: Vec<bool> = frames.iter().map(|f| f.fingers_extended[1]).collect();
 
         // Count state changes
-        let changes: usize = index_states.windows(2)
-            .filter(|w| w[0] != w[1])
-            .count();
+        let changes: usize = index_states.windows(2).filter(|w| w[0] != w[1]).count();
 
         // At 2 Hz over 2 seconds, expect ~4 taps = ~8 state changes
-        assert!(changes >= 2, "Should have tapping motion, got {} changes", changes);
+        assert!(
+            changes >= 2,
+            "Should have tapping motion, got {} changes",
+            changes
+        );
     }
 
     #[test]
@@ -5563,15 +5725,14 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 30 frames
-        let frames: Vec<HandFrame> = (0..30)
-            .map(|_| generator.next_frame(&mut state))
-            .collect();
+        let frames: Vec<HandFrame> = (0..30).map(|_| generator.next_frame(&mut state)).collect();
 
         // Wrist position should vary due to tremor
         let wrist_x: Vec<f64> = frames.iter().map(|f| f.landmarks[0][0]).collect();
 
         let mean_x = wrist_x.iter().sum::<f64>() / wrist_x.len() as f64;
-        let variance = wrist_x.iter().map(|x| (x - mean_x).powi(2)).sum::<f64>() / wrist_x.len() as f64;
+        let variance =
+            wrist_x.iter().map(|x| (x - mean_x).powi(2)).sum::<f64>() / wrist_x.len() as f64;
 
         assert!(variance > 0.0, "Should have tremor-induced variance");
     }
@@ -5585,9 +5746,7 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 30 frames (1 second at 30 fps)
-        let frames: Vec<RppgFrame> = (0..30)
-            .map(|_| generator.next_sample(&mut state))
-            .collect();
+        let frames: Vec<RppgFrame> = (0..30).map(|_| generator.next_sample(&mut state)).collect();
 
         assert_eq!(frames.len(), 30);
         assert!((generator.current_time(&state) - 1.0).abs() < 0.05);
@@ -5612,27 +5771,51 @@ mod tests {
 
         // All pixel values should be in valid range [0, 1]
         for pixel in &frame.pixels {
-            assert!(pixel[0] >= 0.0 && pixel[0] <= 1.0, "R out of range: {}", pixel[0]);
-            assert!(pixel[1] >= 0.0 && pixel[1] <= 1.0, "G out of range: {}", pixel[1]);
-            assert!(pixel[2] >= 0.0 && pixel[2] <= 1.0, "B out of range: {}", pixel[2]);
+            assert!(
+                pixel[0] >= 0.0 && pixel[0] <= 1.0,
+                "R out of range: {}",
+                pixel[0]
+            );
+            assert!(
+                pixel[1] >= 0.0 && pixel[1] <= 1.0,
+                "G out of range: {}",
+                pixel[1]
+            );
+            assert!(
+                pixel[2] >= 0.0 && pixel[2] <= 1.0,
+                "B out of range: {}",
+                pixel[2]
+            );
         }
 
         // Mean RGB should be approximately skin tone
         let skin_tone = params.skin_tone;
-        assert!((frame.mean_rgb[0] - skin_tone[0]).abs() < 0.1,
-            "Mean R {} should be near skin tone {}", frame.mean_rgb[0], skin_tone[0]);
-        assert!((frame.mean_rgb[1] - skin_tone[1]).abs() < 0.1,
-            "Mean G {} should be near skin tone {}", frame.mean_rgb[1], skin_tone[1]);
-        assert!((frame.mean_rgb[2] - skin_tone[2]).abs() < 0.1,
-            "Mean B {} should be near skin tone {}", frame.mean_rgb[2], skin_tone[2]);
+        assert!(
+            (frame.mean_rgb[0] - skin_tone[0]).abs() < 0.1,
+            "Mean R {} should be near skin tone {}",
+            frame.mean_rgb[0],
+            skin_tone[0]
+        );
+        assert!(
+            (frame.mean_rgb[1] - skin_tone[1]).abs() < 0.1,
+            "Mean G {} should be near skin tone {}",
+            frame.mean_rgb[1],
+            skin_tone[1]
+        );
+        assert!(
+            (frame.mean_rgb[2] - skin_tone[2]).abs() < 0.1,
+            "Mean B {} should be near skin tone {}",
+            frame.mean_rgb[2],
+            skin_tone[2]
+        );
     }
 
     #[test]
     fn test_streaming_rppg_cardiac_signal() {
         let generator = StreamingRppg;
         let params = StreamingRppgParams {
-            heart_rate: 60.0,  // 1 Hz = easy to track
-            hrv: 0.0,          // No HRV for predictable test
+            heart_rate: 60.0, // 1 Hz = easy to track
+            hrv: 0.0,         // No HRV for predictable test
             motion_amplitude: 0.0,
             illumination_variation: 0.0,
             ..StreamingRppgParams::default()
@@ -5640,9 +5823,7 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 90 frames (3 seconds at 30 fps = ~3 cardiac cycles)
-        let frames: Vec<RppgFrame> = (0..90)
-            .map(|_| generator.next_sample(&mut state))
-            .collect();
+        let frames: Vec<RppgFrame> = (0..90).map(|_| generator.next_sample(&mut state)).collect();
 
         // Use ground truth BVP to verify cardiac cycles (more reliable than noisy RGB)
         let bvp_signal: Vec<f64> = frames.iter().map(|f| f.ground_truth_bvp).collect();
@@ -5650,15 +5831,21 @@ mod tests {
         // Find main peaks in the BVP signal (systolic peaks only, ignore dicrotic notch)
         let mut peak_count = 0;
         for i in 1..bvp_signal.len() - 1 {
-            if bvp_signal[i] > bvp_signal[i - 1] && bvp_signal[i] > bvp_signal[i + 1]
-               && bvp_signal[i] > 0.9 { // High threshold to find only main systolic peaks
+            if bvp_signal[i] > bvp_signal[i - 1]
+                && bvp_signal[i] > bvp_signal[i + 1]
+                && bvp_signal[i] > 0.9
+            {
+                // High threshold to find only main systolic peaks
                 peak_count += 1;
             }
         }
 
         // At 60 BPM over 3 seconds, expect 2-4 peaks (depends on starting phase)
-        assert!((2..=6).contains(&peak_count),
-            "Expected 2-4 cardiac cycles, got {} peaks", peak_count);
+        assert!(
+            (2..=6).contains(&peak_count),
+            "Expected 2-4 cardiac cycles, got {} peaks",
+            peak_count
+        );
 
         // Also verify the green channel has modulation correlated with BVP
         let green_signal: Vec<f64> = frames.iter().map(|f| f.mean_rgb[1]).collect();
@@ -5666,7 +5853,10 @@ mod tests {
             let mean = green_signal.iter().sum::<f64>() / green_signal.len() as f64;
             green_signal.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / green_signal.len() as f64
         };
-        assert!(green_var > 0.0, "Green channel should have variation from rPPG");
+        assert!(
+            green_var > 0.0,
+            "Green channel should have variation from rPPG"
+        );
     }
 
     #[test]
@@ -5680,17 +5870,23 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate frames and collect BVP ground truth
-        let frames: Vec<RppgFrame> = (0..60)
-            .map(|_| generator.next_sample(&mut state))
-            .collect();
+        let frames: Vec<RppgFrame> = (0..60).map(|_| generator.next_sample(&mut state)).collect();
 
         let bvp_signal: Vec<f64> = frames.iter().map(|f| f.ground_truth_bvp).collect();
 
         // BVP should have variation (cardiac pulses)
         let mean_bvp = bvp_signal.iter().sum::<f64>() / bvp_signal.len() as f64;
-        let variance = bvp_signal.iter().map(|x| (x - mean_bvp).powi(2)).sum::<f64>() / bvp_signal.len() as f64;
+        let variance = bvp_signal
+            .iter()
+            .map(|x| (x - mean_bvp).powi(2))
+            .sum::<f64>()
+            / bvp_signal.len() as f64;
 
-        assert!(variance > 0.01, "BVP should have cardiac variation, variance: {}", variance);
+        assert!(
+            variance > 0.01,
+            "BVP should have cardiac variation, variance: {}",
+            variance
+        );
     }
 
     #[test]
@@ -5709,11 +5905,17 @@ mod tests {
         let center_idx = 16 * 32 + 16;
         let corner_idx = 0;
 
-        let center_brightness = frame.pixels[center_idx][0] + frame.pixels[center_idx][1] + frame.pixels[center_idx][2];
-        let corner_brightness = frame.pixels[corner_idx][0] + frame.pixels[corner_idx][1] + frame.pixels[corner_idx][2];
+        let center_brightness =
+            frame.pixels[center_idx][0] + frame.pixels[center_idx][1] + frame.pixels[center_idx][2];
+        let corner_brightness =
+            frame.pixels[corner_idx][0] + frame.pixels[corner_idx][1] + frame.pixels[corner_idx][2];
 
-        assert!(center_brightness > corner_brightness,
-            "Center should be brighter (skin): {} vs {}", center_brightness, corner_brightness);
+        assert!(
+            center_brightness > corner_brightness,
+            "Center should be brighter (skin): {} vs {}",
+            center_brightness,
+            corner_brightness
+        );
     }
 
     #[test]
@@ -5734,8 +5936,10 @@ mod tests {
 
         // Ground truth BVP should be identical
         for (a, b) in first.iter().zip(second.iter()) {
-            assert!((a.ground_truth_bvp - b.ground_truth_bvp).abs() < 1e-10,
-                "Reset should produce identical BVP");
+            assert!(
+                (a.ground_truth_bvp - b.ground_truth_bvp).abs() < 1e-10,
+                "Reset should produce identical BVP"
+            );
         }
     }
 
@@ -5763,7 +5967,9 @@ mod tests {
         while !generator.is_complete(&state, &params) {
             generator.next_sample(&mut state);
             count += 1;
-            if count > 60 { break; } // Safety limit
+            if count > 60 {
+                break;
+            } // Safety limit
         }
 
         assert!(generator.is_complete(&state, &params));
@@ -5791,10 +5997,16 @@ mod tests {
             let frame = generator.next_sample(&mut state);
 
             // Mean RGB should reflect the skin tone
-            assert!((frame.mean_rgb[0] - skin_tone[0]).abs() < 0.15,
-                "Skin tone R mismatch for {:?}", skin_tone);
-            assert!((frame.mean_rgb[1] - skin_tone[1]).abs() < 0.15,
-                "Skin tone G mismatch for {:?}", skin_tone);
+            assert!(
+                (frame.mean_rgb[0] - skin_tone[0]).abs() < 0.15,
+                "Skin tone R mismatch for {:?}",
+                skin_tone
+            );
+            assert!(
+                (frame.mean_rgb[1] - skin_tone[1]).abs() < 0.15,
+                "Skin tone G mismatch for {:?}",
+                skin_tone
+            );
         }
     }
 
@@ -5850,7 +6062,8 @@ mod tests {
         // Audio should have variation
         let values: Vec<f64> = samples.iter().map(|s| s.value).collect();
         let mean: f64 = values.iter().sum::<f64>() / values.len() as f64;
-        let variance: f64 = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
+        let variance: f64 =
+            values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
         assert!(variance > 0.0, "Audio should have non-zero variance");
     }
 
@@ -5872,7 +6085,11 @@ mod tests {
         // F0 should be close to target
         let f0_values: Vec<f64> = samples.iter().map(|s| s.f0).collect();
         let mean_f0 = f0_values.iter().sum::<f64>() / f0_values.len() as f64;
-        assert!((mean_f0 - 100.0).abs() < 10.0, "Mean F0 {} should be near 100 Hz", mean_f0);
+        assert!(
+            (mean_f0 - 100.0).abs() < 10.0,
+            "Mean F0 {} should be near 100 Hz",
+            mean_f0
+        );
     }
 
     #[test]
@@ -5896,7 +6113,11 @@ mod tests {
         let f0_min = f0_values.iter().cloned().fold(f64::INFINITY, f64::min);
         let f0_max = f0_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
 
-        assert!(f0_max - f0_min > 10.0, "F0 range {} should show tremor modulation", f0_max - f0_min);
+        assert!(
+            f0_max - f0_min > 10.0,
+            "F0 range {} should show tremor modulation",
+            f0_max - f0_min
+        );
     }
 
     #[test]
@@ -5906,7 +6127,9 @@ mod tests {
         // Normal voice
         let params_normal = StreamingVowelParams::default();
         let mut state_normal = generator.init_state(&params_normal, 42);
-        let normal: Vec<AudioSample> = (0..1600).map(|_| generator.next_sample(&mut state_normal)).collect();
+        let normal: Vec<AudioSample> = (0..1600)
+            .map(|_| generator.next_sample(&mut state_normal))
+            .collect();
         let normal_rms: f64 = (normal.iter().map(|s| s.value.powi(2)).sum::<f64>() / 1600.0).sqrt();
 
         // Hypophonic voice
@@ -5915,7 +6138,9 @@ mod tests {
             ..StreamingVowelParams::default()
         };
         let mut state_hypo = generator.init_state(&params_hypo, 42);
-        let hypo: Vec<AudioSample> = (0..1600).map(|_| generator.next_sample(&mut state_hypo)).collect();
+        let hypo: Vec<AudioSample> = (0..1600)
+            .map(|_| generator.next_sample(&mut state_hypo))
+            .collect();
         let hypo_rms: f64 = (hypo.iter().map(|s| s.value.powi(2)).sum::<f64>() / 1600.0).sqrt();
 
         assert!(hypo_rms < normal_rms, "Hypophonic voice should be quieter");
@@ -5994,7 +6219,10 @@ mod tests {
         }
 
         // Bradykinetic version should take longer (more samples)
-        assert!(count_brady > count_normal, "Bradykinesia should slow DDK rate");
+        assert!(
+            count_brady > count_normal,
+            "Bradykinesia should slow DDK rate"
+        );
     }
 
     // ========== Level 3 StreamingClinicalPose Tests ==========
@@ -6006,9 +6234,8 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 30 frames (1 second)
-        let frames: Vec<ClinicalPoseFrame> = (0..30)
-            .map(|_| generator.next_frame(&mut state))
-            .collect();
+        let frames: Vec<ClinicalPoseFrame> =
+            (0..30).map(|_| generator.next_frame(&mut state)).collect();
 
         assert_eq!(frames.len(), 30);
         assert_eq!(generator.current_frame(&state), 30);
@@ -6027,21 +6254,26 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 60 frames (2 seconds)
-        let frames: Vec<ClinicalPoseFrame> = (0..60)
-            .map(|_| generator.next_frame(&mut state))
-            .collect();
+        let frames: Vec<ClinicalPoseFrame> =
+            (0..60).map(|_| generator.next_frame(&mut state)).collect();
 
         // Should have reduced arm swing
-        assert!(frames.iter().all(|f| f.arm_swing < 0.15),
-            "Parkinsonian gait should have reduced arm swing");
+        assert!(
+            frames.iter().all(|f| f.arm_swing < 0.15),
+            "Parkinsonian gait should have reduced arm swing"
+        );
 
         // Should have shorter steps
-        assert!(frames.iter().all(|f| f.step_length < 1.0),
-            "Parkinsonian gait should have shorter steps");
+        assert!(
+            frames.iter().all(|f| f.step_length < 1.0),
+            "Parkinsonian gait should have shorter steps"
+        );
 
         // UPDRS score should reflect impairment
-        assert!(frames.iter().any(|f| f.updrs_gait_score >= 1),
-            "Parkinsonian gait should have UPDRS score >= 1");
+        assert!(
+            frames.iter().any(|f| f.updrs_gait_score >= 1),
+            "Parkinsonian gait should have UPDRS score >= 1"
+        );
     }
 
     #[test]
@@ -6055,9 +6287,8 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 30 frames
-        let frames: Vec<ClinicalPoseFrame> = (0..30)
-            .map(|_| generator.next_frame(&mut state))
-            .collect();
+        let frames: Vec<ClinicalPoseFrame> =
+            (0..30).map(|_| generator.next_frame(&mut state)).collect();
 
         // Should have some freezing episodes
         let freeze_count = frames.iter().filter(|f| f.freezing).count();
@@ -6066,7 +6297,10 @@ mod tests {
         // During freezing, UPDRS should be 4
         for frame in &frames {
             if frame.freezing {
-                assert_eq!(frame.updrs_gait_score, 4, "Freezing should have UPDRS score 4");
+                assert_eq!(
+                    frame.updrs_gait_score, 4,
+                    "Freezing should have UPDRS score 4"
+                );
             }
         }
     }
@@ -6080,9 +6314,8 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 30 frames (1 second)
-        let frames: Vec<ClinicalHandFrame> = (0..30)
-            .map(|_| generator.next_frame(&mut state))
-            .collect();
+        let frames: Vec<ClinicalHandFrame> =
+            (0..30).map(|_| generator.next_frame(&mut state)).collect();
 
         assert_eq!(frames.len(), 30);
         assert_eq!(generator.current_frame(&state), 30);
@@ -6101,17 +6334,21 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 60 frames (2 seconds)
-        let frames: Vec<ClinicalHandFrame> = (0..60)
-            .map(|_| generator.next_frame(&mut state))
-            .collect();
+        let frames: Vec<ClinicalHandFrame> =
+            (0..60).map(|_| generator.next_frame(&mut state)).collect();
 
         // Task should be RestTremor
-        assert!(frames.iter().all(|f| f.task == ClinicalHandTask::RestTremor));
+        assert!(
+            frames
+                .iter()
+                .all(|f| f.task == ClinicalHandTask::RestTremor)
+        );
 
         // Wrist should show tremor movement
         let wrist_x: Vec<f64> = frames.iter().map(|f| f.landmarks[0][0]).collect();
         let mean_x = wrist_x.iter().sum::<f64>() / wrist_x.len() as f64;
-        let variance = wrist_x.iter().map(|x| (x - mean_x).powi(2)).sum::<f64>() / wrist_x.len() as f64;
+        let variance =
+            wrist_x.iter().map(|x| (x - mean_x).powi(2)).sum::<f64>() / wrist_x.len() as f64;
         assert!(variance > 0.0, "Should have tremor-induced wrist movement");
     }
 
@@ -6126,15 +6363,18 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 60 frames (2 seconds = ~8 taps)
-        let frames: Vec<ClinicalHandFrame> = (0..60)
-            .map(|_| generator.next_frame(&mut state))
-            .collect();
+        let frames: Vec<ClinicalHandFrame> =
+            (0..60).map(|_| generator.next_frame(&mut state)).collect();
 
         // Index finger should change extension state
         let index_states: Vec<bool> = frames.iter().map(|f| f.fingers_extended[1]).collect();
         let changes: usize = index_states.windows(2).filter(|w| w[0] != w[1]).count();
 
-        assert!(changes >= 4, "Should have finger tapping motion, got {} changes", changes);
+        assert!(
+            changes >= 4,
+            "Should have finger tapping motion, got {} changes",
+            changes
+        );
     }
 
     #[test]
@@ -6144,20 +6384,19 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate 60 frames
-        let frames: Vec<ClinicalHandFrame> = (0..60)
-            .map(|_| generator.next_frame(&mut state))
-            .collect();
+        let frames: Vec<ClinicalHandFrame> =
+            (0..60).map(|_| generator.next_frame(&mut state)).collect();
 
         // Should have spiral positions
-        let spiral_positions: Vec<_> = frames.iter()
-            .filter_map(|f| f.spiral_position)
-            .collect();
+        let spiral_positions: Vec<_> = frames.iter().filter_map(|f| f.spiral_position).collect();
 
         assert!(!spiral_positions.is_empty(), "Should have spiral positions");
 
         // Spiral should expand (radius increases)
         let first_radius = (spiral_positions[0][0].powi(2) + spiral_positions[0][1].powi(2)).sqrt();
-        let last_radius = (spiral_positions.last().unwrap()[0].powi(2) + spiral_positions.last().unwrap()[1].powi(2)).sqrt();
+        let last_radius = (spiral_positions.last().unwrap()[0].powi(2)
+            + spiral_positions.last().unwrap()[1].powi(2))
+        .sqrt();
         assert!(last_radius > first_radius, "Spiral should expand");
     }
 
@@ -6168,19 +6407,23 @@ mod tests {
         let mut state = generator.init_state(&params, 42);
 
         // Generate frames and let amplitude/frequency decay
-        let frames: Vec<ClinicalHandFrame> = (0..120)
-            .map(|_| generator.next_frame(&mut state))
-            .collect();
+        let frames: Vec<ClinicalHandFrame> =
+            (0..120).map(|_| generator.next_frame(&mut state)).collect();
 
         // UPDRS score should increase as performance degrades
         let early_scores: Vec<u8> = frames[0..30].iter().map(|f| f.updrs_score).collect();
         let late_scores: Vec<u8> = frames[90..120].iter().map(|f| f.updrs_score).collect();
 
-        let early_mean = early_scores.iter().map(|&s| s as f64).sum::<f64>() / early_scores.len() as f64;
-        let late_mean = late_scores.iter().map(|&s| s as f64).sum::<f64>() / late_scores.len() as f64;
+        let early_mean =
+            early_scores.iter().map(|&s| s as f64).sum::<f64>() / early_scores.len() as f64;
+        let late_mean =
+            late_scores.iter().map(|&s| s as f64).sum::<f64>() / late_scores.len() as f64;
 
         // Score should generally be equal or higher later (worse performance)
-        assert!(late_mean >= early_mean * 0.8, "UPDRS score should reflect decrement");
+        assert!(
+            late_mean >= early_mean * 0.8,
+            "UPDRS score should reflect decrement"
+        );
     }
 
     // ========== All Level 3 Generators Together ==========
@@ -6195,7 +6438,8 @@ mod tests {
         let mut vowel_state = vowel_gen.init_state(&StreamingVowelParams::default(), 1);
         let mut ddk_state = ddk_gen.init_state(&StreamingDdkParams::default(), 2);
         let mut pose_state = pose_gen.init_state(&StreamingClinicalPoseParams::parkinsonian(), 3);
-        let mut hand_state = hand_gen.init_state(&StreamingClinicalHandParams::parkinsonian_tapping(), 4);
+        let mut hand_state =
+            hand_gen.init_state(&StreamingClinicalHandParams::parkinsonian_tapping(), 4);
 
         // Generate samples from all generators
         for _ in 0..100 {

@@ -1,6 +1,6 @@
 //! Phonation generators (source-filter model)
 
-use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth};
+use crate::traits::{GeneratedData, SyntheticGenerator, TimeSeriesGroundTruth};
 use ndarray::Array1;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
@@ -24,7 +24,11 @@ impl SyntheticGenerator for SustainedVowelGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = SustainedVowelParams;
 
-    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        _seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -51,7 +55,8 @@ impl SyntheticGenerator for SustainedVowelGenerator {
             for (formant_freq, bandwidth) in &params.vowel_formants {
                 // Simple resonance filter
                 let q = formant_freq / bandwidth;
-                let resonance = 1.0 / (1.0 + ((2.0 * PI * formant_freq * t).sin() / q).powi(2)).sqrt();
+                let resonance =
+                    1.0 / (1.0 + ((2.0 * PI * formant_freq * t).sin() / q).powi(2)).sqrt();
                 filtered += source * resonance;
             }
 
@@ -73,7 +78,11 @@ impl SyntheticGenerator for SustainedVowelGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -93,13 +102,19 @@ impl SyntheticGenerator for SustainedVowelGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.sampling_rate < 8000.0 {
-            return Err(crate::GeneratorError::InvalidParameter("sampling_rate should be >= 8000 Hz for voice".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "sampling_rate should be >= 8000 Hz for voice".to_string(),
+            ));
         }
         if params.fundamental_frequency <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("fundamental_frequency must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "fundamental_frequency must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -121,7 +136,11 @@ impl SyntheticGenerator for JitterGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = JitterParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -157,7 +176,11 @@ impl SyntheticGenerator for JitterGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(f0_values, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            f0_values,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -171,10 +194,14 @@ impl SyntheticGenerator for JitterGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.jitter_percent < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("jitter_percent must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "jitter_percent must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -196,7 +223,11 @@ impl SyntheticGenerator for ShimmerGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = ShimmerParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -215,7 +246,9 @@ impl SyntheticGenerator for ShimmerGenerator {
         // Calculate actual shimmer
         let mut amp_diffs = Vec::new();
         for i in 1..amplitude_values.len() {
-            amp_diffs.push(((amplitude_values[i] - amplitude_values[i - 1]) / amplitude_values[i - 1]).abs());
+            amp_diffs.push(
+                ((amplitude_values[i] - amplitude_values[i - 1]) / amplitude_values[i - 1]).abs(),
+            );
         }
         let actual_shimmer = amp_diffs.iter().sum::<f64>() / amp_diffs.len() as f64 * 100.0;
 
@@ -230,7 +263,11 @@ impl SyntheticGenerator for ShimmerGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(amplitude_values, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            amplitude_values,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -244,10 +281,14 @@ impl SyntheticGenerator for ShimmerGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.shimmer_percent < 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("shimmer_percent must be non-negative".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "shimmer_percent must be non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -270,7 +311,11 @@ impl SyntheticGenerator for VoiceTremorGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = VoiceTremorParams;
 
-    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        _seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -279,8 +324,8 @@ impl SyntheticGenerator for VoiceTremorGenerator {
         let f0_contour: Vec<f64> = (0..n_samples)
             .map(|i| {
                 let t = i as f64 * dt;
-                params.baseline_f0 + params.tremor_extent *
-                    (2.0 * PI * params.tremor_frequency * t).sin()
+                params.baseline_f0
+                    + params.tremor_extent * (2.0 * PI * params.tremor_frequency * t).sin()
             })
             .collect();
 
@@ -297,7 +342,11 @@ impl SyntheticGenerator for VoiceTremorGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(f0_contour, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            f0_contour,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -312,10 +361,14 @@ impl SyntheticGenerator for VoiceTremorGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.baseline_f0 <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("baseline_f0 must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "baseline_f0 must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -338,9 +391,9 @@ pub struct VoiceOnsetTimeParams {
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone)]
 pub enum ConsonantType {
-    VoicedStop,      // VOT: -100 to 0 ms (e.g., /b/, /d/, /g/)
-    VoicelessStop,   // VOT: 25-100 ms (e.g., /p/, /t/, /k/)
-    AspiratedStop,   // VOT: >100 ms
+    VoicedStop,    // VOT: -100 to 0 ms (e.g., /b/, /d/, /g/)
+    VoicelessStop, // VOT: 25-100 ms (e.g., /p/, /t/, /k/)
+    AspiratedStop, // VOT: >100 ms
 }
 
 impl SyntheticGenerator for VoiceOnsetTimeGenerator {
@@ -348,7 +401,11 @@ impl SyntheticGenerator for VoiceOnsetTimeGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = VoiceOnsetTimeParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -369,8 +426,10 @@ impl SyntheticGenerator for VoiceOnsetTimeGenerator {
         let mut gt_params = HashMap::new();
         gt_params.insert("mean_vot".to_string(), mean_vot);
         gt_params.insert("std_vot".to_string(), std_dev);
-        gt_params.insert("actual_mean".to_string(),
-            vot_values.iter().sum::<f64>() / vot_values.len() as f64);
+        gt_params.insert(
+            "actual_mean".to_string(),
+            vot_values.iter().sum::<f64>() / vot_values.len() as f64,
+        );
 
         let ground_truth = TimeSeriesGroundTruth {
             parameters: gt_params,
@@ -391,10 +450,14 @@ impl SyntheticGenerator for VoiceOnsetTimeGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.num_samples == 0 {
-            return Err(crate::GeneratorError::InvalidParameter("num_samples must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "num_samples must be positive".to_string(),
+            ));
         }
         if params.variability < 0.0 || params.variability > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("variability must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "variability must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -417,7 +480,11 @@ impl SyntheticGenerator for VocalFryGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = VocalFryParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -464,7 +531,11 @@ impl SyntheticGenerator for VocalFryGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -479,13 +550,19 @@ impl SyntheticGenerator for VocalFryGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.fry_f0 <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("fry_f0 must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "fry_f0 must be positive".to_string(),
+            ));
         }
         if params.fry_irregularity < 0.0 || params.fry_irregularity > 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("fry_irregularity must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "fry_irregularity must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -498,8 +575,8 @@ pub struct BreathinessGenerator;
 pub struct BreathinessParams {
     pub duration: f64,
     pub sampling_rate: f64,
-    pub harmonic_amplitude: f64,    // amplitude of harmonic component
-    pub noise_amplitude: f64,       // amplitude of noise component
+    pub harmonic_amplitude: f64, // amplitude of harmonic component
+    pub noise_amplitude: f64,    // amplitude of noise component
     pub fundamental_frequency: f64,
 }
 
@@ -508,7 +585,11 @@ impl SyntheticGenerator for BreathinessGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = BreathinessParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -523,7 +604,8 @@ impl SyntheticGenerator for BreathinessGenerator {
             let t = i as f64 * dt;
 
             // Harmonic component (voiced)
-            let harmonic = params.harmonic_amplitude * (2.0 * PI * params.fundamental_frequency * t).sin();
+            let harmonic =
+                params.harmonic_amplitude * (2.0 * PI * params.fundamental_frequency * t).sin();
 
             // Noise component (aspiration)
             let noise = params.noise_amplitude * noise_dist.sample(&mut rng);
@@ -549,7 +631,11 @@ impl SyntheticGenerator for BreathinessGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -564,13 +650,19 @@ impl SyntheticGenerator for BreathinessGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.sampling_rate < 8000.0 {
-            return Err(crate::GeneratorError::InvalidParameter("sampling_rate should be >= 8000 Hz".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "sampling_rate should be >= 8000 Hz".to_string(),
+            ));
         }
         if params.fundamental_frequency <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("fundamental_frequency must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "fundamental_frequency must be positive".to_string(),
+            ));
         }
         Ok(())
     }
@@ -585,7 +677,10 @@ mod tests {
         let generator = SustainedVowelGenerator;
         let params = SustainedVowelGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -601,7 +696,10 @@ mod tests {
         let generator = VoiceTremorGenerator;
         let params = VoiceTremorGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -617,7 +715,10 @@ mod tests {
         let generator = VocalFryGenerator;
         let params = VocalFryGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 
     #[test]
@@ -625,6 +726,9 @@ mod tests {
         let generator = BreathinessGenerator;
         let params = BreathinessGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 }

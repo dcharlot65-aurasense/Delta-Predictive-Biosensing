@@ -5,7 +5,6 @@
 
 #[cfg(test)]
 mod neuromorphic_export_tests {
-    
 
     #[allow(clippy::upper_case_acronyms)] // domain notation
     /// Neuromorphic target platforms.
@@ -23,11 +22,11 @@ mod neuromorphic_export_tests {
     #[derive(Debug, Clone, Copy, PartialEq)]
     #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
     enum NeuronModel {
-        LIF,   // Leaky Integrate-and-Fire
-        CUBA,  // Current-Based
-        COBA,  // Conductance-Based
-        ALIF,  // Adaptive LIF
-        AdEx,  // Adaptive Exponential
+        LIF,  // Leaky Integrate-and-Fire
+        CUBA, // Current-Based
+        COBA, // Conductance-Based
+        ALIF, // Adaptive LIF
+        AdEx, // Adaptive Exponential
     }
 
     impl NeuronModel {
@@ -94,11 +93,11 @@ mod neuromorphic_export_tests {
     /// LIF neuron parameters.
     #[derive(Debug, Clone)]
     struct LIFParams {
-        tau_mem: f32,      // Membrane time constant (ms)
-        tau_syn: f32,      // Synaptic time constant (ms)
-        v_thresh: f32,     // Threshold voltage (mV)
-        v_reset: f32,      // Reset voltage (mV)
-        v_rest: f32,       // Resting potential (mV)
+        tau_mem: f32,       // Membrane time constant (ms)
+        tau_syn: f32,       // Synaptic time constant (ms)
+        v_thresh: f32,      // Threshold voltage (mV)
+        v_reset: f32,       // Reset voltage (mV)
+        v_rest: f32,        // Resting potential (mV)
         refractory_ms: f32, // Refractory period (ms)
     }
 
@@ -155,18 +154,26 @@ mod neuromorphic_export_tests {
             code.push_str(&format!("INPUT_SIZE = {}\n", self.config.input_size));
             code.push_str(&format!("HIDDEN_SIZES = {:?}\n", self.config.hidden_sizes));
             code.push_str(&format!("OUTPUT_SIZE = {}\n", self.config.output_size));
-            code.push_str(&format!("TIME_STEPS = {}\n\n",
-                (self.config.simulation_time_ms / self.config.time_step_ms) as u32));
+            code.push_str(&format!(
+                "TIME_STEPS = {}\n\n",
+                (self.config.simulation_time_ms / self.config.time_step_ms) as u32
+            ));
 
             // LIF parameters
             code.push_str("# LIF Neuron Parameters\n");
             code.push_str("lif_params = {\n");
-            code.push_str(&format!("    'du': {},  # Decay constant\n",
-                (1.0 / self.params.tau_mem * 4095.0) as u32));
-            code.push_str(&format!("    'dv': {},  # Voltage decay\n",
-                (1.0 / self.params.tau_syn * 4095.0) as u32));
-            code.push_str(&format!("    'vth': {},  # Threshold\n",
-                ((self.params.v_thresh - self.params.v_rest) * 10.0) as i32));
+            code.push_str(&format!(
+                "    'du': {},  # Decay constant\n",
+                (1.0 / self.params.tau_mem * 4095.0) as u32
+            ));
+            code.push_str(&format!(
+                "    'dv': {},  # Voltage decay\n",
+                (1.0 / self.params.tau_syn * 4095.0) as u32
+            ));
+            code.push_str(&format!(
+                "    'vth': {},  # Threshold\n",
+                ((self.params.v_thresh - self.params.v_rest) * 10.0) as i32
+            ));
             code.push_str("}\n\n");
 
             // Build network
@@ -203,7 +210,8 @@ mod neuromorphic_export_tests {
                 if i < self.config.hidden_sizes.len() - 1 {
                     code.push_str(&format!(
                         "lif_{}.out_ports.s_out.connect(dense_{}.in_ports.s_in)\n",
-                        i, i + 1
+                        i,
+                        i + 1
                     ));
                 }
             }
@@ -231,7 +239,10 @@ mod neuromorphic_export_tests {
             code.push_str("import numpy as np\n\n");
 
             // Setup
-            code.push_str(&format!("sim.setup(timestep={})\n\n", self.config.time_step_ms));
+            code.push_str(&format!(
+                "sim.setup(timestep={})\n\n",
+                self.config.time_step_ms
+            ));
 
             // Parameters
             code.push_str("# LIF Parameters\n");
@@ -242,7 +253,10 @@ mod neuromorphic_export_tests {
             code.push_str(&format!("    'v_thresh': {},\n", self.params.v_thresh));
             code.push_str(&format!("    'v_reset': {},\n", self.params.v_reset));
             code.push_str(&format!("    'v_rest': {},\n", self.params.v_rest));
-            code.push_str(&format!("    'tau_refrac': {},\n", self.params.refractory_ms));
+            code.push_str(&format!(
+                "    'tau_refrac': {},\n",
+                self.params.refractory_ms
+            ));
             code.push_str("}\n\n");
 
             // Create populations
@@ -257,7 +271,9 @@ mod neuromorphic_export_tests {
             for (i, &size) in self.config.hidden_sizes.iter().enumerate() {
                 code.push_str(&format!(
                     "hidden_{} = sim.Population({}, sim.{}, cell_params)\n",
-                    i, size, self.config.neuron_model.pynn_name()
+                    i,
+                    size,
+                    self.config.neuron_model.pynn_name()
                 ));
             }
 
@@ -274,10 +290,7 @@ mod neuromorphic_export_tests {
             code.push_str("    sim.StaticSynapse(weight=0.1))\n");
 
             for i in 0..self.config.hidden_sizes.len() - 1 {
-                code.push_str(&format!(
-                    "sim.Projection(hidden_{}, hidden_{},\n",
-                    i, i + 1
-                ));
+                code.push_str(&format!("sim.Projection(hidden_{}, hidden_{},\n", i, i + 1));
                 code.push_str("    sim.AllToAllConnector(),\n");
                 code.push_str("    sim.StaticSynapse(weight=0.1))\n");
             }
@@ -330,11 +343,14 @@ mod neuromorphic_export_tests {
             for i in 0..self.config.hidden_sizes.len() - 1 {
                 code.push_str(&format!(
                     "        self.fc{} = snn.Synapse({}, {})\n",
-                    i + 2, self.config.hidden_sizes[i], self.config.hidden_sizes[i + 1]
+                    i + 2,
+                    self.config.hidden_sizes[i],
+                    self.config.hidden_sizes[i + 1]
                 ));
                 code.push_str(&format!(
                     "        self.lif{} = snn.LIF({})\n",
-                    i + 2, self.config.hidden_sizes[i + 1]
+                    i + 2,
+                    self.config.hidden_sizes[i + 1]
                 ));
             }
 
@@ -354,7 +370,8 @@ mod neuromorphic_export_tests {
             for i in 0..self.config.hidden_sizes.len() - 1 {
                 code.push_str(&format!(
                     "        x = self.lif{}(self.fc{}(x))\n",
-                    i + 2, i + 2
+                    i + 2,
+                    i + 2
                 ));
             }
             code.push_str("        x = self.lif_out(self.fc_out(x))\n");
@@ -377,7 +394,9 @@ mod neuromorphic_export_tests {
         fn export(&self) -> String {
             match self.target {
                 NeuromorphicTarget::Loihi2 => self.generate_lava_code(),
-                NeuromorphicTarget::PyNN | NeuromorphicTarget::SpiNNaker2 => self.generate_pynn_code(),
+                NeuromorphicTarget::PyNN | NeuromorphicTarget::SpiNNaker2 => {
+                    self.generate_pynn_code()
+                }
                 NeuromorphicTarget::BrainScaleS2 => self.generate_hxtorch_code(),
             }
         }

@@ -132,8 +132,8 @@ pub use types::{
 pub use traits::{
     Configurable, ConvergenceAnalyzer, Dataset, EventEncoder, FeatureExtractor, GpuKernel,
     HardwareExporter, LossFunction, MembraneDynamics, Metric, Optimizer, PopulationTemplate,
-    SNNNetwork, Signal, SpikingLayer, SurrogateGradient, SynapticModel, SyntheticGenerator,
-    PowerEstimator,
+    PowerEstimator, SNNNetwork, Signal, SpikingLayer, SurrogateGradient, SynapticModel,
+    SyntheticGenerator,
 };
 
 // Re-export tensor types

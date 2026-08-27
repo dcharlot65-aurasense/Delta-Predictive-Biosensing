@@ -210,7 +210,10 @@ impl F5TTSGenerator {
     pub fn new(config: F5TTSConfig) -> Result<Self> {
         // Check for f5-tts
         let check = Command::new("python3")
-            .args(["-c", "from f5_tts.infer.utils_infer import infer_process; print('ok')"])
+            .args([
+                "-c",
+                "from f5_tts.infer.utils_infer import infer_process; print('ok')",
+            ])
             .output();
 
         // Try alternative import
@@ -228,11 +231,10 @@ impl F5TTSGenerator {
             });
         }
 
-        let python_path = which::which("python3")
-            .map_err(|_| MediaError::ToolNotFound {
-                tool: "python3".to_string(),
-                install_url: "https://www.python.org/downloads/".to_string(),
-            })?;
+        let python_path = which::which("python3").map_err(|_| MediaError::ToolNotFound {
+            tool: "python3".to_string(),
+            install_url: "https://www.python.org/downloads/".to_string(),
+        })?;
 
         std::fs::create_dir_all(&config.output_dir)?;
 
@@ -284,17 +286,19 @@ impl F5TTSGenerator {
     }
 
     fn generate_script(&self, prompt: &F5TTSPrompt, output_path: &Path) -> Result<String> {
-        let ref_transcript = prompt.reference_transcript
-            .as_deref()
-            .unwrap_or("");
+        let ref_transcript = prompt.reference_transcript.as_deref().unwrap_or("");
 
         let seed_code = if let Some(seed) = self.config.seed {
-            format!("import torch; torch.manual_seed({}); import numpy as np; np.random.seed({})", seed, seed)
+            format!(
+                "import torch; torch.manual_seed({}); import numpy as np; np.random.seed({})",
+                seed, seed
+            )
         } else {
             "import numpy as np; seed = np.random.randint(0, 2**32-1); np.random.seed(seed); import torch; torch.manual_seed(seed)".to_string()
         };
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import time
 import json
 import soundfile as sf
@@ -389,11 +393,10 @@ print('RESULT_JSON:' + json.dumps(result))
         params: &PathologicalVoiceParams,
         output_path: &Path,
     ) -> Result<String> {
-        let ref_transcript = prompt.reference_transcript
-            .as_deref()
-            .unwrap_or("");
+        let ref_transcript = prompt.reference_transcript.as_deref().unwrap_or("");
 
-        Ok(format!(r#"
+        Ok(format!(
+            r#"
 import time
 import json
 import numpy as np
@@ -524,7 +527,8 @@ print('RESULT_JSON:' + json.dumps(result))
 
         // Parse result
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result_line = stdout.lines()
+        let result_line = stdout
+            .lines()
             .find(|l| l.starts_with("RESULT_JSON:"))
             .ok_or_else(|| MediaError::SerializationError("No result found".to_string()))?;
 
@@ -533,23 +537,25 @@ print('RESULT_JSON:' + json.dumps(result))
             .map_err(|e| MediaError::SerializationError(e.to_string()))?;
 
         // Build ground truth if pathological params present
-        let ground_truth = data["pathological_params"].as_object().map(|params| {
-            VoiceGroundTruth {
+        let ground_truth = data["pathological_params"]
+            .as_object()
+            .map(|params| VoiceGroundTruth {
                 f0: Vec::new(),
                 jitter: 0.0,
                 shimmer: 0.0,
                 hnr: 0.0,
                 mpt: None,
-                speech_rate: params.get("speech_rate")
+                speech_rate: params
+                    .get("speech_rate")
                     .and_then(|v| v.as_f64())
                     .unwrap_or(1.0) as f32,
-                hypophonia: params.get("hypophonia")
+                hypophonia: params
+                    .get("hypophonia")
                     .and_then(|v| v.as_f64())
                     .unwrap_or(0.0) as f32,
                 dysarthria: 0.0,
                 phonemes: Vec::new(),
-            }
-        });
+            });
 
         Ok(F5TTSOutput {
             audio_path: output_path.to_path_buf(),
@@ -580,7 +586,10 @@ mod tests {
             .with_transcript("Reference text");
 
         assert_eq!(prompt.text, "Hello world");
-        assert_eq!(prompt.reference_transcript, Some("Reference text".to_string()));
+        assert_eq!(
+            prompt.reference_transcript,
+            Some("Reference text".to_string())
+        );
     }
 
     #[test]

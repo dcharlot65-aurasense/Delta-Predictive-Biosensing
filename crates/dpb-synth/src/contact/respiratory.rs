@@ -1,6 +1,6 @@
 //! Respiratory signal generators
 
-use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
+use crate::traits::{Event, GeneratedData, SyntheticGenerator, TimeSeriesGroundTruth};
 use ndarray::Array1;
 use rand::{RngExt, SeedableRng};
 use std::collections::HashMap;
@@ -23,7 +23,11 @@ impl SyntheticGenerator for RespiratoryWaveformGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = RespiratoryParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(
+        &self,
+        params: &Self::Parameters,
+        seed: u64,
+    ) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -45,7 +49,8 @@ impl SyntheticGenerator for RespiratoryWaveformGenerator {
                 params.amplitude * (PI * insp_phase).sin()
             } else {
                 // Expiration (slower decay)
-                let exp_phase = (phase - params.inspiration_ratio) / (1.0 - params.inspiration_ratio);
+                let exp_phase =
+                    (phase - params.inspiration_ratio) / (1.0 - params.inspiration_ratio);
                 params.amplitude * (PI * (1.0 - exp_phase)).sin()
             };
 
@@ -66,7 +71,10 @@ impl SyntheticGenerator for RespiratoryWaveformGenerator {
 
         let mut gt_params = HashMap::new();
         gt_params.insert("respiratory_rate".to_string(), params.respiratory_rate);
-        gt_params.insert("ie_ratio".to_string(), params.inspiration_ratio / (1.0 - params.inspiration_ratio));
+        gt_params.insert(
+            "ie_ratio".to_string(),
+            params.inspiration_ratio / (1.0 - params.inspiration_ratio),
+        );
 
         let ground_truth = TimeSeriesGroundTruth {
             parameters: gt_params,
@@ -74,7 +82,11 @@ impl SyntheticGenerator for RespiratoryWaveformGenerator {
             segments: Vec::new(),
         };
 
-        Ok(GeneratedData::new(signal, ground_truth, params.sampling_rate))
+        Ok(GeneratedData::new(
+            signal,
+            ground_truth,
+            params.sampling_rate,
+        ))
     }
 
     fn default_params() -> Self::Parameters {
@@ -89,13 +101,19 @@ impl SyntheticGenerator for RespiratoryWaveformGenerator {
 
     fn validate_params(params: &Self::Parameters) -> crate::Result<()> {
         if params.duration <= 0.0 {
-            return Err(crate::GeneratorError::InvalidParameter("duration must be positive".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "duration must be positive".to_string(),
+            ));
         }
         if params.respiratory_rate <= 0.0 || params.respiratory_rate > 60.0 {
-            return Err(crate::GeneratorError::InvalidParameter("respiratory_rate must be 0-60 bpm".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "respiratory_rate must be 0-60 bpm".to_string(),
+            ));
         }
         if params.inspiration_ratio <= 0.0 || params.inspiration_ratio >= 1.0 {
-            return Err(crate::GeneratorError::InvalidParameter("inspiration_ratio must be 0-1".to_string()));
+            return Err(crate::GeneratorError::InvalidParameter(
+                "inspiration_ratio must be 0-1".to_string(),
+            ));
         }
         Ok(())
     }
@@ -110,6 +128,9 @@ mod tests {
         let generator = RespiratoryWaveformGenerator;
         let params = RespiratoryWaveformGenerator::default_params();
         let result = generator.generate(&params, 42).unwrap();
-        assert_eq!(result.signal.len(), (params.duration * params.sampling_rate) as usize);
+        assert_eq!(
+            result.signal.len(),
+            (params.duration * params.sampling_rate) as usize
+        );
     }
 }

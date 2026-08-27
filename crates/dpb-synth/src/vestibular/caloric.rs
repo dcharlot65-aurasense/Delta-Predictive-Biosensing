@@ -321,7 +321,10 @@ impl CaloricGenerator {
 
         // Modify based on pathology
         let modifier = match pathology {
-            CaloricPathology::UnilateralLoss { affected_side, severity } => {
+            CaloricPathology::UnilateralLoss {
+                affected_side,
+                severity,
+            } => {
                 if affected_side == stimulus.right_ear {
                     1.0 - severity
                 } else {

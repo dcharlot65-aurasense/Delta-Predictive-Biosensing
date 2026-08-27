@@ -3,7 +3,7 @@
 //! Provides temporal transformations including time warping, shifting, cropping,
 //! resampling, and dropout.
 
-use super::{SignalAugmentation, random_f64_range, random_usize_range, random_i32_range};
+use super::{SignalAugmentation, random_f64_range, random_i32_range, random_usize_range};
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
 
@@ -49,8 +49,8 @@ impl TimeWarp {
             if knot_idx >= self.knots - 1 {
                 warp.push(knot_offsets[self.knots - 1]);
             } else {
-                let interp = knot_offsets[knot_idx] * (1.0 - knot_frac) +
-                           knot_offsets[knot_idx + 1] * knot_frac;
+                let interp = knot_offsets[knot_idx] * (1.0 - knot_frac)
+                    + knot_offsets[knot_idx + 1] * knot_frac;
                 warp.push(interp);
             }
         }
@@ -107,7 +107,11 @@ impl SignalAugmentation for TimeShift {
             return signal.to_vec();
         }
 
-        let shift = random_i32_range(rng, -(self.max_shift_samples as i32), self.max_shift_samples as i32);
+        let shift = random_i32_range(
+            rng,
+            -(self.max_shift_samples as i32),
+            self.max_shift_samples as i32,
+        );
         let n = signal.len() as i32;
 
         (0..signal.len())
@@ -135,7 +139,10 @@ impl WindowCrop {
     /// # Arguments
     /// * `crop_ratio` - Fraction of signal to retain (e.g., 0.8 = keep 80%)
     pub fn new(crop_ratio: f64) -> Self {
-        assert!(crop_ratio > 0.0 && crop_ratio <= 1.0, "Crop ratio must be in (0, 1]");
+        assert!(
+            crop_ratio > 0.0 && crop_ratio <= 1.0,
+            "Crop ratio must be in (0, 1]"
+        );
         Self { crop_ratio }
     }
 }
@@ -225,7 +232,8 @@ impl RandomDropout {
 
 impl SignalAugmentation for RandomDropout {
     fn augment(&self, signal: &[f64], rng: &mut dyn Rng) -> Vec<f64> {
-        signal.iter()
+        signal
+            .iter()
             .map(|&x| {
                 if ((rng.next_u64() as f64) / (u64::MAX as f64)) < self.dropout_rate {
                     0.0
@@ -249,7 +257,9 @@ mod tests {
     use std::f64::consts::PI;
 
     fn create_test_signal() -> Vec<f64> {
-        (0..1000).map(|i| (2.0 * PI * i as f64 / 50.0).sin()).collect()
+        (0..1000)
+            .map(|i| (2.0 * PI * i as f64 / 50.0).sin())
+            .collect()
     }
 
     #[test]
@@ -262,10 +272,12 @@ mod tests {
 
         assert_eq!(augmented.len(), signal.len());
         // Should be similar but not identical
-        let correlation = signal.iter().zip(augmented.iter())
+        let correlation = signal
+            .iter()
+            .zip(augmented.iter())
             .map(|(a, b)| a * b)
             .sum::<f64>();
-        assert!(correlation > 0.0);  // Should maintain general structure
+        assert!(correlation > 0.0); // Should maintain general structure
     }
 
     #[test]
@@ -277,7 +289,7 @@ mod tests {
         let augmented = aug.augment(&signal, &mut rng);
 
         assert_eq!(augmented.len(), signal.len());
-        assert_ne!(augmented, signal);  // Should be shifted
+        assert_ne!(augmented, signal); // Should be shifted
     }
 
     #[test]
@@ -288,7 +300,7 @@ mod tests {
 
         let augmented = aug.augment(&signal, &mut rng);
 
-        assert_eq!(augmented, signal);  // No shift
+        assert_eq!(augmented, signal); // No shift
     }
 
     #[test]
@@ -344,7 +356,7 @@ mod tests {
 
         // Count zeros (dropped samples)
         let num_zeros = augmented.iter().filter(|&&x| x == 0.0).count();
-        assert!(num_zeros > 0);  // Should have some dropouts
+        assert!(num_zeros > 0); // Should have some dropouts
     }
 
     #[test]
@@ -355,7 +367,7 @@ mod tests {
 
         let augmented = aug.augment(&signal, &mut rng);
 
-        assert_eq!(augmented, signal);  // No dropout
+        assert_eq!(augmented, signal); // No dropout
     }
 
     #[test]

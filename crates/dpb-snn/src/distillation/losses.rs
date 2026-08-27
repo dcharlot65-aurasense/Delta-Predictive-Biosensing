@@ -10,11 +10,8 @@ use serde::{Deserialize, Serialize};
 /// Base trait for distillation loss functions
 pub trait DistillationLoss: Send + Sync {
     /// Compute distillation loss
-    fn compute(
-        &self,
-        teacher_output: &Array2<f32>,
-        student_output: &Array2<f32>,
-    ) -> SNNResult<f32>;
+    fn compute(&self, teacher_output: &Array2<f32>, student_output: &Array2<f32>)
+    -> SNNResult<f32>;
 
     /// Compute gradient with respect to student output
     fn gradient(
@@ -235,7 +232,9 @@ impl DistillationLoss for CosineSimLoss {
             let student_vec = student_output.row(b);
 
             // Compute cosine similarity
-            let dot_product = teacher_vec.iter().zip(student_vec.iter())
+            let dot_product = teacher_vec
+                .iter()
+                .zip(student_vec.iter())
                 .map(|(t, s)| t * s)
                 .sum::<f32>();
 
@@ -269,7 +268,8 @@ impl DistillationLoss for CosineSimLoss {
 
             // Gradient of cosine similarity
             for i in 0..dim {
-                gradient[[b, i]] = -(t[i] / (t_norm * s_norm) - dot * s[i] / (t_norm * s_norm.powi(3)));
+                gradient[[b, i]] =
+                    -(t[i] / (t_norm * s_norm) - dot * s[i] / (t_norm * s_norm.powi(3)));
             }
         }
 
@@ -336,7 +336,15 @@ impl DistillationLoss for HintLoss {
         let gradient = if self.use_l2 {
             diff * (2.0 * scale)
         } else {
-            diff.mapv(|x| if x > 0.0 { scale } else if x < 0.0 { -scale } else { 0.0 })
+            diff.mapv(|x| {
+                if x > 0.0 {
+                    scale
+                } else if x < 0.0 {
+                    -scale
+                } else {
+                    0.0
+                }
+            })
         };
 
         Ok(gradient)
@@ -478,15 +486,9 @@ mod tests {
     fn test_kl_divergence_loss() {
         let loss_fn = KLDivergenceLoss::new(1.0);
 
-        let teacher = Array2::from_shape_vec((2, 3), vec![
-            2.0, 1.0, 0.5,
-            1.0, 3.0, 0.5,
-        ]).unwrap();
+        let teacher = Array2::from_shape_vec((2, 3), vec![2.0, 1.0, 0.5, 1.0, 3.0, 0.5]).unwrap();
 
-        let student = Array2::from_shape_vec((2, 3), vec![
-            1.8, 1.2, 0.5,
-            1.2, 2.8, 0.6,
-        ]).unwrap();
+        let student = Array2::from_shape_vec((2, 3), vec![1.8, 1.2, 0.5, 1.2, 2.8, 0.6]).unwrap();
 
         let loss = loss_fn.compute(&teacher, &student).unwrap();
         assert!(loss >= 0.0);
@@ -500,15 +502,11 @@ mod tests {
     fn test_mse_loss() {
         let loss_fn = MSELoss::new(true);
 
-        let teacher = Array2::from_shape_vec((2, 4), vec![
-            1.0, 2.0, 3.0, 4.0,
-            5.0, 6.0, 7.0, 8.0,
-        ]).unwrap();
+        let teacher =
+            Array2::from_shape_vec((2, 4), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]).unwrap();
 
-        let student = Array2::from_shape_vec((2, 4), vec![
-            1.1, 2.1, 2.9, 4.1,
-            4.9, 6.1, 7.1, 7.9,
-        ]).unwrap();
+        let student =
+            Array2::from_shape_vec((2, 4), vec![1.1, 2.1, 2.9, 4.1, 4.9, 6.1, 7.1, 7.9]).unwrap();
 
         let loss = loss_fn.compute(&teacher, &student).unwrap();
         assert!(loss > 0.0);
@@ -522,15 +520,11 @@ mod tests {
     fn test_cosine_sim_loss() {
         let loss_fn = CosineSimLoss::new();
 
-        let teacher = Array2::from_shape_vec((2, 4), vec![
-            1.0, 0.0, 0.0, 0.0,
-            0.0, 1.0, 0.0, 0.0,
-        ]).unwrap();
+        let teacher =
+            Array2::from_shape_vec((2, 4), vec![1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0]).unwrap();
 
-        let student = Array2::from_shape_vec((2, 4), vec![
-            0.9, 0.1, 0.0, 0.0,
-            0.1, 0.9, 0.0, 0.0,
-        ]).unwrap();
+        let student =
+            Array2::from_shape_vec((2, 4), vec![0.9, 0.1, 0.0, 0.0, 0.1, 0.9, 0.0, 0.0]).unwrap();
 
         let loss = loss_fn.compute(&teacher, &student).unwrap();
         assert!(loss > 0.0);
@@ -542,15 +536,11 @@ mod tests {
     fn test_hint_loss() {
         let loss_fn = HintLoss::new(1.0, true);
 
-        let teacher = Array2::from_shape_vec((2, 4), vec![
-            1.0, 2.0, 3.0, 4.0,
-            5.0, 6.0, 7.0, 8.0,
-        ]).unwrap();
+        let teacher =
+            Array2::from_shape_vec((2, 4), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]).unwrap();
 
-        let student = Array2::from_shape_vec((2, 4), vec![
-            1.1, 2.1, 2.9, 4.1,
-            4.9, 6.1, 7.1, 7.9,
-        ]).unwrap();
+        let student =
+            Array2::from_shape_vec((2, 4), vec![1.1, 2.1, 2.9, 4.1, 4.9, 6.1, 7.1, 7.9]).unwrap();
 
         let loss = loss_fn.compute(&teacher, &student).unwrap();
         assert!(loss > 0.0);
@@ -561,15 +551,11 @@ mod tests {
     fn test_attention_transfer_loss() {
         let loss_fn = AttentionTransferLoss::new(2.0, 1.0);
 
-        let teacher = Array2::from_shape_vec((2, 4), vec![
-            1.0, 2.0, 3.0, 4.0,
-            5.0, 6.0, 7.0, 8.0,
-        ]).unwrap();
+        let teacher =
+            Array2::from_shape_vec((2, 4), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]).unwrap();
 
-        let student = Array2::from_shape_vec((2, 4), vec![
-            1.1, 2.1, 2.9, 4.1,
-            4.9, 6.1, 7.1, 7.9,
-        ]).unwrap();
+        let student =
+            Array2::from_shape_vec((2, 4), vec![1.1, 2.1, 2.9, 4.1, 4.9, 6.1, 7.1, 7.9]).unwrap();
 
         let loss = loss_fn.compute(&teacher, &student).unwrap();
         assert!(loss >= 0.0);
@@ -582,9 +568,11 @@ mod tests {
         assert_eq!(weights.kl_weight, 1.0);
 
         let balanced = LossWeights::balanced();
-        let total: f32 = balanced.kl_weight + balanced.mse_weight +
-                        balanced.cosine_weight + balanced.hint_weight +
-                        balanced.attention_weight;
+        let total: f32 = balanced.kl_weight
+            + balanced.mse_weight
+            + balanced.cosine_weight
+            + balanced.hint_weight
+            + balanced.attention_weight;
         assert!((total - 1.0).abs() < 1e-5);
     }
 

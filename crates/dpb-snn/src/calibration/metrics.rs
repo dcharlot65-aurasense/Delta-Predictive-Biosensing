@@ -2,11 +2,7 @@
 
 /// Expected Calibration Error
 /// Measures the difference between predicted confidence and actual accuracy
-pub fn expected_calibration_error(
-    probabilities: &[f64],
-    labels: &[bool],
-    n_bins: usize,
-) -> f64 {
+pub fn expected_calibration_error(probabilities: &[f64], labels: &[bool], n_bins: usize) -> f64 {
     if probabilities.len() != labels.len() || probabilities.is_empty() {
         return 0.0;
     }
@@ -28,11 +24,7 @@ pub fn expected_calibration_error(
 
 /// Maximum Calibration Error
 /// The maximum difference between confidence and accuracy across all bins
-pub fn maximum_calibration_error(
-    probabilities: &[f64],
-    labels: &[bool],
-    n_bins: usize,
-) -> f64 {
+pub fn maximum_calibration_error(probabilities: &[f64], labels: &[bool], n_bins: usize) -> f64 {
     if probabilities.len() != labels.len() || probabilities.is_empty() {
         return 0.0;
     }
@@ -170,11 +162,7 @@ fn create_bins(probabilities: &[f64], labels: &[bool], n_bins: usize) -> Vec<Rel
 }
 
 /// Compute adaptive calibration error with variable-width bins
-pub fn adaptive_calibration_error(
-    probabilities: &[f64],
-    labels: &[bool],
-    n_bins: usize,
-) -> f64 {
+pub fn adaptive_calibration_error(probabilities: &[f64], labels: &[bool], n_bins: usize) -> f64 {
     if probabilities.len() != labels.len() || probabilities.is_empty() {
         return 0.0;
     }

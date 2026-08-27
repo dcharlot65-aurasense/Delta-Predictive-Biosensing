@@ -66,8 +66,8 @@ pub use conversion::{
     AnalysisToReport, MetricsToObservation, PatientDemographics, SignalToObservation,
 };
 pub use observations::{
-    ComponentObservation, ObservationStatus, ReferenceRange,
-    VitalSignsObservation, WaveformObservation,
+    ComponentObservation, ObservationStatus, ReferenceRange, VitalSignsObservation,
+    WaveformObservation,
 };
 pub use resources::{
     Attachment, CodeableConcept, Coding, Condition, Device, DiagnosticReport, Encounter, HumanName,
@@ -218,8 +218,14 @@ mod tests {
 
     #[test]
     fn test_resource_type_from_str() {
-        assert_eq!("Patient".parse::<ResourceType>().unwrap(), ResourceType::Patient);
-        assert_eq!("Observation".parse::<ResourceType>().unwrap(), ResourceType::Observation);
+        assert_eq!(
+            "Patient".parse::<ResourceType>().unwrap(),
+            ResourceType::Patient
+        );
+        assert_eq!(
+            "Observation".parse::<ResourceType>().unwrap(),
+            ResourceType::Observation
+        );
         assert!("Invalid".parse::<ResourceType>().is_err());
     }
 

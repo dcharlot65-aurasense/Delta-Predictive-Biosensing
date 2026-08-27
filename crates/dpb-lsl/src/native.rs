@@ -48,8 +48,10 @@ impl NativeStreamInfo {
         source_id: &str,
     ) -> Result<Self> {
         let c_name = CString::new(name).map_err(|e| LslError::Configuration(e.to_string()))?;
-        let c_type = CString::new(stream_type).map_err(|e| LslError::Configuration(e.to_string()))?;
-        let c_source = CString::new(source_id).map_err(|e| LslError::Configuration(e.to_string()))?;
+        let c_type =
+            CString::new(stream_type).map_err(|e| LslError::Configuration(e.to_string()))?;
+        let c_source =
+            CString::new(source_id).map_err(|e| LslError::Configuration(e.to_string()))?;
 
         let handle = unsafe {
             ffi::lsl_create_streaminfo(
@@ -63,15 +65,23 @@ impl NativeStreamInfo {
         };
 
         if handle.is_null() {
-            return Err(LslError::Internal("Failed to create stream info".to_string()));
+            return Err(LslError::Internal(
+                "Failed to create stream info".to_string(),
+            ));
         }
 
-        Ok(Self { handle, owned: true })
+        Ok(Self {
+            handle,
+            owned: true,
+        })
     }
 
     /// Create from raw handle (does not take ownership).
     pub(crate) unsafe fn from_raw(handle: ffi::lsl_streaminfo) -> Self {
-        Self { handle, owned: false }
+        Self {
+            handle,
+            owned: false,
+        }
     }
 
     /// Get the raw handle.
@@ -151,9 +161,7 @@ pub struct NativeOutlet {
 impl NativeOutlet {
     /// Create a new outlet.
     pub fn new(info: &NativeStreamInfo, chunk_size: i32, max_buffered: i32) -> Result<Self> {
-        let handle = unsafe {
-            ffi::lsl_create_outlet(info.as_raw(), chunk_size, max_buffered)
-        };
+        let handle = unsafe { ffi::lsl_create_outlet(info.as_raw(), chunk_size, max_buffered) };
 
         if handle.is_null() {
             return Err(LslError::Internal("Failed to create outlet".to_string()));
@@ -221,9 +229,8 @@ impl NativeOutlet {
 
     /// Push a chunk of samples.
     pub fn push_chunk_f32(&self, data: &[f32]) -> Result<()> {
-        let result = unsafe {
-            ffi::lsl_push_chunk_f(self.handle, data.as_ptr(), data.len() as i64)
-        };
+        let result =
+            unsafe { ffi::lsl_push_chunk_f(self.handle, data.as_ptr(), data.len() as i64) };
         if result < 0 {
             ffi::check_error(result)
         } else {
@@ -403,9 +410,7 @@ pub fn resolve_streams(timeout: f64) -> Result<Vec<NativeStreamInfo>> {
     const MAX_STREAMS: usize = 1024;
     let mut buffer: Vec<ffi::lsl_streaminfo> = vec![std::ptr::null_mut(); MAX_STREAMS];
 
-    let count = unsafe {
-        ffi::lsl_resolve_all(buffer.as_mut_ptr(), MAX_STREAMS as i32, timeout)
-    };
+    let count = unsafe { ffi::lsl_resolve_all(buffer.as_mut_ptr(), MAX_STREAMS as i32, timeout) };
 
     if count < 0 {
         return ffi::check_error(count).map(|_| vec![]);

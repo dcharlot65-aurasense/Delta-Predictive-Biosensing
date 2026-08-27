@@ -3,8 +3,8 @@
 //! Provides quantization methods for weights, thresholds, and time constants
 //! to match hardware constraints of different neuromorphic platforms.
 
-use serde::{Deserialize, Serialize};
 use super::constraints::WeightBitDepth;
+use serde::{Deserialize, Serialize};
 
 /// Weight quantizer for target hardware
 #[derive(Debug, Clone)]
@@ -55,10 +55,7 @@ impl WeightQuantizer {
         let (min_int, max_int) = self.bit_depth.range();
 
         // Find max absolute value
-        let max_abs = weights
-            .iter()
-            .map(|&w| w.abs())
-            .fold(0.0f32, f32::max);
+        let max_abs = weights.iter().map(|&w| w.abs()).fold(0.0f32, f32::max);
 
         let scale = if max_abs > 0.0 {
             max_abs / max_int as f32
@@ -139,10 +136,7 @@ impl WeightQuantizer {
         let (min_int, max_int) = self.bit_depth.range();
 
         // Find max absolute value and round to nearest power of 2
-        let max_abs = weights
-            .iter()
-            .map(|&w| w.abs())
-            .fold(0.0f32, f32::max);
+        let max_abs = weights.iter().map(|&w| w.abs()).fold(0.0f32, f32::max);
 
         // The SCALE is what must be a power of two -- that is the whole point of
         // this scheme, since dequantization then becomes a shift rather than a
@@ -369,10 +363,7 @@ mod tests {
 
     #[test]
     fn test_symmetric_quantization() {
-        let quantizer = WeightQuantizer::new(
-            QuantizationScheme::Symmetric,
-            WeightBitDepth::Bits8,
-        );
+        let quantizer = WeightQuantizer::new(QuantizationScheme::Symmetric, WeightBitDepth::Bits8);
 
         let weights = vec![-1.0, -0.5, 0.0, 0.5, 1.0];
         let result = quantizer.quantize(&weights);
@@ -387,10 +378,7 @@ mod tests {
 
     #[test]
     fn test_asymmetric_quantization() {
-        let quantizer = WeightQuantizer::new(
-            QuantizationScheme::Asymmetric,
-            WeightBitDepth::Bits8,
-        );
+        let quantizer = WeightQuantizer::new(QuantizationScheme::Asymmetric, WeightBitDepth::Bits8);
 
         let weights = vec![0.0, 0.25, 0.5, 0.75, 1.0]; // Positive only
         let result = quantizer.quantize(&weights);
@@ -405,10 +393,7 @@ mod tests {
 
     #[test]
     fn test_power_of_two_quantization() {
-        let quantizer = WeightQuantizer::new(
-            QuantizationScheme::PowerOfTwo,
-            WeightBitDepth::Bits8,
-        );
+        let quantizer = WeightQuantizer::new(QuantizationScheme::PowerOfTwo, WeightBitDepth::Bits8);
 
         let weights = vec![-1.5, -0.75, 0.0, 0.75, 1.5];
         let result = quantizer.quantize(&weights);
@@ -489,19 +474,13 @@ mod tests {
 
     #[test]
     fn test_dequantize() {
-        let quantizer = WeightQuantizer::new(
-            QuantizationScheme::Symmetric,
-            WeightBitDepth::Bits8,
-        );
+        let quantizer = WeightQuantizer::new(QuantizationScheme::Symmetric, WeightBitDepth::Bits8);
 
         let weights = vec![-1.0, -0.5, 0.0, 0.5, 1.0];
         let result = quantizer.quantize(&weights);
 
-        let dequantized = quantizer.dequantize(
-            &result.quantized_weights,
-            result.scale,
-            result.zero_point,
-        );
+        let dequantized =
+            quantizer.dequantize(&result.quantized_weights, result.scale, result.zero_point);
 
         // Dequantized values should be close to originals
         for (orig, deq) in weights.iter().zip(dequantized.iter()) {
@@ -511,10 +490,7 @@ mod tests {
 
     #[test]
     fn test_quantization_preserves_sign() {
-        let quantizer = WeightQuantizer::new(
-            QuantizationScheme::Symmetric,
-            WeightBitDepth::Bits8,
-        );
+        let quantizer = WeightQuantizer::new(QuantizationScheme::Symmetric, WeightBitDepth::Bits8);
 
         let weights = vec![-2.0, -1.0, 1.0, 2.0];
         let result = quantizer.quantize(&weights);

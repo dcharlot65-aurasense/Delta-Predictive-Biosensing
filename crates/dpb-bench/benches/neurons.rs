@@ -3,11 +3,11 @@
 //! This benchmark suite measures the performance of various neuron models
 //! in single neuron and batch processing modes.
 
-use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
-use std::hint::black_box;
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use dpb_neurons::batch::BatchLifLayer;
 use dpb_neurons::prelude::*;
 use dpb_neurons::traits::NeuronModel;
-use dpb_neurons::batch::BatchLifLayer;
+use std::hint::black_box;
 // `backward` is a trait method.
 use dpb_neurons::surrogate::SurrogateGradient;
 use ndarray::Array1;
