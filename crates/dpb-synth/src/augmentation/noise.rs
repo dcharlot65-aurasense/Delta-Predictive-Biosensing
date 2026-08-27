@@ -3,7 +3,7 @@
 //! Provides various types of noise injection for signal augmentation,
 //! including Gaussian, pink noise, baseline wander, powerline noise, and motion artifacts.
 
-use super::{SignalAugmentation, random_f64, random_f64_range, random_usize_range, random_i32_range};
+use super::{SignalAugmentation, random_f64_range, random_usize_range};
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
 use std::f64::consts::PI;

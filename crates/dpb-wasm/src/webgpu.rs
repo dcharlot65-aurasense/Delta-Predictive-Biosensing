@@ -417,7 +417,7 @@ pub fn get_recommended_batch_size(num_channels: usize) -> usize {
     // Heuristic: balance between memory and compute efficiency
     let base_batch = 1024;
     let scaled = base_batch / num_channels.max(1);
-    scaled.max(64).min(4096)
+    scaled.clamp(64, 4096)
 }
 
 #[cfg(test)]

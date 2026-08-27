@@ -1,11 +1,9 @@
 //! Articulation generators (vowel space, formant transitions, consonant precision)
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
-use ndarray::Array1;
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
-use std::f64::consts::PI;
 
 /// Vowel space generator (F1-F2 positions)
 pub struct VowelSpaceGenerator;
@@ -131,7 +129,7 @@ impl SyntheticGenerator for VowelCentralizationGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = VowelCentralizationParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -210,7 +208,7 @@ impl SyntheticGenerator for FormantTransitionGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = FormantTransitionParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;

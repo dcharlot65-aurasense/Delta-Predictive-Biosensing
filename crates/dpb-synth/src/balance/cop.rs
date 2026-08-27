@@ -590,7 +590,7 @@ impl CopGenerator {
         cop_ml: &[f64],
         vel_ap: &[f64],
         vel_ml: &[f64],
-        dt: f64,
+        _dt: f64,
     ) -> CopMetrics {
         let n = cop_ap.len() as f64;
 
@@ -730,7 +730,7 @@ impl CopGenerator {
 
         // Higher entropy for more irregular signals
         if mean_diff > 0.0 {
-            (1.0 + std_diff / mean_diff).ln().max(0.0).min(3.0)
+            (1.0 + std_diff / mean_diff).ln().clamp(0.0, 3.0)
         } else {
             0.0
         }

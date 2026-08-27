@@ -486,7 +486,7 @@ impl Decoder for UPDRSRigidityDecoder {
             let rates = spikes.spike_rate();
             let std_dev = rates.row(b).std(0.0);
             // Low variability suggests rigidity
-            output[[b, 0]] = ((1.0 - std_dev) * 4.0).max(0.0).min(4.0);
+            output[[b, 0]] = ((1.0 - std_dev) * 4.0).clamp(0.0, 4.0);
         }
 
         Ok(output)
@@ -617,7 +617,7 @@ impl Decoder for BergBalanceDecoder {
         for b in 0..batch_size {
             let std_dev = rates.row(b).std(0.0);
             // Higher stability (lower variance) = higher Berg score (0-56)
-            output[[b, 0]] = ((1.0 - std_dev) * 56.0).max(0.0).min(56.0);
+            output[[b, 0]] = ((1.0 - std_dev) * 56.0).clamp(0.0, 56.0);
         }
 
         Ok(output)
@@ -750,7 +750,7 @@ impl Decoder for HoehnYahrDecoder {
         for b in 0..batch_size {
             let mean_rate: f32 = rates.row(b).mean().unwrap_or(0.0);
             // Stage 0-5 (lower activity = higher stage)
-            let stage = ((1.0 - mean_rate) * 5.0).max(0.0).min(5.0);
+            let stage = ((1.0 - mean_rate) * 5.0).clamp(0.0, 5.0);
             output[[b, 0]] = stage;
         }
 
@@ -839,7 +839,7 @@ impl Decoder for TinettiDecoder {
             } else {
                 0.5
             };
-            let gait_score = (gait_regularity * 12.0).max(0.0).min(12.0);
+            let gait_score = (gait_regularity * 12.0).clamp(0.0, 12.0);
 
             // Balance score (0-16): stability of spike patterns
             let start = self.gait_neurons.min(rates.shape()[1]);
@@ -852,7 +852,7 @@ impl Decoder for TinettiDecoder {
             } else {
                 0.5
             };
-            let balance_score = (balance_stability * 16.0).max(0.0).min(16.0);
+            let balance_score = (balance_stability * 16.0).clamp(0.0, 16.0);
 
             output[[b, 0]] = gait_score;
             output[[b, 1]] = balance_score;
@@ -914,7 +914,7 @@ impl Decoder for MiniBESTDecoder {
                         _ => 0.0,
                     };
 
-                    output[[b, domain]] = domain_score.max(0.0).min(8.0);
+                    output[[b, domain]] = domain_score.clamp(0.0, 8.0);
                     total += output[[b, domain]];
                 }
             }
@@ -968,7 +968,7 @@ impl Decoder for VasDecoder {
                 (1.0 - mean_rate) * 100.0
             };
 
-            output[[b, 0]] = vas.max(0.0).min(100.0);
+            output[[b, 0]] = vas.clamp(0.0, 100.0);
         }
 
         Ok(output)
@@ -1002,7 +1002,7 @@ impl Decoder for NrsDecoder {
         for b in 0..batch_size {
             let mean_rate: f32 = rates.row(b).mean().unwrap_or(0.0);
             // Round to nearest integer 0-10
-            let nrs = (mean_rate * 10.0).round().max(0.0).min(10.0);
+            let nrs = (mean_rate * 10.0).round().clamp(0.0, 10.0);
             output[[b, 0]] = nrs;
         }
 
@@ -1181,10 +1181,10 @@ impl Decoder for VorGainDecoder {
             let right_gain = if head_activity > 0.01 { right_eye / head_activity } else { 1.0 };
             let asymmetry = ((left_gain - right_gain) / (left_gain + right_gain + 0.01) * 100.0).abs();
 
-            output[[b, 0]] = vor_gain.max(0.0).min(2.0);
-            output[[b, 1]] = asymmetry.max(0.0).min(100.0);
-            output[[b, 2]] = left_gain.max(0.0).min(2.0);
-            output[[b, 3]] = right_gain.max(0.0).min(2.0);
+            output[[b, 0]] = vor_gain.clamp(0.0, 2.0);
+            output[[b, 1]] = asymmetry.clamp(0.0, 100.0);
+            output[[b, 2]] = left_gain.clamp(0.0, 2.0);
+            output[[b, 3]] = right_gain.clamp(0.0, 2.0);
         }
 
         Ok(output)
@@ -1391,10 +1391,10 @@ impl Decoder for GrfDecoder {
                 0.0
             };
 
-            output[[b, 0]] = peak_force.max(0.0).min(3.0);
-            output[[b, 1]] = loading_rate.max(0.0).min(200.0);
+            output[[b, 0]] = peak_force.clamp(0.0, 3.0);
+            output[[b, 1]] = loading_rate.clamp(0.0, 200.0);
             output[[b, 2]] = loading_rate * 0.8; // Unloading typically slower
-            output[[b, 3]] = symmetry.max(0.0).min(100.0);
+            output[[b, 3]] = symmetry.clamp(0.0, 100.0);
         }
 
         Ok(output)
@@ -1660,11 +1660,11 @@ impl Decoder for HrvDecoder {
             // LF/HF ratio (simplified - based on interval variability)
             let lf_hf = if rmssd > 0.0 { sdnn / rmssd } else { 1.0 };
 
-            output[[b, 0]] = mean_hr.max(30.0).min(200.0);
-            output[[b, 1]] = rmssd.max(0.0).min(300.0);
-            output[[b, 2]] = sdnn.max(0.0).min(300.0);
-            output[[b, 3]] = pnn50.max(0.0).min(100.0);
-            output[[b, 4]] = lf_hf.max(0.0).min(10.0);
+            output[[b, 0]] = mean_hr.clamp(30.0, 200.0);
+            output[[b, 1]] = rmssd.clamp(0.0, 300.0);
+            output[[b, 2]] = sdnn.clamp(0.0, 300.0);
+            output[[b, 3]] = pnn50.clamp(0.0, 100.0);
+            output[[b, 4]] = lf_hf.clamp(0.0, 10.0);
         }
 
         Ok(output)
@@ -1754,11 +1754,11 @@ impl Decoder for RespiratoryDecoder {
                 0.0
             };
 
-            output[[b, 0]] = rr.max(4.0).min(60.0);
-            output[[b, 1]] = ti.max(0.0).min(5.0);
-            output[[b, 2]] = te.max(0.0).min(10.0);
-            output[[b, 3]] = ie_ratio.max(0.0).min(3.0);
-            output[[b, 4]] = cv.max(0.0).min(100.0);
+            output[[b, 0]] = rr.clamp(4.0, 60.0);
+            output[[b, 1]] = ti.clamp(0.0, 5.0);
+            output[[b, 2]] = te.clamp(0.0, 10.0);
+            output[[b, 3]] = ie_ratio.clamp(0.0, 3.0);
+            output[[b, 4]] = cv.clamp(0.0, 100.0);
         }
 
         Ok(output)
@@ -1811,10 +1811,10 @@ impl Decoder for Vo2Decoder {
             let ve_activity: f32 = rates.slice(s![b, quarter*2..quarter*3]).mean().unwrap_or(0.0);
             let ve = ve_activity * 150.0; // L/min
 
-            output[[b, 0]] = vo2.max(0.0).min(80.0);
-            output[[b, 1]] = vco2.max(0.0).min(80.0);
-            output[[b, 2]] = rer.max(0.5).min(1.5);
-            output[[b, 3]] = ve.max(0.0).min(200.0);
+            output[[b, 0]] = vo2.clamp(0.0, 80.0);
+            output[[b, 1]] = vco2.clamp(0.0, 80.0);
+            output[[b, 2]] = rer.clamp(0.5, 1.5);
+            output[[b, 3]] = ve.clamp(0.0, 200.0);
         }
 
         Ok(output)
@@ -1884,10 +1884,10 @@ impl Decoder for CognitiveRtDecoder {
             let min_rt = reaction_times.iter().cloned().fold(f32::INFINITY, f32::min);
             let max_rt = reaction_times.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
 
-            output[[b, 0]] = mean_rt.max(100.0).min(2000.0);
-            output[[b, 1]] = rt_sd.max(0.0).min(500.0);
-            output[[b, 2]] = min_rt.max(100.0).min(2000.0);
-            output[[b, 3]] = max_rt.max(100.0).min(2000.0);
+            output[[b, 0]] = mean_rt.clamp(100.0, 2000.0);
+            output[[b, 1]] = rt_sd.clamp(0.0, 500.0);
+            output[[b, 2]] = min_rt.clamp(100.0, 2000.0);
+            output[[b, 3]] = max_rt.clamp(100.0, 2000.0);
         }
 
         Ok(output)
@@ -1947,10 +1947,10 @@ impl Decoder for AttentionDecoder {
             let rt_variability = variance * 100.0;
 
             output[[b, 0]] = d_prime;
-            output[[b, 1]] = omission_rate.max(0.0).min(100.0);
-            output[[b, 2]] = commission_rate.max(0.0).min(100.0);
-            output[[b, 3]] = mean_rt.max(200.0).min(1000.0);
-            output[[b, 4]] = rt_variability.max(0.0).min(200.0);
+            output[[b, 1]] = omission_rate.clamp(0.0, 100.0);
+            output[[b, 2]] = commission_rate.clamp(0.0, 100.0);
+            output[[b, 3]] = mean_rt.clamp(200.0, 1000.0);
+            output[[b, 4]] = rt_variability.clamp(0.0, 200.0);
         }
 
         Ok(output)
@@ -2000,9 +2000,9 @@ impl Decoder for WorkingMemoryDecoder {
             // K = (hit_rate - false_alarm_rate) * set_size
             let capacity = mean_rate * (self.n_back_level as f32 + 2.0);
 
-            output[[b, 0]] = accuracy.max(0.0).min(100.0);
+            output[[b, 0]] = accuracy.clamp(0.0, 100.0);
             output[[b, 1]] = d_prime;
-            output[[b, 2]] = capacity.max(0.0).min(7.0); // Miller's 7±2
+            output[[b, 2]] = capacity.clamp(0.0, 7.0); // Miller's 7±2
         }
 
         Ok(output)
@@ -2089,7 +2089,7 @@ impl Decoder for ScrDecoder {
             output[[b, 1]] = mean_amp.max(0.0);
             output[[b, 2]] = sum_amp.max(0.0);
             output[[b, 3]] = 1500.0; // Typical rise time in ms (simplified)
-            output[[b, 4]] = latency.max(0.0).min(5000.0);
+            output[[b, 4]] = latency.clamp(0.0, 5000.0);
         }
 
         Ok(output)
@@ -2143,8 +2143,8 @@ impl Decoder for SclDecoder {
 
             let slope = if den > 0.0 { num / den * 1000.0 } else { 0.0 }; // microS/s
 
-            output[[b, 0]] = mean_scl.max(0.0).min(30.0);
-            output[[b, 1]] = scl_range.max(0.0).min(20.0);
+            output[[b, 0]] = mean_scl.clamp(0.0, 30.0);
+            output[[b, 1]] = scl_range.clamp(0.0, 20.0);
             output[[b, 2]] = slope.clamp(-5.0, 5.0);
         }
 
@@ -2191,8 +2191,8 @@ impl Decoder for StressIndexDecoder {
             let sns_activity = (mean_rate * 0.6 + variance.sqrt() * 0.4) * 100.0;
 
             output[[b, 0]] = stress_index.max(0.0);
-            output[[b, 1]] = arousal.max(0.0).min(10.0);
-            output[[b, 2]] = sns_activity.max(0.0).min(100.0);
+            output[[b, 1]] = arousal.clamp(0.0, 10.0);
+            output[[b, 2]] = sns_activity.clamp(0.0, 100.0);
         }
 
         Ok(output)

@@ -102,7 +102,7 @@ impl GatedFusionSNN {
                     crate::SpikeRepresentation::Dense(gate_arr) => {
                         // Apply sigmoid-like activation (spike rate as proxy)
                         // In a full implementation, we'd use proper sigmoid surrogate
-                        let normalized = gate_arr.mapv(|x| x.max(0.0).min(1.0));
+                        let normalized = gate_arr.mapv(|x| x.clamp(0.0, 1.0));
                         gates.insert(*modality, normalized);
                     }
                     _ => return Err(SNNError::InvalidConfig("Sparse not supported".to_string())),

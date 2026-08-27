@@ -224,7 +224,7 @@ impl SyntheticGenerator for HealthyAgingSimulator {
 
         // Age factor (0-1, normalized by 100 years)
         let age_factor = (params.age - 20.0) / 80.0;
-        let age_factor = age_factor.max(0.0).min(1.0);
+        let age_factor = age_factor.clamp(0.0, 1.0);
 
         // 1. ECG with age-related changes
         let ecg_params = ecg::EcgMorphologyParams {
@@ -381,7 +381,7 @@ impl SyntheticGenerator for HandVoiceTremorCouplingGenerator {
     fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
-        use rand::{Rng, RngExt, SeedableRng};
+        use rand::{RngExt, SeedableRng};
         use rand_distr::{Distribution, Normal};
         use std::f64::consts::PI;
 
@@ -523,7 +523,7 @@ impl SyntheticGenerator for GaitSpeechRateCouplingGenerator {
     fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
-        use rand::{Rng, RngExt, SeedableRng};
+        use rand::{RngExt, SeedableRng};
 
         // Apply severity to both modalities
         let actual_cadence = params.baseline_cadence * (1.0 - 0.3 * params.severity);
@@ -651,7 +651,7 @@ impl SyntheticGenerator for SaccadeReactionTimeCouplingGenerator {
     fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
-        use rand::{Rng, RngExt, SeedableRng};
+        use rand::{RngExt, SeedableRng};
         use rand_distr::{Distribution, Normal};
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -798,7 +798,7 @@ impl SyntheticGenerator for PupilVoiceAffectGenerator {
     fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
-        use rand::{Rng, RngExt, SeedableRng};
+        use rand::{RngExt, SeedableRng};
         use rand_distr::{Distribution, Normal};
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -1042,7 +1042,7 @@ impl SyntheticGenerator for GaitPosturalTremorGenerator {
     fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
-        use rand::{Rng, RngExt, SeedableRng};
+        use rand::{RngExt, SeedableRng};
         use std::f64::consts::PI;
 
         // Generate gait pattern

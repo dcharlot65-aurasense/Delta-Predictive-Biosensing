@@ -1,7 +1,7 @@
 //! Hand tracking noise and artifact generators
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal, Bernoulli};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -118,7 +118,7 @@ impl SyntheticGenerator for SelfOcclusionGenerator {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
-        let rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut visibility = Vec::with_capacity(n_frames);
 
@@ -333,7 +333,7 @@ impl SyntheticGenerator for HandMotionBlurGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = HandMotionBlurParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -499,7 +499,7 @@ impl SyntheticGenerator for SkinToneVariationGenerator {
             let t = i as f64 / n_frames as f64;
 
             // Simulate lighting changes
-            let lighting_factor = lighting_noise.sample(&mut rng).max(0.3).min(1.5);
+            let lighting_factor = lighting_noise.sample(&mut rng).clamp(0.3, 1.5);
 
             // Ambient light influence
             let ambient_influence = 0.2 * (2.0 * PI * t).sin();

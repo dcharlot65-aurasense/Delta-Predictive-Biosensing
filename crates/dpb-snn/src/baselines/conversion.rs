@@ -241,7 +241,7 @@ impl ANNToSNNConverter {
         let spike_data: Vec<f32> = activation.data.iter()
             .map(|&act| {
                 // Clip to [0, 1] range
-                let rate = act.max(0.0).min(1.0);
+                let rate = act.clamp(0.0, 1.0);
                 // Convert to spike count over timesteps
                 (rate * num_timesteps).round() / num_timesteps
             })

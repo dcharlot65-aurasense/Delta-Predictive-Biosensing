@@ -1,7 +1,7 @@
 //! Fixation generators
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 
@@ -193,7 +193,7 @@ impl SyntheticGenerator for SquareWaveJerksGenerator {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
-        let dt = 1.0 / params.sampling_rate;
+        let _dt = 1.0 / params.sampling_rate;
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut gaze_position = vec![params.fixation_position; n_samples];
@@ -287,7 +287,7 @@ impl SyntheticGenerator for UnstableFixationGenerator {
         let mut phase = 0.0;
 
         for i in 0..n_samples {
-            let t = i as f64 * dt;
+            let _t = i as f64 * dt;
 
             // Random walk drift (increased)
             current_pos[0] += drift.sample(&mut rng);

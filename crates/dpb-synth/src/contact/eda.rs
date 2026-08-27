@@ -2,10 +2,9 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal, Exp};
 use std::collections::HashMap;
-use std::f64::consts::E;
 
 /// Tonic EDA (skin conductance level - SCL) generator
 pub struct EdaTonicGenerator;

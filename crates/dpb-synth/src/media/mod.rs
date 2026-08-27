@@ -99,7 +99,6 @@ pub use smplx::{SMPLXModel, SMPLXConfig, BodyPose, BodyShape, SMPLXAnimation};
 pub use pipeline::{MediaPipeline, PipelineConfig, SyntheticScenario, ScenarioOutput};
 
 use thiserror::Error;
-use std::path::PathBuf;
 
 /// Errors from media generation
 #[derive(Debug, Error)]

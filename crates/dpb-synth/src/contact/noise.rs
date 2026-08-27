@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth};
 use ndarray::Array1;
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -634,7 +634,7 @@ impl SyntheticGenerator for ClippingGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = ClippingParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;

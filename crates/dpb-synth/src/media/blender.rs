@@ -20,7 +20,7 @@
 //!
 //! - Blender Python API: https://docs.blender.org/api/current/
 
-use super::{MediaError, Result, MotionTrajectory, JointPositions3D};
+use super::{MediaError, Result, MotionTrajectory};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 

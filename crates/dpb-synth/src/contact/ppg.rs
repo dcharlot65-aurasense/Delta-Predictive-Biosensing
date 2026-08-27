@@ -2,8 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, RngExt, SeedableRng};
-use rand_distr::{Distribution, Normal};
+use rand::{RngExt, SeedableRng};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -34,7 +33,7 @@ impl SyntheticGenerator for PpgWaveformGenerator {
 
         let mut signal = Vec::with_capacity(n_samples);
         let mut peaks = Vec::new();
-        let rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         for i in 0..n_samples {
             let t = i as f64 * dt;

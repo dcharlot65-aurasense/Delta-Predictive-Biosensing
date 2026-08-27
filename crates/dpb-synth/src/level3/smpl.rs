@@ -238,7 +238,7 @@ impl SmplPose {
     }
 
     /// Create a finger tapping pose
-    pub fn finger_tapping(thumb_angle: f64, index_angle: f64) -> Self {
+    pub fn finger_tapping(_thumb_angle: f64, _index_angle: f64) -> Self {
         let mut pose = Self::neutral();
 
         // Position arm for tapping (seated position)

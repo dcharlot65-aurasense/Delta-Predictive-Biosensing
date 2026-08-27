@@ -1,4 +1,4 @@
-use rand::{Rng, RngExt};
+use rand::RngExt;
 use rand_distr::{Distribution, Normal};
 use std::f64::consts::PI;
 
@@ -403,7 +403,7 @@ impl EegGenerator {
 
     fn add_slow_waves(&self, signal: &mut [Vec<f64>], duration_sec: f64) {
         // Enhance delta band slow waves (high amplitude, 0.5-2 Hz)
-        let n_samples = (duration_sec * self.sample_rate) as usize;
+        let _n_samples = (duration_sec * self.sample_rate) as usize;
         let slow_wave = generate_oscillation(duration_sec, self.sample_rate, 1.0, 100.0);
 
         for channel in signal.iter_mut() {
@@ -416,7 +416,7 @@ impl EegGenerator {
     }
 
     fn add_sawtooth_waves(&self, signal: &mut [Vec<f64>], duration_sec: f64) {
-        let rng = rand::rng();
+        let _rng = rand::rng();
         let n_samples = (duration_sec * self.sample_rate) as usize;
 
         // Sawtooth waves: 2-6 Hz sharp transients
@@ -546,7 +546,7 @@ fn generate_band_noise(
     // Apply simple bandpass filtering using oscillation envelope
     // (Simplified approach - in production would use proper FFT filtering)
     let mut signal = vec![0.0; n_samples];
-    let center_freq = (low_freq + high_freq) / 2.0;
+    let _center_freq = (low_freq + high_freq) / 2.0;
     let bandwidth = high_freq - low_freq;
 
     for i in 0..n_samples {

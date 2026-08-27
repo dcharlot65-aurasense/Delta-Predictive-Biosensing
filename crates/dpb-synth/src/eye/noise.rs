@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 
@@ -137,7 +137,7 @@ impl SyntheticGenerator for BlinkArtifactGenerator {
         let num_blinks = (params.duration * params.blink_rate / 60.0) as usize;
         for _ in 0..num_blinks {
             let blink_time = rng.random_range(0.0..params.duration);
-            let blink_duration = duration_dist.sample(&mut rng).max(0.05).min(0.5);
+            let blink_duration = duration_dist.sample(&mut rng).clamp(0.05, 0.5);
 
             let start_idx = (blink_time * params.sampling_rate) as usize;
             let end_idx = ((blink_time + blink_duration) * params.sampling_rate) as usize;

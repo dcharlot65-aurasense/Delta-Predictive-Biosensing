@@ -221,7 +221,7 @@ impl CohortGenerator {
 
     fn sample_age(&self, rng: &mut impl Rng) -> f64 {
         let normal = Normal::new(self.age_distribution.0, self.age_distribution.1).unwrap();
-        normal.sample(rng).max(18.0).min(100.0)  // Clamp to adult range
+        normal.sample(rng).clamp(18.0, 100.0)  // Clamp to adult range
     }
 
     fn sample_sex(&self, rng: &mut impl Rng) -> Sex {
@@ -236,7 +236,7 @@ impl CohortGenerator {
         // Simplified BMI distribution (mean ~25, std ~5)
         let normal = Normal::new(25.0, 5.0).unwrap();
         let bmi: f64 = normal.sample(rng);
-        bmi.max(15.0).min(50.0)
+        bmi.clamp(15.0, 50.0)
     }
 
     fn sample_ethnicity(&self, rng: &mut impl Rng) -> Option<String> {
@@ -270,7 +270,7 @@ impl CohortGenerator {
         let mean_hr = 70.0 + age_effect + sex_offset;
         let normal = Normal::new(mean_hr, 10.0).unwrap();
 
-        normal.sample(rng).max(50.0).min(100.0)
+        normal.sample(rng).clamp(50.0, 100.0)
     }
 
     fn sample_baseline_hrv(&self, rng: &mut impl Rng, age: f64, baseline_hr: f64) -> f64 {
@@ -281,7 +281,7 @@ impl CohortGenerator {
         let mean_hrv = 40.0 * age_factor * hr_factor;
         let normal = Normal::new(mean_hrv, 15.0).unwrap();
 
-        normal.sample(rng).max(10.0).min(100.0)
+        normal.sample(rng).clamp(10.0, 100.0)
     }
 
     fn sample_conditions(&self, rng: &mut impl Rng, age: f64, bmi: f64) -> Vec<String> {
@@ -291,9 +291,9 @@ impl CohortGenerator {
         for (disease, prevalence) in &self.disease_prevalence {
             // Adjust prevalence based on age and BMI for some conditions
             let adjusted_prevalence = if disease == "Hypertension" {
-                prevalence * (1.0 + (age - 40.0) / 100.0).max(0.5).min(2.0)
+                prevalence * (1.0 + (age - 40.0) / 100.0).clamp(0.5, 2.0)
             } else if disease == "Diabetes" {
-                prevalence * (1.0 + (bmi - 25.0) / 50.0).max(0.5).min(3.0)
+                prevalence * (1.0 + (bmi - 25.0) / 50.0).clamp(0.5, 3.0)
             } else {
                 *prevalence
             };

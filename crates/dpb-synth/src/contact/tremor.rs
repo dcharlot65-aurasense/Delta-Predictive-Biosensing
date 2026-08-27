@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth};
 use ndarray::Array1;
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -116,7 +116,7 @@ impl SyntheticGenerator for ParkinsonianTremorGenerator {
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
         let dt = 1.0 / params.sampling_rate;
-        let rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let signal = Array1::from_vec(
             (0..n_samples)
@@ -378,7 +378,7 @@ impl SyntheticGenerator for TremorModulationGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = TremorModulationParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;

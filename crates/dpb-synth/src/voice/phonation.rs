@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth};
 use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -24,7 +24,7 @@ impl SyntheticGenerator for SustainedVowelGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = SustainedVowelParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -270,7 +270,7 @@ impl SyntheticGenerator for VoiceTremorGenerator {
     type GroundTruth = TimeSeriesGroundTruth;
     type Parameters = VoiceTremorParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
@@ -425,7 +425,7 @@ impl SyntheticGenerator for VocalFryGenerator {
         let mut phase = 0.0;
 
         for i in 0..n_samples {
-            let t = i as f64 * dt;
+            let _t = i as f64 * dt;
 
             // Vocal fry has irregular pulses
             let period_jitter = irregularity_dist.sample(&mut rng);

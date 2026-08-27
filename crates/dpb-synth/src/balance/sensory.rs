@@ -202,7 +202,7 @@ impl SensoryManipulationGenerator {
         // Calculate equilibrium score (simplified)
         let max_sway = 0.12; // 12.5 degrees theoretical max
         let actual_sway = (rms_ap.powi(2) + rms_ml.powi(2)).sqrt();
-        let equilibrium_score = ((1.0 - actual_sway / max_sway) * 100.0).max(0.0).min(100.0);
+        let equilibrium_score = ((1.0 - actual_sway / max_sway) * 100.0).clamp(0.0, 100.0);
 
         let ground_truth = SensoryGroundTruth {
             condition,

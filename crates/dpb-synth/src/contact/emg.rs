@@ -2,8 +2,8 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, RngExt, SeedableRng};
-use rand_distr::{Distribution, Normal, Uniform};
+use rand::{RngExt, SeedableRng};
+use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 

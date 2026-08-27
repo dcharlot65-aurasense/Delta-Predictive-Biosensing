@@ -3,7 +3,7 @@
 //! Provides temporal transformations including time warping, shifting, cropping,
 //! resampling, and dropout.
 
-use super::{SignalAugmentation, random_f64, random_f64_range, random_usize_range, random_i32_range};
+use super::{SignalAugmentation, random_f64_range, random_usize_range, random_i32_range};
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
 

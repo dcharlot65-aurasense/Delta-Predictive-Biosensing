@@ -1,7 +1,7 @@
 //! Saccade generators
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth, Event};
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 
@@ -155,7 +155,7 @@ impl SyntheticGenerator for HypometricSaccadeGenerator {
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
         let dt = 1.0 / params.sampling_rate;
-        let rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut gaze_position = vec![[0.0, 0.0]; n_samples];
         let mut current_position = [0.0, 0.0];
@@ -426,7 +426,7 @@ impl SyntheticGenerator for HypermetricSaccadeGenerator {
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
         let dt = 1.0 / params.sampling_rate;
-        let rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut gaze_position = vec![[0.0, 0.0]; n_samples];
         let mut current_position = [0.0, 0.0];
@@ -546,7 +546,7 @@ impl SyntheticGenerator for ExpressSaccadeGenerator {
         let mut events = Vec::new();
 
         for stim_time in &params.stimulus_times {
-            let latency = latency_dist.sample(&mut rng).max(60.0).min(120.0) / 1000.0; // express range
+            let latency = latency_dist.sample(&mut rng).clamp(60.0, 120.0) / 1000.0; // express range
             let saccade_time = stim_time + latency;
 
             events.push(Event {
@@ -740,7 +740,7 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
         let dt = 1.0 / params.sampling_rate;
-        let rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut gaze_position = vec![[0.0, 0.0]; n_samples];
         let mut current_x = 0.0;
@@ -1021,7 +1021,7 @@ impl SyntheticGenerator for MemoryGuidedSaccadeGenerator {
         let mut gaze_position = vec![[0.0, 0.0]; n_samples];
         let mut events = Vec::new();
 
-        for (idx, (&cue_time, target_pos)) in params.cue_times.iter().zip(&params.target_positions).enumerate() {
+        for (_idx, (&cue_time, target_pos)) in params.cue_times.iter().zip(&params.target_positions).enumerate() {
             let saccade_time = cue_time + params.delay_period;
 
             if saccade_time >= params.duration {

@@ -2,7 +2,7 @@
 //! Based on Winter's biomechanics data
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth, GaitPhase};
-use rand::{Rng, SeedableRng};
+use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -31,7 +31,7 @@ impl SyntheticGenerator for GaitCycleGenerator {
         let n_frames = (params.duration * params.frame_rate) as usize;
         let dt = 1.0 / params.frame_rate;
         let cycle_duration = 60.0 / params.cadence; // seconds per step
-        let rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         // MediaPipe 33 keypoints (simplified - using key lower body points)
         let num_keypoints = 33;
@@ -98,7 +98,7 @@ impl SyntheticGenerator for GaitCycleGenerator {
             frame_keypoints[28] = [knee_x, ankle_y, frame_keypoints[26][2]];
 
             // Left ankle (keypoint 27)
-            let ankle_angle_left = Self::ankle_angle_profile(left_phase);
+            let _ankle_angle_left = Self::ankle_angle_profile(left_phase);
             let ankle_y_left = frame_keypoints[25][1] - shank_length;
             frame_keypoints[27] = [knee_x_left, ankle_y_left, frame_keypoints[25][2]];
 
@@ -443,7 +443,7 @@ impl SyntheticGenerator for ArmSwingGenerator {
         let n_frames = (params.duration * params.frame_rate) as usize;
         let dt = 1.0 / params.frame_rate;
         let cycle_duration = 60.0 / params.cadence;
-        let rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let num_keypoints = 33;
         let mut keypoints = Vec::with_capacity(n_frames);
@@ -541,7 +541,7 @@ impl SyntheticGenerator for TrunkMotionGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = TrunkMotionParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -730,7 +730,7 @@ impl SyntheticGenerator for SpeedAdjustedGaitGenerator {
         let stride_length = (speed * 60.0) / cadence;
 
         // Vertical displacement increases with speed
-        let vertical_displacement = 0.03 + speed * 0.01;
+        let _vertical_displacement = 0.03 + speed * 0.01;
 
         let gait_params = GaitCycleParams {
             duration: params.duration,

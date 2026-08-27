@@ -107,8 +107,8 @@ impl CognitiveProfile {
         let working_memory = accuracy;
 
         // D-prime (simplified - assumes equal target/non-target)
-        let hit_rate = accuracy.max(0.01).min(0.99);
-        let fa_rate = anticipation_rate.max(0.01).min(0.99);
+        let hit_rate = accuracy.clamp(0.01, 0.99);
+        let fa_rate = anticipation_rate.clamp(0.01, 0.99);
         let d_prime = Self::calculate_d_prime(hit_rate, fa_rate);
 
         // Response bias

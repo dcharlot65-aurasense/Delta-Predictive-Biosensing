@@ -306,7 +306,7 @@ impl ChatterboxTTS {
         // Convert pathology params to emotion/modifications
         let modified_text = self.apply_pathological_modifications(text, pathology);
 
-        let emotion = EmotionControl {
+        let _emotion = EmotionControl {
             emotion: if pathology.monotonicity > 0.5 {
                 Emotion::Monotone
             } else if pathology.breathiness > 0.5 {
@@ -454,7 +454,7 @@ print(json.dumps(result))
     fn generate_pathological_script(
         &self,
         text: &str,
-        voice: &VoiceConfig,
+        _voice: &VoiceConfig,
         pathology: &PathologicalVoiceParams,
         output_path: &Path,
     ) -> Result<String> {

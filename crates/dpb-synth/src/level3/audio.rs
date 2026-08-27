@@ -348,7 +348,7 @@ impl Level3AudioGenerator {
         // Configure duration and pitch parameters
         // Festival uses duration_stretch (multiplier) and F0 shift
         let duration_stretch = 150.0 / params.speaking_rate.max(1.0);
-        let pitch_shift = params.pitch_mean / 150.0;
+        let _pitch_shift = params.pitch_mean / 150.0;
 
         script.push_str(&format!(
             ";; Configure prosodic parameters\n\

@@ -20,7 +20,7 @@
 //! - MuJoCo: https://mujoco.org/
 //! - DeepMind open-sourced MuJoCo in 2022
 
-use super::{MediaError, Result, JointAngles, JointPositions3D, TremorGroundTruth, TremorType};
+use super::{MediaError, Result, TremorType};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::collections::HashMap;
@@ -373,7 +373,7 @@ print(json.dumps(result))
     }
 
     /// Generate Python script for tremor simulation
-    fn generate_tremor_script(&self, params: &TremorSimParams, model: MusculoskeletalModel) -> Result<String> {
+    fn generate_tremor_script(&self, params: &TremorSimParams, _model: MusculoskeletalModel) -> Result<String> {
         let affected_joints_str = params.affected_joints
             .iter()
             .map(|j| format!("'{}'", j))

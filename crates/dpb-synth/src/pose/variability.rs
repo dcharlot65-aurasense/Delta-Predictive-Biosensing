@@ -2,11 +2,9 @@
 //! Temporal and spatial variability patterns for gait analysis
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth, GaitPhase};
-use crate::pose::gait::{GaitCycleGenerator, GaitCycleParams};
-use rand::{Rng, SeedableRng};
+use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
-use std::f64::consts::PI;
 
 /// Stride time variability generator
 pub struct StrideTimeVariabilityGenerator;
@@ -317,7 +315,7 @@ impl SyntheticGenerator for FatigueProgressionGenerator {
 
         let n_frames = (params.duration * params.frame_rate) as usize;
         let dt = 1.0 / params.frame_rate;
-        let rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let num_keypoints = 33;
         let mut keypoints = Vec::with_capacity(n_frames);

@@ -72,7 +72,7 @@ impl GrfGenerator {
     /// Generate walking GRF (double-hump pattern)
     pub fn generate_walking(&mut self, duration: f64) -> GrfOutput {
         let n_samples = (duration * self.config.sample_rate) as usize;
-        let dt = 1.0 / self.config.sample_rate;
+        let _dt = 1.0 / self.config.sample_rate;
         let bw = self.config.body_mass * 9.81; // Body weight in Newtons
 
         // Estimate gait parameters from speed

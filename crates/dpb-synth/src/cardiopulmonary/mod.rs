@@ -183,7 +183,7 @@ impl CardiopulmonaryGenerator {
 
         // HRV frequency components
         let lf_freq = 0.1; // ~0.1 Hz (sympathetic + parasympathetic)
-        let hf_freq = self.config.resting_rr / 60.0; // Respiratory frequency
+        let _hf_freq = self.config.resting_rr / 60.0; // Respiratory frequency
 
         for i in 0..n_samples {
             let t = i as f64 * dt;
@@ -336,7 +336,7 @@ impl CardiopulmonaryGenerator {
                 let noise_dist = Normal::new(0.0, self.config.hrv_level * 2.0).unwrap();
                 for rr in &mut output.rr_intervals {
                     let noise: f64 = self.rng.sample(noise_dist);
-                    *rr = (*rr + noise).max(400.0).min(1500.0);
+                    *rr = (*rr + noise).clamp(400.0, 1500.0);
                 }
                 for (i, rr) in output.rr_intervals.iter().enumerate() {
                     output.heart_rate[i] = 60000.0 / rr;

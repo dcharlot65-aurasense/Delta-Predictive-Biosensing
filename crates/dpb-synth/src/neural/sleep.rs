@@ -582,7 +582,7 @@ impl SleepMicrostructureGenerator {
                     let idx = onset_sample + j;
                     if idx < ch.len() {
                         let t = j as f64 / self.config.sample_rate;
-                        let phase = t / so_period;
+                        let _phase = t / so_period;
 
                         // Slow oscillation waveform
                         let wave = amplitude * (2.0 * PI * so_freq * t).sin();

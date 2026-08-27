@@ -385,7 +385,7 @@ impl Decoder for GaitVelocityDecoder {
             // Velocity = (steps * stride_length) / time
             // Assuming num_steps represents time in some unit
             let velocity = (steps as f32 * self.stride_length_m) / (num_steps as f32 / 100.0);
-            output[[b, 0]] = velocity.max(0.0).min(3.0); // Cap at 3 m/s
+            output[[b, 0]] = velocity.clamp(0.0, 3.0); // Cap at 3 m/s
         }
 
         Ok(output)

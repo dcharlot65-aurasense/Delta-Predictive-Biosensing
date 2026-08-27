@@ -368,7 +368,7 @@ impl DopamineSystem {
     /// Get eligibility for learning (positive RPE enhances learning)
     pub fn get_learning_eligibility(&self) -> f64 {
         // Learning is enhanced when RPE is positive
-        (self.rpe.rpe).max(0.0).min(1.0)
+        (self.rpe.rpe).clamp(0.0, 1.0)
     }
 
     /// Apply dopamine modulation to synaptic change

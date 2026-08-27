@@ -293,7 +293,7 @@ impl ReceptorBinding {
         let unbinding = self.k_off * self.occupancy;
 
         self.occupancy += (binding - unbinding) * dt;
-        self.occupancy = self.occupancy.max(0.0).min(1.0);
+        self.occupancy = self.occupancy.clamp(0.0, 1.0);
     }
 
     /// Fractional occupancy this receptor settles at for a steady ligand level.

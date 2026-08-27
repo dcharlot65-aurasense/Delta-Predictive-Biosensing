@@ -501,7 +501,7 @@ impl MediaPipeline {
     fn simulate_motion(&self, scenario: &SyntheticScenario) -> Result<MotionSimulationResult> {
         // Convert scenario to motion parameters
         let gait_params = self.scenario_to_gait_params(scenario);
-        let tremor_params = self.scenario_to_tremor_params(scenario);
+        let _tremor_params = self.scenario_to_tremor_params(scenario);
 
         // Run simulation based on backend
         match self.config.motion_backend {
@@ -1153,7 +1153,7 @@ if __name__ == '__main__':
         &self,
         scenario: &SyntheticScenario,
         text: &str,
-        output_dir: &Path,
+        _output_dir: &Path,
     ) -> Result<PathBuf> {
         let pathology = match &scenario.condition {
             Condition::Parkinsons(pd) => PathologicalVoiceParams {
@@ -1254,7 +1254,7 @@ if __name__ == '__main__':
     fn create_gait_ground_truth(
         &self,
         scenario: &SyntheticScenario,
-        trajectory: &MotionTrajectory,
+        _trajectory: &MotionTrajectory,
     ) -> GaitGroundTruth {
         let mut gt = GaitGroundTruth {
             stride_length: 1.2,

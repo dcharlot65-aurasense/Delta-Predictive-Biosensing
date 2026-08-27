@@ -290,7 +290,7 @@ impl NystagmusGenerator {
         let n_samples = (duration * self.config.sample_rate) as usize;
 
         // BPPV characteristics by canal
-        let (direction, peak_spv, latency, duration_s, torsional) = match canal {
+        let (direction, peak_spv, latency, duration_s, _torsional) = match canal {
             BppvCanal::PosteriorRight => (NystagmusDirection::Up, 30.0, 1.0, 30.0, true),
             BppvCanal::PosteriorLeft => (NystagmusDirection::Up, 30.0, 1.0, 30.0, true),
             BppvCanal::HorizontalRightGeotropic => (NystagmusDirection::Right, 60.0, 0.5, 60.0, false),

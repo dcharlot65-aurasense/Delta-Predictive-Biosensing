@@ -516,7 +516,7 @@ impl RfdGenerator {
                     PathologicalRfd::Inconsistent { variability } => {
                         let var_dist = Normal::new(1.0, variability).unwrap();
                         let var_factor: f64 = self.rng.sample(var_dist);
-                        base_force * var_factor.max(0.5).min(1.5)
+                        base_force * var_factor.clamp(0.5, 1.5)
                     }
 
                     PathologicalRfd::FatigueDecline { rate } => {

@@ -1,7 +1,7 @@
 //! Finger tapping generators
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth, Event};
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -35,7 +35,7 @@ impl SyntheticGenerator for NormalTappingGenerator {
 
         let mut separation = Vec::with_capacity(n_frames);
         let mut events = Vec::new();
-        let cumulative_time = 0.0;
+        let _cumulative_time = 0.0;
 
         for i in 0..n_frames {
             let t = i as f64 * dt;
@@ -123,7 +123,7 @@ impl SyntheticGenerator for BradykineticTappingGenerator {
 
         let n_frames = (params.duration * params.frame_rate) as usize;
         let dt = 1.0 / params.frame_rate;
-        let rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut separation = Vec::with_capacity(n_frames);
         let mut phase = 0.0;
@@ -202,7 +202,7 @@ impl SyntheticGenerator for AmplitudeDecrementGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = AmplitudeDecrementParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -294,7 +294,7 @@ impl SyntheticGenerator for FrequencyDecrementGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = FrequencyDecrementParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;
@@ -489,7 +489,7 @@ impl SyntheticGenerator for TappingFatigueGenerator {
 
         let n_frames = (params.duration * params.frame_rate) as usize;
         let dt = 1.0 / params.frame_rate;
-        let rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut separation = Vec::with_capacity(n_frames);
         let mut phase = 0.0;

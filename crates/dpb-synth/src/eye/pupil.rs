@@ -2,7 +2,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth};
 use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 
@@ -426,7 +426,7 @@ impl SyntheticGenerator for AfferentPupilDefectGenerator {
         // Reduced constriction for affected eye
         let max_constriction_affected = max_constriction_normal * (1.0 - params.defect_severity);
 
-        let max_constriction = if params.affected_eye {
+        let _max_constriction = if params.affected_eye {
             max_constriction_affected
         } else {
             max_constriction_normal

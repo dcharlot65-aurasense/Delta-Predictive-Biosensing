@@ -3,7 +3,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth, GaitPhase};
 use crate::pose::gait::{GaitCycleGenerator, GaitCycleParams};
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -95,7 +95,7 @@ impl SyntheticGenerator for FestinationGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = FestinationParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         let n_frames = (params.duration * params.frame_rate) as usize;

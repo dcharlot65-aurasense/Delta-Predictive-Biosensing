@@ -222,7 +222,7 @@ impl AcetylcholineSystem {
             BasalForebrainRegion::NucleusBasalis => 1,
             BasalForebrainRegion::DiagonalBand => 2,
         };
-        self.basal_forebrain[idx] = activity.max(0.0).min(1.0);
+        self.basal_forebrain[idx] = activity.clamp(0.0, 1.0);
     }
 
     /// Get region-specific ACh release

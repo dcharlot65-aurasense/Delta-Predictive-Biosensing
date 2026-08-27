@@ -172,7 +172,7 @@ impl Medication {
         let level = (ka / (ka - ke)) *
             ((-ke * hours_since_dose).exp() - (-ka * hours_since_dose).exp());
 
-        (level * self.current_level).max(0.0).min(1.0)
+        (level * self.current_level).clamp(0.0, 1.0)
     }
 
     /// Get relative dose (fraction of max)

@@ -1,7 +1,7 @@
 //! Hand movement generators for functional tasks
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
-use rand::{Rng, SeedableRng};
+use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -111,7 +111,7 @@ impl SyntheticGenerator for HandOpenCloseGenerator {
 
         let n_frames = (params.duration * params.frame_rate) as usize;
         let dt = 1.0 / params.frame_rate;
-        let rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut apertures = Vec::with_capacity(n_frames);
 
@@ -303,7 +303,7 @@ impl SyntheticGenerator for ReachingMovementGenerator {
                         let tau = t / params.movement_time;
                         let primary = tau;
                         let secondary = 0.2 * (4.0 * PI * tau).sin();
-                        (primary + secondary).min(1.0).max(0.0)
+                        (primary + secondary).clamp(0.0, 1.0)
                     }
                     SpeedProfile::Bradykinetic => {
                         // Slow sigmoid

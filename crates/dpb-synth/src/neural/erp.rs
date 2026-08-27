@@ -394,8 +394,8 @@ impl ErpGenerator {
             }
 
             // Record component info
-            let peak_idx = self.find_peak(&comp_signal, comp.amplitude_uv > 0.0);
-            let latency_s = stimulus_onset + comp.latency_ms / 1000.0;
+            let _peak_idx = self.find_peak(&comp_signal, comp.amplitude_uv > 0.0);
+            let _latency_s = stimulus_onset + comp.latency_ms / 1000.0;
 
             component_info.push(ErpComponentInfo {
                 component: self.name_to_type(&comp.name),

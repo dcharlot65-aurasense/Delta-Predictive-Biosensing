@@ -619,8 +619,8 @@ impl CognitiveGenerator {
         };
 
         // d-prime (with correction for extreme values)
-        let hr_adj = hit_rate.min(0.99).max(0.01);
-        let far_adj = false_alarm_rate.min(0.99).max(0.01);
+        let hr_adj = hit_rate.clamp(0.01, 0.99);
+        let far_adj = false_alarm_rate.clamp(0.01, 0.99);
         let d_prime = Self::z_score(hr_adj) - Self::z_score(far_adj);
         let criterion = -0.5 * (Self::z_score(hr_adj) + Self::z_score(far_adj));
 
@@ -729,7 +729,7 @@ impl CognitiveGenerator {
 
     fn z_score(p: f64) -> f64 {
         // Approximation of inverse normal CDF
-        let p = p.min(0.9999).max(0.0001);
+        let p = p.clamp(0.0001, 0.9999);
         if p == 0.5 {
             return 0.0;
         }

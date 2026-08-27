@@ -1,7 +1,7 @@
 //! Smooth pursuit eye movement generators
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 
@@ -40,7 +40,7 @@ impl SyntheticGenerator for NormalPursuitGenerator {
 
             // Target position (sinusoidal motion)
             let target_phase = 2.0 * std::f64::consts::PI * params.target_frequency * t;
-            let target_x = params.target_amplitude * target_phase.sin();
+            let _target_x = params.target_amplitude * target_phase.sin();
 
             // Eye position (with gain and phase lag)
             let eye_phase = target_phase - params.phase_lag;
@@ -136,7 +136,7 @@ impl SyntheticGenerator for ImpairedPursuitGenerator {
 
             // Target position
             let target_phase = 2.0 * std::f64::consts::PI * params.target_frequency * t;
-            let target_x = params.target_amplitude * target_phase.sin();
+            let _target_x = params.target_amplitude * target_phase.sin();
 
             // Eye position (reduced gain, increased lag)
             let eye_phase = target_phase - params.phase_lag;
@@ -243,7 +243,7 @@ impl SyntheticGenerator for PredictivePursuitGenerator {
 
             // Target position
             let target_phase = 2.0 * std::f64::consts::PI * params.target_frequency * t;
-            let target_x = params.target_amplitude * target_phase.sin();
+            let _target_x = params.target_amplitude * target_phase.sin();
 
             // Learning factor (gradually improve prediction)
             let learning_progress = (t / params.learning_period).min(1.0);

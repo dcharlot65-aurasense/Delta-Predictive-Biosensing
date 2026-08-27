@@ -1,7 +1,7 @@
 //! Pose noise and artifact generators
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 
@@ -342,7 +342,7 @@ impl SyntheticGenerator for CameraMotionGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = CameraMotionParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         use std::f64::consts::PI;
@@ -507,7 +507,7 @@ impl SyntheticGenerator for FrameRateVariationGenerator {
     type GroundTruth = SpatialGroundTruth;
     type Parameters = FrameRateVariationParams;
 
-    fn generate(&self, params: &Self::Parameters, seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
+    fn generate(&self, params: &Self::Parameters, _seed: u64) -> crate::Result<GeneratedData<Self::Output, Self::GroundTruth>> {
         Self::validate_params(params)?;
 
         // Resample to target frame rate

@@ -22,7 +22,7 @@
 //! - OpenSim: https://simtk.org/projects/opensim
 //! - Pathological tremor model: DOI:10.1016/j.jbiomech.2024.111962
 
-use super::{MediaError, Result, TremorType, TremorGroundTruth, GaitGroundTruth};
+use super::{MediaError, Result, TremorType, TremorGroundTruth};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -279,7 +279,7 @@ impl OpenSimBridge {
         base_model: GaitModel,
         subject_mass: f64,
         subject_height: f64,
-        marker_data: Option<&Path>,
+        _marker_data: Option<&Path>,
     ) -> Result<PathBuf> {
         let script = format!(r#"
 import opensim as osim

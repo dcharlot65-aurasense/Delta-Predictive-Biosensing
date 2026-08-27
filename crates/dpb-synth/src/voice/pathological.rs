@@ -2,10 +2,9 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
-use std::f64::consts::PI;
 
 /// Hypokinetic dysarthria generator (Parkinsonian speech)
 /// Characteristics: reduced loudness, monotone, imprecise articulation, short rushes of speech
@@ -286,7 +285,7 @@ impl SyntheticGenerator for AtaxicDysarthriaGenerator {
 
         // Syllable rate with high variability
         let base_rate = 4.0; // slightly slow
-        let rate_cv = timing_irregularity;
+        let _rate_cv = timing_irregularity;
 
         let features = AtaxicFeatures {
             f0_contour: Array1::from_vec(f0_contour.clone()),

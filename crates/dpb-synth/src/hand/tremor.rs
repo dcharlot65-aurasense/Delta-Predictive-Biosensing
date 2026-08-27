@@ -1,7 +1,7 @@
 //! Hand-specific tremor generators
 
 use crate::traits::{SyntheticGenerator, GeneratedData, SpatialGroundTruth};
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -100,7 +100,7 @@ impl SyntheticGenerator for HandKineticTremorGenerator {
 
         let n_frames = (params.duration * params.frame_rate) as usize;
         let dt = 1.0 / params.frame_rate;
-        let rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let positions: Vec<[f64; 3]> = (0..n_frames)
             .map(|i| {
@@ -272,7 +272,7 @@ impl SyntheticGenerator for IntentionTremorGenerator {
 
         let n_frames = (params.duration * params.frame_rate) as usize;
         let dt = 1.0 / params.frame_rate;
-        let rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let positions: Vec<[f64; 3]> = (0..n_frames)
             .map(|i| {

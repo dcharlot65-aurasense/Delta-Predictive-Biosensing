@@ -39,7 +39,7 @@
 //! - MediaPipe Solutions: https://developers.google.com/mediapipe/solutions
 //! - MediaPipe Tasks: https://developers.google.com/mediapipe/solutions/guide
 
-use super::{MediaError, Result, MediaGroundTruth, JointPositions3D, GaitGroundTruth};
+use super::{MediaError, Result, GaitGroundTruth};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -653,8 +653,8 @@ print(f'RESULT_FILE:{{output_path}}')
         // Analyze ankle positions for gait
         let left_ankle_idx = PoseLandmark::LeftAnkle as usize;
         let right_ankle_idx = PoseLandmark::RightAnkle as usize;
-        let left_hip_idx = PoseLandmark::LeftHip as usize;
-        let right_hip_idx = PoseLandmark::RightHip as usize;
+        let _left_hip_idx = PoseLandmark::LeftHip as usize;
+        let _right_hip_idx = PoseLandmark::RightHip as usize;
 
         // Compute stride length from ankle positions
         let mut stride_lengths = Vec::new();

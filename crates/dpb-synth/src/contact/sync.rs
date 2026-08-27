@@ -4,7 +4,7 @@
 
 use crate::traits::{SyntheticGenerator, GeneratedData, TimeSeriesGroundTruth, Event};
 use ndarray::Array1;
-use rand::{Rng, RngExt, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -33,7 +33,7 @@ impl SyntheticGenerator for EcgPpgSynchronizedGenerator {
         Self::validate_params(params)?;
 
         let n_samples = (params.duration * params.sampling_rate) as usize;
-        let dt = 1.0 / params.sampling_rate;
+        let _dt = 1.0 / params.sampling_rate;
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mean_rr = 60.0 / params.heart_rate; // seconds

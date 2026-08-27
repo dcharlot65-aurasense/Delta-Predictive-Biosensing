@@ -16,7 +16,7 @@
 //! - `pip install pybullet`
 
 use super::{MediaError, Result, MotionTrajectory, GaitGroundTruth};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 /// PyBullet physics simulator

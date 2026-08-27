@@ -163,7 +163,7 @@ impl DistributedMetrics {
         let overhead = self.communication_overhead();
 
         // Simple model: efficiency = (1 - overhead) / world_size
-        (1.0 - overhead).max(0.0).min(1.0)
+        (1.0 - overhead).clamp(0.0, 1.0)
     }
 
     /// Get load balance score (0.0 to 1.0, higher is better)

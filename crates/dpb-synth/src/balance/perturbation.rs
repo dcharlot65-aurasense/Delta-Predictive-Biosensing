@@ -237,8 +237,8 @@ impl PerturbationGenerator {
                 let pert_progress = (t - onset_time) / perturbation_duration;
 
                 // Platform moves, COM lags behind
-                let platform_ap = pert_ap * pert_progress;
-                let platform_ml = pert_ml * pert_progress;
+                let _platform_ap = pert_ap * pert_progress;
+                let _platform_ml = pert_ml * pert_progress;
 
                 // COM response delayed
                 let com_response = if t > onset_time + response_latency / 1000.0 {
@@ -476,7 +476,7 @@ impl PerturbationGenerator {
 
         // Calculate impulse and resulting velocity change
         let impulse = force_magnitude * force_duration;
-        let velocity_change = impulse / self.config.body_mass;
+        let _velocity_change = impulse / self.config.body_mass;
 
         let mut time = Vec::with_capacity(n_samples);
         let mut cop_ap = Vec::with_capacity(n_samples);

@@ -45,9 +45,7 @@
 //! }
 //! ```
 
-use std::collections::VecDeque;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
 
 /// Trait for generators that can produce samples incrementally
 ///
@@ -781,7 +779,7 @@ impl StreamingGenerator for StreamingTremor {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         use std::f64::consts::PI;
 
         let t = state.sample_idx as f64 * state.dt;
@@ -965,7 +963,7 @@ impl StreamingGenerator for StreamingPpg {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
 
         let t = state.sample_idx as f64 * state.dt;
 
@@ -1092,7 +1090,7 @@ impl StreamingGenerator for StreamingEmg {
 
     fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
         use rand::SeedableRng;
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let amplitude = params.baseline_amplitude +
@@ -1115,7 +1113,7 @@ impl StreamingGenerator for StreamingEmg {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         use rand_distr::{Distribution, Normal};
 
         let noise_dist = Normal::new(0.0, state.current_amplitude).unwrap();
@@ -1265,7 +1263,7 @@ impl StreamingGenerator for StreamingEda {
 
     fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
         use rand::SeedableRng;
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         use rand_distr::{Distribution, Exp};
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -1290,7 +1288,7 @@ impl StreamingGenerator for StreamingEda {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         use rand_distr::{Distribution, Normal, Exp};
         use std::f64::consts::PI;
 
@@ -1491,7 +1489,7 @@ impl StreamingGenerator for StreamingRespiratory {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         use std::f64::consts::PI;
 
         let t = state.sample_idx as f64 * state.dt;
@@ -1607,7 +1605,7 @@ impl StreamingGenerator for StreamingThermal {
 
     fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
         use rand::SeedableRng;
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let vasomotor_phase = rng.random_range(0.0..2.0 * std::f64::consts::PI);
@@ -1747,7 +1745,7 @@ impl StreamingGenerator for StreamingGaze {
 
     fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
         use rand::SeedableRng;
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
@@ -1776,7 +1774,7 @@ impl StreamingGenerator for StreamingGaze {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         use rand_distr::{Distribution, Normal};
 
         let noise_dist = Normal::new(0.0, 0.01).unwrap();
@@ -1950,8 +1948,8 @@ impl FrameStreamingGenerator for StreamingPose {
     }
 
     fn next_frame(&self, state: &mut Self::State) -> Self::Frame {
-        use rand::{Rng, RngExt};
-        use std::f64::consts::PI;
+        use rand::RngExt;
+        
 
         let t = state.frame_idx as f64 * state.dt;
         let gait_phase = (t % state.cycle_duration) / state.cycle_duration;
@@ -2150,7 +2148,7 @@ impl FrameStreamingGenerator for StreamingHand {
     }
 
     fn next_frame(&self, state: &mut Self::State) -> Self::Frame {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         use std::f64::consts::PI;
 
         let t = state.frame_idx as f64 * state.dt;
@@ -2211,7 +2209,7 @@ impl FrameStreamingGenerator for StreamingHand {
                 landmarks[0][2] + base[2],
             ];
 
-            for (joint, &length) in lengths.iter().enumerate() {
+            for (_joint, &length) in lengths.iter().enumerate() {
                 pos[0] += length * curl_angle.cos();
                 pos[2] -= length * curl_angle.sin();
                 landmarks[idx] = pos;
@@ -2377,7 +2375,7 @@ impl StreamingGenerator for StreamingRppg {
     type Sample = RppgFrame;
 
     fn init_state(&self, params: &Self::Parameters, seed: u64) -> Self::State {
-        use rand::{Rng, RngExt, SeedableRng};
+        use rand::{RngExt, SeedableRng};
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let beat_duration = 60.0 / params.heart_rate;
@@ -2438,7 +2436,7 @@ impl StreamingGenerator for StreamingRppg {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         use rand_distr::{Distribution, Normal};
         use std::f64::consts::PI;
 
@@ -2452,7 +2450,7 @@ impl StreamingGenerator for StreamingRppg {
             let hrv_noise = Normal::new(0.0, state.hrv * state.beat_duration)
                 .unwrap()
                 .sample(&mut state.rng);
-            state.beat_duration = (60.0 / 72.0 + hrv_noise).max(0.5).min(1.5);
+            state.beat_duration = (60.0 / 72.0 + hrv_noise).clamp(0.5, 1.5);
         }
 
         // Generate BVP waveform (PPG-like with systolic peak and dicrotic notch)
@@ -2766,7 +2764,7 @@ impl StreamingGenerator for StreamingVowel {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         use std::f64::consts::PI;
 
         let t = state.sample_idx as f64 * state.dt;
@@ -2788,7 +2786,7 @@ impl StreamingGenerator for StreamingVowel {
             };
 
             state.current_f0 = state.f0_mean * (1.0 + jitter_offset + tremor_mod);
-            state.current_f0 = state.current_f0.max(50.0).min(500.0);
+            state.current_f0 = state.current_f0.clamp(50.0, 500.0);
             state.current_period_samples = (1.0 / state.current_f0 / state.dt) as usize;
 
             // Apply shimmer to amplitude
@@ -2798,7 +2796,7 @@ impl StreamingGenerator for StreamingVowel {
                 0.0
             };
             state.current_amplitude = (1.0 - state.hypophonia) * (1.0 + shimmer_offset);
-            state.current_amplitude = state.current_amplitude.max(0.0).min(1.0);
+            state.current_amplitude = state.current_amplitude.clamp(0.0, 1.0);
         }
 
         // Generate glottal pulse using LF model (simplified)
@@ -3065,8 +3063,8 @@ impl StreamingGenerator for StreamingDdk {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::{Rng, RngExt};
-        use std::f64::consts::PI;
+        use rand::RngExt;
+        
 
         let t = state.sample_idx as f64 * state.dt;
 
@@ -3413,7 +3411,7 @@ impl FrameStreamingGenerator for StreamingClinicalPose {
     }
 
     fn next_frame(&self, state: &mut Self::State) -> Self::Frame {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         use std::f64::consts::PI;
 
         let t = state.frame_idx as f64 * state.dt;
@@ -3834,7 +3832,7 @@ impl FrameStreamingGenerator for StreamingClinicalHand {
     }
 
     fn next_frame(&self, state: &mut Self::State) -> Self::Frame {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         use std::f64::consts::PI;
 
         let t = state.frame_idx as f64 * state.dt;
@@ -4011,7 +4009,7 @@ fn generate_hand_landmarks(
     noise: f64,
     rng: &mut rand::rngs::StdRng,
 ) -> Vec<[f64; 3]> {
-    use rand::{Rng, RngExt};
+    use rand::RngExt;
     use std::f64::consts::PI;
 
     let mut landmarks = vec![[0.0; 3]; 21];
@@ -4421,7 +4419,7 @@ impl StreamingGenerator for StreamingEeg {
     }
 
     fn next_sample(&self, state: &mut Self::State) -> Self::Sample {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         use std::f64::consts::PI;
 
         let t = state.sample_idx as f64 * state.dt;

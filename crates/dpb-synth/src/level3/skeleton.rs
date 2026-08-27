@@ -712,13 +712,13 @@ impl SkeletonRenderer {
         // properly integrate hand keypoints into the pose coordinate system
 
         if let Some(hand) = left_hand {
-            let hand_img = self.render_hand(hand, true)?;
+            let _hand_img = self.render_hand(hand, true)?;
             // Blend hand into main image (simplified - just for structure)
             // In practice, hands should share coordinate system with pose
         }
 
         if let Some(hand) = right_hand {
-            let hand_img = self.render_hand(hand, false)?;
+            let _hand_img = self.render_hand(hand, false)?;
         }
 
         Ok(img)
