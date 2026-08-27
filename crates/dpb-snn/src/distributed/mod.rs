@@ -18,12 +18,7 @@
 //!
 //! # fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Initialize distributed training
-//! let config = DistributedConfig {
-//!     world_size: 4,
-//!     rank: 0,
-//!     backend: DistributedBackend::Gloo,
-//!     master_addr: "localhost:29500".to_string(),
-//! };
+//! let config = DistributedConfig::new(4, 0, DistributedBackend::Gloo);
 //!
 //! let mut runtime = DistributedRuntime::init(config)?;
 //!
@@ -54,6 +49,15 @@ pub mod coordinator;
 pub mod fault_tolerance;
 pub mod metrics;
 pub mod partitioning;
+
+// The module docs above describe a Quick Start in terms of these types,
+// reached through `use dpb_snn::distributed::*`. Only the submodules were
+// public, so that glob brought in nothing and the example could not compile.
+pub use coordinator::{AggregationStrategy, CoordinatorConfig, SyncStats, TrainingCoordinator};
+pub use partitioning::{
+    DataParallel, ModelParallel, PartitionPlanner, PartitionStrategy, PipelineOp, PipelineParallel,
+    PipelineSchedule,
+};
 
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};

@@ -90,6 +90,9 @@ jobs:
       - run: cargo check -p dpb-clinical  --features full        --all-targets
       - run: cargo check -p dpb-export    --features full        --all-targets
       - run: cargo check -p dpb-federated --features full        --all-targets
+      # `check`, not `test`: dpb-lsl's `native` feature links against liblsl,
+      # which no hosted runner has. Type-checking the FFI is what is useful
+      # here; its `async` half is covered by the test job above.
       - run: cargo check -p dpb-lsl       --features full        --all-targets
       - run: cargo check -p dpb-snn       --features distributed --all-targets
       - run: cargo check -p dpb-viz       --features web         --all-targets
