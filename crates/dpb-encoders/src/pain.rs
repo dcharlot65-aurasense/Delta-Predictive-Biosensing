@@ -401,15 +401,12 @@ impl Default for CpmConfig {
 /// - Channel 0: Baseline pain level
 /// - Channel 1: During conditioning pain level
 /// - Channel 2: CPM effect (magnitude = % change)
-pub struct CpmEncoder {
-    template: PressurePainThresholdTemplate,
-}
+pub struct CpmEncoder;
 
 impl CpmEncoder {
     /// Create a new CPM encoder
     pub fn new() -> Self {
         Self {
-            template: PressurePainThresholdTemplate,
         }
     }
 }

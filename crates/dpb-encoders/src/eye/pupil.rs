@@ -64,14 +64,11 @@ impl Default for PupilDilationConfig {
     }
 }
 
-pub struct PupilDilationEncoder {
-    template: PupilDiameterTemplate,
-}
+pub struct PupilDilationEncoder;
 
 impl PupilDilationEncoder {
     pub fn new() -> Self {
         Self {
-            template: PupilDiameterTemplate,
         }
     }
 }

@@ -111,14 +111,11 @@ impl Default for HeelStrikeConfig {
     }
 }
 
-pub struct HeelStrikeEncoder {
-    template: CadenceTemplate,
-}
+pub struct HeelStrikeEncoder;
 
 impl HeelStrikeEncoder {
     pub fn new() -> Self {
         Self {
-            template: CadenceTemplate,
         }
     }
 }

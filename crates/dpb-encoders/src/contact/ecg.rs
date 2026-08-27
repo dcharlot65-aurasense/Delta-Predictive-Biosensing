@@ -148,14 +148,11 @@ impl Default for EcgRPeakConfig {
 }
 
 /// R-peak encoder - detects QRS complexes in ECG
-pub struct EcgRPeakEncoder {
-    template: HeartRateTemplate,
-}
+pub struct EcgRPeakEncoder;
 
 impl EcgRPeakEncoder {
     pub fn new() -> Self {
         Self {
-            template: HeartRateTemplate,
         }
     }
 
@@ -239,14 +236,11 @@ impl Default for EcgMorphologyConfig {
 }
 
 /// ECG morphology encoder - detects abnormal QRS shapes
-pub struct EcgMorphologyEncoder {
-    qrs_template: QrsDurationTemplate,
-}
+pub struct EcgMorphologyEncoder;
 
 impl EcgMorphologyEncoder {
     pub fn new() -> Self {
         Self {
-            qrs_template: QrsDurationTemplate,
         }
     }
 

@@ -108,7 +108,6 @@ pub struct ActiveIntegration {
     /// Space constant (μm)
     lambda: f64,
     /// Sodium channel density (mS/cm²)
-    g_na: f64,
     /// Potassium channel density (mS/cm²)
     g_k: f64,
     /// Dendritic spike threshold (mV)
@@ -124,7 +123,6 @@ impl ActiveIntegration {
     pub fn new(lambda: f64, g_na: f64, g_k: f64) -> Self {
         Self {
             lambda,
-            g_na,
             g_k,
             spike_threshold: -40.0, // Dendritic spike threshold
             last_spike_time: -1000.0,

@@ -170,14 +170,11 @@ impl Default for JointAngleConfig {
     }
 }
 
-pub struct JointAngleEncoder {
-    template: JointAngleTemplate,
-}
+pub struct JointAngleEncoder;
 
 impl JointAngleEncoder {
     pub fn new() -> Self {
         Self {
-            template: JointAngleTemplate,
         }
     }
 
@@ -283,14 +280,11 @@ impl Default for BodySwayConfig {
     }
 }
 
-pub struct BodySwayEncoder {
-    template: BodySwayTemplate,
-}
+pub struct BodySwayEncoder;
 
 impl BodySwayEncoder {
     pub fn new() -> Self {
         Self {
-            template: BodySwayTemplate,
         }
     }
 

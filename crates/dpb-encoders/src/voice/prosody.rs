@@ -157,14 +157,11 @@ impl Default for PauseConfig {
     }
 }
 
-pub struct PauseEncoder {
-    template: PauseDurationTemplate,
-}
+pub struct PauseEncoder;
 
 impl PauseEncoder {
     pub fn new() -> Self {
         Self {
-            template: PauseDurationTemplate,
         }
     }
 

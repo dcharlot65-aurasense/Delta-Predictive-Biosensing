@@ -97,14 +97,11 @@ impl Default for PpgPulseConfig {
 }
 
 /// PPG pulse encoder - detects systolic peaks
-pub struct PpgPulseEncoder {
-    template: PulseRateTemplate,
-}
+pub struct PpgPulseEncoder;
 
 impl PpgPulseEncoder {
     pub fn new() -> Self {
         Self {
-            template: PulseRateTemplate,
         }
     }
 
@@ -194,14 +191,11 @@ impl Default for PpgAmplitudeConfig {
 }
 
 /// PPG amplitude encoder - detects perfusion changes
-pub struct PpgAmplitudeEncoder {
-    template: PpgAmplitudeNorms,
-}
+pub struct PpgAmplitudeEncoder;
 
 impl PpgAmplitudeEncoder {
     pub fn new() -> Self {
         Self {
-            template: PpgAmplitudeNorms,
         }
     }
 

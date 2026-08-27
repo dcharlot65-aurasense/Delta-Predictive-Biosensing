@@ -196,14 +196,11 @@ impl Default for JitterConfig {
     }
 }
 
-pub struct JitterEncoder {
-    template: JitterTemplate,
-}
+pub struct JitterEncoder;
 
 impl JitterEncoder {
     pub fn new() -> Self {
         Self {
-            template: JitterTemplate,
         }
     }
 
@@ -293,14 +290,11 @@ impl Default for ShimmerConfig {
     }
 }
 
-pub struct ShimmerEncoder {
-    template: ShimmerTemplate,
-}
+pub struct ShimmerEncoder;
 
 impl ShimmerEncoder {
     pub fn new() -> Self {
         Self {
-            template: ShimmerTemplate,
         }
     }
 
@@ -387,14 +381,11 @@ impl Default for HnrConfig {
     }
 }
 
-pub struct HnrEncoder {
-    template: HnrTemplate,
-}
+pub struct HnrEncoder;
 
 impl HnrEncoder {
     pub fn new() -> Self {
         Self {
-            template: HnrTemplate,
         }
     }
 

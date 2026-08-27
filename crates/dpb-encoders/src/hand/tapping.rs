@@ -66,14 +66,11 @@ impl Default for TapOnsetConfig {
     }
 }
 
-pub struct TapOnsetEncoder {
-    template: TappingFrequencyTemplate,
-}
+pub struct TapOnsetEncoder;
 
 impl TapOnsetEncoder {
     pub fn new() -> Self {
         Self {
-            template: TappingFrequencyTemplate,
         }
     }
 }

@@ -140,14 +140,11 @@ impl Default for TremorFrequencyConfig {
     }
 }
 
-pub struct TremorFrequencyEncoder {
-    template: PathologicalTremorTemplate,
-}
+pub struct TremorFrequencyEncoder;
 
 impl TremorFrequencyEncoder {
     pub fn new() -> Self {
         Self {
-            template: PathologicalTremorTemplate,
         }
     }
 

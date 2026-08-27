@@ -415,7 +415,6 @@ pub struct NmdaReceptor {
     /// Synaptic gating (neurotransmitter binding)
     s: f64,
     /// Time constant for opening (ms)
-    tau_rise: f64,
     /// Time constant for closing (ms)
     tau_decay: f64,
     /// Mg²⁺ concentration (mM)
@@ -429,7 +428,6 @@ impl NmdaReceptor {
             g_max,
             e_rev: 0.0, // Non-selective cation channel
             s: 0.0,
-            tau_rise: 2.0,   // 2 ms rise
             tau_decay: 100.0, // 100 ms decay
             mg_concentration: 1.0, // 1 mM
         }
@@ -597,7 +595,6 @@ pub struct GabaBReceptor {
     g_max: f64,
     e_rev: f64,
     s: f64,
-    tau_rise: f64,
     tau_decay: f64,
 }
 
@@ -607,7 +604,6 @@ impl GabaBReceptor {
             g_max,
             e_rev: -90.0, // K reversal (activates K channels)
             s: 0.0,
-            tau_rise: 50.0,   // 50 ms rise
             tau_decay: 200.0, // 200 ms decay
         }
     }

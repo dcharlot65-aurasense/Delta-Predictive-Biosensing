@@ -334,6 +334,8 @@ impl EchoStateNetwork {
 /// - Maass, W., Natschläger, T., & Markram, H. (2002). "Real-time computing without stable states"
 #[derive(Debug, Clone)]
 pub struct LiquidStateMachine {
+    /// Number of readout units.
+    output_size: usize,
     /// Spiking neurons in the reservoir
     neurons: Vec<LifNeuron>,
     /// Sparse connectivity pattern
@@ -345,12 +347,16 @@ pub struct LiquidStateMachine {
     /// Input dimension
     input_size: usize,
     /// Output dimension
-    output_size: usize,
     /// Time step in ms
     dt: f64,
 }
 
 impl LiquidStateMachine {
+    /// Number of readout units this machine was built with.
+    pub fn output_size(&self) -> usize {
+        self.output_size
+    }
+
     /// Create a new Liquid State Machine
     pub fn new(
         input_size: usize,

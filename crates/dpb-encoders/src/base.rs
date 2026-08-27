@@ -175,14 +175,12 @@ impl Default for TemplateDeviationConfig {
 /// Template deviation encoder - detects deviations from expected pattern
 pub struct TemplateDeviationEncoder {
     name: String,
-    population_template: Option<Box<dyn PopulationTemplate>>,
 }
 
 impl TemplateDeviationEncoder {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
-            population_template: None,
         }
     }
 
@@ -192,7 +190,6 @@ impl TemplateDeviationEncoder {
     ) -> Self {
         Self {
             name: name.into(),
-            population_template: Some(template),
         }
     }
 

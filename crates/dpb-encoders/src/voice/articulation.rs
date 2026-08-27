@@ -146,14 +146,11 @@ impl Default for VowelSpaceConfig {
     }
 }
 
-pub struct VowelSpaceEncoder {
-    template: VowelSpaceTemplate,
-}
+pub struct VowelSpaceEncoder;
 
 impl VowelSpaceEncoder {
     pub fn new() -> Self {
         Self {
-            template: VowelSpaceTemplate,
         }
     }
 

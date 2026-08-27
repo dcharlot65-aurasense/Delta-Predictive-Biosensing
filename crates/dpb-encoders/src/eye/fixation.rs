@@ -62,14 +62,11 @@ impl Default for FixationStabilityConfig {
     }
 }
 
-pub struct FixationStabilityEncoder {
-    template: FixationStabilityTemplate,
-}
+pub struct FixationStabilityEncoder;
 
 impl FixationStabilityEncoder {
     pub fn new() -> Self {
         Self {
-            template: FixationStabilityTemplate,
         }
     }
 
@@ -143,14 +140,11 @@ impl Default for MicrosaccadeConfig {
     }
 }
 
-pub struct MicrosaccadeEncoder {
-    template: MicrosaccadeRateTemplate,
-}
+pub struct MicrosaccadeEncoder;
 
 impl MicrosaccadeEncoder {
     pub fn new() -> Self {
         Self {
-            template: MicrosaccadeRateTemplate,
         }
     }
 }

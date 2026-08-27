@@ -64,14 +64,11 @@ impl Default for EmgBurstConfig {
     }
 }
 
-pub struct EmgBurstEncoder {
-    template: EmgAmplitudeTemplate,
-}
+pub struct EmgBurstEncoder;
 
 impl EmgBurstEncoder {
     pub fn new() -> Self {
         Self {
-            template: EmgAmplitudeTemplate,
         }
     }
 
@@ -214,14 +211,11 @@ impl Default for EmgFatigueConfig {
     }
 }
 
-pub struct EmgFatigueEncoder {
-    template: EmgFatigueTemplate,
-}
+pub struct EmgFatigueEncoder;
 
 impl EmgFatigueEncoder {
     pub fn new() -> Self {
         Self {
-            template: EmgFatigueTemplate,
         }
     }
 

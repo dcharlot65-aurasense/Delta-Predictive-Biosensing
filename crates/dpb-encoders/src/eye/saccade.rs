@@ -68,14 +68,11 @@ impl Default for SaccadeOnsetConfig {
     }
 }
 
-pub struct SaccadeOnsetEncoder {
-    template: SaccadeVelocityTemplate,
-}
+pub struct SaccadeOnsetEncoder;
 
 impl SaccadeOnsetEncoder {
     pub fn new() -> Self {
         Self {
-            template: SaccadeVelocityTemplate,
         }
     }
 }
@@ -149,14 +146,11 @@ impl Default for SaccadeMainSequenceConfig {
     }
 }
 
-pub struct SaccadeMainSequenceEncoder {
-    template: SaccadeVelocityTemplate,
-}
+pub struct SaccadeMainSequenceEncoder;
 
 impl SaccadeMainSequenceEncoder {
     pub fn new() -> Self {
         Self {
-            template: SaccadeVelocityTemplate,
         }
     }
 

@@ -139,7 +139,6 @@ pub struct Compartment {
     /// Membrane potential (mV)
     voltage: f64,
     /// Axial currents from neighbors (nA)
-    axial_currents: Vec<f64>,
     /// Ion channel currents (nA)
     ion_currents: f64,
     /// Synaptic current (nA)
@@ -160,7 +159,6 @@ impl Compartment {
             voltage: config.e_leak,
             config,
             cable,
-            axial_currents: Vec::new(),
             ion_currents: 0.0,
             synaptic_current: 0.0,
             index: 0,

@@ -64,14 +64,11 @@ impl Default for EdaLevelCrossingConfig {
     }
 }
 
-pub struct EdaLevelCrossingEncoder {
-    template: EdaTonicTemplate,
-}
+pub struct EdaLevelCrossingEncoder;
 
 impl EdaLevelCrossingEncoder {
     pub fn new() -> Self {
         Self {
-            template: EdaTonicTemplate,
         }
     }
 }
@@ -137,14 +134,11 @@ impl Default for EdaScrConfig {
     }
 }
 
-pub struct EdaScrEncoder {
-    template: EdaScrTemplate,
-}
+pub struct EdaScrEncoder;
 
 impl EdaScrEncoder {
     pub fn new() -> Self {
         Self {
-            template: EdaScrTemplate,
         }
     }
 

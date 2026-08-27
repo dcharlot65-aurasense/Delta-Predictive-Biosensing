@@ -230,7 +230,6 @@ impl DendriticPlasticity for BranchSpecificPlasticity {
 #[derive(Debug, Clone)]
 pub struct CompartmentPlasticity {
     /// Plasticity threshold per compartment
-    thresholds: Vec<f64>,
     /// Learning rate per compartment
     learning_rates: Vec<f64>,
     /// Distance-dependent plasticity scaling
@@ -241,7 +240,6 @@ impl CompartmentPlasticity {
     /// Create compartment-specific plasticity
     pub fn new(num_compartments: usize) -> Self {
         Self {
-            thresholds: vec![0.5; num_compartments],
             learning_rates: vec![0.01; num_compartments],
             distance_scaling: true,
         }
@@ -408,7 +406,6 @@ pub struct Metaplasticity {
     /// Recent postsynaptic activity
     recent_activity: Vec<(f64, f64)>,
     /// Activity time constant (ms)
-    tau_activity: f64,
     /// Learning rate
     learning_rate: f64,
 }
@@ -424,7 +421,6 @@ impl Metaplasticity {
             theta_target: initial_theta,
             tau_theta: 1000.0, // 1 second
             recent_activity: Vec::new(),
-            tau_activity: 100.0, // 100 ms
             learning_rate: 0.01,
         }
     }

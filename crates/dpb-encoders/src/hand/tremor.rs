@@ -25,14 +25,11 @@ impl Default for HandTremorConfig {
     }
 }
 
-pub struct HandTremorEncoder {
-    template: PhysiologicalTremorTemplate,
-}
+pub struct HandTremorEncoder;
 
 impl HandTremorEncoder {
     pub fn new() -> Self {
         Self {
-            template: PhysiologicalTremorTemplate,
         }
     }
 }
