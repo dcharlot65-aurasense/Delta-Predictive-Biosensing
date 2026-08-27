@@ -97,7 +97,6 @@ pub use self_distillation::{
     SelfDistillationConfig, ProgressiveConfig,
 };
 
-use crate::{SNNError, SNNResult};
 
 #[cfg(test)]
 mod tests {

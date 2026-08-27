@@ -12,8 +12,7 @@ pub use recurrent::{RecurrentSNN, LiquidStateMachine};
 pub use graph::SpikingGCN;
 pub use transformer::SpikingTransformer;
 
-use crate::{layers::SpikingLayer, SNNConfig, SNNResult, SpikeTensor};
-use serde::{Deserialize, Serialize};
+use crate::{SNNConfig, SNNResult, SpikeTensor};
 
 /// Base trait for all SNN architectures
 pub trait SNNArchitecture: Send + Sync {

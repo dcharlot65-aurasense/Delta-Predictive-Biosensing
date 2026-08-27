@@ -153,7 +153,7 @@ impl ANNBaseline for BiLSTM {
 
     fn forward(&self, input: &Tensor) -> Tensor {
         let h_forward = self.lstm_forward.forward(input);
-        let h_backward = self.lstm_backward.forward(input);
+        let _h_backward = self.lstm_backward.forward(input);
 
         // Concatenate forward and backward hidden states
         // Simplified: just use forward output
@@ -318,7 +318,7 @@ impl ANNBaseline for BiGRU {
 
     fn forward(&self, input: &Tensor) -> Tensor {
         let h_forward = self.gru_forward.forward(input);
-        let h_backward = self.gru_backward.forward(input);
+        let _h_backward = self.gru_backward.forward(input);
 
         // Simplified: just use forward output
         h_forward.matmul(&self.w_out).add(&self.b_out)

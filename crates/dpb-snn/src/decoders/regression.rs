@@ -1,8 +1,8 @@
 //! Regression decoders for continuous physiological measurements
 
 use super::Decoder;
-use crate::{SNNError, SNNResult, SpikeTensor};
-use ndarray::{Array1, Array2, s};
+use crate::{SNNResult, SpikeTensor};
+use ndarray::{Array2, s};
 use serde::{Deserialize, Serialize};
 
 /// Heart rate decoder - HR from cardiac spikes
@@ -45,7 +45,7 @@ impl HeartRateDecoder {
         peaks
     }
 
-    fn compute_heart_rate(&self, peaks: &[usize], num_steps: usize) -> f32 {
+    fn compute_heart_rate(&self, peaks: &[usize], _num_steps: usize) -> f32 {
         if peaks.len() < 2 {
             return 60.0; // Default resting HR
         }
@@ -240,7 +240,7 @@ impl TremorFrequencyDecoder {
 impl Decoder for TremorFrequencyDecoder {
     fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
         let spike_dense = spikes.to_dense();
-        let (batch_size, num_steps, num_neurons) = (
+        let (batch_size, _num_steps, num_neurons) = (
             spike_dense.shape()[0],
             spike_dense.shape()[1],
             spike_dense.shape()[2],
@@ -288,7 +288,7 @@ impl TremorAmplitudeDecoder {
 impl Decoder for TremorAmplitudeDecoder {
     fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
         let spike_dense = spikes.to_dense();
-        let (batch_size, num_steps, num_neurons) = (
+        let (batch_size, _num_steps, num_neurons) = (
             spike_dense.shape()[0],
             spike_dense.shape()[1],
             spike_dense.shape()[2],

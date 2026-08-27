@@ -96,7 +96,7 @@ pub use quantization::{
     ThresholdQuantizer, TimeConstantQuantizer,
 };
 
-use crate::{SNNResult, SNNError};
+use crate::SNNResult;
 use serde::{Deserialize, Serialize};
 
 /// Neuromorphic hardware target platform

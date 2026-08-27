@@ -106,7 +106,7 @@ impl NetworkPartitioner {
     /// Load-balanced partitioning
     fn partition_load_balanced(&self, graph: &NetworkGraph) -> SNNResult<PartitionResult> {
         let num_cores = self.calculate_num_cores(graph.num_neurons);
-        let target_load = graph.num_neurons / num_cores;
+        let _target_load = graph.num_neurons / num_cores;
 
         let mut assignments = HashMap::new();
         let mut core_loads = vec![0; num_cores];

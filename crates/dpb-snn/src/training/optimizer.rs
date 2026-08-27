@@ -1,9 +1,8 @@
 //! Optimizers for SNN training
 
 use crate::SNNResult;
-use ndarray::{Array2, Axis};
+use ndarray::Array2;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Base trait for optimizers
 pub trait Optimizer: Send + Sync {

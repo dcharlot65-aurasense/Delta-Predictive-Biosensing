@@ -317,7 +317,7 @@ impl EchoStateSNN {
     pub fn train_readout(
         &mut self,
         states: &Array2<f32>,
-        targets: &Array2<f32>,
+        _targets: &Array2<f32>,
         ridge_param: f32,
     ) -> SNNResult<()> {
         // Simplified ridge regression: W = Y X^T (X X^T + λI)^-1

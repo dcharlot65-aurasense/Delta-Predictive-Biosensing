@@ -1,7 +1,7 @@
 //! Surrogate gradient methods for training SNNs
 
-use crate::{SNNError, SNNResult, SpikeTensor};
-use ndarray::{Array3, Axis};
+use crate::{SNNResult, SpikeTensor};
+use ndarray::Array3;
 use serde::{Deserialize, Serialize};
 
 /// Types of surrogate gradient functions

@@ -4,7 +4,7 @@
 //! knowledge to itself, and progressive distillation for iterative compression.
 
 use crate::{SNNError, SNNResult};
-use ndarray::{Array1, Array2, Array3};
+use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 
 /// Self-distillation configuration
@@ -121,8 +121,8 @@ impl SelfDistillation {
         target_labels: &Array1<usize>,
         previous_outputs: &[Array2<f32>],
     ) -> SNNResult<f32> {
-        let batch_size = current_output.shape()[0];
-        let num_classes = current_output.shape()[1];
+        let _batch_size = current_output.shape()[0];
+        let _num_classes = current_output.shape()[1];
 
         // Hard target loss (cross-entropy)
         let hard_loss = self.compute_hard_loss(current_output, target_labels)?;

@@ -59,7 +59,7 @@ impl LayerConfig {
 
         // Validate layer-specific constraints
         match &self.layer_type {
-            LayerType::SpikingConv1d { kernel_size, stride, padding } => {
+            LayerType::SpikingConv1d { kernel_size, stride, padding: _ } => {
                 if *kernel_size == 0 {
                     return Err(format!("Layer '{}' has zero kernel size", self.name));
                 }
@@ -67,7 +67,7 @@ impl LayerConfig {
                     return Err(format!("Layer '{}' has zero stride", self.name));
                 }
             }
-            LayerType::SpikingConv2d { kernel_size, stride, padding } => {
+            LayerType::SpikingConv2d { kernel_size, stride, padding: _ } => {
                 if kernel_size.0 == 0 || kernel_size.1 == 0 {
                     return Err(format!("Layer '{}' has zero kernel size", self.name));
                 }

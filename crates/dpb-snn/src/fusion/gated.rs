@@ -6,7 +6,7 @@
 use super::{FusionNetwork, FusionConfig, Modality};
 use crate::layers::SpikingLayer;
 use crate::{SpikeTensor, SpikingLinear, SNNResult, SNNError, NeuronParams};
-use ndarray::{Array2, Array3, Axis};
+use ndarray::Array3;
 use std::collections::HashMap;
 
 /// Gated fusion network with adaptive modality weighting

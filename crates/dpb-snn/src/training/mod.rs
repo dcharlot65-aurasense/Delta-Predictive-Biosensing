@@ -11,8 +11,6 @@ pub use loss::{
 };
 pub use optimizer::{AdamOptimizer, SGDOptimizer, Optimizer};
 
-use crate::{SNNResult, SpikeTensor};
-use ndarray::Array2;
 
 /// Training configuration
 #[derive(Debug, Clone)]

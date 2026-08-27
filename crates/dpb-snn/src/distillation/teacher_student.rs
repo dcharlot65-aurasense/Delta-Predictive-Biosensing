@@ -5,9 +5,8 @@
 //! a pre-trained teacher network and a student network.
 
 use crate::{SNNError, SNNResult, SpikeTensor};
-use ndarray::{Array1, Array2, Array3, Axis};
+use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
-use std::marker::PhantomData;
 
 /// Knowledge distillation modes
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

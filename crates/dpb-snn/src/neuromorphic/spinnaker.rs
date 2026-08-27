@@ -10,7 +10,6 @@ use super::{
     ExportFile, ExportMetadata, NetworkStats, HardwareUtilization,
 };
 use super::constraints::HardwareConstraints;
-use super::partitioning::{NetworkPartitioner, PartitionStrategy, NetworkGraph, Edge};
 use crate::{SNNResult, SNNError};
 
 /// SpiNNaker exporter
@@ -193,7 +192,7 @@ impl SpiNNakerExporter {
         let mut routing_entries = Vec::new();
 
         // Map populations
-        for (i, pop) in network.populations.iter().enumerate() {
+        for (_i, pop) in network.populations.iter().enumerate() {
             // Map neuron model to PyNN cell type
             let cell_type = self.map_neuron_model(&pop.neuron_model);
 

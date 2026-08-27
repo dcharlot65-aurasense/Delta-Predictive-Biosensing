@@ -2,7 +2,7 @@
 
 use super::{NeuronState, SpikingLayer};
 use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor};
-use ndarray::{Array1, Array2, Array3, Axis, s};
+use ndarray::{Array1, Array2, Array3, s};
 use rand::rng;
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
@@ -284,7 +284,7 @@ impl SpikingLSTM {
 impl SpikingLayer for SpikingLSTM {
     fn forward(&mut self, input: &SpikeTensor) -> SNNResult<SpikeTensor> {
         let input_dense = input.to_dense();
-        let (batch_size, num_steps, input_size) = (
+        let (batch_size, num_steps, _input_size) = (
             input_dense.shape()[0],
             input_dense.shape()[1],
             input_dense.shape()[2],

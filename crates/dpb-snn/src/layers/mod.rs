@@ -13,7 +13,7 @@ pub use recurrent::{SpikingRNN, SpikingLSTM};
 pub use attention::SpikingAttention;
 
 use crate::{NeuronParams, SNNResult, SpikeTensor};
-use ndarray::{Array, Array1, Array2};
+use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 
 /// Base trait for all spiking layers

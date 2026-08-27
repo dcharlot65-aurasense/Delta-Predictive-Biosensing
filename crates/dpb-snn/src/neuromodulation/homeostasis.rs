@@ -10,7 +10,6 @@
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 
-use super::{NeuromodError, NeuromodResult};
 
 /// Homeostatic plasticity configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

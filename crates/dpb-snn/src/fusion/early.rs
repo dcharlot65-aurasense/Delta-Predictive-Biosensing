@@ -6,7 +6,6 @@
 use super::{FusionNetwork, FusionConfig, Modality, concatenate_spikes};
 use crate::{SpikeTensor, SpikingLinear, SNNResult, SNNError, NeuronParams};
 use crate::layers::SpikingLayer;
-use ndarray::{Array2, Array3};
 use std::collections::HashMap;
 
 /// Early fusion network that concatenates all modality spike trains

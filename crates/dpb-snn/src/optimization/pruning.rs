@@ -3,8 +3,8 @@
 //! This module implements various pruning strategies to reduce network size
 //! and improve efficiency while maintaining performance.
 
-use ndarray::{Array2, ArrayView2};
-use rand::{Rng, RngExt, SeedableRng};
+use ndarray::Array2;
+use rand::{RngExt, SeedableRng};
 use serde::{Deserialize, Serialize};
 
 /// Pruning strategy determines which weights to prune

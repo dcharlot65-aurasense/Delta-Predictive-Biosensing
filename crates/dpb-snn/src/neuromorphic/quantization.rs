@@ -5,7 +5,6 @@
 
 use serde::{Deserialize, Serialize};
 use super::constraints::WeightBitDepth;
-use crate::SNNResult;
 
 /// Weight quantizer for target hardware
 #[derive(Debug, Clone)]

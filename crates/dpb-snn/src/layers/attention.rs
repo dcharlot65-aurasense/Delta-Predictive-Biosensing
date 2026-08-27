@@ -2,7 +2,7 @@
 
 use super::{NeuronState, SpikingLayer};
 use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor};
-use ndarray::{Array1, Array2, Array3, Axis, s};
+use ndarray::{Array2, Array3, s};
 use rand::rng;
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
@@ -95,7 +95,7 @@ impl SpikingAttention {
         value: &Array2<f32>,
     ) -> Array2<f32> {
         let batch_size = query.shape()[0];
-        let seq_len = query.shape()[0]; // Simplified: treat batch as sequence
+        let _seq_len = query.shape()[0]; // Simplified: treat batch as sequence
 
         // Compute attention scores: Q @ K^T / sqrt(d_head)
         let mut scores = Array2::zeros((batch_size, batch_size));

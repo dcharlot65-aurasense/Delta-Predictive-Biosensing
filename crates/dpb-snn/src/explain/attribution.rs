@@ -1,6 +1,6 @@
 //! Feature attribution methods for explainability
 
-use rand::{Rng, RngExt};
+use rand::RngExt;
 
 /// Feature attribution result
 #[derive(Debug, Clone)]

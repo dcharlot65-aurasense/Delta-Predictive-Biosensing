@@ -4,8 +4,8 @@
 
 use super::super::config::{LayerConfig, ExportMetadata};
 use super::super::weights::ModelWeights;
-use super::flatbuffer::{FlatBufferBuilder, SubgraphBuilder, BufferManager};
-use super::metadata::{TFLiteMetadata, TensorMetadata, ContentType, AssociatedFile, FileType};
+use super::flatbuffer::{FlatBufferBuilder, SubgraphBuilder};
+use super::metadata::{TFLiteMetadata, TensorMetadata, ContentType};
 use super::operators::{TFLiteOperator, OperatorRegistry, OperatorType, BuiltinOperator, OperatorOptions};
 use super::quantization::{QuantizationConfig, PostTrainingQuantizer};
 use super::tensors::{TFLiteTensor, TensorType, TensorShape};
@@ -179,7 +179,7 @@ impl TFLiteExporter {
                 .unwrap_or(OperatorType::Builtin(BuiltinOperator::FullyConnected));
 
             // Add weight buffer
-            let weight_buffer_idx = if let Some(ref quantizer) = quantizer {
+            let _weight_buffer_idx = if let Some(ref quantizer) = quantizer {
                 // Quantize weights
                 let (quantized_weights, quant_params) = quantizer.quantize_weights(
                     &layer_weights.weights.iter().map(|&w| w as f32).collect::<Vec<_>>(),
@@ -398,8 +398,6 @@ impl TFLiteExporter {
 }
 
 // Re-export for convenience
-use crate::export::config;
-use crate::export::weights;
 
 #[cfg(test)]
 mod tests {

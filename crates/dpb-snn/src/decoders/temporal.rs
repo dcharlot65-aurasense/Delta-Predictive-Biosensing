@@ -2,7 +2,7 @@
 
 use super::Decoder;
 use crate::{SNNError, SNNResult, SpikeTensor};
-use ndarray::{Array1, Array2, Array3, s};
+use ndarray::{Array2, s};
 use serde::{Deserialize, Serialize};
 
 /// Temporal pattern decoder - recognizes specific spike patterns
@@ -57,7 +57,7 @@ impl TemporalPatternDecoder {
 impl Decoder for TemporalPatternDecoder {
     fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
         let spike_dense = spikes.to_dense();
-        let (batch_size, num_steps, num_neurons) = (
+        let (batch_size, _num_steps, _num_neurons) = (
             spike_dense.shape()[0],
             spike_dense.shape()[1],
             spike_dense.shape()[2],
@@ -234,7 +234,7 @@ impl ISIDecoder {
 impl Decoder for ISIDecoder {
     fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
         let spike_dense = spikes.to_dense();
-        let (batch_size, num_steps, num_neurons) = (
+        let (batch_size, _num_steps, num_neurons) = (
             spike_dense.shape()[0],
             spike_dense.shape()[1],
             spike_dense.shape()[2],
@@ -313,7 +313,7 @@ impl BurstDecoder {
 impl Decoder for BurstDecoder {
     fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
         let spike_dense = spikes.to_dense();
-        let (batch_size, num_steps, num_neurons) = (
+        let (batch_size, _num_steps, num_neurons) = (
             spike_dense.shape()[0],
             spike_dense.shape()[1],
             spike_dense.shape()[2],
@@ -421,7 +421,7 @@ impl PhaseDecoder {
         }
     }
 
-    fn compute_phase(&self, spike_times: &[usize], num_steps: usize) -> f32 {
+    fn compute_phase(&self, spike_times: &[usize], _num_steps: usize) -> f32 {
         if spike_times.is_empty() {
             return 0.0;
         }

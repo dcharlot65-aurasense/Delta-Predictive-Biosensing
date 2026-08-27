@@ -1,7 +1,7 @@
 //! Loss functions for SNN training
 
 use crate::{SNNError, SNNResult, SpikeTensor};
-use ndarray::{Array1, Array2, Array3, Axis, s};
+use ndarray::{Array1, Array2, Array3, s};
 use serde::{Deserialize, Serialize};
 
 /// Base trait for loss functions

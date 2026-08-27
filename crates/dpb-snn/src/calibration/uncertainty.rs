@@ -1,7 +1,6 @@
 //! Uncertainty estimation methods
 
-use rand::seq::SliceRandom;
-use rand::{Rng, RngExt};
+use rand::RngExt;
 
 /// Confidence interval representation
 #[derive(Debug, Clone)]

@@ -3,10 +3,9 @@
 //! Uses spiking attention mechanisms to learn which modalities are
 //! relevant for the current input context.
 
-use super::{FusionNetwork, FusionConfig, Modality, concatenate_spikes};
+use super::{FusionNetwork, FusionConfig, Modality};
 use crate::{SpikeTensor, SpikingLinear, SpikingAttention, SNNResult, SNNError, NeuronParams};
 use crate::layers::SpikingLayer;
-use ndarray::{Array2, Array3, Array4};
 use std::collections::HashMap;
 
 /// Cross-modal attention fusion network

@@ -1,8 +1,8 @@
 //! Pooling layers for spiking neural networks
 
 use super::SpikingLayer;
-use crate::{SNNError, SNNResult, SpikeTensor};
-use ndarray::{Array2, Array3, Axis, s};
+use crate::{SNNResult, SpikeTensor};
+use ndarray::{Array2, Array3, s};
 use serde::{Deserialize, Serialize};
 
 /// 2D Sum Pooling for spike counts
@@ -47,7 +47,7 @@ impl SpikingLayer for SpikingSumPool2d {
         // For simplicity, assume flat_size can be factored into spatial dimensions
         // In practice, we'd need to track the actual spatial dimensions
         let spatial_dim = (flat_size as f32).sqrt() as usize;
-        let channels = flat_size / (spatial_dim * spatial_dim);
+        let _channels = flat_size / (spatial_dim * spatial_dim);
 
         // Simple spatial pooling over neurons
         let pool_factor = self.pool_size.0 * self.pool_size.1;

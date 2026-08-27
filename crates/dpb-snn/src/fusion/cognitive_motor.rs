@@ -127,7 +127,7 @@ impl CognitiveProfile {
 
     /// Calculate d-prime (sensitivity) from hit rate and false alarm rate
     fn calculate_d_prime(hit_rate: f64, fa_rate: f64) -> f64 {
-        use std::f64::consts::SQRT_2;
+        
 
         // Inverse normal (z-score) approximation
         let z_hit = Self::inverse_normal(hit_rate);
@@ -294,7 +294,7 @@ impl MotorProfile {
         velocity_ms: f64,
         stride_time_cv: f64,
         double_support_percent: f64,
-        cadence: f64,
+        _cadence: f64,
     ) -> Self {
         // Normalize velocity (assume 0.8-1.4 m/s is normal)
         let gait_velocity = ((velocity_ms - 0.4) / 1.0).clamp(0.0, 1.0);

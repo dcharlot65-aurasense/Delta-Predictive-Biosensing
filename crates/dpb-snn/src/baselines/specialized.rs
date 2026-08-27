@@ -16,7 +16,7 @@ pub struct ECGNet {
 }
 
 impl ECGNet {
-    pub fn new(input_channels: usize, input_length: usize, num_classes: usize, seed: u64) -> Self {
+    pub fn new(input_channels: usize, _input_length: usize, num_classes: usize, seed: u64) -> Self {
         // Conv layers for multi-scale feature extraction
         let conv_layers = vec![
             xavier_init(vec![64, input_channels, 7], seed),
@@ -124,7 +124,7 @@ pub struct DeepGait {
 }
 
 impl DeepGait {
-    pub fn new(num_sensors: usize, input_length: usize, output_size: usize, seed: u64) -> Self {
+    pub fn new(num_sensors: usize, _input_length: usize, output_size: usize, seed: u64) -> Self {
         // Spatial convolutions
         let spatial_conv = vec![
             xavier_init(vec![32, num_sensors, 5], seed),
@@ -633,7 +633,7 @@ pub struct HybridCNNRNN {
 }
 
 impl HybridCNNRNN {
-    pub fn new(input_channels: usize, input_length: usize, output_size: usize, seed: u64) -> Self {
+    pub fn new(input_channels: usize, _input_length: usize, output_size: usize, seed: u64) -> Self {
         let cnn_layers = vec![
             xavier_init(vec![64, input_channels, 7], seed),
             xavier_init(vec![128, 64, 5], seed + 1),

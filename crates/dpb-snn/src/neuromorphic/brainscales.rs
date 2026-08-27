@@ -4,7 +4,6 @@
 //! neuromorphic hardware using PyHMF framework.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use super::{
     NeuromorphicExporter, NeuromorphicTarget, NetworkDescription, ExportResult,
     ExportFile, ExportMetadata, NetworkStats, HardwareUtilization,

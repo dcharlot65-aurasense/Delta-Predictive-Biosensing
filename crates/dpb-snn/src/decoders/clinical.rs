@@ -18,7 +18,7 @@
 //! official scoring form is reproduced.
 
 use super::Decoder;
-use crate::{SNNError, SNNResult, SpikeTensor};
+use crate::{SNNResult, SpikeTensor};
 use ndarray::{Array1, Array2, s};
 use serde::{Deserialize, Serialize};
 
@@ -190,7 +190,7 @@ impl TremorSeverityDecoder {
 impl Decoder for TremorSeverityDecoder {
     fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
         let spike_dense = spikes.to_dense();
-        let (batch_size, num_steps, num_neurons) = (
+        let (batch_size, _num_steps, num_neurons) = (
             spike_dense.shape()[0],
             spike_dense.shape()[1],
             spike_dense.shape()[2],
@@ -512,7 +512,7 @@ impl UPDRSGaitDecoder {
 impl Decoder for UPDRSGaitDecoder {
     fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
         let spike_dense = spikes.to_dense();
-        let (batch_size, num_steps, num_neurons) = (
+        let (batch_size, _num_steps, num_neurons) = (
             spike_dense.shape()[0],
             spike_dense.shape()[1],
             spike_dense.shape()[2],

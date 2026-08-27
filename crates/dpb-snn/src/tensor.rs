@@ -4,9 +4,8 @@
 //! dense and sparse formats with conversion utilities.
 
 use crate::{SNNError, SNNResult};
-use ndarray::{s, Array, Array1, Array2, Array3, Array4, ArrayD, Axis, IxDyn};
+use ndarray::{s, Array1, Array2, Array3};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Represents spike data in different formats
 #[derive(Debug, Clone, Serialize, Deserialize)]

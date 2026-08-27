@@ -1,7 +1,7 @@
 //! Binary export format for embedded deployment.
 
 use crate::{
-    encoder_export::{EncoderExport, EncoderParams, EncoderState, ExportableEncoder},
+    encoder_export::{EncoderParams, EncoderState, ExportableEncoder},
     error::{ExportError, Result},
     metadata::ModelMetadata,
 };

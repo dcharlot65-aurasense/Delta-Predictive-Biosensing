@@ -5,7 +5,6 @@
 
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
-use std::f64::consts::E;
 
 /// Trait for Hebbian-style learning rules
 pub trait HebbianRule: Send + Sync + std::fmt::Debug {

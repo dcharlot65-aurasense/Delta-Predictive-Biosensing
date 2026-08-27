@@ -2,7 +2,7 @@
 
 use super::Decoder;
 use crate::{SNNError, SNNResult, SpikeTensor};
-use ndarray::{Array1, Array2, Axis, s};
+use ndarray::{Array1, Array2, s};
 use serde::{Deserialize, Serialize};
 
 /// Spike rate decoder - decodes based on average firing rate
@@ -447,7 +447,7 @@ impl NormalizedRateDecoder {
 impl Decoder for NormalizedRateDecoder {
     fn decode(&self, spikes: &SpikeTensor) -> SNNResult<Array2<f32>> {
         let rates = spikes.spike_rate();
-        let (batch_size, num_neurons) = (rates.shape()[0], rates.shape()[1]);
+        let (_batch_size, num_neurons) = (rates.shape()[0], rates.shape()[1]);
 
         if num_neurons != self.num_outputs {
             return Err(SNNError::DimensionMismatch {

@@ -1,6 +1,5 @@
 //! Temperature scaling for neural network calibration
 
-use std::f64::consts::E;
 
 /// Temperature scaling for neural network calibration
 /// Divides logits by a learned temperature parameter

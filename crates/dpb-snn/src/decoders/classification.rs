@@ -2,7 +2,7 @@
 
 use super::Decoder;
 use crate::{SNNError, SNNResult, SpikeTensor};
-use ndarray::{Array1, Array2, s};
+use ndarray::{Array2, s};
 use serde::{Deserialize, Serialize};
 
 /// Binary classification decoder

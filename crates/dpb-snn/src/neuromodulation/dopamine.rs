@@ -8,10 +8,9 @@
 //! - Striatal modulation
 //! - VTA/SNc modeling
 
-use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 
-use super::modulators::{ModulatorySystem, ModulatorConcentration, Dopamine};
+use super::modulators::{ModulatorySystem, Dopamine};
 use super::{NeuromodError, NeuromodResult};
 
 /// Dopamine release mode

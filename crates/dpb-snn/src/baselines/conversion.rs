@@ -138,7 +138,7 @@ impl ANNToSNNConverter {
         self.layer_scales.clear();
 
         // Compute layer-wise statistics
-        for (layer_idx, layer) in layers.iter().enumerate() {
+        for (_layer_idx, layer) in layers.iter().enumerate() {
             let mut max_activation = 0.0f32;
 
             // Process each sample

@@ -3,7 +3,7 @@
 use super::SNNArchitecture;
 use crate::{
     layers::{SpikingConv2d, SpikingLayer, SpikingLinear, SpikingSumPool2d},
-    SNNConfig, SNNError, SNNResult, SpikeTensor,
+    SNNConfig, SNNResult, SpikeTensor,
 };
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};

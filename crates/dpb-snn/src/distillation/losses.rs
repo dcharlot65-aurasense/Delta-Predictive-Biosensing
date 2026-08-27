@@ -4,7 +4,7 @@
 //! including response-based, feature-based, and attention-based losses.
 
 use crate::{SNNError, SNNResult};
-use ndarray::{Array1, Array2, Array3, Axis};
+use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 
 /// Base trait for distillation loss functions

@@ -7,7 +7,6 @@
 use crate::{SNNError, SNNResult};
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Compression configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -295,8 +294,8 @@ impl LayerMerging {
         weights1: &Array2<f32>,
         weights2: &Array2<f32>,
     ) -> SNNResult<Array2<f32>> {
-        let (out1, in1) = (weights1.shape()[0], weights1.shape()[1]);
-        let (out2, in2) = (weights2.shape()[0], weights2.shape()[1]);
+        let (out1, _in1) = (weights1.shape()[0], weights1.shape()[1]);
+        let (_out2, in2) = (weights2.shape()[0], weights2.shape()[1]);
 
         if in2 != out1 {
             return Err(SNNError::DimensionMismatch {

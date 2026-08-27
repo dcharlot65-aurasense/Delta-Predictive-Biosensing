@@ -1,8 +1,8 @@
 //! Convolutional spiking layers for spatial feature extraction
 
 use super::{NeuronState, SpikingLayer};
-use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor};
-use ndarray::{s, Array1, Array2, Array3, Array4, Array5, Axis};
+use crate::{NeuronParams, SNNResult, SpikeTensor};
+use ndarray::{s, Array1, Array2, Array3, Array4};
 use rand::rng;
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
@@ -155,7 +155,7 @@ impl SpikingConv2d {
 impl SpikingLayer for SpikingConv2d {
     fn forward(&mut self, input: &SpikeTensor) -> SNNResult<SpikeTensor> {
         let input_dense = input.to_dense();
-        let (batch_size, num_steps, flat_input) = (
+        let (batch_size, num_steps, _flat_input) = (
             input_dense.shape()[0],
             input_dense.shape()[1],
             input_dense.shape()[2],

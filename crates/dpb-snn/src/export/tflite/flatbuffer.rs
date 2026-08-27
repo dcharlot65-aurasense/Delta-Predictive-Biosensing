@@ -3,8 +3,8 @@
 //! Implements FlatBuffer generation for the TFLite schema. This is a simplified
 //! implementation that generates schema-compliant binary data.
 
-use super::operators::{TFLiteOperator, OperatorType, BuiltinOperator};
-use super::tensors::{TFLiteTensor, TensorType};
+use super::operators::TFLiteOperator;
+use super::tensors::TFLiteTensor;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
@@ -415,6 +415,7 @@ struct ModelData {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::TensorType;
     use crate::export::tflite::tensors::TensorShape;
 
     #[test]

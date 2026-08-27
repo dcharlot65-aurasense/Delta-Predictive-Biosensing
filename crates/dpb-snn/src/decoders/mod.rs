@@ -60,7 +60,7 @@ pub use classification::{
 };
 
 use crate::{SNNResult, SpikeTensor};
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 
 /// Base trait for all decoders
 pub trait Decoder: Send + Sync {

@@ -6,7 +6,7 @@
 use super::{FusionNetwork, FusionConfig, Modality, concatenate_spikes};
 use crate::layers::SpikingLayer;
 use crate::{SpikeTensor, SpikingLinear, SpikingRNN, SNNResult, SNNError, NeuronParams};
-use ndarray::{Array2, Array3, s};
+use ndarray::{Array3, s};
 use std::collections::HashMap;
 
 /// Temporal alignment strategy

@@ -12,15 +12,13 @@
 //! predecessor to compare against.
 
 use crate::{
-    encoder_export::{EncoderParams, ExportableEncoder},
+    encoder_export::ExportableEncoder,
     error::{ExportError, Result},
-    metadata::{DataType, ModelMetadata, TensorSpec},
+    metadata::ModelMetadata,
 };
 use crate::protobuf::Writer;
-use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use tracing::{debug, info, warn};
 
 /// ONNX exporter for spike encoders.
 ///

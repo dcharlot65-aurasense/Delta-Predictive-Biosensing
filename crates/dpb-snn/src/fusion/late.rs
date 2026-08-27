@@ -6,7 +6,7 @@
 use super::{FusionNetwork, FusionConfig, Modality, average_spikes};
 use crate::{SpikeTensor, SpikingLinear, SNNResult, SNNError, NeuronParams};
 use crate::layers::SpikingLayer;
-use ndarray::{Array2, Array3};
+use ndarray::Array3;
 use std::collections::HashMap;
 
 /// Fusion strategy for combining modality-specific outputs

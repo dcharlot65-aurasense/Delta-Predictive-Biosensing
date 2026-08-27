@@ -2,10 +2,10 @@
 
 use crate::{
     architectures::{FeedforwardSNN, SNNArchitecture},
-    layers::{SpikingLayer, SpikingLinear},
-    SNNConfig, SNNError, SNNResult, SpikeTensor,
+    layers::SpikingLayer,
+    SNNConfig, SNNResult, SpikeTensor,
 };
-use ndarray::{Array1, Array2, Array3};
+use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 
 /// ANN to SNN converter
@@ -238,7 +238,7 @@ impl CalibrationPipeline {
     ) -> SNNResult<CalibrationStats> {
         let mut stats = CalibrationStats::new();
 
-        for iteration in 0..self.max_iterations {
+        for _iteration in 0..self.max_iterations {
             // Run calibration
             converter.calibrate(snn, &calibration_data[..self.num_samples.min(calibration_data.len())])?;
 

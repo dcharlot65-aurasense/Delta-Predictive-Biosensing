@@ -7,10 +7,10 @@
 //! - Nicotinic and muscarinic receptor dynamics
 //! - Basal forebrain modeling
 
-use ndarray::{Array1, Array2};
+use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 
-use super::modulators::{ModulatorySystem, ModulatorConcentration, Acetylcholine};
+use super::modulators::{ModulatorySystem, Acetylcholine};
 use super::{NeuromodError, NeuromodResult};
 
 /// Acetylcholine receptor types

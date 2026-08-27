@@ -9,7 +9,7 @@ use crate::{
     SNNResult, SNNError, NeuronParams,
 };
 use crate::layers::SpikingLayer;
-use ndarray::{Array2, Array3};
+use ndarray::Array3;
 use std::collections::HashMap;
 
 /// Modality group for hierarchical processing

@@ -7,14 +7,14 @@
 //! - Temporal coordination
 //! - State-dependent processing
 
-use ndarray::{Array1, Array2};
+use ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use super::dopamine::{DopamineSystem, DopamineConfig};
 use super::acetylcholine::{AcetylcholineSystem, AcetylcholineConfig};
 use super::modulators::{Neuromodulator, NeuromodulatorType, ModulatorySystem};
-use super::{NeuromodError, NeuromodResult};
+use super::NeuromodResult;
 
 /// Brain state
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

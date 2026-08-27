@@ -3,11 +3,11 @@
 //! This module implements the fundamental types for representing neuromodulators,
 //! their concentrations, diffusion dynamics, and receptor binding kinetics.
 
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use super::{NeuromodError, NeuromodResult};
+use super::NeuromodResult;
 
 /// Types of neuromodulators
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -5,7 +5,7 @@
 //! and membrane potential distillation.
 
 use crate::{SNNError, SNNResult, SpikeTensor};
-use ndarray::{s, Array1, Array2, Array3, Axis};
+use ndarray::{s, Array1, Array2, Array3};
 use serde::{Deserialize, Serialize};
 
 /// Configuration for spike-based distillation
@@ -88,7 +88,7 @@ impl SpikePatternDistillation {
             });
         }
 
-        let (batch_size, num_steps, num_neurons) = (
+        let (batch_size, _num_steps, num_neurons) = (
             teacher_dense.shape()[0],
             teacher_dense.shape()[1],
             teacher_dense.shape()[2],

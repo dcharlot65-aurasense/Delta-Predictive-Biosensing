@@ -384,8 +384,7 @@ pub use neuromodulation::{
     StateDependent, BrainState,
 };
 
-use dpb_core::error::{DpbError, Result};
-use ndarray::{Array, ArrayD};
+use dpb_core::error::DpbError;
 use serde::{Deserialize, Serialize};
 
 /// SNN-specific error type

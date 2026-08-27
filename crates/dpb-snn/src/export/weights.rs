@@ -298,7 +298,7 @@ impl WeightExporter {
             .map_err(|e| format!("Failed to deserialize from JSON: {}", e))
     }
     
-    fn export_safetensors(weights: &ModelWeights) -> Result<Vec<u8>, String> {
+    fn export_safetensors(_weights: &ModelWeights) -> Result<Vec<u8>, String> {
         // Placeholder for safetensors format
         // In a real implementation, would use the safetensors library
         Err("Safetensors export not yet implemented".to_string())
@@ -309,7 +309,7 @@ impl WeightExporter {
         Err("Safetensors load not yet implemented".to_string())
     }
     
-    fn export_npz(weights: &ModelWeights) -> Result<Vec<u8>, String> {
+    fn export_npz(_weights: &ModelWeights) -> Result<Vec<u8>, String> {
         // Placeholder for NPZ format
         // In a real implementation, would use numpy file format
         Err("NPZ export not yet implemented".to_string())

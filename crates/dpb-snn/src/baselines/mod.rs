@@ -37,7 +37,7 @@ impl Tensor {
 
         // Simple Box-Muller transform for normal distribution
         let mut rng_state = seed;
-        for i in 0..size {
+        for _i in 0..size {
             rng_state = rng_state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
             let u1 = (rng_state as f32) / (u64::MAX as f32);
 

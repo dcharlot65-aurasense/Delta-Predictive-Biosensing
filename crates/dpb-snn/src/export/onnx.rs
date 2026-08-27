@@ -254,7 +254,7 @@ impl OnnxExporter {
     pub fn export_decoder(
         &self,
         decoder_type: &str,
-        params: &serde_json::Value,
+        _params: &serde_json::Value,
         input_shape: &[usize],
     ) -> Result<ExportResult, String> {
         let mut graph = OnnxGraph::new();

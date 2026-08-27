@@ -4,7 +4,6 @@
 //! NxSDK and Lava frameworks.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use super::{
     NeuromorphicExporter, NeuromorphicTarget, NetworkDescription, ExportResult,
     ExportFile, ExportMetadata, NetworkStats, HardwareUtilization,
@@ -313,7 +312,7 @@ impl NeuromorphicExporter for LoihiExporter {
         let mut warnings = Vec::new();
 
         let num_neurons: usize = network.populations.iter().map(|p| p.size).sum();
-        let num_synapses: usize = network.connections.iter().map(|c| c.weights.len()).sum();
+        let _num_synapses: usize = network.connections.iter().map(|c| c.weights.len()).sum();
 
         // Check neuron count
         if num_neurons > self.constraints.neuron.max_neurons_total {
