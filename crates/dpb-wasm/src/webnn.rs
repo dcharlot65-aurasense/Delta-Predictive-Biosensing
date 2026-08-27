@@ -146,6 +146,9 @@ impl Default for WebNNConfig {
 /// WebNN tensor descriptor.
 #[wasm_bindgen]
 #[derive(Debug, Clone)]
+// Held but not consulted yet; kept so a caller's input is not silently
+// discarded.
+#[allow(dead_code)]
 pub struct WebNNTensorDesc {
     /// Data type (float32, float16, int32, etc.).
     data_type: String,

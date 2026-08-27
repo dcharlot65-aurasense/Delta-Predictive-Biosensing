@@ -1,10 +1,9 @@
 //! Gradient compression for communication efficiency.
 
 use crate::{
-    model::{CompressionInfo, ParameterDelta, Tensor},
-    FederatedError, Result,
+    model::{CompressionInfo, ParameterDelta, Tensor}, Result,
 };
-use rand::{Rng, RngExt};
+use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
 /// Compression strategy for model updates.

@@ -298,18 +298,20 @@ impl PrivacyAccountant {
 }
 
 /// Local differential privacy for client-side noise injection.
+///
+/// Implements the Laplace mechanism specifically: `new` hardcoded
+/// `PrivacyMechanism::Laplace` into a field nothing read, and `add_noise`
+/// samples Laplace unconditionally, so the field advertised a choice the type
+/// does not offer. Selecting a mechanism would mean honouring it in
+/// `add_noise`, which is a change in behaviour rather than a rename.
 pub struct LocalDP {
     epsilon: f64,
-    mechanism: PrivacyMechanism,
 }
 
 impl LocalDP {
-    /// Create a new local DP mechanism.
+    /// Create a new local DP mechanism with the given privacy budget.
     pub fn new(epsilon: f64) -> Self {
-        Self {
-            epsilon,
-            mechanism: PrivacyMechanism::Laplace,
-        }
+        Self { epsilon }
     }
 
     /// Randomized response for binary data.

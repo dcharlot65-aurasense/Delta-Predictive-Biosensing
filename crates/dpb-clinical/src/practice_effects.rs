@@ -320,14 +320,13 @@ impl SerialAssessment {
         let baseline = self.baseline()?;
         let session = self.sessions.iter().find(|s| s.session_number == session_number)?;
 
-        // If dates available, calculate actual interval
-        if let (Some(b_date), Some(s_date)) = (&baseline.date, &session.date) {
-            // Simplified: assume dates are in days format for this example
-            // In practice, would parse actual dates
-            return None;
-        }
+        // Parsing the recorded dates would give the real interval, but that is
+        // not implemented. Returning None when both dates are present -- which
+        // is what this did -- meant a caller with more information got no
+        // answer at all, while a caller with none got an estimate. Fall
+        // through to the estimate either way.
+        let _ = (&baseline.date, &session.date);
 
-        // Default: estimate based on typical intervals
         Some((session_number - 1) as f64 * 90.0) // Assume ~90 days between sessions
     }
 }

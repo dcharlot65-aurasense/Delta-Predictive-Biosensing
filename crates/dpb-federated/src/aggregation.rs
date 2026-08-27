@@ -2,7 +2,7 @@
 
 use crate::{
     config::AggregationStrategy,
-    model::{ModelUpdate, ModelWeights, ParameterDelta, Tensor},
+    model::{ModelUpdate, ParameterDelta, Tensor},
     FederatedError, Result,
 };
 use std::collections::HashMap;
@@ -246,10 +246,10 @@ impl Aggregator for MedianAggregator {
             let mut aggregated_data = vec![0.0f32; size];
 
             // Compute coordinate-wise median
-            for i in 0..size {
+            for (i, slot) in aggregated_data.iter_mut().enumerate().take(size) {
                 let mut values: Vec<f32> = tensors.iter().map(|t| t.data[i]).collect();
                 values.sort_by(|a, b| a.total_cmp(b));
-                aggregated_data[i] = median(&values);
+                *slot = median(&values);
             }
 
             aggregated_changes.insert(name.clone(), Tensor::new(aggregated_data, shape));
@@ -316,7 +316,7 @@ impl Aggregator for TrimmedMeanAggregator {
 
             let mut aggregated_data = vec![0.0f32; size];
 
-            for i in 0..size {
+            for (i, slot) in aggregated_data.iter_mut().enumerate().take(size) {
                 let mut values: Vec<f32> = tensors.iter().map(|t| t.data[i]).collect();
                 values.sort_by(|a, b| a.total_cmp(b));
 
@@ -328,7 +328,7 @@ impl Aggregator for TrimmedMeanAggregator {
                 };
 
                 // Compute mean of remaining
-                aggregated_data[i] = trimmed.iter().sum::<f32>() / trimmed.len() as f32;
+                *slot = trimmed.iter().sum::<f32>() / trimmed.len() as f32;
             }
 
             aggregated_changes.insert(name.clone(), Tensor::new(aggregated_data, shape));

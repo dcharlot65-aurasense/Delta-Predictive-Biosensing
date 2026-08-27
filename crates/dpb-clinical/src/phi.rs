@@ -61,7 +61,7 @@
 //! ```
 
 use chrono::Datelike;
-use crate::{ClinicalError, Result, Demographics};
+use crate::Result;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;

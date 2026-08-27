@@ -18,6 +18,9 @@ mod webnn_tests {
 
     /// WebNN power preference.
     #[derive(Debug, Clone, Copy, PartialEq)]
+    // Part of the WebNN surface this wrapper models; used once the calls
+    // below stop being stubs.
+    #[allow(dead_code)]
     enum PowerPreference {
         Default,
         HighPerformance,
@@ -63,6 +66,9 @@ mod webnn_tests {
 
     /// Simulated WebNN tensor.
     #[derive(Debug, Clone)]
+    // Part of the WebNN surface this wrapper models; used once the calls
+    // below stop being stubs.
+    #[allow(dead_code)]
     struct WebNNTensor {
         name: String,
         shape: Vec<usize>,
@@ -71,6 +77,9 @@ mod webnn_tests {
     }
 
     #[derive(Debug, Clone, Copy, PartialEq)]
+    // Part of the WebNN surface this wrapper models; used once the calls
+    // below stop being stubs.
+    #[allow(dead_code)]
     enum WebNNDataType {
         Float32,
         Float16,
@@ -79,6 +88,9 @@ mod webnn_tests {
         Uint8,
     }
 
+    // Part of the WebNN surface this wrapper models; used once the calls
+    // below stop being stubs.
+    #[allow(dead_code)]
     impl WebNNTensor {
         fn new(name: &str, shape: &[usize], data_type: WebNNDataType) -> Self {
             let size: usize = shape.iter().product();
@@ -121,6 +133,9 @@ mod webnn_tests {
     }
 
     #[derive(Debug, Clone)]
+    // Part of the WebNN surface this wrapper models; used once the calls
+    // below stop being stubs.
+    #[allow(dead_code)]
     struct WebNNOperation {
         op_type: String,
         inputs: Vec<String>,
@@ -128,6 +143,9 @@ mod webnn_tests {
         attributes: HashMap<String, String>,
     }
 
+    // Part of the WebNN surface this wrapper models; used once the calls
+    // below stop being stubs.
+    #[allow(dead_code)]
     impl WebNNGraphBuilder {
         fn new() -> Self {
             Self {
@@ -137,12 +155,12 @@ mod webnn_tests {
             }
         }
 
-        fn input(&mut self, name: &str, shape: &[usize]) -> String {
+        fn input(&mut self, name: &str, _shape: &[usize]) -> String {
             self.inputs.push(name.to_string());
             name.to_string()
         }
 
-        fn constant(&mut self, name: &str, data: &[f32]) -> String {
+        fn constant(&mut self, name: &str, _data: &[f32]) -> String {
             name.to_string()
         }
 
@@ -247,6 +265,9 @@ mod webnn_tests {
     }
 
     /// Simulated WebNN encoder for spike detection.
+    // Part of the WebNN surface this wrapper models; used once the calls
+    // below stop being stubs.
+    #[allow(dead_code)]
     struct WebNNEncoder {
         config: WebNNConfig,
         threshold: f32,
@@ -355,6 +376,9 @@ mod webnn_tests {
     #[test]
     fn test_browser_compatibility() {
         #[derive(Debug)]
+        // Part of the WebNN surface this wrapper models; used once the calls
+        // below stop being stubs.
+        #[allow(dead_code)]
         struct BrowserSupport {
             name: String,
             version: u32,
@@ -465,6 +489,9 @@ mod webnn_tests {
     /// Test WebNN operation fusion.
     #[test]
     fn test_operation_fusion() {
+        // Part of the WebNN surface this wrapper models; used once the calls
+        // below stop being stubs.
+        #[allow(dead_code)]
         struct FusedOperation {
             fused_ops: Vec<String>,
             input_count: usize,
@@ -506,6 +533,8 @@ mod webnn_tests {
     /// Test memory layout optimization.
     #[test]
     fn test_memory_layout() {
+        // NCHW/NHWC are the standard tensor layout names.
+        #[allow(clippy::upper_case_acronyms)]
         #[derive(Debug, Clone, Copy, PartialEq)]
         enum MemoryLayout {
             NCHW, // Batch, Channels, Height, Width

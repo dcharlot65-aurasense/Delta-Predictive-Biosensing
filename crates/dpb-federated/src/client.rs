@@ -7,7 +7,6 @@ use crate::{
     FederatedError, Result,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use tracing::{debug, info};
 
 /// Federated learning client.
@@ -167,7 +166,7 @@ impl FederatedClient {
 
         let mut loss = 0.0f32;
         let lr = self.config.learning_rate as f32;
-        let momentum = self.config.momentum as f32;
+        let _momentum = self.config.momentum as f32;
         let weight_decay = self.config.weight_decay as f32;
 
         // Simulate gradient updates with mock gradients
@@ -214,6 +213,9 @@ pub enum ClientState {
 }
 
 /// Local dataset representation.
+// Held but not consulted yet; kept so a caller's input is not silently
+// discarded.
+#[allow(dead_code)]
 pub struct LocalDataset {
     /// Number of samples.
     pub num_samples: usize,
@@ -235,7 +237,7 @@ impl LocalDataset {
 
     /// Create with random data.
     pub fn random(num_samples: usize, feature_dim: usize) -> Self {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         let mut rng = rand::rng();
         let data: Vec<f32> = (0..num_samples * feature_dim)
             .map(|_| rng.random_range(-1.0..1.0))
@@ -249,8 +251,8 @@ impl LocalDataset {
     }
 
     /// Mock gradient based on index (for demo).
-    fn mock_gradient(&self, index: usize) -> f32 {
-        use rand::{Rng, RngExt};
+    fn mock_gradient(&self, _index: usize) -> f32 {
+        use rand::RngExt;
         let mut rng = rand::rng();
         0.01 * rng.random_range(-1.0..1.0)
     }

@@ -3,7 +3,7 @@
 //! This module provides tools for modeling interactions between multiple
 //! conditions and their effects on biosignal patterns.
 
-use crate::{ClinicalError, Result};
+use crate::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
