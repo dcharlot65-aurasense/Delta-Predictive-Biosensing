@@ -25,6 +25,7 @@ fn targets_to_array(targets: &PyReadonlyArray2<f32>) -> Array2<f32> {
 }
 
 use pyo3::prelude::*;
+use pyo3::PyClassInitializer;
 use pyo3::types::PyDict;
 use std::collections::HashMap;
 
@@ -85,14 +86,12 @@ pub struct PySpikeCountLoss {
 impl PySpikeCountLoss {
     #[new]
     #[pyo3(signature = (weight=1.0))]
-    fn new(weight: f32) -> (Self, PyLossFunction) {
-        (
-            Self { weight },
-            PyLossFunction {
+    fn new(weight: f32) -> PyClassInitializer<Self> {
+        PyClassInitializer::from(PyLossFunction {
                 name: "SpikeCount".to_string(),
-            },
-        )
-    }
+            })
+            .add_subclass(Self { weight })
+}
 
     /// Compute the loss.
     ///
@@ -137,17 +136,15 @@ pub struct PySpikeTimeLoss {
 impl PySpikeTimeLoss {
     #[new]
     #[pyo3(signature = (weight=1.0, time_window=0.01))]
-    fn new(weight: f32, time_window: f32) -> (Self, PyLossFunction) {
-        (
-            Self {
+    fn new(weight: f32, time_window: f32) -> PyClassInitializer<Self> {
+        PyClassInitializer::from(PyLossFunction {
+                name: "SpikeTime".to_string(),
+            })
+            .add_subclass(Self {
                 weight,
                 time_window,
-            },
-            PyLossFunction {
-                name: "SpikeTime".to_string(),
-            },
-        )
-    }
+            })
+}
 
     /// Compute the loss.
     ///
@@ -187,14 +184,12 @@ pub struct PyCrossEntropyLoss {
 impl PyCrossEntropyLoss {
     #[new]
     #[pyo3(signature = (weight=1.0))]
-    fn new(weight: f32) -> (Self, PyLossFunction) {
-        (
-            Self { weight },
-            PyLossFunction {
+    fn new(weight: f32) -> PyClassInitializer<Self> {
+        PyClassInitializer::from(PyLossFunction {
                 name: "CrossEntropy".to_string(),
-            },
-        )
-    }
+            })
+            .add_subclass(Self { weight })
+}
 
     /// Compute the loss.
     ///
@@ -291,19 +286,17 @@ pub struct PyAdam {
 impl PyAdam {
     #[new]
     #[pyo3(signature = (learning_rate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8))]
-    fn new(learning_rate: f32, beta1: f32, beta2: f32, epsilon: f32) -> (Self, PyOptimizer) {
-        (
-            Self {
+    fn new(learning_rate: f32, beta1: f32, beta2: f32, epsilon: f32) -> PyClassInitializer<Self> {
+        PyClassInitializer::from(PyOptimizer {
+                name: "Adam".to_string(),
+                learning_rate,
+            })
+            .add_subclass(Self {
                 beta1,
                 beta2,
                 epsilon,
-            },
-            PyOptimizer {
-                name: "Adam".to_string(),
-                learning_rate,
-            },
-        )
-    }
+            })
+}
 }
 
 /// SGD optimizer
@@ -328,18 +321,16 @@ pub struct PySGD {
 impl PySGD {
     #[new]
     #[pyo3(signature = (learning_rate=0.01, momentum=0.0, weight_decay=0.0))]
-    fn new(learning_rate: f32, momentum: f32, weight_decay: f32) -> (Self, PyOptimizer) {
-        (
-            Self {
-                momentum,
-                weight_decay,
-            },
-            PyOptimizer {
+    fn new(learning_rate: f32, momentum: f32, weight_decay: f32) -> PyClassInitializer<Self> {
+        PyClassInitializer::from(PyOptimizer {
                 name: "SGD".to_string(),
                 learning_rate,
-            },
-        )
-    }
+            })
+            .add_subclass(Self {
+                momentum,
+                weight_decay,
+            })
+}
 }
 
 /// Training callback interface

@@ -9,6 +9,7 @@ use numpy::ndarray::Array2;
 use crate::types::{PyGroundTruth, PyTimeSeries};
 use numpy::PyArray2;
 use pyo3::prelude::*;
+use pyo3::PyClassInitializer;
 use pyo3::types::PyDict;
 use std::collections::HashMap;
 
@@ -95,25 +96,23 @@ pub struct PyEcgGenerator {
 impl PyEcgGenerator {
     #[new]
     #[pyo3(signature = (heart_rate=70.0, hrv_sdnn=50.0, noise_level=0.05, artifacts=false))]
-    fn new(heart_rate: f64, hrv_sdnn: f64, noise_level: f64, artifacts: bool) -> (Self, PySyntheticGenerator) {
+    fn new(heart_rate: f64, hrv_sdnn: f64, noise_level: f64, artifacts: bool) -> PyClassInitializer<Self> {
         let mut config = HashMap::new();
         config.insert("heart_rate".to_string(), heart_rate);
         config.insert("hrv_sdnn".to_string(), hrv_sdnn);
         config.insert("noise_level".to_string(), noise_level);
 
-        (
-            Self {
+        PyClassInitializer::from(PySyntheticGenerator {
+                name: "ECG".to_string(),
+                config,
+            })
+            .add_subclass(Self {
                 heart_rate,
                 hrv_sdnn,
                 noise_level,
                 artifacts,
-            },
-            PySyntheticGenerator {
-                name: "ECG".to_string(),
-                config,
-            },
-        )
-    }
+            })
+}
 
     fn generate(
         &self,
@@ -197,26 +196,24 @@ pub struct PyPpgGenerator {
 impl PyPpgGenerator {
     #[new]
     #[pyo3(signature = (heart_rate=75.0, hrv_sdnn=40.0, noise_level=0.03, dc_offset=0.5))]
-    fn new(heart_rate: f64, hrv_sdnn: f64, noise_level: f64, dc_offset: f64) -> (Self, PySyntheticGenerator) {
+    fn new(heart_rate: f64, hrv_sdnn: f64, noise_level: f64, dc_offset: f64) -> PyClassInitializer<Self> {
         let mut config = HashMap::new();
         config.insert("heart_rate".to_string(), heart_rate);
         config.insert("hrv_sdnn".to_string(), hrv_sdnn);
         config.insert("noise_level".to_string(), noise_level);
         config.insert("dc_offset".to_string(), dc_offset);
 
-        (
-            Self {
+        PyClassInitializer::from(PySyntheticGenerator {
+                name: "PPG".to_string(),
+                config,
+            })
+            .add_subclass(Self {
                 heart_rate,
                 hrv_sdnn,
                 noise_level,
                 dc_offset,
-            },
-            PySyntheticGenerator {
-                name: "PPG".to_string(),
-                config,
-            },
-        )
-    }
+            })
+}
 
     fn generate(
         &self,
@@ -276,23 +273,21 @@ pub struct PyAccelerometerGenerator {
 impl PyAccelerometerGenerator {
     #[new]
     #[pyo3(signature = (activity="rest", noise_level=0.02, sampling_jitter=0.001))]
-    fn new(activity: &str, noise_level: f64, sampling_jitter: f64) -> (Self, PySyntheticGenerator) {
+    fn new(activity: &str, noise_level: f64, sampling_jitter: f64) -> PyClassInitializer<Self> {
         let mut config = HashMap::new();
         config.insert("noise_level".to_string(), noise_level);
         config.insert("sampling_jitter".to_string(), sampling_jitter);
 
-        (
-            Self {
+        PyClassInitializer::from(PySyntheticGenerator {
+                name: "Accelerometer".to_string(),
+                config,
+            })
+            .add_subclass(Self {
                 activity: activity.to_string(),
                 noise_level,
                 sampling_jitter,
-            },
-            PySyntheticGenerator {
-                name: "Accelerometer".to_string(),
-                config,
-            },
-        )
-    }
+            })
+}
 
     fn generate(
         &self,
@@ -338,24 +333,22 @@ pub struct PyEmgGenerator {
 impl PyEmgGenerator {
     #[new]
     #[pyo3(signature = (muscle_activation=0.5, fatigue_rate=0.01, noise_level=0.05))]
-    fn new(muscle_activation: f64, fatigue_rate: f64, noise_level: f64) -> (Self, PySyntheticGenerator) {
+    fn new(muscle_activation: f64, fatigue_rate: f64, noise_level: f64) -> PyClassInitializer<Self> {
         let mut config = HashMap::new();
         config.insert("muscle_activation".to_string(), muscle_activation);
         config.insert("fatigue_rate".to_string(), fatigue_rate);
         config.insert("noise_level".to_string(), noise_level);
 
-        (
-            Self {
+        PyClassInitializer::from(PySyntheticGenerator {
+                name: "EMG".to_string(),
+                config,
+            })
+            .add_subclass(Self {
                 muscle_activation,
                 fatigue_rate,
                 noise_level,
-            },
-            PySyntheticGenerator {
-                name: "EMG".to_string(),
-                config,
-            },
-        )
-    }
+            })
+}
 
     fn generate(
         &self,
@@ -415,24 +408,22 @@ pub struct PyEegGenerator {
 impl PyEegGenerator {
     #[new]
     #[pyo3(signature = (num_channels=8, dominant_frequency=10.0, noise_level=0.1))]
-    fn new(num_channels: usize, dominant_frequency: f64, noise_level: f64) -> (Self, PySyntheticGenerator) {
+    fn new(num_channels: usize, dominant_frequency: f64, noise_level: f64) -> PyClassInitializer<Self> {
         let mut config = HashMap::new();
         config.insert("num_channels".to_string(), num_channels as f64);
         config.insert("dominant_frequency".to_string(), dominant_frequency);
         config.insert("noise_level".to_string(), noise_level);
 
-        (
-            Self {
+        PyClassInitializer::from(PySyntheticGenerator {
+                name: "EEG".to_string(),
+                config,
+            })
+            .add_subclass(Self {
                 num_channels,
                 dominant_frequency,
                 noise_level,
-            },
-            PySyntheticGenerator {
-                name: "EEG".to_string(),
-                config,
-            },
-        )
-    }
+            })
+}
 
     fn generate(
         &self,

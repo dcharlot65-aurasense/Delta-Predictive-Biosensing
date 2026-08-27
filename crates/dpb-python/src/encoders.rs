@@ -16,6 +16,7 @@ use dpb_encoders::{
 use numpy::PyArrayMethods;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3::PyClassInitializer;
 use pyo3::types::PyDict;
 use std::collections::HashMap;
 
@@ -125,24 +126,22 @@ pub struct PyLevelCrossingEncoder {
 impl PyLevelCrossingEncoder {
     #[new]
     #[pyo3(signature = (threshold=0.5, positive_polarity=true, negative_polarity=true))]
-    fn new(threshold: f64, positive_polarity: bool, negative_polarity: bool) -> (Self, PyEventEncoder) {
+    fn new(threshold: f64, positive_polarity: bool, negative_polarity: bool) -> PyClassInitializer<Self> {
         let mut config = HashMap::new();
         config.insert("threshold".to_string(), threshold);
         config.insert("positive_polarity".to_string(), if positive_polarity { 1.0 } else { 0.0 });
         config.insert("negative_polarity".to_string(), if negative_polarity { 1.0 } else { 0.0 });
 
-        (
-            Self {
+        PyClassInitializer::from(PyEventEncoder {
+                name: "LevelCrossing".to_string(),
+                config,
+            })
+            .add_subclass(Self {
                 threshold,
                 positive_polarity,
                 negative_polarity,
-            },
-            PyEventEncoder {
-                name: "LevelCrossing".to_string(),
-                config,
-            },
-        )
-    }
+            })
+}
 
     /// Encode signal to spike train
     fn encode(&self, signal: &PyTimeSeries, py: Python) -> PyResult<PySpikeTrain> {
@@ -212,24 +211,22 @@ impl PyTemplateDeviationEncoder {
         // The population prior as an explicit waveform. Optional: without one
         // the signal's own opening window is used. See `encode`.
         template: Option<Vec<f32>>,
-    ) -> (Self, PyEventEncoder) {
+    ) -> PyClassInitializer<Self> {
         let mut config = HashMap::new();
         config.insert("deviation_threshold".to_string(), deviation_threshold);
         config.insert("window_size".to_string(), window_size as f64);
 
-        (
-            Self {
+        PyClassInitializer::from(PyEventEncoder {
+                name: "TemplateDeviation".to_string(),
+                config,
+            })
+            .add_subclass(Self {
                 template_type: template_type.to_string(),
                 deviation_threshold,
                 window_size,
                 template,
-            },
-            PyEventEncoder {
-                name: "TemplateDeviation".to_string(),
-                config,
-            },
-        )
-    }
+            })
+}
 
     fn encode(&self, signal: &PyTimeSeries, py: Python) -> PyResult<PySpikeTrain> {
         let duration = signal.duration(py);
@@ -301,19 +298,17 @@ pub struct PyDerivativeEncoder {
 impl PyDerivativeEncoder {
     #[new]
     #[pyo3(signature = (threshold=0.1, order=1))]
-    fn new(threshold: f64, order: usize) -> (Self, PyEventEncoder) {
+    fn new(threshold: f64, order: usize) -> PyClassInitializer<Self> {
         let mut config = HashMap::new();
         config.insert("threshold".to_string(), threshold);
         config.insert("order".to_string(), order as f64);
 
-        (
-            Self { threshold, order },
-            PyEventEncoder {
+        PyClassInitializer::from(PyEventEncoder {
                 name: "Derivative".to_string(),
                 config,
-            },
-        )
-    }
+            })
+            .add_subclass(Self { threshold, order })
+}
 
     fn encode(&self, signal: &PyTimeSeries, py: Python) -> PyResult<PySpikeTrain> {
         let duration = signal.duration(py);
@@ -356,24 +351,22 @@ pub struct PyEcgRPeakEncoder {
 impl PyEcgRPeakEncoder {
     #[new]
     #[pyo3(signature = (threshold=0.5, refractory_ms=200.0, min_rr_interval=0.4))]
-    fn new(threshold: f64, refractory_ms: f64, min_rr_interval: f64) -> (Self, PyEventEncoder) {
+    fn new(threshold: f64, refractory_ms: f64, min_rr_interval: f64) -> PyClassInitializer<Self> {
         let mut config = HashMap::new();
         config.insert("threshold".to_string(), threshold);
         config.insert("refractory_ms".to_string(), refractory_ms);
         config.insert("min_rr_interval".to_string(), min_rr_interval);
 
-        (
-            Self {
+        PyClassInitializer::from(PyEventEncoder {
+                name: "EcgRPeak".to_string(),
+                config,
+            })
+            .add_subclass(Self {
                 threshold,
                 refractory_ms,
                 min_rr_interval,
-            },
-            PyEventEncoder {
-                name: "EcgRPeak".to_string(),
-                config,
-            },
-        )
-    }
+            })
+}
 
     fn encode(&self, signal: &PyTimeSeries, py: Python) -> PyResult<PySpikeTrain> {
         let duration = signal.duration(py);
@@ -418,22 +411,20 @@ pub struct PyPpgPeakEncoder {
 impl PyPpgPeakEncoder {
     #[new]
     #[pyo3(signature = (threshold=0.3, min_peak_distance=0.5))]
-    fn new(threshold: f64, min_peak_distance: f64) -> (Self, PyEventEncoder) {
+    fn new(threshold: f64, min_peak_distance: f64) -> PyClassInitializer<Self> {
         let mut config = HashMap::new();
         config.insert("threshold".to_string(), threshold);
         config.insert("min_peak_distance".to_string(), min_peak_distance);
 
-        (
-            Self {
-                threshold,
-                min_peak_distance,
-            },
-            PyEventEncoder {
+        PyClassInitializer::from(PyEventEncoder {
                 name: "PpgPeak".to_string(),
                 config,
-            },
-        )
-    }
+            })
+            .add_subclass(Self {
+                threshold,
+                min_peak_distance,
+            })
+}
 
     fn encode(&self, signal: &PyTimeSeries, py: Python) -> PyResult<PySpikeTrain> {
         let duration = signal.duration(py);

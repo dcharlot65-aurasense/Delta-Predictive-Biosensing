@@ -54,6 +54,7 @@ fn tensor_to_train(tensor: &SpikeTensor, dt: f32) -> PySpikeTrain {
 use crate::types::PySpikeTrain;
 use numpy::{PyArray2, PyReadonlyArray2};
 use pyo3::prelude::*;
+use pyo3::PyClassInitializer;
 use std::collections::HashMap;
 
 /// Base spiking layer
@@ -147,13 +148,17 @@ impl PySpikingLinear {
         output_size: usize,
         neuron: &str,
         weight_init: &str,
-    ) -> (Self, PySpikingLayer) {
+    ) -> PyClassInitializer<Self> {
         // Initialize weights
         let weights = vec![vec![0.1; input_size]; output_size];
         let biases = vec![0.0; output_size];
 
-        (
-            Self {
+        PyClassInitializer::from(PySpikingLayer {
+                name: "SpikingLinear".to_string(),
+                input_size,
+                output_size,
+            })
+            .add_subclass(Self {
                 neuron_type: neuron.to_string(),
                 weights,
                 biases,
@@ -165,14 +170,8 @@ impl PySpikingLinear {
                     1.0,
                     neuron.eq_ignore_ascii_case("alif"),
                 ),
-            },
-            PySpikingLayer {
-                name: "SpikingLinear".to_string(),
-                input_size,
-                output_size,
-            },
-        )
-    }
+            })
+}
 
     /// Get weights as numpy array
     fn get_weights(&self, py: Python) -> PyResult<Py<PyArray2<f32>>> {
@@ -260,23 +259,21 @@ impl PySpikingConv2d {
         stride: usize,
         padding: usize,
         neuron: &str,
-    ) -> (Self, PySpikingLayer) {
-        (
-            Self {
+    ) -> PyClassInitializer<Self> {
+        PyClassInitializer::from(PySpikingLayer {
+                name: "SpikingConv2d".to_string(),
+                input_size: in_channels,
+                output_size: out_channels,
+            })
+            .add_subclass(Self {
                 in_channels,
                 out_channels,
                 kernel_size,
                 stride,
                 padding,
                 neuron_type: neuron.to_string(),
-            },
-            PySpikingLayer {
-                name: "SpikingConv2d".to_string(),
-                input_size: in_channels,
-                output_size: out_channels,
-            },
-        )
-    }
+            })
+}
 
     #[getter]
     fn kernel_size(&self) -> usize {
@@ -316,19 +313,17 @@ pub struct PySpikingRecurrent {
 impl PySpikingRecurrent {
     #[new]
     #[pyo3(signature = (input_size, hidden_size, neuron="lif"))]
-    fn new(input_size: usize, hidden_size: usize, neuron: &str) -> (Self, PySpikingLayer) {
-        (
-            Self {
-                hidden_size,
-                neuron_type: neuron.to_string(),
-            },
-            PySpikingLayer {
+    fn new(input_size: usize, hidden_size: usize, neuron: &str) -> PyClassInitializer<Self> {
+        PyClassInitializer::from(PySpikingLayer {
                 name: "SpikingRecurrent".to_string(),
                 input_size,
                 output_size: hidden_size,
-            },
-        )
-    }
+            })
+            .add_subclass(Self {
+                hidden_size,
+                neuron_type: neuron.to_string(),
+            })
+}
 
     #[getter]
     fn hidden_size(&self) -> usize {
@@ -357,19 +352,17 @@ pub struct PySpikingPooling {
 impl PySpikingPooling {
     #[new]
     #[pyo3(signature = (pool_size=2, pool_type="max"))]
-    fn new(pool_size: usize, pool_type: &str) -> (Self, PySpikingLayer) {
-        (
-            Self {
-                pool_size,
-                pool_type: pool_type.to_string(),
-            },
-            PySpikingLayer {
+    fn new(pool_size: usize, pool_type: &str) -> PyClassInitializer<Self> {
+        PyClassInitializer::from(PySpikingLayer {
                 name: "SpikingPooling".to_string(),
                 input_size: 0,
                 output_size: 0,
-            },
-        )
-    }
+            })
+            .add_subclass(Self {
+                pool_size,
+                pool_type: pool_type.to_string(),
+            })
+}
 
     #[getter]
     fn pool_size(&self) -> usize {

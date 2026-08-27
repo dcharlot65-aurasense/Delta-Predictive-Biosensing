@@ -4,6 +4,7 @@ use dpb_neurons::traits::{MembraneDynamics, NeuronModel as NeuronDynamics};
 use dpb_neurons::lif::LifConfig;
 use dpb_neurons::LifNeuron;
 use pyo3::prelude::*;
+use pyo3::PyClassInitializer;
 use pyo3::types::PyDict;
 use std::collections::HashMap;
 
@@ -97,15 +98,18 @@ impl PyLifNeuron {
     /// and silent.
     #[new]
     #[pyo3(signature = (tau=20.0, threshold=-50.0, reset=-65.0, refractory_period=2.0))]
-    fn new(tau: f64, threshold: f64, reset: f64, refractory_period: f64) -> (Self, PyNeuronModel) {
+    fn new(tau: f64, threshold: f64, reset: f64, refractory_period: f64) -> PyClassInitializer<Self> {
         let mut params = HashMap::new();
         params.insert("tau".to_string(), tau);
         params.insert("threshold".to_string(), threshold);
         params.insert("reset".to_string(), reset);
         params.insert("refractory_period".to_string(), refractory_period);
 
-        (
-            Self {
+        PyClassInitializer::from(PyNeuronModel {
+                name: "LIF".to_string(),
+                params,
+            })
+            .add_subclass(Self {
                 tau,
                 threshold,
                 reset,
@@ -121,13 +125,8 @@ impl PyLifNeuron {
                     tau_refrac: refractory_period as f32,
                     ..LifConfig::default()
                 }),
-            },
-            PyNeuronModel {
-                name: "LIF".to_string(),
-                params,
-            },
-        )
-    }
+            })
+}
 
     fn step(&mut self, input_current: f32, dt: f32) -> bool {
         // Delegated to `dpb_neurons::LifNeuron` rather than re-integrated here,
@@ -190,7 +189,7 @@ impl PyAlifNeuron {
         reset: f64,
         tau_adaptation: f64,
         adaptation_increment: f64,
-    ) -> (Self, PyNeuronModel) {
+    ) -> PyClassInitializer<Self> {
         let mut params = HashMap::new();
         params.insert("tau".to_string(), tau);
         params.insert("threshold".to_string(), threshold);
@@ -198,8 +197,11 @@ impl PyAlifNeuron {
         params.insert("tau_adaptation".to_string(), tau_adaptation);
         params.insert("adaptation_increment".to_string(), adaptation_increment);
 
-        (
-            Self {
+        PyClassInitializer::from(PyNeuronModel {
+                name: "ALIF".to_string(),
+                params,
+            })
+            .add_subclass(Self {
                 tau,
                 threshold,
                 reset,
@@ -207,13 +209,8 @@ impl PyAlifNeuron {
                 adaptation_increment,
                 voltage: 0.0,
                 threshold_adaptive: threshold,
-            },
-            PyNeuronModel {
-                name: "ALIF".to_string(),
-                params,
-            },
-        )
-    }
+            })
+}
 
     fn step(&mut self, input_current: f32, dt: f32) -> bool {
         // Decay adaptive threshold
@@ -272,28 +269,26 @@ pub struct PyIzhikevichNeuron {
 impl PyIzhikevichNeuron {
     #[new]
     #[pyo3(signature = (a=0.02, b=0.2, c=-65.0, d=8.0))]
-    fn new(a: f64, b: f64, c: f64, d: f64) -> (Self, PyNeuronModel) {
+    fn new(a: f64, b: f64, c: f64, d: f64) -> PyClassInitializer<Self> {
         let mut params = HashMap::new();
         params.insert("a".to_string(), a);
         params.insert("b".to_string(), b);
         params.insert("c".to_string(), c);
         params.insert("d".to_string(), d);
 
-        (
-            Self {
+        PyClassInitializer::from(PyNeuronModel {
+                name: "Izhikevich".to_string(),
+                params,
+            })
+            .add_subclass(Self {
                 a,
                 b,
                 c,
                 d,
                 v: c,
                 u: b * c,
-            },
-            PyNeuronModel {
-                name: "Izhikevich".to_string(),
-                params,
-            },
-        )
-    }
+            })
+}
 
     fn step(&mut self, input_current: f32, dt: f32) -> bool {
         let i = input_current as f64;
@@ -365,7 +360,7 @@ pub struct PyHodgkinHuxleyNeuron {
 impl PyHodgkinHuxleyNeuron {
     #[new]
     #[pyo3(signature = (gNa=120.0, gK=36.0, gL=0.3, ENa=50.0, EK=-77.0, EL=-54.387))]
-    fn new(gNa: f64, gK: f64, gL: f64, ENa: f64, EK: f64, EL: f64) -> (Self, PyNeuronModel) {
+    fn new(gNa: f64, gK: f64, gL: f64, ENa: f64, EK: f64, EL: f64) -> PyClassInitializer<Self> {
         let mut params = HashMap::new();
         params.insert("gNa".to_string(), gNa);
         params.insert("gK".to_string(), gK);
@@ -374,8 +369,11 @@ impl PyHodgkinHuxleyNeuron {
         params.insert("EK".to_string(), EK);
         params.insert("EL".to_string(), EL);
 
-        (
-            Self {
+        PyClassInitializer::from(PyNeuronModel {
+                name: "HodgkinHuxley".to_string(),
+                params,
+            })
+            .add_subclass(Self {
                 g_na: gNa,
                 g_k: gK,
                 g_l: gL,
@@ -386,13 +384,8 @@ impl PyHodgkinHuxleyNeuron {
                 m: 0.05,
                 h: 0.6,
                 n: 0.32,
-            },
-            PyNeuronModel {
-                name: "HodgkinHuxley".to_string(),
-                params,
-            },
-        )
-    }
+            })
+}
 
     fn step(&mut self, input_current: f32, dt: f32) -> bool {
         let i_ext = input_current as f64;
