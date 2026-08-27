@@ -268,7 +268,7 @@ pub struct BornAgainNetworks {
 
 /// Information about a generation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct GenerationInfo {
+pub struct GenerationInfo {
     generation: usize,
     accuracy: f32,
     model_size: usize,
@@ -389,7 +389,7 @@ pub struct ProgressiveDistillation {
 
 /// Information about a compression stage
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct StageInfo {
+pub struct StageInfo {
     stage: usize,
     compression_ratio: f32,
     accuracy: f32,

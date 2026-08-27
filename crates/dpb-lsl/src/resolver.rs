@@ -1,8 +1,8 @@
 //! LSL stream discovery and resolution.
 
-use crate::{ChannelFormat, LslError, Result, StreamInfo};
+use crate::{LslError, Result, StreamInfo};
 use std::time::{Duration, Instant};
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// Stream resolver for discovering LSL streams on the network.
 ///

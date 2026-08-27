@@ -10,7 +10,7 @@
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 
-use std::os::raw::{c_char, c_double, c_float, c_int, c_long, c_void};
+use std::os::raw::{c_char, c_double, c_int, c_void};
 
 /// Opaque type for LSL stream info.
 pub type lsl_streaminfo = *mut c_void;
@@ -388,6 +388,11 @@ pub mod mock {
     use super::*;
 
     /// Mock: Create stream info.
+    /// # Safety
+    ///
+    /// This is a mock: it ignores every argument and returns a null pointer,
+    /// so it dereferences nothing and allocates nothing. It is `unsafe` only
+    /// to match the signature of the real liblsl entry point.
     pub unsafe fn lsl_create_streaminfo(
         _name: *const c_char,
         _stream_type: *const c_char,
@@ -400,6 +405,11 @@ pub mod mock {
     }
 
     /// Mock: Destroy stream info.
+    ///
+    /// # Safety
+    ///
+    /// This is a mock and does nothing with the pointer, so any value is
+    /// accepted. It is `unsafe` only to match the real liblsl signature.
     pub unsafe fn lsl_destroy_streaminfo(_info: lsl_streaminfo) {}
 
     /// Mock: Get library version.

@@ -192,7 +192,7 @@ impl SpiNNakerExporter {
         let mut routing_entries = Vec::new();
 
         // Map populations
-        for (_i, pop) in network.populations.iter().enumerate() {
+        for pop in network.populations.iter() {
             // Map neuron model to PyNN cell type
             let cell_type = self.map_neuron_model(&pop.neuron_model);
 

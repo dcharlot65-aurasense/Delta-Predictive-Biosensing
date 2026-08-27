@@ -82,9 +82,8 @@ impl Decoder for HeartRateDecoder {
         for b in 0..batch_size {
             // Average across all neurons
             let mut combined_signal = vec![0.0f32; num_steps];
-            for t in 0..num_steps {
-                let sum: f32 = spike_dense.slice(s![b, t, ..]).sum();
-                combined_signal[t] = sum;
+            for (t, slot) in combined_signal.iter_mut().enumerate().take(num_steps) {
+                *slot = spike_dense.slice(s![b, t, ..]).sum();
             }
 
             let peaks = self.detect_peaks(&combined_signal);
@@ -157,9 +156,8 @@ impl Decoder for HRVDecoder {
 
         for b in 0..batch_size {
             let mut combined_signal = vec![0.0f32; num_steps];
-            for t in 0..num_steps {
-                let sum: f32 = spike_dense.slice(s![b, t, ..]).sum();
-                combined_signal[t] = sum;
+            for (t, slot) in combined_signal.iter_mut().enumerate().take(num_steps) {
+                *slot = spike_dense.slice(s![b, t, ..]).sum();
             }
 
             // Detect peaks
@@ -366,8 +364,8 @@ impl Decoder for GaitVelocityDecoder {
         for b in 0..batch_size {
             // Combine signal across neurons
             let mut combined_signal = vec![0.0f32; num_steps];
-            for t in 0..num_steps {
-                combined_signal[t] = spike_dense.slice(s![b, t, ..]).sum();
+            for (t, slot) in combined_signal.iter_mut().enumerate().take(num_steps) {
+                *slot = spike_dense.slice(s![b, t, ..]).sum();
             }
 
             // Normalize
@@ -426,8 +424,8 @@ impl Decoder for StrideTimeDecoder {
         for b in 0..batch_size {
             // Detect stride events
             let mut combined_signal = vec![0.0f32; num_steps];
-            for t in 0..num_steps {
-                combined_signal[t] = spike_dense.slice(s![b, t, ..]).sum();
+            for (t, slot) in combined_signal.iter_mut().enumerate().take(num_steps) {
+                *slot = spike_dense.slice(s![b, t, ..]).sum();
             }
 
             let peaks: Vec<usize> = (1..num_steps - 1)
@@ -489,8 +487,8 @@ impl Decoder for TappingFrequencyDecoder {
 
         for b in 0..batch_size {
             let mut combined_signal = vec![0.0f32; num_steps];
-            for t in 0..num_steps {
-                combined_signal[t] = spike_dense.slice(s![b, t, ..]).sum();
+            for (t, slot) in combined_signal.iter_mut().enumerate().take(num_steps) {
+                *slot = spike_dense.slice(s![b, t, ..]).sum();
             }
 
             // Count taps (peaks above threshold)
@@ -621,8 +619,8 @@ impl Decoder for SpeechRateDecoder {
 
         for b in 0..batch_size {
             let mut combined_signal = vec![0.0f32; num_steps];
-            for t in 0..num_steps {
-                combined_signal[t] = spike_dense.slice(s![b, t, ..]).sum();
+            for (t, slot) in combined_signal.iter_mut().enumerate().take(num_steps) {
+                *slot = spike_dense.slice(s![b, t, ..]).sum();
             }
 
             // Normalize

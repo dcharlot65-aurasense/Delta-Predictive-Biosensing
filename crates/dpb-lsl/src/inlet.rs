@@ -1,10 +1,10 @@
 //! LSL inlet for receiving biosignal data.
 
-use crate::{ChannelFormat, LslError, Result, StreamInfo};
-use crossbeam_channel::{bounded, Receiver, Sender};
+use crate::{LslError, Result, StreamInfo};
+use crossbeam_channel::{bounded};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 /// Configuration for LSL inlet behavior.
 #[derive(Debug, Clone)]
@@ -204,7 +204,7 @@ impl LslInlet {
     /// # Arguments
     ///
     /// * `timeout_sec` - Timeout for the correction query
-    pub fn update_time_correction(&mut self, timeout_sec: f64) -> Result<f64> {
+    pub fn update_time_correction(&mut self, _timeout_sec: f64) -> Result<f64> {
         if !self.is_open.load(Ordering::SeqCst) {
             return Err(LslError::StreamNotOpen);
         }

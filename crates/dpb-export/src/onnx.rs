@@ -11,11 +11,7 @@
 //! output is one sample shorter than the input -- the first sample has no
 //! predecessor to compare against.
 
-use crate::{
-    error::{ExportError, Result},
-    metadata::ModelMetadata,
-};
-use std::path::Path;
+use crate::metadata::ModelMetadata;
 
 // Everything below the exporter is gated on `onnx`, so these are too --
 // without the feature the module is just the stub that reports the feature

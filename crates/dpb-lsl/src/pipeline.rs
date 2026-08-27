@@ -1,6 +1,6 @@
 //! Real-time encoding pipeline for LSL streams.
 
-use crate::{LslError, LslInlet, LslOutlet, Result, StreamInfo, StreamResolver};
+use crate::{LslError, LslInlet, Result, StreamInfo, StreamResolver};
 use crossbeam_channel::{bounded, Receiver, Sender};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -221,7 +221,7 @@ fn run_pipeline_worker(
     running: Arc<AtomicBool>,
     stats_tx: Sender<PipelineStats>,
 ) -> Result<()> {
-    use crate::{stream_types, ChannelFormat, outlet::SpikeOutlet};
+    use crate::{outlet::SpikeOutlet};
 
     // Create inlet
     let mut inlet = LslInlet::new(&input_info, None)?;

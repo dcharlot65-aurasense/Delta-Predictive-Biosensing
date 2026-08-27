@@ -94,12 +94,12 @@ impl Decoder for MultiClassDecoder {
         for b in 0..batch_size {
             let mut class_scores = vec![0.0f32; self.num_classes];
 
-            for c in 0..self.num_classes {
+            for (c, slot) in class_scores.iter_mut().enumerate().take(self.num_classes) {
                 let start = c * self.neurons_per_class;
                 let end = start + self.neurons_per_class;
 
                 let class_rate: f32 = rates.slice(s![b, start..end]).mean().unwrap_or(0.0);
-                class_scores[c] = class_rate;
+                *slot = class_rate;
             }
 
             self.softmax(&mut class_scores);

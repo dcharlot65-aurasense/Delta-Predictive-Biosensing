@@ -3,7 +3,7 @@
 use crate::{LslError, Result, StreamInfo};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// LSL outlet for streaming data to the network.
 ///
@@ -222,7 +222,7 @@ impl SpikeOutlet {
     pub fn new(
         name: impl Into<String>,
         source_id: impl Into<String>,
-        num_channels: usize,
+        _num_channels: usize,
         include_amplitudes: bool,
     ) -> Result<Self> {
         use crate::{stream_types, ChannelFormat};
