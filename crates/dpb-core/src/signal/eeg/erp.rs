@@ -367,10 +367,10 @@ impl ErpGenerator {
         let actual_latency = latency_ms + rand::random::<f64>() * 2.0 * jitter_ms - jitter_ms;
         let sigma = width_ms / 2.355;
 
-        for i in 0..n_samples {
+        for (i, s) in signal.iter_mut().enumerate().take(n_samples) {
             let t_ms = (i as f64 * 1000.0 / self.sample_rate) - 200.0;
             let gaussian = (-((t_ms - actual_latency).powi(2)) / (2.0 * sigma.powi(2))).exp();
-            signal[i] = if positive {
+            *s = if positive {
                 amplitude * gaussian
             } else {
                 -amplitude * gaussian

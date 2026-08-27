@@ -2,19 +2,21 @@
 //!
 //! Requires the `onnx` feature to be enabled.
 //!
-//! # Status
+//! Encoders are emitted as ONNX `ModelProto` files at opset 17, serialised
+//! through [`crate::protobuf`] rather than a generated schema binding. The
+//! output loads in onnxruntime and passes `onnx.checker` with `full_check`.
 //!
-//! The ONNX *graph* is built faithfully -- inputs, outputs, initialisers and
-//! typed nodes -- but [`OnnxExporter::export`] currently writes it as JSON
-//! rather than ONNX protobuf, so the resulting file will not load in
-//! onnxruntime, tract, or any other ONNX consumer. Treat the output as a
-//! readable dump of the intended graph, not as a deployable model.
+//! Each encoder becomes a graph over `[batch, channels, time]`, with the batch
+//! and time axes left symbolic. All three compare consecutive samples, so the
+//! output is one sample shorter than the input -- the first sample has no
+//! predecessor to compare against.
 
 use crate::{
     encoder_export::{EncoderParams, ExportableEncoder},
     error::{ExportError, Result},
     metadata::{DataType, ModelMetadata, TensorSpec},
 };
+use crate::protobuf::Writer;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -23,9 +25,6 @@ use tracing::{debug, info, warn};
 /// ONNX exporter for spike encoders.
 ///
 /// Converts encoder parameters and logic into an ONNX graph.
-///
-/// See the module-level note: the graph is serialised as JSON, not as ONNX
-/// protobuf, so it is not yet loadable by an ONNX runtime.
 #[cfg(feature = "onnx")]
 pub struct OnnxExporter {
     /// Model metadata.
@@ -128,109 +127,153 @@ impl OnnxExporter {
         Ok(())
     }
 
-    /// Add level crossing encoder nodes.
-    fn add_level_crossing_nodes(&self, model: &mut OnnxModel, params: &EncoderParams) -> Result<()> {
-        // Threshold constant
-        let threshold = params.thresholds.first().copied().unwrap_or(0.1);
-        model.add_initializer(OnnxInitializer {
-            name: "threshold".to_string(),
-            data_type: 1, // FLOAT
-            dims: vec![1],
-            float_data: vec![threshold],
-        });
+    /// Emit the pair of `Slice` nodes every encoder here needs.
+    ///
+    /// All three encoders compare each sample with the one before it, which in
+    /// ONNX means slicing the time axis twice and lining the halves up:
+    /// `prev` is `src[..., ..-1]` and `curr` is `src[..., 1..]`. Both come out
+    /// one sample shorter than the input, which is inherent -- the first
+    /// sample has no predecessor to compare against.
+    ///
+    /// Returns the two output names, in `(prev, curr)` order.
+    fn add_time_shift(&self, model: &mut OnnxModel, src: &str, tag: &str) -> (String, String) {
+        // Slice takes starts/ends/axes as inputs from opset 10 on, not as
+        // attributes, so they have to be initializers rather than literals.
+        let starts_prev = format!("{tag}_starts_prev");
+        let ends_prev = format!("{tag}_ends_prev");
+        let starts_curr = format!("{tag}_starts_curr");
+        let ends_curr = format!("{tag}_ends_curr");
+        let axes = format!("{tag}_axes");
 
-        model.add_initializer(OnnxInitializer {
-            name: "neg_threshold".to_string(),
-            data_type: 1,
-            dims: vec![1],
-            float_data: vec![-threshold],
-        });
+        for (name, value) in [
+            (&starts_prev, 0),
+            (&ends_prev, -1),
+            (&starts_curr, 1),
+            // ONNX clamps an out-of-range end, so INT64_MAX means "to the end".
+            (&ends_curr, i64::MAX),
+            (&axes, TIME_AXIS),
+        ] {
+            model.add_initializer(OnnxInitializer::int64(name, vec![1], vec![value]));
+        }
 
-        // Compute difference from previous sample
-        // diff = input[:, :, 1:] - input[:, :, :-1]
+        let prev = format!("{tag}_prev");
+        let curr = format!("{tag}_curr");
+
         model.add_node(OnnxNode {
-            name: "compute_diff".to_string(),
-            op_type: "Sub".to_string(),
-            inputs: vec!["input_shifted".to_string(), "input_base".to_string()],
-            outputs: vec!["diff".to_string()],
+            name: format!("{tag}_slice_prev"),
+            op_type: "Slice".to_string(),
+            inputs: vec![src.to_string(), starts_prev, ends_prev, axes.clone()],
+            outputs: vec![prev.clone()],
+            attributes: vec![],
+        });
+        model.add_node(OnnxNode {
+            name: format!("{tag}_slice_curr"),
+            op_type: "Slice".to_string(),
+            inputs: vec![src.to_string(), starts_curr, ends_curr, axes],
+            outputs: vec![curr.clone()],
             attributes: vec![],
         });
 
-        // Detect positive crossings: (prev < threshold) & (curr >= threshold)
-        model.add_node(OnnxNode {
-            name: "pos_crossing".to_string(),
-            op_type: "Greater".to_string(),
-            inputs: vec!["input".to_string(), "threshold".to_string()],
-            outputs: vec!["above_threshold".to_string()],
-            attributes: vec![],
-        });
+        (prev, curr)
+    }
 
-        // Detect negative crossings
+    /// Cast a boolean tensor to float, which is what the graph declares it
+    /// outputs. Comparison ops produce `bool`, so this is never optional.
+    fn add_bool_to_float(&self, model: &mut OnnxModel, src: &str, name: &str, out: &str) {
         model.add_node(OnnxNode {
-            name: "neg_crossing".to_string(),
-            op_type: "Less".to_string(),
-            inputs: vec!["input".to_string(), "neg_threshold".to_string()],
-            outputs: vec!["below_threshold".to_string()],
-            attributes: vec![],
-        });
-
-        // Combine crossings
-        model.add_node(OnnxNode {
-            name: "combine_crossings".to_string(),
-            op_type: "Or".to_string(),
-            inputs: vec!["above_threshold".to_string(), "below_threshold".to_string()],
-            outputs: vec!["crossings".to_string()],
-            attributes: vec![],
-        });
-
-        // Convert to float spikes
-        model.add_node(OnnxNode {
-            name: "to_spikes".to_string(),
+            name: name.to_string(),
             op_type: "Cast".to_string(),
-            inputs: vec!["crossings".to_string()],
-            outputs: vec!["spikes".to_string()],
+            inputs: vec![src.to_string()],
+            outputs: vec![out.to_string()],
             attributes: vec![OnnxAttribute {
                 name: "to".to_string(),
-                attr_type: 2, // INT
-                i: 1,        // FLOAT
+                attr_type: attr_type::INT,
+                i: i64::from(data_type::FLOAT),
                 ..Default::default()
             }],
         });
+    }
+
+    /// Add level crossing encoder nodes.
+    ///
+    /// A spike wherever the sample-to-sample change leaves the +/- threshold
+    /// band. Comparing the raw sample against the threshold instead would be a
+    /// level *detector*, which is a different thing.
+    fn add_level_crossing_nodes(&self, model: &mut OnnxModel, params: &EncoderParams) -> Result<()> {
+        let threshold = params.thresholds.first().copied().unwrap_or(0.1);
+        model.add_initializer(OnnxInitializer::float("threshold", vec![1], vec![threshold]));
+        model.add_initializer(OnnxInitializer::float(
+            "neg_threshold",
+            vec![1],
+            vec![-threshold],
+        ));
+
+        let (prev, curr) = self.add_time_shift(model, "input", "lc");
+
+        model.add_node(OnnxNode {
+            name: "compute_diff".to_string(),
+            op_type: "Sub".to_string(),
+            inputs: vec![curr, prev],
+            outputs: vec!["diff".to_string()],
+            attributes: vec![],
+        });
+        model.add_node(OnnxNode {
+            name: "pos_crossing".to_string(),
+            op_type: "Greater".to_string(),
+            inputs: vec!["diff".to_string(), "threshold".to_string()],
+            outputs: vec!["above_threshold".to_string()],
+            attributes: vec![],
+        });
+        model.add_node(OnnxNode {
+            name: "neg_crossing".to_string(),
+            op_type: "Less".to_string(),
+            inputs: vec!["diff".to_string(), "neg_threshold".to_string()],
+            outputs: vec!["below_threshold".to_string()],
+            attributes: vec![],
+        });
+        model.add_node(OnnxNode {
+            name: "combine_crossings".to_string(),
+            op_type: "Or".to_string(),
+            inputs: vec![
+                "above_threshold".to_string(),
+                "below_threshold".to_string(),
+            ],
+            outputs: vec!["crossings".to_string()],
+            attributes: vec![],
+        });
+        self.add_bool_to_float(model, "crossings", "to_spikes", "spikes");
 
         Ok(())
     }
 
     /// Add delta encoder nodes.
+    ///
+    /// Magnitude gates the spike and the sign of the change carries its
+    /// polarity, so the output is -1, 0 or +1 per sample.
     fn add_delta_nodes(&self, model: &mut OnnxModel, params: &EncoderParams) -> Result<()> {
-        let threshold = params.thresholds.first().copied().unwrap_or(0.1);
+        let threshold = params.thresholds.first().copied().unwrap_or(0.05);
+        model.add_initializer(OnnxInitializer::float(
+            "delta_threshold",
+            vec![1],
+            vec![threshold],
+        ));
 
-        // Threshold initializer
-        model.add_initializer(OnnxInitializer {
-            name: "delta_threshold".to_string(),
-            data_type: 1,
-            dims: vec![1],
-            float_data: vec![threshold],
-        });
+        let (prev, curr) = self.add_time_shift(model, "input", "delta");
 
-        // Compute delta: diff = input[t] - input[t-1]
         model.add_node(OnnxNode {
             name: "compute_delta".to_string(),
             op_type: "Sub".to_string(),
-            inputs: vec!["input_curr".to_string(), "input_prev".to_string()],
+            inputs: vec![curr, prev],
             outputs: vec!["delta".to_string()],
             attributes: vec![],
         });
-
-        // Absolute delta
         model.add_node(OnnxNode {
-            name: "abs_delta".to_string(),
+            name: "abs_delta_node".to_string(),
             op_type: "Abs".to_string(),
             inputs: vec!["delta".to_string()],
             outputs: vec!["abs_delta".to_string()],
             attributes: vec![],
         });
-
-        // Compare with threshold
         model.add_node(OnnxNode {
             name: "threshold_check".to_string(),
             op_type: "Greater".to_string(),
@@ -238,8 +281,7 @@ impl OnnxExporter {
             outputs: vec!["spike_mask".to_string()],
             attributes: vec![],
         });
-
-        // Get sign of delta for spike polarity
+        self.add_bool_to_float(model, "spike_mask", "mask_to_float", "spike_mask_float");
         model.add_node(OnnxNode {
             name: "spike_sign".to_string(),
             op_type: "Sign".to_string(),
@@ -247,12 +289,13 @@ impl OnnxExporter {
             outputs: vec!["spike_polarity".to_string()],
             attributes: vec![],
         });
-
-        // Multiply mask by polarity
         model.add_node(OnnxNode {
             name: "apply_mask".to_string(),
             op_type: "Mul".to_string(),
-            inputs: vec!["spike_mask_float".to_string(), "spike_polarity".to_string()],
+            inputs: vec![
+                "spike_mask_float".to_string(),
+                "spike_polarity".to_string(),
+            ],
             outputs: vec!["spikes".to_string()],
             attributes: vec![],
         });
@@ -261,65 +304,80 @@ impl OnnxExporter {
     }
 
     /// Add temporal contrast encoder nodes.
+    ///
+    /// Contrast is the change in `log` intensity, so the input has to be made
+    /// strictly positive first: `Log` of zero is -inf and of a negative is
+    /// NaN, either of which would poison every downstream comparison.
     fn add_temporal_contrast_nodes(
         &self,
         model: &mut OnnxModel,
         params: &EncoderParams,
     ) -> Result<()> {
         let threshold = params.thresholds.first().copied().unwrap_or(0.1);
+        model.add_initializer(OnnxInitializer::float(
+            "tc_threshold",
+            vec![1],
+            vec![threshold],
+        ));
+        model.add_initializer(OnnxInitializer::float(
+            "tc_epsilon",
+            vec![1],
+            vec![LOG_EPSILON],
+        ));
 
-        model.add_initializer(OnnxInitializer {
-            name: "tc_threshold".to_string(),
-            data_type: 1,
-            dims: vec![1],
-            float_data: vec![threshold],
-        });
-
-        // Log of input (temporal contrast is log-based)
         model.add_node(OnnxNode {
-            name: "log_input".to_string(),
+            name: "abs_input".to_string(),
+            op_type: "Abs".to_string(),
+            inputs: vec!["input".to_string()],
+            outputs: vec!["abs_input_out".to_string()],
+            attributes: vec![],
+        });
+        model.add_node(OnnxNode {
+            name: "offset_input".to_string(),
+            op_type: "Add".to_string(),
+            inputs: vec!["abs_input_out".to_string(), "tc_epsilon".to_string()],
+            outputs: vec!["input_positive".to_string()],
+            attributes: vec![],
+        });
+        model.add_node(OnnxNode {
+            name: "log_input_node".to_string(),
             op_type: "Log".to_string(),
             inputs: vec!["input_positive".to_string()],
             outputs: vec!["log_input".to_string()],
             attributes: vec![],
         });
 
-        // Temporal derivative of log
+        let (prev, curr) = self.add_time_shift(model, "log_input", "tc");
+
         model.add_node(OnnxNode {
             name: "log_diff".to_string(),
             op_type: "Sub".to_string(),
-            inputs: vec!["log_input_curr".to_string(), "log_input_prev".to_string()],
+            inputs: vec![curr, prev],
             outputs: vec!["temporal_contrast".to_string()],
             attributes: vec![],
         });
-
-        // Threshold comparison
+        model.add_node(OnnxNode {
+            name: "abs_contrast".to_string(),
+            op_type: "Abs".to_string(),
+            inputs: vec!["temporal_contrast".to_string()],
+            outputs: vec!["abs_tc".to_string()],
+            attributes: vec![],
+        });
         model.add_node(OnnxNode {
             name: "tc_threshold_check".to_string(),
             op_type: "Greater".to_string(),
             inputs: vec!["abs_tc".to_string(), "tc_threshold".to_string()],
-            outputs: vec!["spikes".to_string()],
+            outputs: vec!["tc_mask".to_string()],
             attributes: vec![],
         });
+        self.add_bool_to_float(model, "tc_mask", "tc_to_spikes", "spikes");
 
         Ok(())
     }
 
-    /// Write the model to file as JSON.
-    ///
-    /// This is the gap between what the module claims and what it does: ONNX
-    /// is a protobuf format, and a real exporter would encode `model` against
-    /// the onnx.proto schema. What lands on disk is a JSON rendering of the
-    /// same structure -- useful for inspection and conversion, but not an
-    /// ONNX file.
+    /// Write the model as an ONNX protobuf `ModelProto`.
     fn write_onnx_model<W: Write>(&self, writer: &mut W, model: &OnnxModel) -> Result<()> {
-
-        let json = serde_json::to_string_pretty(model)
-            .map_err(|e| ExportError::onnx(format!("Failed to serialize model: {}", e)))?;
-
-        writer.write_all(json.as_bytes())?;
-        writer.write_all(b"\n")?;
-
+        writer.write_all(&model.to_proto())?;
         Ok(())
     }
 }
@@ -338,6 +396,182 @@ impl OnnxExporter {
 
     pub fn export<E: ExportableEncoder>(&self, _path: impl AsRef<Path>, _encoder: &E) -> Result<()> {
         Err(ExportError::FeatureNotEnabled("onnx".to_string()))
+    }
+}
+
+
+// =============================================================================
+// Protobuf serialisation
+//
+// Field numbers below come from onnx.proto (ONNX IR). They are part of the
+// wire format, so they are fixed -- changing one silently produces a file that
+// decodes into the wrong fields rather than failing loudly.
+//
+//   https://github.com/onnx/onnx/blob/main/onnx/onnx.proto
+// =============================================================================
+
+/// `TensorProto.DataType` values used here.
+mod data_type {
+    /// IEEE-754 single precision.
+    pub const FLOAT: i32 = 1;
+    /// Signed 64-bit integer.
+    pub const INT64: i32 = 7;
+}
+
+/// Time is the last axis of the `[batch, channels, time]` layout these
+/// encoders declare, so that is what gets sliced.
+const TIME_AXIS: i64 = 2;
+
+/// Added before `Log` so the argument is strictly positive. Small enough not
+/// to shift the contrast of any real signal, large enough that `log` of it is
+/// finite in f32.
+const LOG_EPSILON: f32 = 1e-6;
+
+/// `AttributeProto.AttributeType` values used here.
+mod attr_type {
+    /// A single `float`.
+    pub const FLOAT: i32 = 1;
+    /// A single `int64`.
+    pub const INT: i32 = 2;
+    /// A UTF-8 `string`.
+    pub const STRING: i32 = 3;
+}
+
+impl OnnxModel {
+    /// Encodes this model as an ONNX `ModelProto`.
+    fn to_proto(&self) -> Vec<u8> {
+        let mut w = Writer::new();
+        w.int64(1, self.ir_version);
+        w.string(2, &self.producer_name);
+        w.string(3, &self.producer_version);
+        w.string(4, &self.domain);
+        w.int64(5, self.model_version);
+        w.string(6, &self.doc_string);
+        w.message(7, &self.graph.to_proto());
+        for opset in &self.opset_import {
+            let mut o = Writer::new();
+            o.string(1, &opset.domain);
+            o.int64(2, opset.version);
+            w.message(8, &o);
+        }
+        w.finish()
+    }
+}
+
+impl OnnxGraph {
+    /// Encodes this graph as a `GraphProto`.
+    fn to_proto(&self) -> Writer {
+        let mut w = Writer::new();
+        for node in &self.nodes {
+            w.message(1, &node.to_proto());
+        }
+        w.string(2, &self.name);
+        for init in &self.initializers {
+            w.message(5, &init.to_proto());
+        }
+        for input in &self.inputs {
+            w.message(11, &input.to_value_info());
+        }
+        for output in &self.outputs {
+            w.message(12, &output.to_value_info());
+        }
+        w
+    }
+}
+
+impl OnnxNode {
+    /// Encodes this node as a `NodeProto`.
+    fn to_proto(&self) -> Writer {
+        let mut w = Writer::new();
+        for input in &self.inputs {
+            w.string(1, input);
+        }
+        for output in &self.outputs {
+            w.string(2, output);
+        }
+        w.string(3, &self.name);
+        w.string(4, &self.op_type);
+        for attr in &self.attributes {
+            w.message(5, &attr.to_proto());
+        }
+        w
+    }
+}
+
+impl OnnxAttribute {
+    /// Encodes this attribute as an `AttributeProto`.
+    fn to_proto(&self) -> Writer {
+        let mut w = Writer::new();
+        w.string(1, &self.name);
+        if let Some(f) = self.f {
+            w.float(2, f);
+            w.int32(20, attr_type::FLOAT);
+        } else if let Some(s) = &self.s {
+            w.bytes(4, s.as_bytes());
+            w.int32(20, attr_type::STRING);
+        } else {
+            w.int64(3, self.i);
+            w.int32(20, attr_type::INT);
+        }
+        w
+    }
+}
+
+impl OnnxTensor {
+    /// Encodes this tensor as a graph-level `ValueInfoProto`.
+    ///
+    /// A non-negative extent becomes `dim_value`. A negative one is this
+    /// crate's marker for "unknown", and ONNX spells that as a symbolic
+    /// `dim_param` -- a negative `dim_value` is not valid in a model file.
+    fn to_value_info(&self) -> Writer {
+        let mut shape = Writer::new();
+        for (axis, &extent) in self.shape.iter().enumerate() {
+            let mut dim = Writer::new();
+            if extent >= 0 {
+                dim.int64(1, extent);
+            } else {
+                dim.string(2, &Self::symbolic_dim(axis));
+            }
+            shape.message(1, &dim);
+        }
+
+        let mut tensor_type = Writer::new();
+        tensor_type.int32(1, self.elem_type);
+        tensor_type.message(2, &shape);
+
+        let mut type_proto = Writer::new();
+        type_proto.message(1, &tensor_type);
+
+        let mut w = Writer::new();
+        w.string(1, &self.name);
+        w.message(2, &type_proto);
+        w
+    }
+
+    /// Names a dynamic axis. Axis 0 is the batch by convention here; the rest
+    /// get a positional name so two dynamic axes stay distinguishable.
+    fn symbolic_dim(axis: usize) -> String {
+        if axis == 0 {
+            "batch".to_string()
+        } else {
+            format!("dim_{axis}")
+        }
+    }
+}
+
+impl OnnxInitializer {
+    /// Encodes this initializer as a `TensorProto`.
+    fn to_proto(&self) -> Writer {
+        let mut w = Writer::new();
+        w.packed_int64(1, &self.dims);
+        w.int32(2, self.data_type);
+        match self.data_type {
+            data_type::FLOAT => w.packed_float(4, &self.float_data),
+            data_type::INT64 => w.packed_int64(7, &self.int64_data),
+            _ => {}
+        }
+        w.string(8, &self.name);
+        w
     }
 }
 
@@ -437,10 +671,174 @@ struct OnnxTensor {
     shape: Vec<i64>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 struct OnnxInitializer {
     name: String,
     data_type: i32,
     dims: Vec<i64>,
     float_data: Vec<f32>,
+    int64_data: Vec<i64>,
+}
+
+impl OnnxInitializer {
+    /// A float tensor constant.
+    fn float(name: &str, dims: Vec<i64>, data: Vec<f32>) -> Self {
+        Self {
+            name: name.to_string(),
+            data_type: data_type::FLOAT,
+            dims,
+            float_data: data,
+            int64_data: Vec::new(),
+        }
+    }
+
+    /// An int64 tensor constant -- what `Slice` wants for starts/ends/axes.
+    fn int64(name: &str, dims: Vec<i64>, data: Vec<i64>) -> Self {
+        Self {
+            name: name.to_string(),
+            data_type: data_type::INT64,
+            dims,
+            float_data: Vec::new(),
+            int64_data: data,
+        }
+    }
+}
+
+#[cfg(all(test, feature = "onnx"))]
+mod tests {
+    use super::*;
+    use crate::encoder_export::MockEncoder;
+
+    fn model_for(enc: &MockEncoder) -> OnnxModel {
+        let mut meta = ModelMetadata::new();
+        meta.name = "test".to_string();
+        let exporter = OnnxExporter::new(meta);
+        exporter
+            .build_onnx_model(&enc.get_params())
+            .expect("graph builds")
+    }
+
+    /// Every node input must already exist: a graph input, an initializer, or
+    /// the output of an earlier node. ONNX requires nodes in topological
+    /// order, and a name nothing produces is a dangling edge -- both are
+    /// rejected by onnx.checker, and both were present before.
+    fn assert_graph_is_closed_and_sorted(model: &OnnxModel) {
+        let mut available: Vec<String> = model
+            .graph
+            .inputs
+            .iter()
+            .map(|t| t.name.clone())
+            .chain(model.graph.initializers.iter().map(|i| i.name.clone()))
+            .collect();
+
+        for node in &model.graph.nodes {
+            for input in &node.inputs {
+                assert!(
+                    available.contains(input),
+                    "node {:?} consumes {:?}, which no earlier node or initializer produces \
+                     (available: {:?})",
+                    node.name,
+                    input,
+                    available
+                );
+            }
+            available.extend(node.outputs.iter().cloned());
+        }
+
+        for out in &model.graph.outputs {
+            assert!(
+                available.contains(&out.name),
+                "graph declares output {:?} but no node produces it",
+                out.name
+            );
+        }
+    }
+
+    #[test]
+    fn level_crossing_graph_is_well_formed() {
+        assert_graph_is_closed_and_sorted(&model_for(&MockEncoder::level_crossing(4, 1000.0, 0.1)));
+    }
+
+    #[test]
+    fn delta_graph_is_well_formed() {
+        assert_graph_is_closed_and_sorted(&model_for(&MockEncoder::delta(2, 500.0, 0.05, 8)));
+    }
+
+    #[test]
+    fn temporal_contrast_graph_is_well_formed() {
+        assert_graph_is_closed_and_sorted(&model_for(&MockEncoder::temporal_contrast(
+            3, 2000.0, 0.2, 0.001,
+        )));
+    }
+
+    /// Comparison operators yield bool, but the graph declares a float output,
+    /// so a Cast has to sit between them.
+    #[test]
+    fn spikes_are_produced_as_float() {
+        for model in [
+            model_for(&MockEncoder::level_crossing(1, 1000.0, 0.1)),
+            model_for(&MockEncoder::delta(1, 500.0, 0.05, 8)),
+            model_for(&MockEncoder::temporal_contrast(1, 2000.0, 0.2, 0.001)),
+        ] {
+            let producer = model
+                .graph
+                .nodes
+                .iter()
+                .find(|n| n.outputs.iter().any(|o| o == "spikes"))
+                .expect("something must produce spikes");
+            assert!(
+                matches!(producer.op_type.as_str(), "Cast" | "Mul"),
+                "spikes came from {:?}, which yields bool rather than float",
+                producer.op_type
+            );
+        }
+    }
+
+    /// A dynamic extent is a symbolic dim_param in ONNX. A negative dim_value
+    /// is not valid in a model file, so the encoder must not emit one.
+    #[test]
+    fn dynamic_axes_become_symbolic_not_negative() {
+        let model = model_for(&MockEncoder::delta(2, 500.0, 0.05, 8));
+        let tensor = &model.graph.inputs[0];
+        assert!(
+            tensor.shape.iter().any(|&d| d < 0),
+            "this test is only meaningful while the input has a dynamic axis"
+        );
+
+        let bytes = tensor.to_value_info().finish();
+        // dim_param is field 2 of Dimension (wire type 2 -> tag 0x12) and
+        // carries the name; "batch" must appear for the dynamic batch axis.
+        let text = String::from_utf8_lossy(&bytes);
+        assert!(text.contains("batch"), "no symbolic batch dim in {bytes:?}");
+    }
+
+    /// The serialised bytes must be a protobuf ModelProto, not JSON.
+    #[test]
+    fn serialises_as_protobuf_not_json() {
+        let bytes = model_for(&MockEncoder::delta(2, 500.0, 0.05, 8)).to_proto();
+        assert!(!bytes.is_empty());
+        assert_ne!(bytes[0], b'{', "still emitting JSON");
+        // ModelProto.ir_version is field 1, varint -> first tag byte is 0x08.
+        assert_eq!(bytes[0], 0x08, "expected ir_version tag first");
+        assert_eq!(bytes[1], 8, "ir_version should be 8");
+        // producer_name is field 2, length-delimited -> tag 0x12.
+        assert_eq!(bytes[2], 0x12);
+    }
+
+    #[test]
+    fn export_writes_a_protobuf_file() {
+        let dir = std::env::temp_dir().join("dpb_onnx_export_test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("delta.onnx");
+
+        let mut meta = ModelMetadata::new();
+        meta.name = "delta".to_string();
+        OnnxExporter::new(meta)
+            .export(&path, &MockEncoder::delta(2, 500.0, 0.05, 8))
+            .expect("export succeeds");
+
+        let bytes = std::fs::read(&path).unwrap();
+        assert_eq!(bytes[0], 0x08, "file does not start with a ModelProto tag");
+        let _ = std::fs::remove_file(&path);
+    }
 }

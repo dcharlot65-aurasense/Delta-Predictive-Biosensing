@@ -485,7 +485,7 @@ impl MetricTrait for MembraneUtilization {
             .zip(thresholds.iter())
             .map(|(p, t)| {
                 if *t > 0.0 {
-                    ((*p as f64) / (*t as f64)).min(1.0).max(0.0)
+                    ((*p as f64) / (*t as f64)).clamp(0.0, 1.0)
                 } else {
                     0.0
                 }
@@ -501,7 +501,7 @@ impl MetricTrait for MembraneUtilization {
             .zip(thresholds.iter())
             .map(|(p, t)| {
                 if *t > 0.0 {
-                    ((*p as f64) / (*t as f64)).min(1.0).max(0.0)
+                    ((*p as f64) / (*t as f64)).clamp(0.0, 1.0)
                 } else {
                     0.0
                 }

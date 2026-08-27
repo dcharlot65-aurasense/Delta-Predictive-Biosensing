@@ -264,8 +264,8 @@ impl EmgFatigueAnalyzer {
     /// Calculate normalized fatigue index
     fn calculate_fatigue_index(&self, mdf_slope: f64, mdf_decrease_percent: f64) -> f64 {
         // Combine slope and total decrease into single index
-        let slope_component = (-mdf_slope / 2.0).min(1.0).max(0.0); // Normalize to 0-1
-        let decrease_component = (mdf_decrease_percent / 40.0).min(1.0).max(0.0);
+        let slope_component = (-mdf_slope / 2.0).clamp(0.0, 1.0); // Normalize to 0-1
+        let decrease_component = (mdf_decrease_percent / 40.0).clamp(0.0, 1.0);
 
         // Weighted combination
         (0.6 * slope_component + 0.4 * decrease_component).clamp(0.0, 1.0)
@@ -405,8 +405,8 @@ impl ForceFatigueAnalyzer {
     }
 
     fn calculate_fatigue_index(&self, decline_percent: f64, force_cv: f64) -> f64 {
-        let decline_component = (decline_percent / 50.0).min(1.0).max(0.0);
-        let variability_component = (force_cv / 20.0).min(1.0).max(0.0);
+        let decline_component = (decline_percent / 50.0).clamp(0.0, 1.0);
+        let variability_component = (force_cv / 20.0).clamp(0.0, 1.0);
 
         (0.7 * decline_component + 0.3 * variability_component).clamp(0.0, 1.0)
     }
@@ -604,9 +604,9 @@ impl CognitiveFatigueAnalyzer {
         acc_decline: f64,
         lapse_rate: f64,
     ) -> f64 {
-        let rt_component = (rt_increase / 30.0).min(1.0).max(0.0);
-        let acc_component = (acc_decline / 20.0).min(1.0).max(0.0);
-        let lapse_component = (lapse_rate / 5.0).min(1.0).max(0.0);
+        let rt_component = (rt_increase / 30.0).clamp(0.0, 1.0);
+        let acc_component = (acc_decline / 20.0).clamp(0.0, 1.0);
+        let lapse_component = (lapse_rate / 5.0).clamp(0.0, 1.0);
 
         (0.4 * rt_component + 0.3 * acc_component + 0.3 * lapse_component).clamp(0.0, 1.0)
     }

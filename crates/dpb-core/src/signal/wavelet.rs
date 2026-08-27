@@ -135,10 +135,10 @@ impl ContinuousWaveletTransform {
             // Convolve signal with wavelet at this scale
             for t in 0..n_samples {
                 let mut conv_sum = 0.0;
-                for i in 0..n_samples {
+                for (i, &sample) in signal.iter().enumerate().take(n_samples) {
                     let shift = (n_samples / 2 + t).wrapping_sub(i);
                     if shift < n_samples {
-                        conv_sum += signal[i] * wavelet[shift];
+                        conv_sum += sample * wavelet[shift];
                     }
                 }
                 result[[scale_idx, t]] = conv_sum * dt;

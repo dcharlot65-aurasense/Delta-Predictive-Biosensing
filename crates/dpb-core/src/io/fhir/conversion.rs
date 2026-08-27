@@ -419,13 +419,15 @@ impl AnalysisToReport {
         conclusion: Option<String>,
         time: String,
     ) -> DiagnosticReport {
-        let mut report = DiagnosticReport::default();
-        report.id = Some(report_id);
-        report.code = report_code;
-        report.subject = Some(Reference::new("Patient", &patient_id));
-        report.effective_date_time = Some(time.clone());
-        report.issued = Some(time);
-        report.conclusion = conclusion;
+        let mut report = DiagnosticReport {
+            id: Some(report_id),
+            code: report_code,
+            subject: Some(Reference::new("Patient", &patient_id)),
+            effective_date_time: Some(time.clone()),
+            issued: Some(time),
+            conclusion,
+            ..Default::default()
+        };
 
         // Add observation references
         for obs_id in observation_ids {
@@ -502,11 +504,13 @@ impl DeviceConverter {
         serial_number: Option<String>,
         device_type_code: CodeableConcept,
     ) -> Device {
-        let mut device = Device::default();
-        device.id = Some(device_id);
-        device.manufacturer = manufacturer;
-        device.model_name = model_name;
-        device.device_type = Some(device_type_code);
+        let mut device = Device {
+            id: Some(device_id),
+            manufacturer,
+            model_name,
+            device_type: Some(device_type_code),
+            ..Default::default()
+        };
 
         if let Some(serial) = serial_number {
             device.identifier.push(super::resources::Identifier {

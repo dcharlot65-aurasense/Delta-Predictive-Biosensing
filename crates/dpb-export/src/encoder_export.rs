@@ -284,6 +284,24 @@ impl MockEncoder {
             params: EncoderParams::delta(num_channels, sample_rate, threshold, num_levels),
         }
     }
+
+    /// Create a mock temporal contrast encoder.
+    pub fn temporal_contrast(
+        num_channels: usize,
+        sample_rate: f64,
+        threshold: f32,
+        refractory_period: f32,
+    ) -> Self {
+        Self {
+            encoder_type: "temporal_contrast".to_string(),
+            params: EncoderParams::temporal_contrast(
+                num_channels,
+                sample_rate,
+                threshold,
+                refractory_period,
+            ),
+        }
+    }
 }
 
 impl ExportableEncoder for MockEncoder {

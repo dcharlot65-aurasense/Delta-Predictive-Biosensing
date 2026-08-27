@@ -44,6 +44,8 @@
 pub mod error;
 pub mod metadata;
 pub mod onnx;
+/// Minimal protobuf wire-format writer, used to emit ONNX models.
+pub mod protobuf;
 pub mod json;
 pub mod binary;
 pub mod encoder_export;

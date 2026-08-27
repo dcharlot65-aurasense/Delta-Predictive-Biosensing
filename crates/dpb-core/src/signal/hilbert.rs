@@ -33,17 +33,15 @@ pub fn hilbert_transform(signal: &[f64]) -> Vec<Complex64> {
     buffer[0] *= 1.0; // DC component unchanged
 
     let half = n.div_ceil(2);
-    for i in 1..half {
-        buffer[i] *= 2.0;
+    for v in buffer[1..half].iter_mut() {
+        *v *= 2.0;
     }
 
     if n.is_multiple_of(2) {
         buffer[n / 2] *= 1.0; // Nyquist frequency unchanged
     }
 
-    for i in half..n {
-        buffer[i] = Complex64::new(0.0, 0.0);
-    }
+    buffer[half..n].fill(Complex64::new(0.0, 0.0));
 
     // Inverse FFT
     let ifft = planner.plan_fft_inverse(n);

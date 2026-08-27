@@ -86,18 +86,22 @@ pub struct VitalSignsObservation {
 impl VitalSignsObservation {
     /// Creates a new vital signs observation
     pub fn new(id: String, patient_ref: String) -> Self {
-        let mut obs = Observation::default();
-        obs.id = Some(id);
-        obs.subject = Some(Reference::new("Patient", &patient_ref));
-        obs.category = vec![CodeableConcept {
-            coding: vec![Coding {
-                system: Some("http://terminology.hl7.org/CodeSystem/observation-category".to_string()),
-                code: Some("vital-signs".to_string()),
-                display: Some("Vital Signs".to_string()),
+        let obs = Observation {
+            id: Some(id),
+            subject: Some(Reference::new("Patient", &patient_ref)),
+            category: vec![CodeableConcept {
+                coding: vec![Coding {
+                    system: Some(
+                        "http://terminology.hl7.org/CodeSystem/observation-category".to_string(),
+                    ),
+                    code: Some("vital-signs".to_string()),
+                    display: Some("Vital Signs".to_string()),
+                }],
+                text: Some("Vital Signs".to_string()),
             }],
-            text: Some("Vital Signs".to_string()),
-        }];
-        obs.status = Some(ObservationStatus::Final.as_str().to_string());
+            status: Some(ObservationStatus::Final.as_str().to_string()),
+            ..Default::default()
+        };
 
         Self { observation: obs }
     }
@@ -202,10 +206,12 @@ pub struct WaveformObservation {
 impl WaveformObservation {
     /// Creates a new waveform observation
     pub fn new(id: String, patient_ref: String) -> Self {
-        let mut obs = Observation::default();
-        obs.id = Some(id);
-        obs.subject = Some(Reference::new("Patient", &patient_ref));
-        obs.status = Some(ObservationStatus::Final.as_str().to_string());
+        let obs = Observation {
+            id: Some(id),
+            subject: Some(Reference::new("Patient", &patient_ref)),
+            status: Some(ObservationStatus::Final.as_str().to_string()),
+            ..Default::default()
+        };
 
         Self { observation: obs }
     }
@@ -264,11 +270,13 @@ pub struct ComponentObservation {
 impl ComponentObservation {
     /// Creates a new component observation
     pub fn new(id: String, patient_ref: String, code: CodeableConcept) -> Self {
-        let mut obs = Observation::default();
-        obs.id = Some(id);
-        obs.subject = Some(Reference::new("Patient", &patient_ref));
-        obs.code = code;
-        obs.status = Some(ObservationStatus::Final.as_str().to_string());
+        let obs = Observation {
+            id: Some(id),
+            subject: Some(Reference::new("Patient", &patient_ref)),
+            code,
+            status: Some(ObservationStatus::Final.as_str().to_string()),
+            ..Default::default()
+        };
 
         Self { observation: obs }
     }

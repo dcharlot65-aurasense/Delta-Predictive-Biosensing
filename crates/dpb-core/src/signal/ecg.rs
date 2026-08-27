@@ -249,10 +249,10 @@ impl PanTompkinsDetector {
             let mut max_idx = idx;
             let mut max_val = ecg[idx];
 
-            for j in start..end {
-                if ecg[j].abs() > max_val.abs() {
-                    max_val = ecg[j];
-                    max_idx = j;
+            for (offset, &sample) in ecg[start..end].iter().enumerate() {
+                if sample.abs() > max_val.abs() {
+                    max_val = sample;
+                    max_idx = start + offset;
                 }
             }
 

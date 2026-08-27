@@ -957,14 +957,14 @@ impl Ceemdan {
             // Add adaptive noise to residue
             let mut ensemble_imfs = Vec::new();
 
-            for e in 0..self.config.num_ensembles {
-                if mode_idx >= noise_modes[e].len() {
+            for modes in noise_modes.iter().take(self.config.num_ensembles) {
+                if mode_idx >= modes.len() {
                     continue;
                 }
 
                 let noisy_residue: Vec<f64> = residue
                     .iter()
-                    .zip(noise_modes[e][mode_idx].iter())
+                    .zip(modes[mode_idx].iter())
                     .map(|(r, n)| r + n)
                     .collect();
 
@@ -986,13 +986,14 @@ impl Ceemdan {
                     averaged_imf[i] += ensemble_imf[i];
                 }
             }
-            for i in 0..n {
-                averaged_imf[i] /= ensemble_imfs.len() as f64;
+            let ensembles = ensemble_imfs.len() as f64;
+            for v in averaged_imf[..n].iter_mut() {
+                *v /= ensembles;
             }
 
             // Update residue
-            for i in 0..n {
-                residue[i] -= averaged_imf[i];
+            for (r, &imf) in residue[..n].iter_mut().zip(averaged_imf.iter()) {
+                *r -= imf;
             }
 
             imfs.push(Imf::new(Array1::from_vec(averaged_imf)));
@@ -1108,8 +1109,10 @@ impl Vmd {
         // 4. Alternating direction method of multipliers (ADMM)
 
         // For now, fall back to EMD-like decomposition with fixed mode count
-        let mut emd_config = EmdConfig::default();
-        emd_config.max_imfs = self.config.num_modes;
+        let emd_config = EmdConfig {
+            max_imfs: self.config.num_modes,
+            ..Default::default()
+        };
 
         let mut emd = Emd::new(emd_config);
         emd.decompose(signal)

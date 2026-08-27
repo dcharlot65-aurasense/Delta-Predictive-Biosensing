@@ -295,8 +295,12 @@ impl OverlapBuffer {
             // We have previous overlap samples at the end
             // Add the first overlap samples to the existing ones
             let overlap_start = current_len - self.overlap;
-            for i in 0..self.overlap.min(samples.len()) {
-                self.output_buffer[overlap_start + i] += samples[i];
+            for (existing, &incoming) in self.output_buffer[overlap_start..]
+                .iter_mut()
+                .zip(samples.iter())
+                .take(self.overlap)
+            {
+                *existing += incoming;
             }
             // Append remaining new samples
             if samples.len() > self.overlap {

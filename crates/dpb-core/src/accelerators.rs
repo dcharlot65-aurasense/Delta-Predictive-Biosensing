@@ -429,10 +429,10 @@ impl Accelerator for CpuAccelerator {
 
 /// Detect available accelerators.
 pub fn detect_accelerators() -> Vec<Box<dyn Accelerator>> {
-    let mut accelerators: Vec<Box<dyn Accelerator>> = Vec::new();
-
-    // Always have CPU fallback
-    accelerators.push(Box::new(CpuAccelerator::new()));
+    // Always have CPU fallback. `mut` is only exercised when an accelerator
+    // feature is on -- in a default build nothing below ever pushes.
+    #[allow(unused_mut)]
+    let mut accelerators: Vec<Box<dyn Accelerator>> = vec![Box::new(CpuAccelerator::new())];
 
     // Check for Intel Gaudi
     #[cfg(feature = "intel-gaudi")]
