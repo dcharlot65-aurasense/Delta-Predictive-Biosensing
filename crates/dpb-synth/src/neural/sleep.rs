@@ -392,7 +392,7 @@ impl SleepMicrostructureGenerator {
         let noise_dist = Normal::new(0.0, self.config.background_amplitude * 0.3).unwrap();
 
         for ch in signal.iter_mut() {
-            for i in 0..n_samples {
+            for (i, i_slot) in ch.iter_mut().enumerate() {
                 let t = i as f64 / self.config.sample_rate;
 
                 // Theta activity (4-8 Hz)
@@ -405,7 +405,7 @@ impl SleepMicrostructureGenerator {
                 let delta = 8.0 * (2.0 * PI * 2.0 * t).sin();
 
                 let noise: f64 = self.rng.sample(noise_dist);
-                ch[i] += theta + alpha + delta + noise;
+                *i_slot += theta + alpha + delta + noise;
             }
         }
     }
@@ -414,7 +414,7 @@ impl SleepMicrostructureGenerator {
         let noise_dist = Normal::new(0.0, self.config.background_amplitude * 0.2).unwrap();
 
         for ch in signal.iter_mut() {
-            for i in 0..n_samples {
+            for (i, i_slot) in ch.iter_mut().enumerate() {
                 let t = i as f64 / self.config.sample_rate;
 
                 // Strong delta (0.5-4 Hz)
@@ -424,7 +424,7 @@ impl SleepMicrostructureGenerator {
                 let theta = 5.0 * (2.0 * PI * 5.0 * t).sin();
 
                 let noise: f64 = self.rng.sample(noise_dist);
-                ch[i] += delta + theta + noise;
+                *i_slot += delta + theta + noise;
             }
         }
     }

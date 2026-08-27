@@ -483,7 +483,7 @@ impl SyntheticGenerator for StressResponseGenerator {
                 attributes: HashMap::new(),
             });
 
-            for i in 0..n_samples {
+            for (i, i_slot) in stress_level.iter_mut().enumerate() {
                 let t = i as f64 * dt;
                 if t >= stressor_time {
                     let delta_t = t - stressor_time;
@@ -494,7 +494,7 @@ impl SyntheticGenerator for StressResponseGenerator {
                     } else {
                         (-(delta_t - rise_tau) / params.recovery_tau).exp()
                     };
-                    stress_level[i] += response;
+                    *i_slot += response;
                 }
             }
         }

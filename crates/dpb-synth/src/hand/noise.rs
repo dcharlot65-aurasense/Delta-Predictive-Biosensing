@@ -35,6 +35,9 @@ impl SyntheticGenerator for LandmarkJitterGenerator {
         for _ in 0..n_frames {
             let mut frame_landmarks = Vec::with_capacity(params.n_landmarks);
 
+            // The body reads prev_jitter alongside writing it, so iterating
+            // mutably over the same vector does not borrow-check.
+            #[allow(clippy::needless_range_loop)]
             for landmark_idx in 0..params.n_landmarks {
                 let std = if landmark_idx < params.jitter_std_per_landmark.len() {
                     params.jitter_std_per_landmark[landmark_idx]

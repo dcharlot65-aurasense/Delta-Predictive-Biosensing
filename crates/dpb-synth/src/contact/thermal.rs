@@ -148,7 +148,7 @@ impl SyntheticGenerator for ThermalResponseGenerator {
             });
 
             // Generate response waveform
-            for i in 0..n_samples {
+            for (i, i_slot) in signal.iter_mut().enumerate() {
                 let t = i as f64 * dt;
 
                 if t >= stim_time {
@@ -165,7 +165,7 @@ impl SyntheticGenerator for ThermalResponseGenerator {
                         params.response_amplitude * (-decay_t / params.recovery_tau).exp()
                     };
 
-                    signal[i] += response;
+                    *i_slot += response;
                 }
             }
         }

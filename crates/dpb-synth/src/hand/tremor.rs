@@ -480,8 +480,7 @@ impl SyntheticGenerator for MultiFingerTremorGenerator {
 
             let mut frame_positions = Vec::with_capacity(5);
 
-            for finger_idx in 0..5 {
-                let finger_phase = finger_phases[finger_idx];
+            for (finger_idx, &finger_phase) in finger_phases.iter().enumerate().take(5) {
                 let independent_tremor = (2.0 * PI * params.frequency * t + finger_phase).sin();
 
                 // Blend common and independent tremor based on correlation

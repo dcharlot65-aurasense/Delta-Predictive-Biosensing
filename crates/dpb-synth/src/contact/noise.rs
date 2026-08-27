@@ -719,8 +719,9 @@ impl SyntheticGenerator for MissingDataGenerator {
                 let end_idx = (dropout_idx + burst_length).min(n_samples);
 
                 // Mark samples as missing
-                for i in dropout_idx..end_idx {
-                    valid_mask[i] = false;
+                for (i_off, i_slot) in valid_mask[dropout_idx..end_idx].iter_mut().enumerate() {
+                    let i = dropout_idx + i_off;
+                    *i_slot = false;
                 }
 
                 events.push(crate::traits::Event {

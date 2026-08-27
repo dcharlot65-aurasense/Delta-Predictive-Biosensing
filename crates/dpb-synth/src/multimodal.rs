@@ -699,12 +699,13 @@ impl SyntheticGenerator for SaccadeReactionTimeCouplingGenerator {
 
             let target_position = [params.saccade_amplitude, 0.0];
 
-            for i in start_idx..std::cmp::min(end_idx, n_samples) {
+            for (i_off, i_slot) in saccade_positions[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+                let i = start_idx + i_off;
                 let progress = (i - start_idx) as f64 / (end_idx - start_idx) as f64;
                 let s = 10.0 * (progress - 0.5);
                 let position_progress = 1.0 / (1.0 + (-s).exp());
 
-                saccade_positions[i] = [
+                *i_slot = [
                     current_position[0] + (target_position[0] - current_position[0]) * position_progress,
                     0.0,
                 ];
@@ -712,8 +713,9 @@ impl SyntheticGenerator for SaccadeReactionTimeCouplingGenerator {
 
             if end_idx < n_samples {
                 current_position = target_position;
-                for i in end_idx..n_samples {
-                    saccade_positions[i] = current_position;
+                for (i_off, i_slot) in saccade_positions[end_idx..n_samples].iter_mut().enumerate() {
+                    let i = end_idx + i_off;
+                    *i_slot = current_position;
                 }
             }
         }

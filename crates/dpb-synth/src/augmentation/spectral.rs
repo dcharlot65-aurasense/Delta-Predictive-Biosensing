@@ -165,9 +165,7 @@ impl SignalAugmentation for TimeMask {
             };
 
             // Apply mask
-            for i in start..(start + width).min(signal.len()) {
-                result[i] = 0.0;
-            }
+            result[start..(start + width).min(signal.len())].fill(0.0);
         }
 
         result

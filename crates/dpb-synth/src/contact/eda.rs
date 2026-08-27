@@ -135,7 +135,7 @@ impl SyntheticGenerator for ScrEventGenerator {
                 attributes: HashMap::new(),
             });
 
-            for i in 0..n_samples {
+            for (i, i_slot) in signal.iter_mut().enumerate() {
                 let t = i as f64 * dt;
                 if t >= *event_time {
                     let delta_t = t - event_time;
@@ -143,7 +143,7 @@ impl SyntheticGenerator for ScrEventGenerator {
                     let scr = amplitude *
                         ((-delta_t / params.recovery_time).exp() -
                          (-delta_t / params.rise_time).exp());
-                    signal[i] += scr;
+                    *i_slot += scr;
                 }
             }
         }
@@ -252,14 +252,14 @@ impl SyntheticGenerator for StimulusLockedScrGenerator {
             });
 
             // Generate SCR using Bateman function
-            for i in 0..n_samples {
+            for (i, i_slot) in signal.iter_mut().enumerate() {
                 let t = i as f64 * dt;
                 if t >= scr_onset {
                     let delta_t = t - scr_onset;
                     let scr = amplitude *
                         ((-delta_t / params.recovery_time).exp() -
                          (-delta_t / params.rise_time).exp());
-                    signal[i] += scr;
+                    *i_slot += scr;
                 }
             }
         }
@@ -471,10 +471,11 @@ impl SyntheticGenerator for EdaArtifactGenerator {
             let start_idx = (t * params.sampling_rate) as usize;
             let end_idx = (((t + duration) * params.sampling_rate) as usize).min(n_samples);
 
-            for i in start_idx..end_idx {
+            for (i_off, i_slot) in signal[start_idx..end_idx].iter_mut().enumerate() {
+                let i = start_idx + i_off;
                 let local_t = (i - start_idx) as f64 * dt;
                 let envelope = (std::f64::consts::PI * local_t / duration).sin();
-                signal[i] += amplitude * envelope;
+                *i_slot += amplitude * envelope;
             }
 
             t += movement_exp.sample(&mut rng);

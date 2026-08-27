@@ -317,10 +317,14 @@ impl SyntheticGenerator for PathologicalEmgGenerator {
                     attributes: HashMap::new(),
                 });
 
-                for i in burst_start..std::cmp::min(burst_start + burst_duration, n_samples) {
-                    let burst_phase = (i - burst_start) as f64 / burst_duration as f64;
+                for (offset, slot) in signal
+                    [burst_start..(burst_start + burst_duration).min(n_samples)]
+                    .iter_mut()
+                    .enumerate()
+                {
+                    let burst_phase = offset as f64 / burst_duration as f64;
                     let amplitude = params.baseline_amplitude * 10.0 * (1.0 - burst_phase); // decay
-                    signal[i] += amplitude * rng.random_range(-1.0..1.0);
+                    *slot += amplitude * rng.random_range(-1.0..1.0);
                 }
             }
         }

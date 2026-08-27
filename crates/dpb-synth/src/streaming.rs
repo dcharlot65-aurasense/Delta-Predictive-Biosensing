@@ -1992,8 +1992,9 @@ impl FrameStreamingGenerator for StreamingPose {
 
         // Upper body (simplified - roughly stationary relative to pelvis)
         let torso_height = state.height * 0.3;
-        for i in 11..23 {
-            keypoints[i] = [0.0, pelvis_y + torso_height * 0.5, pelvis_z];
+        for (i_off, i_slot) in keypoints[11..23].iter_mut().enumerate() {
+            let i = 11 + i_off;
+            *i_slot = [0.0, pelvis_y + torso_height * 0.5, pelvis_z];
         }
 
         // Head

@@ -108,8 +108,9 @@ impl SyntheticGenerator for GaitCycleGenerator {
             joint_angles.get_mut("ankle_dorsiflexion").unwrap().push(ankle_angle);
 
             // Fill in upper body keypoints (simplified - roughly stationary)
-            for i in 1..23 {
-                frame_keypoints[i] = [0.0, params.height * 0.8, pelvis_z];
+            for (i_off, i_slot) in frame_keypoints[1..23].iter_mut().enumerate() {
+                let i = 1 + i_off;
+                *i_slot = [0.0, params.height * 0.8, pelvis_z];
             }
 
             keypoints.push(frame_keypoints);

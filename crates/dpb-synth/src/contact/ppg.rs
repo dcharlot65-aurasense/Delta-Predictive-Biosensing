@@ -138,7 +138,7 @@ impl SyntheticGenerator for PpgArtifactGenerator {
         let mut signal = vec![0.0; n_samples];
         let mut events = Vec::new();
 
-        for i in 0..n_samples {
+        for (i, i_slot) in signal.iter_mut().enumerate() {
             let t = i as f64 * dt;
 
             if t >= next_artifact && t < next_artifact + params.artifact_duration {
@@ -146,7 +146,7 @@ impl SyntheticGenerator for PpgArtifactGenerator {
                 let phase = (t - next_artifact) / params.artifact_duration;
                 let envelope = (PI * phase).sin(); // rise and fall
                 let freq = rng.random_range(1.0..5.0);
-                signal[i] = params.artifact_amplitude * envelope * (2.0 * PI * freq * t).sin();
+                *i_slot = params.artifact_amplitude * envelope * (2.0 * PI * freq * t).sin();
 
                 if t == next_artifact || (t - next_artifact) < dt {
                     events.push(Event {

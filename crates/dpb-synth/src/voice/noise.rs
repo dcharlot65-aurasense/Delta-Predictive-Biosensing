@@ -60,8 +60,8 @@ impl SyntheticGenerator for BackgroundNoiseGenerator {
 
                     for i in (0..n_samples).step_by(step_size) {
                         let value = white_dist.sample(&mut rng) * weight;
-                        for j in i..(i + step_size).min(n_samples) {
-                            pink[j] += value;
+                        for slot in pink[i..(i + step_size).min(n_samples)].iter_mut() {
+                            *slot += value;
                         }
                     }
                 }
@@ -80,10 +80,10 @@ impl SyntheticGenerator for BackgroundNoiseGenerator {
                     let f_mod = rng.random_range(2.0..6.0); // modulation frequency (Hz)
                     let phase = rng.random_range(0.0..2.0 * PI);
 
-                    for i in 0..n_samples {
+                    for (i, i_slot) in babble.iter_mut().enumerate() {
                         let t = i as f64 / params.sampling_rate;
                         let modulation = 0.5 + 0.5 * (2.0 * PI * f_mod * t + phase).sin();
-                        babble[i] += white_dist.sample(&mut rng) * modulation;
+                        *i_slot += white_dist.sample(&mut rng) * modulation;
                     }
                 }
 
@@ -416,11 +416,11 @@ impl SyntheticGenerator for CodecArtifactsGenerator {
         let nyquist = params.sampling_rate / 2.0;
         if bandwidth_limit_hz < nyquist {
             // Simple high-frequency attenuation
-            for i in 0..n_samples {
+            for (i, i_slot) in artifacts.iter_mut().enumerate() {
                 let t = i as f64 / params.sampling_rate;
                 // Add some aliasing artifacts near cutoff
                 let alias_freq = bandwidth_limit_hz * 0.9;
-                artifacts[i] += quantization_noise_level * 0.5 * (2.0 * PI * alias_freq * t).sin();
+                *i_slot += quantization_noise_level * 0.5 * (2.0 * PI * alias_freq * t).sin();
             }
         }
 

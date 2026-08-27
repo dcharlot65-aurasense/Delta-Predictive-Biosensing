@@ -74,7 +74,8 @@ impl SyntheticGenerator for MainSequenceSaccadeGenerator {
             let start_idx = (saccade_time * params.sampling_rate) as usize;
             let end_idx = ((saccade_time + duration_s) * params.sampling_rate) as usize;
 
-            for i in start_idx..std::cmp::min(end_idx, n_samples) {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+                let i = start_idx + i_off;
                 let t_local = (i - start_idx) as f64 * dt;
                 let progress = t_local / duration_s;
 
@@ -82,7 +83,7 @@ impl SyntheticGenerator for MainSequenceSaccadeGenerator {
                 let s = 10.0 * (progress - 0.5);
                 let position_progress = 1.0 / (1.0 + (-s).exp());
 
-                gaze_position[i] = [
+                *i_slot = [
                     current_position[0] + (target_position[0] - current_position[0]) * position_progress,
                     current_position[1] + (target_position[1] - current_position[1]) * position_progress,
                 ];
@@ -92,14 +93,15 @@ impl SyntheticGenerator for MainSequenceSaccadeGenerator {
             if end_idx < n_samples {
                 current_position = target_position;
                 // Fill fixation period
-                for i in end_idx..n_samples {
+                for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
+                    let i = end_idx + i_off;
                     if saccade_idx + 1 < saccade_times.len() {
                         let next_saccade_idx = (saccade_times[saccade_idx + 1] * params.sampling_rate) as usize;
                         if i >= next_saccade_idx {
                             break;
                         }
                     }
-                    gaze_position[i] = current_position;
+                    *i_slot = current_position;
                 }
             }
         }
@@ -171,20 +173,22 @@ impl SyntheticGenerator for HypometricSaccadeGenerator {
         let start_idx = (saccade_time * params.sampling_rate) as usize;
         let end_idx = ((saccade_time + duration_s) * params.sampling_rate) as usize;
 
-        for i in start_idx..std::cmp::min(end_idx, n_samples) {
+        for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+            let i = start_idx + i_off;
             let t_local = (i - start_idx) as f64 * dt;
             let progress = (t_local / duration_s).min(1.0);
             let s = 10.0 * (progress - 0.5);
             let position_progress = 1.0 / (1.0 + (-s).exp());
 
-            gaze_position[i] = [reached_x * position_progress, 0.0];
+            *i_slot = [reached_x * position_progress, 0.0];
         }
 
         current_position = [reached_x, 0.0];
 
         // Fill after primary saccade
-        for i in end_idx..n_samples {
-            gaze_position[i] = current_position;
+        for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
+            let i = end_idx + i_off;
+            *i_slot = current_position;
         }
 
         // Add corrective saccade if enabled
@@ -196,21 +200,23 @@ impl SyntheticGenerator for HypometricSaccadeGenerator {
             let corr_start_idx = (corrective_time * params.sampling_rate) as usize;
             let corr_end_idx = ((corrective_time + corrective_duration) * params.sampling_rate) as usize;
 
-            for i in corr_start_idx..std::cmp::min(corr_end_idx, n_samples) {
+            for (i_off, i_slot) in gaze_position[corr_start_idx..corr_end_idx.min(n_samples)].iter_mut().enumerate() {
+                let i = corr_start_idx + i_off;
                 let t_local = (i - corr_start_idx) as f64 * dt;
                 let progress = (t_local / corrective_duration).min(1.0);
                 let s = 10.0 * (progress - 0.5);
                 let position_progress = 1.0 / (1.0 + (-s).exp());
 
-                gaze_position[i] = [
+                *i_slot = [
                     reached_x + corrective_amplitude * position_progress,
                     0.0,
                 ];
             }
 
             // Fill rest
-            for i in corr_end_idx..n_samples {
-                gaze_position[i] = [target_x, 0.0];
+            for (i_off, i_slot) in gaze_position[corr_end_idx..n_samples].iter_mut().enumerate() {
+                let i = corr_end_idx + i_off;
+                *i_slot = [target_x, 0.0];
             }
         }
 
@@ -293,8 +299,9 @@ impl SyntheticGenerator for SaccadeLatencyGenerator {
             let start_idx = (saccade_time * params.sampling_rate) as usize;
             let end_idx = ((saccade_time + duration) * params.sampling_rate) as usize;
 
-            for i in start_idx..std::cmp::min(end_idx, n_samples) {
-                gaze_position[i] = [params.amplitude, 0.0];
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+                let i = start_idx + i_off;
+                *i_slot = [params.amplitude, 0.0];
             }
         }
 
@@ -367,8 +374,9 @@ impl SyntheticGenerator for AntisaccadeGenerator {
             let start_idx = (saccade_time * params.sampling_rate) as usize;
             let end_idx = ((saccade_time + duration) * params.sampling_rate) as usize;
 
-            for i in start_idx..std::cmp::min(end_idx, n_samples) {
-                gaze_position[i] = [params.amplitude * direction, 0.0];
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+                let i = start_idx + i_off;
+                *i_slot = [params.amplitude * direction, 0.0];
             }
         }
 
@@ -442,20 +450,22 @@ impl SyntheticGenerator for HypermetricSaccadeGenerator {
         let start_idx = (saccade_time * params.sampling_rate) as usize;
         let end_idx = ((saccade_time + duration_s) * params.sampling_rate) as usize;
 
-        for i in start_idx..std::cmp::min(end_idx, n_samples) {
+        for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+            let i = start_idx + i_off;
             let t_local = (i - start_idx) as f64 * dt;
             let progress = (t_local / duration_s).min(1.0);
             let s = 10.0 * (progress - 0.5);
             let position_progress = 1.0 / (1.0 + (-s).exp());
 
-            gaze_position[i] = [reached_x * position_progress, 0.0];
+            *i_slot = [reached_x * position_progress, 0.0];
         }
 
         current_position = [reached_x, 0.0];
 
         // Fill after primary saccade
-        for i in end_idx..n_samples {
-            gaze_position[i] = current_position;
+        for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
+            let i = end_idx + i_off;
+            *i_slot = current_position;
         }
 
         // Add corrective saccade if enabled (back to target)
@@ -467,21 +477,23 @@ impl SyntheticGenerator for HypermetricSaccadeGenerator {
             let corr_start_idx = (corrective_time * params.sampling_rate) as usize;
             let corr_end_idx = ((corrective_time + corrective_duration) * params.sampling_rate) as usize;
 
-            for i in corr_start_idx..std::cmp::min(corr_end_idx, n_samples) {
+            for (i_off, i_slot) in gaze_position[corr_start_idx..corr_end_idx.min(n_samples)].iter_mut().enumerate() {
+                let i = corr_start_idx + i_off;
                 let t_local = (i - corr_start_idx) as f64 * dt;
                 let progress = (t_local / corrective_duration).min(1.0);
                 let s = 10.0 * (progress - 0.5);
                 let position_progress = 1.0 / (1.0 + (-s).exp());
 
-                gaze_position[i] = [
+                *i_slot = [
                     reached_x - corrective_amplitude * position_progress,
                     0.0,
                 ];
             }
 
             // Fill rest
-            for i in corr_end_idx..n_samples {
-                gaze_position[i] = [target_x, 0.0];
+            for (i_off, i_slot) in gaze_position[corr_end_idx..n_samples].iter_mut().enumerate() {
+                let i = corr_end_idx + i_off;
+                *i_slot = [target_x, 0.0];
             }
         }
 
@@ -567,18 +579,20 @@ impl SyntheticGenerator for ExpressSaccadeGenerator {
             let start_idx = (saccade_time * params.sampling_rate) as usize;
             let end_idx = ((saccade_time + duration) * params.sampling_rate) as usize;
 
-            for i in start_idx..std::cmp::min(end_idx, n_samples) {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+                let i = start_idx + i_off;
                 let t_local = (i - start_idx) as f64 * dt;
                 let progress = (t_local / duration).min(1.0);
                 let s = 10.0 * (progress - 0.5);
                 let position_progress = 1.0 / (1.0 + (-s).exp());
-                gaze_position[i] = [params.amplitude * position_progress, 0.0];
+                *i_slot = [params.amplitude * position_progress, 0.0];
             }
 
             // Fill fixation after saccade
-            for i in end_idx..n_samples {
+            for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
+                let i = end_idx + i_off;
                 if i >= start_idx {
-                    gaze_position[i] = [params.amplitude, 0.0];
+                    *i_slot = [params.amplitude, 0.0];
                 }
             }
         }
@@ -670,17 +684,19 @@ impl SyntheticGenerator for DelayedSaccadeGenerator {
             let start_idx = (saccade_time * params.sampling_rate) as usize;
             let end_idx = ((saccade_time + duration) * params.sampling_rate) as usize;
 
-            for i in start_idx..std::cmp::min(end_idx, n_samples) {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+                let i = start_idx + i_off;
                 let t_local = (i - start_idx) as f64 * dt;
                 let progress = (t_local / duration).min(1.0);
                 let s = 10.0 * (progress - 0.5);
                 let position_progress = 1.0 / (1.0 + (-s).exp());
-                gaze_position[i] = [params.amplitude * position_progress, 0.0];
+                *i_slot = [params.amplitude * position_progress, 0.0];
             }
 
             // Fill after
-            for i in end_idx..n_samples {
-                gaze_position[i] = [params.amplitude, 0.0];
+            for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
+                let i = end_idx + i_off;
+                *i_slot = [params.amplitude, 0.0];
             }
         }
 
@@ -754,12 +770,13 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
         let start_idx = (primary_time * params.sampling_rate) as usize;
         let end_idx = ((primary_time + primary_duration) * params.sampling_rate) as usize;
 
-        for i in start_idx..std::cmp::min(end_idx, n_samples) {
+        for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+            let i = start_idx + i_off;
             let t_local = (i - start_idx) as f64 * dt;
             let progress = (t_local / primary_duration).min(1.0);
             let s = 10.0 * (progress - 0.5);
             let position_progress = 1.0 / (1.0 + (-s).exp());
-            gaze_position[i] = [primary_amplitude * position_progress, 0.0];
+            *i_slot = [primary_amplitude * position_progress, 0.0];
         }
 
         current_x = primary_amplitude;
@@ -771,8 +788,9 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
         });
 
         // Fill between saccades
-        for i in end_idx..n_samples {
-            gaze_position[i] = [current_x, 0.0];
+        for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
+            let i = end_idx + i_off;
+            *i_slot = [current_x, 0.0];
         }
 
         // Corrective saccades
@@ -794,12 +812,13 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
             let corr_start_idx = (correction_time * params.sampling_rate) as usize;
             let corr_end_idx = ((correction_time + correction_duration) * params.sampling_rate) as usize;
 
-            for i in corr_start_idx..std::cmp::min(corr_end_idx, n_samples) {
+            for (i_off, i_slot) in gaze_position[corr_start_idx..corr_end_idx.min(n_samples)].iter_mut().enumerate() {
+                let i = corr_start_idx + i_off;
                 let t_local = (i - corr_start_idx) as f64 * dt;
                 let progress = (t_local / correction_duration).min(1.0);
                 let s = 10.0 * (progress - 0.5);
                 let position_progress = 1.0 / (1.0 + (-s).exp());
-                gaze_position[i] = [current_x + correction_amplitude * position_progress, 0.0];
+                *i_slot = [current_x + correction_amplitude * position_progress, 0.0];
             }
 
             current_x += correction_amplitude;
@@ -815,8 +834,9 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
             });
 
             // Fill after this correction
-            for i in corr_end_idx..n_samples {
-                gaze_position[i] = [current_x, 0.0];
+            for (i_off, i_slot) in gaze_position[corr_end_idx..n_samples].iter_mut().enumerate() {
+                let i = corr_end_idx + i_off;
+                *i_slot = [current_x, 0.0];
             }
 
             correction_time += correction_duration + (params.corrective_delay / 1000.0);
@@ -908,13 +928,14 @@ impl SyntheticGenerator for SaccadeSequenceGenerator {
             let end_idx = ((current_time + saccade_duration) * params.sampling_rate) as usize;
 
             // Generate saccade
-            for i in start_idx..std::cmp::min(end_idx, n_samples) {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+                let i = start_idx + i_off;
                 let t_local = (i - start_idx) as f64 * dt;
                 let progress = (t_local / saccade_duration).min(1.0);
                 let s = 10.0 * (progress - 0.5);
                 let position_progress = 1.0 / (1.0 + (-s).exp());
 
-                gaze_position[i] = [
+                *i_slot = [
                     current_pos[0] + dx * position_progress,
                     current_pos[1] + dy * position_progress,
                 ];
@@ -945,17 +966,17 @@ impl SyntheticGenerator for SaccadeSequenceGenerator {
             let fix_start_idx = (current_time * params.sampling_rate) as usize;
             let fix_end_idx = ((current_time + fixation_duration) * params.sampling_rate) as usize;
 
-            for i in fix_start_idx..std::cmp::min(fix_end_idx, n_samples) {
-                gaze_position[i] = current_pos;
+            for (i_off, i_slot) in gaze_position[fix_start_idx..fix_end_idx.min(n_samples)].iter_mut().enumerate() {
+                let i = fix_start_idx + i_off;
+                *i_slot = current_pos;
             }
 
             current_time += fixation_duration;
         }
 
         // Fill remaining time
-        for i in ((current_time * params.sampling_rate) as usize)..n_samples {
-            gaze_position[i] = current_pos;
-        }
+        gaze_position[((current_time * params.sampling_rate) as usize)..n_samples]
+            .fill(current_pos);
 
         let ground_truth = SpatialGroundTruth {
             keypoints: Vec::new(),
@@ -1049,13 +1070,14 @@ impl SyntheticGenerator for MemoryGuidedSaccadeGenerator {
             let end_idx = ((saccade_time + saccade_duration) * params.sampling_rate) as usize;
 
             // Generate saccade
-            for i in start_idx..std::cmp::min(end_idx, n_samples) {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+                let i = start_idx + i_off;
                 let t_local = (i - start_idx) as f64 * dt;
                 let progress = (t_local / saccade_duration).min(1.0);
                 let s = 10.0 * (progress - 0.5);
                 let position_progress = 1.0 / (1.0 + (-s).exp());
 
-                gaze_position[i] = [
+                *i_slot = [
                     dx * position_progress,
                     dy * position_progress,
                 ];
@@ -1077,8 +1099,9 @@ impl SyntheticGenerator for MemoryGuidedSaccadeGenerator {
             });
 
             // Fill after saccade
-            for i in end_idx..n_samples {
-                gaze_position[i] = remembered_target;
+            for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
+                let i = end_idx + i_off;
+                *i_slot = remembered_target;
             }
         }
 

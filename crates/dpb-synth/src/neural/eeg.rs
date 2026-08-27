@@ -260,6 +260,9 @@ impl EegGenerator {
                 for ch in 1..self.channels {
                     signal[ch] = self.generate_channel(duration_sec, &BandPowerConfig::default());
                     // Add attenuated focal activity
+                    // Reads channel 0 while writing channel ch, so both
+                    // borrows cannot be iterators over `signal`.
+                    #[allow(clippy::needless_range_loop)]
                     for i in 0..n_samples {
                         signal[ch][i] += signal[0][i] * 0.3 / (ch as f64);
                     }
@@ -444,17 +447,17 @@ impl EegGenerator {
         let mut signal = vec![0.0; n_samples];
         let samples_per_cycle = (self.sample_rate / frequency) as usize;
 
-        for i in 0..n_samples {
+        for (i, i_slot) in signal.iter_mut().enumerate() {
             let cycle_pos = i % samples_per_cycle;
             let t = cycle_pos as f64 / samples_per_cycle as f64;
 
             // Spike-wave: sharp spike followed by slow wave
             if t < 0.2 {
                 // Sharp spike
-                signal[i] = 200.0 * (PI * t / 0.2).sin();
+                *i_slot = 200.0 * (PI * t / 0.2).sin();
             } else {
                 // Slow wave
-                signal[i] = -100.0 * (PI * (t - 0.2) / 0.8).sin();
+                *i_slot = -100.0 * (PI * (t - 0.2) / 0.8).sin();
             }
         }
 
@@ -478,7 +481,7 @@ fn generate_oscillation(
     let amp_mod_freq = 0.5; // Slow amplitude modulation
 
     let mut phase: f64 = 0.0;
-    for i in 0..n_samples {
+    for (i, i_slot) in signal.iter_mut().enumerate() {
         let t = i as f64 / sample_rate;
 
         // Amplitude modulation
@@ -488,7 +491,7 @@ fn generate_oscillation(
         let freq_inst = frequency + freq_jitter.sample(&mut rng);
         let phase_increment = 2.0 * PI * freq_inst / sample_rate;
 
-        signal[i] = amplitude * amp_envelope * phase.sin();
+        *i_slot = amplitude * amp_envelope * phase.sin();
         phase += phase_increment;
 
         // Keep phase in bounds
@@ -510,7 +513,7 @@ fn generate_pink_noise(n_samples: usize) -> Vec<f64> {
     // (Voss-McCartney algorithm approximation)
     let mut generators = [0.0; 16];
 
-    for i in 0..n_samples {
+    for (i, i_slot) in signal.iter_mut().enumerate() {
         // Update generators based on bit pattern
         let mut sum = 0.0;
         let mut bit = i;
@@ -522,7 +525,7 @@ fn generate_pink_noise(n_samples: usize) -> Vec<f64> {
             bit >>= 1;
         }
 
-        signal[i] = sum / 16.0;
+        *i_slot = sum / 16.0;
     }
 
     signal

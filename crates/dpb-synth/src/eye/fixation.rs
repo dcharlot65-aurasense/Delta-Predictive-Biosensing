@@ -123,13 +123,14 @@ impl SyntheticGenerator for MicrosaccadeGenerator {
             let start_idx = (ms_time * params.sampling_rate) as usize;
             let end_idx = ((ms_time + duration_s) * params.sampling_rate) as usize;
 
-            for i in start_idx..std::cmp::min(end_idx, n_samples) {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+                let i = start_idx + i_off;
                 let t_local = (i - start_idx) as f64 * dt;
                 let progress = (t_local / duration_s).min(1.0);
                 let s = 10.0 * (progress - 0.5);
                 let position_progress = 1.0 / (1.0 + (-s).exp());
 
-                gaze_position[i] = [
+                *i_slot = [
                     current_pos[0] + (target_pos[0] - current_pos[0]) * position_progress,
                     current_pos[1] + (target_pos[1] - current_pos[1]) * position_progress,
                 ];
@@ -138,8 +139,9 @@ impl SyntheticGenerator for MicrosaccadeGenerator {
             if end_idx < n_samples {
                 current_pos = target_pos;
                 // Fill until next microsaccade
-                for i in end_idx..n_samples {
-                    gaze_position[i] = current_pos;
+                for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
+                    let i = end_idx + i_off;
+                    *i_slot = current_pos;
                 }
             }
         }
@@ -210,8 +212,9 @@ impl SyntheticGenerator for SquareWaveJerksGenerator {
             let start_idx1 = (jerk_time * params.sampling_rate) as usize;
             let end_idx1 = ((jerk_time + 0.02) * params.sampling_rate) as usize; // 20ms
 
-            for i in start_idx1..std::cmp::min(end_idx1, n_samples) {
-                gaze_position[i] = [
+            for (i_off, i_slot) in gaze_position[start_idx1..end_idx1.min(n_samples)].iter_mut().enumerate() {
+                let i = start_idx1 + i_off;
+                *i_slot = [
                     params.fixation_position[0] + params.jerk_amplitude * direction,
                     params.fixation_position[1],
                 ];
@@ -222,8 +225,9 @@ impl SyntheticGenerator for SquareWaveJerksGenerator {
             let end_idx2 = ((jerk_time + params.intersaccadic_interval + 0.02) * params.sampling_rate) as usize;
 
             // Second saccade (back to fixation)
-            for i in start_idx2..std::cmp::min(end_idx2, n_samples) {
-                gaze_position[i] = params.fixation_position;
+            for (i_off, i_slot) in gaze_position[start_idx2..end_idx2.min(n_samples)].iter_mut().enumerate() {
+                let i = start_idx2 + i_off;
+                *i_slot = params.fixation_position;
             }
         }
 
@@ -385,7 +389,8 @@ impl SyntheticGenerator for FixationDurationGenerator {
 
             // Stable fixation with small drift
             let mut current_pos = target;
-            for i in start_idx..std::cmp::min(end_idx, n_samples) {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+                let i = start_idx + i_off;
                 current_pos[0] += drift_dist.sample(&mut rng);
                 current_pos[1] += drift_dist.sample(&mut rng);
 
@@ -393,7 +398,7 @@ impl SyntheticGenerator for FixationDurationGenerator {
                 current_pos[0] += (target[0] - current_pos[0]) * 0.01;
                 current_pos[1] += (target[1] - current_pos[1]) * 0.01;
 
-                gaze_position[i] = current_pos;
+                *i_slot = current_pos;
             }
 
             current_time += duration;
@@ -480,7 +485,8 @@ impl SyntheticGenerator for OcularFlutterGenerator {
             // Random direction for this burst
             let direction = if rng.random::<bool>() { 1.0 } else { -1.0 };
 
-            for i in start_idx..std::cmp::min(end_idx, n_samples) {
+            for (i_off, i_slot) in gaze_position[start_idx..end_idx.min(n_samples)].iter_mut().enumerate() {
+                let i = start_idx + i_off;
                 let t_local = (i - start_idx) as f64 * dt;
                 let phase = 2.0 * std::f64::consts::PI * params.flutter_frequency * t_local;
 
@@ -488,7 +494,7 @@ impl SyntheticGenerator for OcularFlutterGenerator {
                 let envelope = (1.0 - (t_local / params.flutter_duration - 0.5).abs() * 2.0).max(0.0);
                 let oscillation = params.flutter_amplitude * phase.sin() * envelope * direction;
 
-                gaze_position[i] = [
+                *i_slot = [
                     params.fixation_position[0] + oscillation,
                     params.fixation_position[1],
                 ];

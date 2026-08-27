@@ -387,9 +387,9 @@ impl ErpGenerator {
             let comp_signal = self.generate_component(comp, n_samples, stimulus_onset);
 
             // Add to all channels (with topographic weighting in future)
-            for ch in 0..self.config.channels {
+            for channel in erp_only.iter_mut().take(self.config.channels) {
                 for (i, &s) in comp_signal.iter().enumerate() {
-                    erp_only[ch][i] += s;
+                    channel[i] += s;
                 }
             }
 
@@ -449,7 +449,7 @@ impl ErpGenerator {
         let width_s = component.width_ms / 1000.0;
 
         // Gaussian wavelet shape
-        for i in 0..n_samples {
+        for (i, i_slot) in waveform.iter_mut().enumerate() {
             let t = i as f64 * dt;
             let t_relative = t - peak_time;
 
@@ -457,7 +457,7 @@ impl ErpGenerator {
             let sigma = width_s / 2.355; // FWHM to sigma
             let envelope = (-t_relative.powi(2) / (2.0 * sigma.powi(2))).exp();
 
-            waveform[i] = component.amplitude_uv * envelope;
+            *i_slot = component.amplitude_uv * envelope;
         }
 
         waveform
@@ -475,7 +475,7 @@ impl ErpGenerator {
         // Pink noise component
         let mut pink_state = 0.0;
 
-        for i in 0..n_samples {
+        for (i, i_slot) in background.iter_mut().enumerate() {
             let t = i as f64 / self.config.sample_rate;
 
             // Alpha oscillation
@@ -489,7 +489,7 @@ impl ErpGenerator {
             // White noise
             let white_component: f64 = self.rng.sample(noise_dist) * self.config.background_amplitude * 0.2;
 
-            background[i] = alpha + pink + white_component;
+            *i_slot = alpha + pink + white_component;
         }
 
         background
