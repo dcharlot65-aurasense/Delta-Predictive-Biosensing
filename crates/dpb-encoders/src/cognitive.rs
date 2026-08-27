@@ -477,7 +477,6 @@ impl EventEncoder for LapseEncoder {
         let samples_per_frame = num_channels.max(1);
         let num_frames = samples.len() / samples_per_frame;
 
-        let mut lapse_count = 0;
         let mut recent_lapses = Vec::new();
 
         for i in 0..num_frames {
@@ -496,7 +495,6 @@ impl EventEncoder for LapseEncoder {
             };
 
             if is_lapse {
-                lapse_count += 1;
                 recent_lapses.push(i);
                 events.push(SpikeEvent::new(time, 0, -1, rt.max(0.0)));
             }

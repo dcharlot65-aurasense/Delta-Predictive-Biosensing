@@ -300,8 +300,7 @@ impl EventEncoder for NystagmusEncoder {
         let mut slow_phase_sum = 0.0_f32;
         let mut slow_phase_count = 0;
 
-        for i in 1..samples.len() {
-            let velocity = samples[i];
+        for (i, &velocity) in samples.iter().enumerate().skip(1) {
             let abs_velocity = velocity.abs();
             let time = i as f64 * dt;
 
@@ -463,8 +462,8 @@ impl EventEncoder for CaloricEncoder {
         let mut peak_spv = 0.0_f32;
         let mut peak_idx = 0;
 
-        for i in 0..analysis_length {
-            let abs_spv = smoothed[i].abs();
+        for (i, &spv) in smoothed.iter().enumerate().take(analysis_length) {
+            let abs_spv = spv.abs();
 
             // Detect response onset
             if !response_started && abs_spv > config.peak_spv_threshold {

@@ -218,7 +218,7 @@ impl DendriticPlasticity for BranchSpecificPlasticity {
             -learning_rate * (-dt_spike / 20.0).exp()
         };
 
-        (current_weight + dw).max(0.0).min(2.0)
+        (current_weight + dw).clamp(0.0, 2.0)
     }
 
     fn reset(&mut self) {
@@ -295,7 +295,7 @@ impl DendriticPlasticity for CompartmentPlasticity {
             -learning_rate * (-dt_spike / 20.0).exp()
         };
 
-        (current_weight + dw).max(0.0).min(2.0)
+        (current_weight + dw).clamp(0.0, 2.0)
     }
 
     fn reset(&mut self) {
@@ -388,7 +388,7 @@ impl DendriticPlasticity for Heterosynaptic {
         let hetero_mod = 0.0; // Would need synapse context
 
         let dw = base_dw + hetero_mod;
-        (current_weight + dw).max(0.0).min(2.0)
+        (current_weight + dw).clamp(0.0, 2.0)
     }
 
     fn reset(&mut self) {
@@ -498,7 +498,7 @@ impl DendriticPlasticity for Metaplasticity {
         let activity = self.latest_activity();
         let dw = self.bcm_rule(activity);
 
-        (current_weight + dw).max(0.0).min(2.0)
+        (current_weight + dw).clamp(0.0, 2.0)
     }
 
     fn reset(&mut self) {

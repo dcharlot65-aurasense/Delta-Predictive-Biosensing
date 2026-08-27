@@ -329,7 +329,7 @@ impl DendriticSynapse {
     pub fn modify_weight(&mut self, delta: f64) {
         self.config.weight += delta;
         // Clip to reasonable range
-        self.config.weight = self.config.weight.max(0.0).min(10.0);
+        self.config.weight = self.config.weight.clamp(0.0, 10.0);
     }
 
     /// Get distance from soma

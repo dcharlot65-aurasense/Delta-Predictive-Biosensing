@@ -246,6 +246,13 @@ pub use balance::*;
 pub use base::*;
 pub use cardiopulmonary::*;
 pub use cognitive::*;
+// `contact` and `hand` each contain a `tremor` module, so the globs make
+// the bare name `dpb_encoders::tremor` ambiguous. The types inside are
+// uniquely named (TremorLevelCrossingEncoder vs HandTremorEncoder) and
+// still come through, and both modules stay reachable as
+// `contact::tremor` / `hand::tremor`, so only the unqualified module
+// path is affected.
+#[allow(ambiguous_glob_reexports)]
 pub use contact::*;
 pub use eeg::*;
 pub use eye::*;

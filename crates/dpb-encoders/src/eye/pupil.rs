@@ -156,11 +156,11 @@ impl PupilLightReflexEncoder {
         let mut max_constriction = 0.0;
         let mut max_idx = start_idx;
 
-        for i in start_idx..end_idx {
-            let constriction = baseline - samples[i];
+        for (offset, &sample) in samples[start_idx..end_idx].iter().enumerate() {
+            let constriction = baseline - sample;
             if constriction > max_constriction {
                 max_constriction = constriction;
-                max_idx = i;
+                max_idx = start_idx + offset;
             }
         }
 

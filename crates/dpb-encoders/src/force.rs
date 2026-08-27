@@ -451,12 +451,8 @@ impl RfdEncoder {
     }
 
     fn find_force_onset(samples: &[f32], threshold: f32) -> Option<usize> {
-        for i in 1..samples.len() {
-            if samples[i] > threshold && samples[i - 1] <= threshold {
-                return Some(i);
-            }
-        }
-        None
+        // The first upward crossing of the threshold.
+        (1..samples.len()).find(|&i| samples[i] > threshold && samples[i - 1] <= threshold)
     }
 }
 

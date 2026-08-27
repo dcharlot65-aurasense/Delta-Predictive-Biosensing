@@ -142,9 +142,9 @@ pub enum SynapticInput {
 
 impl SynapticInput {
     /// Convert to effective current given membrane potential.
-    pub fn to_current(&self, v: f32) -> f32 {
+    pub fn to_current(self, v: f32) -> f32 {
         match self {
-            SynapticInput::Current(i) => *i,
+            SynapticInput::Current(i) => i,
             SynapticInput::Excitatory { g, e_rev } => g * (e_rev - v),
             SynapticInput::Inhibitory { g, e_rev } => g * (e_rev - v),
         }

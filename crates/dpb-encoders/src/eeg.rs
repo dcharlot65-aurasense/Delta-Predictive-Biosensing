@@ -1007,12 +1007,11 @@ fn goertzel_power(samples: &[f32], sample_rate: f32, target_freq: f32) -> f32 {
     let omega = 2.0 * PI * k / n as f32;
     let coeff = 2.0 * omega.cos();
 
-    let mut s0 = 0.0_f32;
     let mut s1 = 0.0_f32;
     let mut s2 = 0.0_f32;
 
     for &sample in samples {
-        s0 = sample + coeff * s1 - s2;
+        let s0 = sample + coeff * s1 - s2;
         s2 = s1;
         s1 = s0;
     }
@@ -1097,15 +1096,12 @@ fn calculate_envelope(samples: &[f32]) -> Vec<f32> {
     let mut envelope = vec![0.0_f32; samples.len()];
     let window = 5; // Small window for local amplitude
 
-    for i in 0..samples.len() {
+    for (i, slot) in envelope.iter_mut().enumerate() {
         let start = i.saturating_sub(window);
         let end = (i + window + 1).min(samples.len());
-
-        let mut max_val = 0.0_f32;
-        for j in start..end {
-            max_val = max_val.max(samples[j].abs());
-        }
-        envelope[i] = max_val;
+        *slot = samples[start..end]
+            .iter()
+            .fold(0.0_f32, |acc, s| acc.max(s.abs()));
     }
 
     envelope
