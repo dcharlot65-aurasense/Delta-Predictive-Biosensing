@@ -274,7 +274,11 @@ pub struct AlsModel {
     pub laterality: Laterality,
 }
 
-/// ALS onset type
+/// ALS onset type.
+///
+/// Every variant names an onset site, so the shared suffix is the
+/// clinical vocabulary rather than redundancy.
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AlsOnsetType {
     /// Limb onset (most common, ~70%)

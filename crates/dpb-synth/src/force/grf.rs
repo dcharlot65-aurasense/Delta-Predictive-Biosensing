@@ -89,7 +89,6 @@ impl GrfGenerator {
         let mut events = Vec::new();
 
         let mut time = 0.0;
-        let mut step_count = 0;
         let mut is_left = true;
 
         while time < duration {
@@ -169,7 +168,6 @@ impl GrfGenerator {
 
             time += stride_time / 2.0; // Alternate feet
             is_left = !is_left;
-            step_count += 1;
         }
 
         // Add noise

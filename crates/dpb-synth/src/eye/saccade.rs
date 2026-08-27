@@ -160,7 +160,7 @@ impl SyntheticGenerator for HypometricSaccadeGenerator {
         let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut gaze_position = vec![[0.0, 0.0]; n_samples];
-        let mut current_position = [0.0, 0.0];
+        
 
         // Primary saccade at 1 second
         let saccade_time = 1.0;
@@ -183,7 +183,7 @@ impl SyntheticGenerator for HypometricSaccadeGenerator {
             *i_slot = [reached_x * position_progress, 0.0];
         }
 
-        current_position = [reached_x, 0.0];
+        let current_position = [reached_x, 0.0];
 
         // Fill after primary saccade
         for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
@@ -437,7 +437,7 @@ impl SyntheticGenerator for HypermetricSaccadeGenerator {
         let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut gaze_position = vec![[0.0, 0.0]; n_samples];
-        let mut current_position = [0.0, 0.0];
+        
 
         // Primary saccade at 1 second (overshoots target)
         let saccade_time = 1.0;
@@ -460,7 +460,7 @@ impl SyntheticGenerator for HypermetricSaccadeGenerator {
             *i_slot = [reached_x * position_progress, 0.0];
         }
 
-        current_position = [reached_x, 0.0];
+        let current_position = [reached_x, 0.0];
 
         // Fill after primary saccade
         for (i_off, i_slot) in gaze_position[end_idx..n_samples].iter_mut().enumerate() {
@@ -759,7 +759,7 @@ impl SyntheticGenerator for CorrectiveSaccadeGenerator {
         let _rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let mut gaze_position = vec![[0.0, 0.0]; n_samples];
-        let mut current_x = 0.0;
+        let mut current_x;
         let mut events = Vec::new();
 
         // Primary saccade

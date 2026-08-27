@@ -331,6 +331,11 @@ pub struct VoiceOnsetTimeParams {
     pub variability: f64, // 0-1
 }
 
+/// Stop consonants, distinguished by voice onset time.
+///
+/// The shared suffix is the point: every variant is a stop, and what
+/// separates them is voicing and aspiration.
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone)]
 pub enum ConsonantType {
     VoicedStop,      // VOT: -100 to 0 ms (e.g., /b/, /d/, /g/)

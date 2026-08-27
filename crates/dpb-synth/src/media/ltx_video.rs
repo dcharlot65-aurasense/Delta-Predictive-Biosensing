@@ -455,6 +455,9 @@ print('RESULT_JSON:' + json.dumps(result))
 
 /// Wan 2.2 video generator (higher quality, slower)
 #[derive(Debug)]
+// Held for an integration that is not wired up yet. Kept rather than
+// removed so a caller's configuration is not silently discarded.
+#[allow(dead_code)]
 pub struct Wan22Generator {
     config: DiffusionConfig,
 }
@@ -476,6 +479,9 @@ impl Wan22Generator {
 
 /// HunyuanVideo generator
 #[derive(Debug)]
+// Held for an integration that is not wired up yet. Kept rather than
+// removed so a caller's configuration is not silently discarded.
+#[allow(dead_code)]
 pub struct HunyuanVideoGenerator {
     config: DiffusionConfig,
 }

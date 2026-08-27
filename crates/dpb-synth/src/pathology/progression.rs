@@ -169,7 +169,7 @@ impl DiseaseProgression {
     pub fn ms_rrms(years: u32, relapses_per_year: f64) -> Self {
         let mut trajectory = Vec::new();
         let mut current_score = 1.0;
-        let mut current_stage = DiseaseStage::Early;
+        let mut current_stage;
 
         // Simulate monthly with relapses
         let total_months = years * 12;

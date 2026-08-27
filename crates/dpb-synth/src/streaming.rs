@@ -1992,7 +1992,7 @@ impl FrameStreamingGenerator for StreamingPose {
         // Upper body (simplified - roughly stationary relative to pelvis)
         let torso_height = state.height * 0.3;
         for (i_off, i_slot) in keypoints[11..23].iter_mut().enumerate() {
-            let i = 11 + i_off;
+            let _i = 11 + i_off;
             *i_slot = [0.0, pelvis_y + torso_height * 0.5, pelvis_z];
         }
 
@@ -2209,7 +2209,7 @@ impl FrameStreamingGenerator for StreamingHand {
                 landmarks[0][2] + base[2],
             ];
 
-            for (_joint, &length) in lengths.iter().enumerate() {
+            for &length in lengths.iter() {
                 pos[0] += length * curl_angle.cos();
                 pos[2] -= length * curl_angle.sin();
                 landmarks[idx] = pos;
@@ -2986,6 +2986,9 @@ impl Default for StreamingDdkParams {
     }
 }
 
+// Held for an integration that is not wired up yet. Kept rather than
+// removed so a caller's configuration is not silently discarded.
+#[allow(dead_code)]
 pub struct StreamingDdkState {
     sample_idx: usize,
     dt: f64,
@@ -3759,6 +3762,9 @@ impl StreamingClinicalHandParams {
     }
 }
 
+// Held for an integration that is not wired up yet. Kept rather than
+// removed so a caller's configuration is not silently discarded.
+#[allow(dead_code)]
 pub struct StreamingClinicalHandState {
     frame_idx: usize,
     dt: f64,

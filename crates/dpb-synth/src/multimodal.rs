@@ -714,7 +714,7 @@ impl SyntheticGenerator for SaccadeReactionTimeCouplingGenerator {
             if end_idx < n_samples {
                 current_position = target_position;
                 for (i_off, i_slot) in saccade_positions[end_idx..n_samples].iter_mut().enumerate() {
-                    let i = end_idx + i_off;
+                    let _i = end_idx + i_off;
                     *i_slot = current_position;
                 }
             }
@@ -813,7 +813,7 @@ impl SyntheticGenerator for PupilVoiceAffectGenerator {
         let tau = 1.0; // time constant for exponential smoothing
 
         let mut arousal_level = Vec::with_capacity(n_samples);
-        let mut target_arousal = 0.0;
+        let mut target_arousal;
         let mut current_arousal = 0.0;
 
         // Generate smooth arousal trajectory

@@ -33,6 +33,9 @@ use std::process::Command;
 
 /// Chatterbox TTS wrapper
 #[derive(Debug)]
+// Held for an integration that is not wired up yet. Kept rather than
+// removed so a caller's configuration is not silently discarded.
+#[allow(dead_code)]
 pub struct ChatterboxTTS {
     config: ChatterboxConfig,
     python_path: PathBuf,
@@ -677,6 +680,9 @@ print(json.dumps(voices))
 
 /// F5-TTS integration (diffusion-based)
 #[derive(Debug)]
+// Held for an integration that is not wired up yet. Kept rather than
+// removed so a caller's configuration is not silently discarded.
+#[allow(dead_code)]
 pub struct F5TTS {
     config: F5TTSConfig,
 }
@@ -703,6 +709,9 @@ impl F5TTS {
 
 /// Kokoro TTS integration (lightweight)
 #[derive(Debug)]
+// Held for an integration that is not wired up yet. Kept rather than
+// removed so a caller's configuration is not silently discarded.
+#[allow(dead_code)]
 pub struct KokoroTTS {
     config: KokoroConfig,
 }

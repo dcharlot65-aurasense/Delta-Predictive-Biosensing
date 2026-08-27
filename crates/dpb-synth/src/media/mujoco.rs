@@ -27,6 +27,9 @@ use std::collections::HashMap;
 
 /// MuJoCo simulator wrapper
 #[derive(Debug)]
+// Held for an integration that is not wired up yet. Kept rather than
+// removed so a caller's configuration is not silently discarded.
+#[allow(dead_code)]
 pub struct MuJoCoSimulator {
     config: MuJoCoConfig,
     python_path: PathBuf,

@@ -414,7 +414,6 @@ impl AutonomicStateGenerator {
         let mut current_state = &params.state_transitions[0].1;
         let mut current_time = params.state_transitions[0].0;
         let mut next_state = None;
-        let mut next_time = params.duration;
 
         for i in 0..params.state_transitions.len() {
             if t >= params.state_transitions[i].0 {
@@ -423,7 +422,6 @@ impl AutonomicStateGenerator {
 
                 if i + 1 < params.state_transitions.len() {
                     next_state = Some(&params.state_transitions[i + 1].1);
-                    next_time = params.state_transitions[i + 1].0;
                 }
             }
         }

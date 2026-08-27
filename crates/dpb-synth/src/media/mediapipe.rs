@@ -1053,6 +1053,9 @@ pub enum GestureCategory {
     ILoveYou,
 }
 
+// Held for an integration that is not wired up yet. Kept rather than
+// removed so a caller's configuration is not silently discarded.
+#[allow(dead_code)]
 impl GestureCategory {
     fn from_str(s: &str) -> Self {
         match s.to_lowercase().as_str() {
@@ -1880,6 +1883,9 @@ pub enum BiosignalAudioCategory {
     Noise,
 }
 
+// Held for an integration that is not wired up yet. Kept rather than
+// removed so a caller's configuration is not silently discarded.
+#[allow(dead_code)]
 impl BiosignalAudioCategory {
     fn from_yamnet_label(label: &str) -> Option<Self> {
         let lower = label.to_lowercase();

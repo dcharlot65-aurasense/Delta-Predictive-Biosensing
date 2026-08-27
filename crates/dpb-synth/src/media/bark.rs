@@ -210,7 +210,8 @@ impl BarkPrompt {
     fn build_text(&self) -> String {
         let mut result = self.text.clone();
         let mut tags: Vec<_> = self.tags.clone();
-        tags.sort_by(|a, b| b.0.cmp(&a.0)); // Sort descending to insert from end
+        // Descending, so inserting from the end keeps earlier offsets valid.
+        tags.sort_by_key(|t| std::cmp::Reverse(t.0));
 
         for (pos, tag) in tags {
             let pos = pos.min(result.len());

@@ -378,38 +378,46 @@ impl MediaPipeline {
         };
 
         let blender = if config.video_backend == VideoBackend::Blender {
-            let mut bc = BlenderConfig::default();
-            bc.resolution = config.video_resolution;
-            bc.fps = config.fps;
-            bc.output_dir = config.output_dir.join("video");
+            let bc = BlenderConfig {
+                resolution: config.video_resolution,
+                fps: config.fps,
+                output_dir: config.output_dir.join("video"),
+                ..Default::default()
+            };
             BlenderRenderer::new(bc).ok()
         } else {
             None
         };
 
         let ltx_video = if config.video_backend == VideoBackend::LTXVideo {
-            let mut dc = DiffusionConfig::default();
-            dc.resolution = config.video_resolution;
-            dc.fps = config.fps;
-            dc.output_dir = config.output_dir.join("video");
-            dc.seed = config.seed;
+            let dc = DiffusionConfig {
+                resolution: config.video_resolution,
+                fps: config.fps,
+                output_dir: config.output_dir.join("video"),
+                seed: config.seed,
+                ..Default::default()
+            };
             LTXVideoGenerator::new(dc).ok()
         } else {
             None
         };
 
         let chatterbox = if config.audio_backend == AudioBackend::Chatterbox {
-            let mut cc = ChatterboxConfig::default();
-            cc.sample_rate = config.audio_sample_rate;
-            cc.output_dir = config.output_dir.join("audio");
+            let cc = ChatterboxConfig {
+                sample_rate: config.audio_sample_rate,
+                output_dir: config.output_dir.join("audio"),
+                ..Default::default()
+            };
             ChatterboxTTS::new(cc).ok()
         } else {
             None
         };
 
         let mediapipe = if config.enable_validation {
-            let mut mc = MediaPipeConfig::default();
-            mc.output_dir = config.output_dir.join("validation");
+            let mc = MediaPipeConfig {
+                output_dir: config.output_dir.join("validation"),
+                ..Default::default()
+            };
             MediaPipeExtractor::new(mc).ok()
         } else {
             None
@@ -548,8 +556,12 @@ impl MediaPipeline {
 
     /// Convert scenario to gait parameters
     fn scenario_to_gait_params(&self, scenario: &SyntheticScenario) -> mujoco::GaitSimParams {
-        let mut params = mujoco::GaitSimParams::default();
-        params.duration = scenario.duration;
+        // `mut` is still needed: the match arms below set condition-specific
+        // fields.
+        let mut params = mujoco::GaitSimParams {
+            duration: scenario.duration,
+            ..Default::default()
+        };
 
         match &scenario.condition {
             Condition::Parkinsons(pd) => {
@@ -1371,6 +1383,9 @@ if __name__ == '__main__':
 
 /// Internal result from motion simulation
 #[derive(Debug)]
+// Held for an integration that is not wired up yet. Kept rather than
+// removed so a caller's configuration is not silently discarded.
+#[allow(dead_code)]
 struct MotionSimulationResult {
     trajectory: Option<MotionTrajectory>,
     tremor_data: Option<opensim::TremorSimulationResult>,
