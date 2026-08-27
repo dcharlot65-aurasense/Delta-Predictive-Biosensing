@@ -53,9 +53,12 @@ impl PopulationTemplate for PauseDurationTemplate {
 // Speech Rate Encoder
 // ============================================================================
 
+/// Configuration for [`SpeechRateEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpeechRateConfig {
+    /// Analysis window length, in seconds.
     pub window_size: f64, // seconds
+    /// Detection threshold, in syllables/second.
     pub threshold: f32,    // syllables/second deviation
 }
 
@@ -68,11 +71,13 @@ impl Default for SpeechRateConfig {
     }
 }
 
+/// Speech rate encoder.
 pub struct SpeechRateEncoder {
     template: SpeechRateTemplate,
 }
 
 impl SpeechRateEncoder {
+    /// Creates a new [`SpeechRateEncoder`].
     pub fn new() -> Self {
         Self {
             template: SpeechRateTemplate,
@@ -142,9 +147,12 @@ impl EventEncoder for SpeechRateEncoder {
 // Pause Encoder
 // ============================================================================
 
+/// Configuration for [`PauseEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PauseConfig {
+    /// Shortest pause counted, in seconds.
     pub min_pause_duration: f64, // seconds
+    /// Signal energy above which an event is emitted.
     pub energy_threshold: f32,
 }
 
@@ -157,9 +165,11 @@ impl Default for PauseConfig {
     }
 }
 
+/// Pause encoder.
 pub struct PauseEncoder;
 
 impl PauseEncoder {
+    /// Creates a new [`PauseEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -220,9 +230,12 @@ impl EventEncoder for PauseEncoder {
 // Intonation Encoder
 // ============================================================================
 
+/// Configuration for [`IntonationEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntonationConfig {
+    /// Analysis window length.
     pub window_size: usize,
+    /// Detection threshold, in Hz/s.
     pub threshold: f32, // Hz/s pitch change rate
 }
 
@@ -235,9 +248,11 @@ impl Default for IntonationConfig {
     }
 }
 
+/// Intonation encoder.
 pub struct IntonationEncoder;
 
 impl IntonationEncoder {
+    /// Creates a new [`IntonationEncoder`].
     pub fn new() -> Self {
         Self
     }

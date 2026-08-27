@@ -45,9 +45,12 @@ impl PopulationTemplate for PathologicalTremorTemplate {
 // Tremor Level Crossing Encoder (3-axis)
 // ============================================================================
 
+/// Configuration for [`TremorLevelCrossingEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TremorLevelCrossingConfig {
+    /// Detection threshold.
     pub threshold: f32,
+    /// Which axis to analyse.
     pub axis: usize, // 0=X, 1=Y, 2=Z, 3=magnitude
 }
 
@@ -60,9 +63,11 @@ impl Default for TremorLevelCrossingConfig {
     }
 }
 
+/// Tremor level crossing encoder.
 pub struct TremorLevelCrossingEncoder;
 
 impl TremorLevelCrossingEncoder {
+    /// Creates a new [`TremorLevelCrossingEncoder`].
     pub fn new() -> Self {
         Self
     }
@@ -123,10 +128,14 @@ impl EventEncoder for TremorLevelCrossingEncoder {
 // Tremor Frequency Encoder
 // ============================================================================
 
+/// Configuration for [`TremorFrequencyEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TremorFrequencyConfig {
+    /// Analysis window length.
     pub window_size: usize,
+    /// Frequency of interest, in Hz.
     pub target_frequency: f32, // Hz
+    /// Half-width of the band around the target frequency.
     pub frequency_tolerance: f32,
 }
 
@@ -140,9 +149,11 @@ impl Default for TremorFrequencyConfig {
     }
 }
 
+/// Tremor frequency encoder.
 pub struct TremorFrequencyEncoder;
 
 impl TremorFrequencyEncoder {
+    /// Creates a new [`TremorFrequencyEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -203,9 +214,12 @@ impl EventEncoder for TremorFrequencyEncoder {
 // Tremor Amplitude Encoder
 // ============================================================================
 
+/// Configuration for [`TremorAmplitudeEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TremorAmplitudeConfig {
+    /// Analysis window length.
     pub window_size: usize,
+    /// Detection threshold.
     pub threshold: f32,
 }
 
@@ -218,9 +232,11 @@ impl Default for TremorAmplitudeConfig {
     }
 }
 
+/// Tremor amplitude encoder.
 pub struct TremorAmplitudeEncoder;
 
 impl TremorAmplitudeEncoder {
+    /// Creates a new [`TremorAmplitudeEncoder`].
     pub fn new() -> Self {
         Self
     }

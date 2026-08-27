@@ -49,9 +49,12 @@ impl PopulationTemplate for EdaScrTemplate {
 // EDA Level Crossing Encoder
 // ============================================================================
 
+/// Configuration for [`EdaLevelCrossingEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EdaLevelCrossingConfig {
+    /// Detection threshold, in μS.
     pub threshold: f32,
+    /// Minimum time before another event may be emitted, in seconds.
     pub refractory_period: f64,
 }
 
@@ -64,9 +67,11 @@ impl Default for EdaLevelCrossingConfig {
     }
 }
 
+/// EDA level crossing encoder.
 pub struct EdaLevelCrossingEncoder;
 
 impl EdaLevelCrossingEncoder {
+    /// Creates a new [`EdaLevelCrossingEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -117,10 +122,14 @@ impl EventEncoder for EdaLevelCrossingEncoder {
 // EDA SCR (Skin Conductance Response) Encoder
 // ============================================================================
 
+/// Configuration for [`EdaScrEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EdaScrConfig {
+    /// Smallest amplitude accepted.
     pub min_amplitude: f32,
+    /// Longest rise accepted.
     pub rise_time_max: f64,
+    /// Analysis window length.
     pub window_size: usize,
 }
 
@@ -134,9 +143,11 @@ impl Default for EdaScrConfig {
     }
 }
 
+/// EDA SCR encoder.
 pub struct EdaScrEncoder;
 
 impl EdaScrEncoder {
+    /// Creates a new [`EdaScrEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -202,9 +213,12 @@ impl EventEncoder for EdaScrEncoder {
 // EDA Tonic Encoder
 // ============================================================================
 
+/// Configuration for [`EdaTonicEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EdaTonicConfig {
+    /// Analysis window length, in seconds.
     pub window_size: usize,
+    /// Detection threshold.
     pub threshold: f32,
 }
 
@@ -217,11 +231,13 @@ impl Default for EdaTonicConfig {
     }
 }
 
+/// EDA tonic encoder.
 pub struct EdaTonicEncoder {
     template: EdaTonicTemplate,
 }
 
 impl EdaTonicEncoder {
+    /// Creates a new [`EdaTonicEncoder`].
     pub fn new() -> Self {
         Self {
             template: EdaTonicTemplate,

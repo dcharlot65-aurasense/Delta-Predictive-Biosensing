@@ -47,6 +47,7 @@ impl PopulationTemplate for BodySwayTemplate {
 // Keypoint Deviation Encoder
 // ============================================================================
 
+/// Configuration for [`KeypointDeviationEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeypointDeviationConfig {
     /// Expected keypoint positions (template)
@@ -67,9 +68,11 @@ impl Default for KeypointDeviationConfig {
     }
 }
 
+/// Keypoint deviation encoder.
 pub struct KeypointDeviationEncoder;
 
 impl KeypointDeviationEncoder {
+    /// Creates a new [`KeypointDeviationEncoder`].
     pub fn new() -> Self {
         Self
     }
@@ -150,6 +153,7 @@ impl EventEncoder for KeypointDeviationEncoder {
 // Joint Angle Encoder
 // ============================================================================
 
+/// Configuration for [`JointAngleEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JointAngleConfig {
     /// Joint definition: (proximal_keypoint, joint_keypoint, distal_keypoint)
@@ -170,9 +174,11 @@ impl Default for JointAngleConfig {
     }
 }
 
+/// Joint angle encoder.
 pub struct JointAngleEncoder;
 
 impl JointAngleEncoder {
+    /// Creates a new [`JointAngleEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -260,6 +266,7 @@ impl EventEncoder for JointAngleEncoder {
 // Body Sway Encoder
 // ============================================================================
 
+/// Configuration for [`BodySwayEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BodySwayConfig {
     /// Center of mass keypoint index
@@ -280,9 +287,11 @@ impl Default for BodySwayConfig {
     }
 }
 
+/// Body sway encoder.
 pub struct BodySwayEncoder;
 
 impl BodySwayEncoder {
+    /// Creates a new [`BodySwayEncoder`].
     pub fn new() -> Self {
         Self {
         }

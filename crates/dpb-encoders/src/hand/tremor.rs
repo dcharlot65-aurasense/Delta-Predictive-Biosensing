@@ -10,9 +10,12 @@ pub use crate::contact::tremor::{PathologicalTremorTemplate, PhysiologicalTremor
 // Hand Tremor Encoder
 // ============================================================================
 
+/// Configuration for [`HandTremorEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HandTremorConfig {
+    /// Detection threshold.
     pub threshold: f32,
+    /// Analysis window length.
     pub window_size: usize,
 }
 
@@ -25,9 +28,11 @@ impl Default for HandTremorConfig {
     }
 }
 
+/// Hand tremor encoder.
 pub struct HandTremorEncoder;
 
 impl HandTremorEncoder {
+    /// Creates a new [`HandTremorEncoder`].
     pub fn new() -> Self {
         Self {
         }

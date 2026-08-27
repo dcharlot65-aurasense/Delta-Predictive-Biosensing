@@ -47,9 +47,12 @@ impl PopulationTemplate for MicrosaccadeRateTemplate {
 // Fixation Stability Encoder
 // ============================================================================
 
+/// Configuration for [`FixationStabilityEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FixationStabilityConfig {
+    /// Analysis window length.
     pub window_size: usize,
+    /// Detection threshold, in degrees.
     pub threshold: f32,
 }
 
@@ -62,9 +65,11 @@ impl Default for FixationStabilityConfig {
     }
 }
 
+/// Fixation stability encoder.
 pub struct FixationStabilityEncoder;
 
 impl FixationStabilityEncoder {
+    /// Creates a new [`FixationStabilityEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -121,11 +126,16 @@ impl EventEncoder for FixationStabilityEncoder {
 // Microsaccade Encoder
 // ============================================================================
 
+/// Configuration for [`MicrosaccadeEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MicrosaccadeConfig {
+    /// Velocity above which an event is emitted, in deg/s.
     pub velocity_threshold: f32,   // deg/s (lower than regular saccades)
+    /// Amplitude above which an event is emitted, in degrees.
     pub amplitude_threshold: f32,  // degrees
+    /// Shortest event accepted, in ms.
     pub min_duration: f64,
+    /// Longest event accepted, in ms.
     pub max_duration: f64,
 }
 
@@ -140,9 +150,11 @@ impl Default for MicrosaccadeConfig {
     }
 }
 
+/// Microsaccade encoder.
 pub struct MicrosaccadeEncoder;
 
 impl MicrosaccadeEncoder {
+    /// Creates a new [`MicrosaccadeEncoder`].
     pub fn new() -> Self {
         Self {
         }

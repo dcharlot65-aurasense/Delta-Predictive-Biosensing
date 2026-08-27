@@ -34,6 +34,7 @@ pub enum LevelCrossingMode {
     FixedLevel,
 }
 
+/// Configuration for [`LevelCrossingEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LevelCrossingConfig {
     /// Threshold value. In [`LevelCrossingMode::Delta`] this is the quantum: the
@@ -65,6 +66,7 @@ pub struct LevelCrossingEncoder {
 }
 
 impl LevelCrossingEncoder {
+    /// Creates a new [`LevelCrossingEncoder`].
     pub fn new(name: impl Into<String>) -> Self {
         Self { name: name.into() }
     }
@@ -178,6 +180,7 @@ pub struct TemplateDeviationEncoder {
 }
 
 impl TemplateDeviationEncoder {
+    /// Creates a new [`TemplateDeviationEncoder`].
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -278,6 +281,7 @@ pub struct DerivativeEncoder {
 }
 
 impl DerivativeEncoder {
+    /// Creates a new [`DerivativeEncoder`].
     pub fn new(name: impl Into<String>) -> Self {
         Self { name: name.into() }
     }
@@ -349,6 +353,7 @@ pub struct DiscreteEventEncoder {
 }
 
 impl DiscreteEventEncoder {
+    /// Creates a new [`DiscreteEventEncoder`].
     pub fn new(name: impl Into<String>) -> Self {
         Self { name: name.into() }
     }

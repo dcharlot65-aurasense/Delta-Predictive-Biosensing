@@ -47,10 +47,14 @@ impl PopulationTemplate for EmgFatigueTemplate {
 // EMG Burst Encoder
 // ============================================================================
 
+/// Configuration for [`EmgBurstEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmgBurstConfig {
+    /// Detection threshold.
     pub threshold: f32,
+    /// Shortest event accepted, in ms.
     pub min_duration: f64,
+    /// Minimum rest period, in ms.
     pub min_rest: f64,
 }
 
@@ -64,9 +68,11 @@ impl Default for EmgBurstConfig {
     }
 }
 
+/// EMG burst encoder.
 pub struct EmgBurstEncoder;
 
 impl EmgBurstEncoder {
+    /// Creates a new [`EmgBurstEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -135,9 +141,12 @@ impl EventEncoder for EmgBurstEncoder {
 // EMG Amplitude Encoder
 // ============================================================================
 
+/// Configuration for [`EmgAmplitudeEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmgAmplitudeConfig {
+    /// Analysis window length.
     pub window_size: usize,
+    /// Detection threshold.
     pub threshold: f32,
 }
 
@@ -150,9 +159,11 @@ impl Default for EmgAmplitudeConfig {
     }
 }
 
+/// EMG amplitude encoder.
 pub struct EmgAmplitudeEncoder;
 
 impl EmgAmplitudeEncoder {
+    /// Creates a new [`EmgAmplitudeEncoder`].
     pub fn new() -> Self {
         Self
     }
@@ -196,9 +207,12 @@ impl EventEncoder for EmgAmplitudeEncoder {
 // EMG Fatigue Encoder
 // ============================================================================
 
+/// Configuration for [`EmgFatigueEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmgFatigueConfig {
+    /// Analysis window length.
     pub window_size: usize,
+    /// Frequency above which an event is emitted, in Hz.
     pub frequency_threshold: f32,
 }
 
@@ -211,9 +225,11 @@ impl Default for EmgFatigueConfig {
     }
 }
 
+/// EMG fatigue encoder.
 pub struct EmgFatigueEncoder;
 
 impl EmgFatigueEncoder {
+    /// Creates a new [`EmgFatigueEncoder`].
     pub fn new() -> Self {
         Self {
         }

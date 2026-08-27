@@ -87,9 +87,12 @@ impl PopulationTemplate for HnrTemplate {
 // F0 (Fundamental Frequency) Encoder
 // ============================================================================
 
+/// Configuration for [`F0Encoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct F0Config {
+    /// Analysis window length.
     pub window_size: usize,
+    /// Detection threshold, in Hz.
     pub threshold: f32, // Hz deviation
 }
 
@@ -102,11 +105,13 @@ impl Default for F0Config {
     }
 }
 
+/// F0 encoder.
 pub struct F0Encoder {
     template: F0Template,
 }
 
 impl F0Encoder {
+    /// Creates a new [`F0Encoder`].
     pub fn new() -> Self {
         Self {
             template: F0Template,
@@ -185,8 +190,10 @@ impl EventEncoder for F0Encoder {
 // Jitter Encoder
 // ============================================================================
 
+/// Configuration for [`JitterEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JitterConfig {
+    /// Detection threshold.
     pub threshold: f32, // % jitter
 }
 
@@ -196,9 +203,11 @@ impl Default for JitterConfig {
     }
 }
 
+/// Jitter encoder.
 pub struct JitterEncoder;
 
 impl JitterEncoder {
+    /// Creates a new [`JitterEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -279,8 +288,10 @@ impl EventEncoder for JitterEncoder {
 // Shimmer Encoder
 // ============================================================================
 
+/// Configuration for [`ShimmerEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShimmerConfig {
+    /// Detection threshold.
     pub threshold: f32, // % shimmer
 }
 
@@ -290,9 +301,11 @@ impl Default for ShimmerConfig {
     }
 }
 
+/// Shimmer encoder.
 pub struct ShimmerEncoder;
 
 impl ShimmerEncoder {
+    /// Creates a new [`ShimmerEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -366,9 +379,12 @@ impl EventEncoder for ShimmerEncoder {
 // HNR (Harmonics-to-Noise Ratio) Encoder
 // ============================================================================
 
+/// Configuration for [`HnrEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HnrConfig {
+    /// Analysis window length.
     pub window_size: usize,
+    /// Detection threshold, in dB.
     pub threshold: f32, // dB
 }
 
@@ -381,9 +397,11 @@ impl Default for HnrConfig {
     }
 }
 
+/// Hnr encoder.
 pub struct HnrEncoder;
 
 impl HnrEncoder {
+    /// Creates a new [`HnrEncoder`].
     pub fn new() -> Self {
         Self {
         }

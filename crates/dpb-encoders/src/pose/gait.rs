@@ -96,9 +96,12 @@ impl PopulationTemplate for StancePhaseTemplate {
 // Heel Strike Encoder
 // ============================================================================
 
+/// Configuration for [`HeelStrikeEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HeelStrikeConfig {
+    /// Detection threshold.
     pub threshold: f32,
+    /// Minimum spacing between successive events.
     pub min_interval: f64,
 }
 
@@ -111,9 +114,11 @@ impl Default for HeelStrikeConfig {
     }
 }
 
+/// Heel strike encoder.
 pub struct HeelStrikeEncoder;
 
 impl HeelStrikeEncoder {
+    /// Creates a new [`HeelStrikeEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -163,9 +168,12 @@ impl EventEncoder for HeelStrikeEncoder {
 // Toe Off Encoder
 // ============================================================================
 
+/// Configuration for [`ToeOffEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToeOffConfig {
+    /// Detection threshold.
     pub threshold: f32,
+    /// Minimum spacing between successive events.
     pub min_interval: f64,
 }
 
@@ -178,9 +186,11 @@ impl Default for ToeOffConfig {
     }
 }
 
+/// Toe off encoder.
 pub struct ToeOffEncoder;
 
 impl ToeOffEncoder {
+    /// Creates a new [`ToeOffEncoder`].
     pub fn new() -> Self {
         Self
     }
@@ -229,19 +239,24 @@ impl EventEncoder for ToeOffEncoder {
 // Gait Phase Encoder
 // ============================================================================
 
+/// Configuration for [`GaitPhaseEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[derive(Default)]
 pub struct GaitPhaseConfig {
+    /// Heel-strike times.
     pub heel_strikes: Vec<f64>,
+    /// Toe-off times.
     pub toe_offs: Vec<f64>,
 }
 
 
+/// Gait phase encoder.
 pub struct GaitPhaseEncoder {
     template: StancePhaseTemplate,
 }
 
 impl GaitPhaseEncoder {
+    /// Creates a new [`GaitPhaseEncoder`].
     pub fn new() -> Self {
         Self {
             template: StancePhaseTemplate,
@@ -303,8 +318,10 @@ impl EventEncoder for GaitPhaseEncoder {
 // Stride Time Encoder
 // ============================================================================
 
+/// Configuration for [`StrideTimeEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StrideTimeConfig {
+    /// Detection threshold.
     pub threshold: f32,
 }
 
@@ -314,11 +331,13 @@ impl Default for StrideTimeConfig {
     }
 }
 
+/// Stride time encoder.
 pub struct StrideTimeEncoder {
     template: CadenceTemplate,
 }
 
 impl StrideTimeEncoder {
+    /// Creates a new [`StrideTimeEncoder`].
     pub fn new() -> Self {
         Self {
             template: CadenceTemplate,
@@ -372,10 +391,14 @@ impl EventEncoder for StrideTimeEncoder {
 // Gait Asymmetry Encoder
 // ============================================================================
 
+/// Configuration for [`GaitAsymmetryEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GaitAsymmetryConfig {
+    /// Detection threshold.
     pub threshold: f32,
+    /// Index of the left-side channel.
     pub left_channel: usize,
+    /// Index of the right-side channel.
     pub right_channel: usize,
 }
 
@@ -389,9 +412,11 @@ impl Default for GaitAsymmetryConfig {
     }
 }
 
+/// Gait asymmetry encoder.
 pub struct GaitAsymmetryEncoder;
 
 impl GaitAsymmetryEncoder {
+    /// Creates a new [`GaitAsymmetryEncoder`].
     pub fn new() -> Self {
         Self
     }

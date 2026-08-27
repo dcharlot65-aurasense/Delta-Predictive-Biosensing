@@ -51,9 +51,12 @@ impl PopulationTemplate for TappingAmplitudeTemplate {
 // Tap Onset Encoder
 // ============================================================================
 
+/// Configuration for [`TapOnsetEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TapOnsetConfig {
+    /// Detection threshold.
     pub threshold: f32,
+    /// Minimum spacing between successive events, in ms.
     pub min_interval: f64,
 }
 
@@ -66,9 +69,11 @@ impl Default for TapOnsetConfig {
     }
 }
 
+/// Tap onset encoder.
 pub struct TapOnsetEncoder;
 
 impl TapOnsetEncoder {
+    /// Creates a new [`TapOnsetEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -115,8 +120,10 @@ impl EventEncoder for TapOnsetEncoder {
 // Tap Aperture Encoder
 // ============================================================================
 
+/// Configuration for [`TapApertureEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TapApertureConfig {
+    /// Detection threshold.
     pub threshold: f32,
 }
 
@@ -126,11 +133,13 @@ impl Default for TapApertureConfig {
     }
 }
 
+/// Tap aperture encoder.
 pub struct TapApertureEncoder {
     template: TappingAmplitudeTemplate,
 }
 
 impl TapApertureEncoder {
+    /// Creates a new [`TapApertureEncoder`].
     pub fn new() -> Self {
         Self {
             template: TappingAmplitudeTemplate,
@@ -180,9 +189,12 @@ impl EventEncoder for TapApertureEncoder {
 // Tap Frequency Encoder
 // ============================================================================
 
+/// Configuration for [`TapFrequencyEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TapFrequencyConfig {
+    /// Analysis window length.
     pub window_size: usize,
+    /// Detection threshold, in Hz.
     pub threshold: f32,
 }
 
@@ -195,11 +207,13 @@ impl Default for TapFrequencyConfig {
     }
 }
 
+/// Tap frequency encoder.
 pub struct TapFrequencyEncoder {
     template: TappingFrequencyTemplate,
 }
 
 impl TapFrequencyEncoder {
+    /// Creates a new [`TapFrequencyEncoder`].
     pub fn new() -> Self {
         Self {
             template: TappingFrequencyTemplate,
@@ -255,8 +269,10 @@ impl EventEncoder for TapFrequencyEncoder {
 // Tap Decrement Encoder (detects amplitude decay over time)
 // ============================================================================
 
+/// Configuration for [`TapDecrementEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TapDecrementConfig {
+    /// Detection threshold.
     pub threshold: f32, // Minimum decrement to detect
 }
 
@@ -266,9 +282,11 @@ impl Default for TapDecrementConfig {
     }
 }
 
+/// Tap decrement encoder.
 pub struct TapDecrementEncoder;
 
 impl TapDecrementEncoder {
+    /// Creates a new [`TapDecrementEncoder`].
     pub fn new() -> Self {
         Self
     }

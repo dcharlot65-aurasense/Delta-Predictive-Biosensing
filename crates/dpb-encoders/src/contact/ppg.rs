@@ -100,6 +100,7 @@ impl Default for PpgPulseConfig {
 pub struct PpgPulseEncoder;
 
 impl PpgPulseEncoder {
+    /// Creates a new [`PpgPulseEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -194,6 +195,7 @@ impl Default for PpgAmplitudeConfig {
 pub struct PpgAmplitudeEncoder;
 
 impl PpgAmplitudeEncoder {
+    /// Creates a new [`PpgAmplitudeEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -273,6 +275,7 @@ pub struct PpgPttEncoder {
 }
 
 impl PpgPttEncoder {
+    /// Creates a new [`PpgPttEncoder`].
     pub fn new() -> Self {
         Self {
             template: PttTemplate,

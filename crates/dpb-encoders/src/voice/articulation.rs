@@ -51,10 +51,14 @@ impl PopulationTemplate for VowelSpaceTemplate {
 // Formant Encoder
 // ============================================================================
 
+/// Configuration for [`FormantEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FormantConfig {
+    /// Analysis window length.
     pub window_size: usize,
+    /// How many formants to track.
     pub num_formants: usize,
+    /// Detection threshold, in Hz.
     pub threshold: f32, // Hz deviation
 }
 
@@ -68,11 +72,13 @@ impl Default for FormantConfig {
     }
 }
 
+/// Formant encoder.
 pub struct FormantEncoder {
     template: FormantTemplate,
 }
 
 impl FormantEncoder {
+    /// Creates a new [`FormantEncoder`].
     pub fn new() -> Self {
         Self {
             template: FormantTemplate,
@@ -129,6 +135,7 @@ impl EventEncoder for FormantEncoder {
 // Vowel Space Encoder
 // ============================================================================
 
+/// Configuration for [`VowelSpaceEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VowelSpaceConfig {
     /// Vowel phonemes to track (e.g., /a/, /i/, /u/)
@@ -146,9 +153,11 @@ impl Default for VowelSpaceConfig {
     }
 }
 
+/// Vowel space encoder.
 pub struct VowelSpaceEncoder;
 
 impl VowelSpaceEncoder {
+    /// Creates a new [`VowelSpaceEncoder`].
     pub fn new() -> Self {
         Self {
         }

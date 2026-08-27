@@ -151,6 +151,7 @@ impl Default for EcgRPeakConfig {
 pub struct EcgRPeakEncoder;
 
 impl EcgRPeakEncoder {
+    /// Creates a new [`EcgRPeakEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -239,6 +240,7 @@ impl Default for EcgMorphologyConfig {
 pub struct EcgMorphologyEncoder;
 
 impl EcgMorphologyEncoder {
+    /// Creates a new [`EcgMorphologyEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -343,6 +345,7 @@ impl Default for EcgStDeviationConfig {
 pub struct EcgStDeviationEncoder;
 
 impl EcgStDeviationEncoder {
+    /// Creates a new [`EcgStDeviationEncoder`].
     pub fn new() -> Self {
         Self
     }
@@ -427,6 +430,7 @@ pub struct EcgHrvEncoder {
 }
 
 impl EcgHrvEncoder {
+    /// Creates a new [`EcgHrvEncoder`].
     pub fn new() -> Self {
         Self {
             template: HrvTemplate,

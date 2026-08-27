@@ -53,8 +53,10 @@ impl PopulationTemplate for PupilLightReflexTemplate {
 // Pupil Dilation Encoder
 // ============================================================================
 
+/// Configuration for [`PupilDilationEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PupilDilationConfig {
+    /// Detection threshold, in mm/s.
     pub threshold: f32, // mm/s
 }
 
@@ -64,9 +66,11 @@ impl Default for PupilDilationConfig {
     }
 }
 
+/// Pupil dilation encoder.
 pub struct PupilDilationEncoder;
 
 impl PupilDilationEncoder {
+    /// Creates a new [`PupilDilationEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -111,10 +115,14 @@ impl EventEncoder for PupilDilationEncoder {
 // Pupil Light Reflex Encoder
 // ============================================================================
 
+/// Configuration for [`PupilLightReflexEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PupilLightReflexConfig {
+    /// Times at which the light stimulus began.
     pub light_onset_times: Vec<f64>,
+    /// How long after a stimulus a response still counts, in seconds.
     pub response_window: f64, // seconds
+    /// Detection threshold.
     pub threshold: f32,
 }
 
@@ -128,11 +136,13 @@ impl Default for PupilLightReflexConfig {
     }
 }
 
+/// Pupil light reflex encoder.
 pub struct PupilLightReflexEncoder {
     template: PupilLightReflexTemplate,
 }
 
 impl PupilLightReflexEncoder {
+    /// Creates a new [`PupilLightReflexEncoder`].
     pub fn new() -> Self {
         Self {
             template: PupilLightReflexTemplate,

@@ -53,9 +53,12 @@ impl PopulationTemplate for SaccadeLatencyTemplate {
 // Saccade Onset Encoder
 // ============================================================================
 
+/// Configuration for [`SaccadeOnsetEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SaccadeOnsetConfig {
+    /// Velocity above which an event is emitted, in deg/s.
     pub velocity_threshold: f32, // deg/s
+    /// Shortest event accepted, in seconds.
     pub min_duration: f64,        // seconds
 }
 
@@ -68,9 +71,11 @@ impl Default for SaccadeOnsetConfig {
     }
 }
 
+/// Saccade onset encoder.
 pub struct SaccadeOnsetEncoder;
 
 impl SaccadeOnsetEncoder {
+    /// Creates a new [`SaccadeOnsetEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -133,8 +138,10 @@ impl EventEncoder for SaccadeOnsetEncoder {
 // Saccade Main Sequence Encoder
 // ============================================================================
 
+/// Configuration for [`SaccadeMainSequenceEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SaccadeMainSequenceConfig {
+    /// Deviation from the expected value that counts as an event, in % deviation.
     pub deviation_threshold: f32,
 }
 
@@ -146,9 +153,11 @@ impl Default for SaccadeMainSequenceConfig {
     }
 }
 
+/// Saccade main sequence encoder.
 pub struct SaccadeMainSequenceEncoder;
 
 impl SaccadeMainSequenceEncoder {
+    /// Creates a new [`SaccadeMainSequenceEncoder`].
     pub fn new() -> Self {
         Self {
         }
@@ -211,9 +220,12 @@ impl EventEncoder for SaccadeMainSequenceEncoder {
 // Saccade Latency Encoder
 // ============================================================================
 
+/// Configuration for [`SaccadeLatencyEncoder`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SaccadeLatencyConfig {
+    /// Stimulus onset times.
     pub stimulus_times: Vec<f64>,
+    /// Longest response latency accepted, in ms.
     pub max_latency: f64,
 }
 
@@ -226,11 +238,13 @@ impl Default for SaccadeLatencyConfig {
     }
 }
 
+/// Saccade latency encoder.
 pub struct SaccadeLatencyEncoder {
     template: SaccadeLatencyTemplate,
 }
 
 impl SaccadeLatencyEncoder {
+    /// Creates a new [`SaccadeLatencyEncoder`].
     pub fn new() -> Self {
         Self {
             template: SaccadeLatencyTemplate,
