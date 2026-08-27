@@ -295,6 +295,40 @@ pub struct Coding {
     pub display: Option<String>,
 }
 
+/// FHIR `Attachment` datatype -- content referred to in-line or by URL.
+///
+/// See <https://hl7.org/fhir/R4/datatypes.html#Attachment>. Only the fields
+/// this crate populates are modelled; the rest are optional in FHIR too.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Attachment {
+    /// Mime type of the content, with charset etc.
+    #[serde(rename = "contentType", skip_serializing_if = "Option::is_none")]
+    pub content_type: Option<String>,
+    /// Uri where the data can be found.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// Label to display in place of the data.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// Number of bytes of content.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<u64>,
+    /// Date the attachment was first created.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub creation: Option<String>,
+}
+
+impl Attachment {
+    /// Creates an attachment pointing at `url` with the given mime type.
+    pub fn new(url: impl Into<String>, content_type: impl Into<String>) -> Self {
+        Self {
+            content_type: Some(content_type.into()),
+            url: Some(url.into()),
+            ..Default::default()
+        }
+    }
+}
+
 /// Observation resource - measurements and findings
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Observation {
@@ -327,6 +361,12 @@ pub struct Observation {
     /// Actual result
     #[serde(rename = "valueQuantity", skip_serializing_if = "Option::is_none")]
     pub value_quantity: Option<Quantity>,
+    /// Actual result, as attached content (e.g. a waveform file).
+    ///
+    /// FHIR's `value[x]` permits exactly one choice, so this and
+    /// `value_quantity` must not both be set on one observation.
+    #[serde(rename = "valueAttachment", skip_serializing_if = "Option::is_none")]
+    pub value_attachment: Option<Attachment>,
     /// Component results
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub component: Vec<ObservationComponent>,
@@ -348,6 +388,7 @@ impl Default for Observation {
             effective_date_time: None,
             issued: None,
             value_quantity: None,
+            value_attachment: None,
             component: Vec::new(),
             device: None,
         }

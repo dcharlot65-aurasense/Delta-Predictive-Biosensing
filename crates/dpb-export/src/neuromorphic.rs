@@ -85,8 +85,8 @@ impl NeuromorphicTarget {
     /// Get target name.
     pub fn name(&self) -> &'static str {
         match self {
-            #[allow(deprecated)]
             NeuromorphicTarget::Nir => "Neuromorphic Intermediate Representation",
+            #[allow(deprecated)]
             NeuromorphicTarget::Loihi2 => "Intel Loihi 2",
             NeuromorphicTarget::SpiNNaker2 => "SpiNNaker 2",
             NeuromorphicTarget::BrainScaleS2 => "BrainScaleS-2",
@@ -97,8 +97,8 @@ impl NeuromorphicTarget {
     /// Get framework name.
     pub fn framework(&self) -> &'static str {
         match self {
-            #[allow(deprecated)]
             NeuromorphicTarget::Nir => "NIR",
+            #[allow(deprecated)]
             NeuromorphicTarget::Loihi2 => "Lava",
             NeuromorphicTarget::SpiNNaker2 => "sPyNNaker",
             NeuromorphicTarget::BrainScaleS2 => "hxtorch",

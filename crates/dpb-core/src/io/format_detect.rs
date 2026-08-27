@@ -155,7 +155,7 @@ fn detect_by_magic_bytes(path: &Path) -> Result<FormatType> {
     }
 
     // Check BDF (version byte = 255)
-    if header[0] == 255 || header[0] == 0xFF {
+    if header[0] == 0xFF {
         // Additional validation: check if it looks like BDF/EDF structure
         if bytes_read >= 256 && is_valid_edf_like_header(&header) {
             return Ok(FormatType::BDF);

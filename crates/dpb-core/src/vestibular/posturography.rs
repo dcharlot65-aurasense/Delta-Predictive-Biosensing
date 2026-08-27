@@ -332,11 +332,6 @@ impl LimitsOfStability {
 
         let n = cop_x.len().min(cop_y.len());
 
-        // Calculate distance to target for each sample
-        let distances: Vec<f64> = (0..n)
-            .map(|i| ((cop_x[i] - target_x).powi(2) + (cop_y[i] - target_y).powi(2)).sqrt())
-            .collect();
-
         // Calculate path from origin
         let path_distances: Vec<f64> = (0..n)
             .map(|i| (cop_x[i].powi(2) + cop_y[i].powi(2)).sqrt())

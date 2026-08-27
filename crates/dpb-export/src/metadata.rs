@@ -189,7 +189,7 @@ impl DataType {
     }
 
     /// Convert to ONNX tensor type.
-    pub fn to_onnx_type(&self) -> i32 {
+    pub fn to_onnx_type(self) -> i32 {
         match self {
             DataType::Float32 => 1,  // FLOAT
             DataType::Float64 => 11, // DOUBLE

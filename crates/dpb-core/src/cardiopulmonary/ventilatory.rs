@@ -140,10 +140,16 @@ impl VentilatoryThreshold {
             }
         }
 
-        // Verify VT1: VE/VO2 should increase after nadir
+        // Verify VT1: VE/VO2 rises after its nadir *while VE/VCO2 stays flat
+        // or falls*. The second half is what separates VT1 from VT2 -- at VT2
+        // both equivalents climb -- so checking only VE/VO2 will report VT2 as
+        // VT1 in a test that reaches it.
         if vt1_idx > 0 && vt1_idx < ve_vo2.len() - 3 {
             let mean_after: f64 = ve_vo2[vt1_idx..vt1_idx + 3].iter().sum::<f64>() / 3.0;
-            if mean_after > min_ve_vo2 * 1.05 {
+            let vco2_at_nadir = ve_vco2[vt1_idx];
+            let vco2_after: f64 = ve_vco2[vt1_idx..vt1_idx + 3].iter().sum::<f64>() / 3.0;
+            let vco2_stable = vco2_after <= vco2_at_nadir * 1.05;
+            if mean_after > min_ve_vo2 * 1.05 && vco2_stable {
                 let vo2_at_vt = vo2[vt1_idx];
                 let vo2max = vo2.iter().cloned().fold(f64::NAN, f64::max);
 

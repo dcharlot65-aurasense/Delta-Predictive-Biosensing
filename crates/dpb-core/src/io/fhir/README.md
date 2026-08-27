@@ -103,8 +103,8 @@ use dpb_core::io::fhir::{Bundle, FhirResource};
 let mut bundle = Bundle::collection()
     .with_id("bundle-001".to_string())
     .add_resource(FhirResource::Patient(patient))
-    .add_resource(FhirResource::Observation(hr_obs))
-    .add_resource(FhirResource::Observation(bp_obs));
+    .add_resource(FhirResource::Observation(Box::new(hr_obs)))
+    .add_resource(FhirResource::Observation(Box::new(bp_obs)));
 ```
 
 ### JSON Serialization

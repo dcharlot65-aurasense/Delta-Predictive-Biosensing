@@ -210,7 +210,7 @@ impl GdfDataType {
     }
 
     /// Get code for data type
-    fn to_code(&self) -> u16 {
+    fn to_code(self) -> u16 {
         match self {
             Self::Int8 => 1,
             Self::UInt8 => 2,
@@ -579,7 +579,7 @@ impl GdfReader {
     }
 
     /// Read event table (simplified)
-    fn read_event_table(file: &mut File, header: &GdfHeader) -> Result<Vec<GdfEvent>> {
+    fn read_event_table(_file: &mut File, _header: &GdfHeader) -> Result<Vec<GdfEvent>> {
         // Event table reading is simplified for now
         // Full implementation would parse event table at end of file
         Ok(Vec::new())

@@ -70,8 +70,8 @@ pub use observations::{
     VitalSignsObservation, WaveformObservation,
 };
 pub use resources::{
-    CodeableConcept, Coding, Condition, Device, DiagnosticReport, Encounter, HumanName, Identifier,
-    Observation, Patient, Procedure, Quantity, Reference,
+    Attachment, CodeableConcept, Coding, Condition, Device, DiagnosticReport, Encounter, HumanName,
+    Identifier, Observation, Patient, Procedure, Quantity, Reference,
 };
 pub use serialization::{FhirSerializer, JsonSerializer, XmlSerializer};
 
@@ -157,7 +157,7 @@ impl std::str::FromStr for ResourceType {
 #[serde(tag = "resourceType")]
 pub enum FhirResource {
     Patient(Patient),
-    Observation(Observation),
+    Observation(Box<Observation>),
     DiagnosticReport(DiagnosticReport),
     Device(Device),
     Encounter(Encounter),

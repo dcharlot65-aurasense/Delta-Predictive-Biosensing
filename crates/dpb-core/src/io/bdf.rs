@@ -316,6 +316,16 @@ impl BdfReader {
             .parse::<usize>()
             .map_err(|_| DpbError::DataValidation("Invalid signal count".to_string()))?;
 
+        // The declared header size must match the fixed layout: 256 bytes
+        // plus 256 per signal. A mismatch means the file is malformed or
+        // truncated, and every subsequent offset would be wrong.
+        let expected_header_bytes = 256 + 256 * n_signals;
+        if header_bytes != expected_header_bytes {
+            return Err(DpbError::DataValidation(format!(
+                "Header declares {header_bytes} bytes but {n_signals} signals require {expected_header_bytes}"
+            )));
+        }
+
         let header = BdfHeader {
             version,
             patient_id,

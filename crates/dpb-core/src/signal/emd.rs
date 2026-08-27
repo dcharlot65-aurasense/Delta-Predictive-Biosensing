@@ -582,15 +582,16 @@ pub struct Emd {
     config: EmdConfig,
 }
 
+impl Default for Emd {
+    fn default() -> Self {
+        Self::new(EmdConfig::default())
+    }
+}
+
 impl Emd {
     /// Creates a new EMD decomposer with the given configuration.
     pub fn new(config: EmdConfig) -> Self {
         Self { config }
-    }
-
-    /// Creates an EMD decomposer with default configuration.
-    pub fn default() -> Self {
-        Self::new(EmdConfig::default())
     }
 
     /// Decomposes a signal into IMFs.
@@ -786,15 +787,16 @@ pub struct Eemd {
     config: EemdConfig,
 }
 
+impl Default for Eemd {
+    fn default() -> Self {
+        Self::new(EemdConfig::default())
+    }
+}
+
 impl Eemd {
     /// Creates a new EEMD decomposer.
     pub fn new(config: EemdConfig) -> Self {
         Self { config }
-    }
-
-    /// Creates an EEMD decomposer with default configuration.
-    pub fn default() -> Self {
-        Self::new(EemdConfig::default())
     }
 
     /// Decomposes a signal using ensemble averaging.

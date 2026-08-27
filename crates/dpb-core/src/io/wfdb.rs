@@ -169,7 +169,7 @@ impl AnnotationType {
     }
 
     /// Convert to annotation code character
-    pub fn to_code(&self) -> char {
+    pub fn to_code(self) -> char {
         match self {
             Self::Normal => 'N',
             Self::LBBB => 'L',
@@ -182,7 +182,7 @@ impl AnnotationType {
             Self::VentricularEscape => 'E',
             Self::NodalEscape => 'j',
             Self::SuperventricularPrem => 'S',
-            Self::Unknown(code) => *code as char,
+            Self::Unknown(code) => code as char,
         }
     }
 }
@@ -579,7 +579,7 @@ impl WfdbWriter {
         writeln!(file, "{}", record_line)?;
 
         // Write signal lines
-        for (i, signal) in self.signals.iter().enumerate() {
+        for signal in self.signals.iter() {
             let signal_line = format!(
                 "{}.dat {} {}({})/{}",
                 self.header.record_name,

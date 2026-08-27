@@ -3,7 +3,9 @@
 //! Provides specialized observation types for biosignals and vital signs with
 //! standardized LOINC and SNOMED CT codes.
 
-use super::resources::{CodeableConcept, Coding, Observation, ObservationComponent, Quantity, Reference};
+use super::resources::{
+    Attachment, CodeableConcept, Coding, Observation, ObservationComponent, Quantity, Reference,
+};
 use serde::{Deserialize, Serialize};
 
 /// Re-export commonly used types
@@ -238,13 +240,13 @@ impl WaveformObservation {
         self
     }
 
-    /// Adds a waveform data reference (e.g., to attached binary data)
+    /// Attaches waveform data by reference, as `Observation.valueAttachment`.
+    ///
+    /// FHIR allows exactly one `value[x]`, so this clears any `valueQuantity`
+    /// already set on the builder rather than emitting a resource with both.
     pub fn with_data_attachment(mut self, url: String, content_type: &str) -> Self {
-        // Note: In a full implementation, this would add a SampledData or Attachment element
-        // For now, we'll add it as a note in the coding
-        if let Some(coding) = self.observation.code.coding.first_mut() {
-            // In a real implementation, add proper attachment support
-        }
+        self.observation.value_quantity = None;
+        self.observation.value_attachment = Some(Attachment::new(url, content_type));
         self
     }
 
@@ -427,5 +429,25 @@ mod tests {
         .build();
 
         assert_eq!(obs.component.len(), 2);
+    }
+
+    #[test]
+    fn data_attachment_lands_in_value_attachment() {
+        let obs = WaveformObservation::new("dpb-1".to_string(), "pat-1".to_string())
+            .with_data_attachment("https://example.org/wave.edf".to_string(), "application/EDF")
+            .build();
+
+        let att = obs
+            .value_attachment
+            .as_ref()
+            .expect("with_data_attachment must populate valueAttachment");
+        assert_eq!(att.url.as_deref(), Some("https://example.org/wave.edf"));
+        assert_eq!(att.content_type.as_deref(), Some("application/EDF"));
+
+        // FHIR permits one value[x], so the quantity must not survive alongside it.
+        assert!(obs.value_quantity.is_none());
+
+        let json = serde_json::to_string(&obs).unwrap();
+        assert!(json.contains("valueAttachment"), "attachment missing from JSON: {json}");
     }
 }

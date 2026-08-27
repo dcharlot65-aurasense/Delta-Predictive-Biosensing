@@ -200,8 +200,10 @@ impl Visualization for WeightHeatmap {
                     max_weight = max_weight.max(w);
                 }
             }
+            // Guard the divisor: an all-zero weight matrix gives abs_max == 0,
+            // and weight / 0.0 is NaN, which the colormap cannot render.
             let abs_max = max_weight.abs().max(min_weight.abs());
-            let range = if abs_max < 1e-6 { 1.0 } else { abs_max * 2.0 };
+            let scale = if abs_max < 1e-6 { 1.0 } else { abs_max };
 
             let cell_width = plot_width / num_inputs as f32;
             let cell_height = plot_height / num_outputs as f32;
@@ -211,7 +213,7 @@ impl Visualization for WeightHeatmap {
                     let x = margin + i as f32 * cell_width;
                     let y = height - margin - (o + 1) as f32 * cell_height;
                     // Normalize to [0, 1] with 0.5 being zero weight
-                    let normalized = ((weight / abs_max) + 1.0) / 2.0;
+                    let normalized = ((weight / scale) + 1.0) / 2.0;
                     let normalized = normalized.clamp(0.0, 1.0);
                     let (r, g, b) = colors::colormap(&self.config.colormap, normalized);
                     let color = colors::rgb_to_hex(r, g, b);

@@ -42,8 +42,11 @@ impl PatientDemographics {
         patient
     }
 
-    /// Creates a Patient resource with custom demographics
-    pub fn new(
+    /// Creates a Patient resource from explicit demographics.
+    ///
+    /// Named for what it returns rather than `new`, which would suggest it
+    /// constructs a `PatientDemographics`; compare `from_context` above.
+    pub fn from_demographics(
         patient_id: String,
         family_name: Option<String>,
         given_names: Vec<String>,

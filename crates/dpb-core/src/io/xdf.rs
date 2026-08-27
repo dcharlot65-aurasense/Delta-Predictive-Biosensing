@@ -399,7 +399,7 @@ impl XdfFile {
     }
 
     /// Parse file header
-    fn parse_file_header(data: &[u8]) -> Result<(u8, u8)> {
+    fn parse_file_header(_data: &[u8]) -> Result<(u8, u8)> {
         // File header contains XML with version info
         // Simplified parsing for now
         Ok((1, 0))
