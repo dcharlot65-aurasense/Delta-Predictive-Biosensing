@@ -156,13 +156,22 @@ impl std::str::FromStr for ResourceType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "resourceType")]
 pub enum FhirResource {
+    /// The subject of care.
     Patient(Patient),
+    /// A measurement or finding. Boxed because it is much larger than the
+    /// other variants and would otherwise set the size of the whole enum.
     Observation(Box<Observation>),
+    /// A grouped set of observations with an interpretation.
     DiagnosticReport(DiagnosticReport),
+    /// The instrument a measurement came from.
     Device(Device),
+    /// The interaction during which the data was collected.
     Encounter(Encounter),
+    /// An action performed on the patient.
     Procedure(Procedure),
+    /// A diagnosis or clinical problem.
     Condition(Condition),
+    /// A container for a collection of resources.
     Bundle(Bundle),
 }
 

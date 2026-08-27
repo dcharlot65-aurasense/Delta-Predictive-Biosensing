@@ -68,7 +68,7 @@ impl PopulationTemplate for SdnnTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         40.0_f64.powi(2)
     }
 
@@ -92,7 +92,7 @@ impl PopulationTemplate for RespiratoryRateTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         3.0_f64.powi(2)
     }
 
@@ -116,7 +116,7 @@ impl PopulationTemplate for RsaTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         25.0_f64.powi(2)
     }
 
@@ -226,7 +226,7 @@ impl EventEncoder for HrvEncoder {
 
     fn encode(&self, signal: &dyn Signal, config: &Self::Config) -> Result<Vec<SpikeEvent>> {
         let samples = signal.samples();
-        let sample_rate = signal.sample_rate();
+        let _sample_rate = signal.sample_rate();
 
         let mut events = Vec::new();
 

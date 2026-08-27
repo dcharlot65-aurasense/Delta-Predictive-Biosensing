@@ -6,8 +6,8 @@
 
 use crate::lif::{LifNeuron, LifConfig};
 use crate::traits::{MembraneDynamics, NeuronModel};
-use ndarray::{s, Array1, Array2, ArrayView1, Axis};
-use rand::{Rng, RngExt, SeedableRng};
+use ndarray::{s, Array1, Array2};
+use rand::{RngExt, SeedableRng};
 use rand_distr::{Distribution, Normal, Uniform};
 use serde::{Deserialize, Serialize};
 

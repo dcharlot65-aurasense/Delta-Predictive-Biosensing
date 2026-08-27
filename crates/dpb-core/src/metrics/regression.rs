@@ -11,6 +11,7 @@ pub struct MeanAbsoluteError {
 }
 
 impl MeanAbsoluteError {
+    /// Creates a new [`MeanAbsoluteError`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             sum_abs_error: 0.0,
@@ -81,6 +82,7 @@ pub struct MeanSquaredError {
 }
 
 impl MeanSquaredError {
+    /// Creates a new [`MeanSquaredError`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             sum_squared_error: 0.0,
@@ -156,6 +158,7 @@ pub struct RootMeanSquaredError {
 }
 
 impl RootMeanSquaredError {
+    /// Creates a new [`RootMeanSquaredError`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             mse: MeanSquaredError::new(),
@@ -201,6 +204,7 @@ pub struct RSquared {
 }
 
 impl RSquared {
+    /// Creates a new [`RSquared`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             sum_squared_residuals: 0.0,
@@ -301,6 +305,7 @@ pub struct PearsonCorrelation {
 }
 
 impl PearsonCorrelation {
+    /// Creates a new [`PearsonCorrelation`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             sum_pred: 0.0,
@@ -403,6 +408,7 @@ pub struct SpearmanCorrelation {
 }
 
 impl SpearmanCorrelation {
+    /// Creates a new [`SpearmanCorrelation`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             predictions: Vec::new(),
@@ -496,6 +502,7 @@ pub struct MeanAbsolutePercentageError {
 }
 
 impl MeanAbsolutePercentageError {
+    /// Creates a new [`MeanAbsolutePercentageError`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             sum_percentage_error: 0.0,
@@ -574,6 +581,7 @@ pub struct ExplainedVariance {
 }
 
 impl ExplainedVariance {
+    /// Creates a new [`ExplainedVariance`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             sum_diff: 0.0,

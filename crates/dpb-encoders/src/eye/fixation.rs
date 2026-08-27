@@ -11,12 +11,12 @@ use serde::{Deserialize, Serialize};
 pub struct FixationStabilityTemplate;
 
 impl PopulationTemplate for FixationStabilityTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // Fixation dispersion in degrees
         0.5
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         0.2
     }
 
@@ -29,12 +29,12 @@ impl PopulationTemplate for FixationStabilityTemplate {
 pub struct MicrosaccadeRateTemplate;
 
 impl PopulationTemplate for MicrosaccadeRateTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // Microsaccades per second
         1.5
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         0.5
     }
 

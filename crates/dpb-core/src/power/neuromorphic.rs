@@ -17,6 +17,7 @@ pub struct XyloEstimator {
     /// Static power in mW
     pub static_power_mw: f64,
     /// Energy per synaptic operation in picojoules
+    /// Energy per synaptic operation, in picojoules.
     pub energy_per_synop_pj: f64,
 }
 
@@ -81,8 +82,11 @@ impl PowerEstimator for XyloEstimator {
 /// Typical power: 60-100 mW per core
 #[derive(Debug, Clone)]
 pub struct LoihiEstimator {
+    /// Idle power drawn by one core, in milliwatts.
     pub base_power_per_core_mw: f64,
+    /// Number of neuromorphic cores in the configuration.
     pub num_cores: usize,
+    /// Energy per synaptic operation, in picojoules.
     pub energy_per_synop_pj: f64,
 }
 
@@ -152,8 +156,11 @@ impl PowerEstimator for LoihiEstimator {
 /// Typical power: 1W per chip (18 ARM cores)
 #[derive(Debug, Clone)]
 pub struct SpinnAkerEstimator {
+    /// Power drawn by one chip, in watts.
     pub power_per_chip_w: f64,
+    /// ARM cores on each chip.
     pub cores_per_chip: usize,
+    /// Number of chips in the configuration.
     pub num_chips: usize,
 }
 
@@ -222,7 +229,9 @@ impl PowerEstimator for SpinnAkerEstimator {
 /// Typical power: 70 mW for full chip
 #[derive(Debug, Clone)]
 pub struct TrueNorthEstimator {
+    /// Power drawn by a full chip, in milliwatts.
     pub base_power_mw: f64,
+    /// Neurons available on one chip.
     pub neurons_per_chip: usize,
 }
 
@@ -288,8 +297,12 @@ impl PowerEstimator for TrueNorthEstimator {
 /// Typical power: 1-2 W per wafer module
 #[derive(Debug, Clone)]
 pub struct BrainScaleSEstimator {
+    /// Power drawn by one wafer module, in watts.
     pub power_per_wafer_w: f64,
-    pub speedup_factor: f64, // Accelerated time speedup
+    /// Ratio of emulated time to wall-clock time. BrainScaleS runs in
+    /// accelerated time, so a factor of 1000 means one second of modelled
+    /// activity completes in a millisecond.
+    pub speedup_factor: f64,
 }
 
 impl Default for BrainScaleSEstimator {
@@ -352,7 +365,9 @@ impl PowerEstimator for BrainScaleSEstimator {
 /// Typical power: 10-20 mW for typical workloads
 #[derive(Debug, Clone)]
 pub struct AkidaEstimator {
+    /// Idle power, in milliwatts.
     pub base_power_mw: f64,
+    /// Power drawn at full utilisation, in milliwatts.
     pub max_power_mw: f64,
 }
 

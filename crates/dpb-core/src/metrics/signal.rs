@@ -12,6 +12,7 @@ pub struct SignalToNoiseRatio {
 }
 
 impl SignalToNoiseRatio {
+    /// Creates a new [`SignalToNoiseRatio`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             signal_power: 0.0,
@@ -88,6 +89,7 @@ pub struct PeakSignalToNoiseRatio {
 }
 
 impl PeakSignalToNoiseRatio {
+    /// Creates a new [`PeakSignalToNoiseRatio`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             max_signal: 0.0,
@@ -182,6 +184,7 @@ pub struct CrossCorrelation {
 }
 
 impl CrossCorrelation {
+    /// Creates a new [`CrossCorrelation`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             sum_x: 0.0,
@@ -285,6 +288,7 @@ pub struct Coherence {
 }
 
 impl Coherence {
+    /// Creates a new [`Coherence`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             cross_spec_sum: 0.0,
@@ -351,6 +355,7 @@ pub struct DtwDistance {
 }
 
 impl DtwDistance {
+    /// Creates a new [`DtwDistance`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             accumulated_distance: 0.0,
@@ -427,6 +432,7 @@ pub struct FrechetDistance {
 }
 
 impl FrechetDistance {
+    /// Creates a new [`FrechetDistance`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             accumulated_distance: 0.0,

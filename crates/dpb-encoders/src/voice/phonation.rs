@@ -36,11 +36,11 @@ impl PopulationTemplate for F0Template {
 pub struct JitterTemplate;
 
 impl PopulationTemplate for JitterTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         0.5 // % - normal jitter < 1%
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         0.3
     }
 
@@ -53,11 +53,11 @@ impl PopulationTemplate for JitterTemplate {
 pub struct ShimmerTemplate;
 
 impl PopulationTemplate for ShimmerTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         2.0 // % - normal shimmer < 3%
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         1.0
     }
 
@@ -70,11 +70,11 @@ impl PopulationTemplate for ShimmerTemplate {
 pub struct HnrTemplate;
 
 impl PopulationTemplate for HnrTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         20.0 // dB - normal HNR > 15 dB
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         5.0
     }
 

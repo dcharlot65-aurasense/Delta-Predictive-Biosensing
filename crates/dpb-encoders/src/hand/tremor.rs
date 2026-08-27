@@ -1,6 +1,6 @@
 //! Hand tremor encoders (similar to contact tremor but for hand tracking data)
 
-use dpb_core::{Context, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent};
+use dpb_core::{EventEncoder, Result, Signal, SpikeEvent};
 use serde::{Deserialize, Serialize};
 
 // Re-use tremor templates from contact module

@@ -83,7 +83,7 @@ impl PopulationTemplate for BetaPowerTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         5.0_f64.powi(2)
     }
 
@@ -109,7 +109,7 @@ impl PopulationTemplate for ThetaPowerTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         7.0_f64.powi(2)
     }
 
@@ -135,7 +135,7 @@ impl PopulationTemplate for GammaPowerTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         2.0_f64.powi(2)
     }
 
@@ -162,7 +162,7 @@ impl PopulationTemplate for DeltaPowerTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         8.0_f64.powi(2)
     }
 
@@ -191,7 +191,7 @@ impl PopulationTemplate for AlphaPeakFrequencyTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         0.8_f64.powi(2)
     }
 

@@ -255,7 +255,12 @@ pub enum AcceleratorError {
     /// Accelerator not available.
     NotAvailable(String),
     /// Out of memory.
-    OutOfMemory { requested: usize, available: usize },
+    OutOfMemory {
+        /// Bytes the allocation asked for.
+        requested: usize,
+        /// Bytes the device had free.
+        available: usize,
+    },
     /// Invalid operation.
     InvalidOperation(String),
     /// Driver error.

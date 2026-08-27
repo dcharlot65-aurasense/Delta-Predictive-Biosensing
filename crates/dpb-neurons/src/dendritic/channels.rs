@@ -15,7 +15,6 @@
 //! - p, q: exponents
 //! - E: reversal potential
 
-use std::f64::consts::E as EULER;
 
 /// Ion channel trait
 pub trait IonChannel: Send + Sync {
@@ -436,9 +435,22 @@ impl NmdaReceptor {
         }
     }
 
-    /// Mg²⁺ block function (Jahr & Stevens, 1990)
-    fn mg_block(&self, voltage: f64) -> f64 {
+    /// Mg²⁺ block function (Jahr & Stevens, 1990).
+    ///
+    /// Returns the unblocked fraction: near 0 at rest, approaching 1 as the
+    /// membrane depolarises. This voltage dependence is what makes NMDA a
+    /// coincidence detector.
+    pub fn mg_block(&self, voltage: f64) -> f64 {
         1.0 / (1.0 + (self.mg_concentration / 3.57) * (-0.062 * voltage).exp())
+    }
+
+    /// Conductance at a given membrane voltage, with the Mg²⁺ block applied.
+    ///
+    /// [`IonChannel::conductance`] takes no voltage and so can only report the
+    /// unblocked `g_max * s`. Anything computing an NMDA current must use this
+    /// instead, or the receptor conducts fully at rest.
+    pub fn conductance_at(&self, voltage: f64) -> f64 {
+        self.g_max * self.s * self.mg_block(voltage)
     }
 
     /// Activate receptor (neurotransmitter release)

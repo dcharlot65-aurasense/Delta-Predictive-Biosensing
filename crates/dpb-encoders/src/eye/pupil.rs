@@ -22,7 +22,7 @@ impl PopulationTemplate for PupilDiameterTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         0.8
     }
 
@@ -35,12 +35,12 @@ impl PopulationTemplate for PupilDiameterTemplate {
 pub struct PupilLightReflexTemplate;
 
 impl PopulationTemplate for PupilLightReflexTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // Constriction velocity in mm/s
         -2.5 // Negative indicates constriction
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         0.5
     }
 

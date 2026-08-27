@@ -3,7 +3,7 @@
 //! This module provides the fundamental encoder types that other encoders build upon.
 
 use dpb_core::traits::EventDecoder;
-use dpb_core::{Context, DpbError, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent};
+use dpb_core::{EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent};
 use serde::{Deserialize, Serialize};
 
 // ============================================================================

@@ -11,12 +11,12 @@ use serde::{Deserialize, Serialize};
 pub struct EmgAmplitudeTemplate;
 
 impl PopulationTemplate for EmgAmplitudeTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // RMS EMG during moderate contraction (μV)
         100.0
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         50.0
     }
 
@@ -29,12 +29,12 @@ impl PopulationTemplate for EmgAmplitudeTemplate {
 pub struct EmgFatigueTemplate;
 
 impl PopulationTemplate for EmgFatigueTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // Median frequency in Hz
         80.0
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         15.0
     }
 

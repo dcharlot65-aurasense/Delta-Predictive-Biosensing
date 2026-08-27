@@ -21,7 +21,7 @@ pub trait DendriticPlasticity: Send + Sync {
         &mut self,
         current_weight: f64,
         pre_spike_time: f64,
-        post_spike_time: f64,
+        _post_spike_time: f64,
         dt: f64,
     ) -> f64;
 
@@ -482,7 +482,7 @@ impl DendriticPlasticity for Metaplasticity {
         &mut self,
         current_weight: f64,
         _pre_spike_time: f64,
-        post_spike_time: f64,
+        _post_spike_time: f64,
         dt: f64,
     ) -> f64 {
         // Update threshold

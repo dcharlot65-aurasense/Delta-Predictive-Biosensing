@@ -11,12 +11,12 @@ use serde::{Deserialize, Serialize};
 pub struct JointAngleTemplate;
 
 impl PopulationTemplate for JointAngleTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // Example: knee flexion angle during stance
         15.0 // degrees
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         10.0
     }
 
@@ -29,12 +29,12 @@ impl PopulationTemplate for JointAngleTemplate {
 pub struct BodySwayTemplate;
 
 impl PopulationTemplate for BodySwayTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // Center of mass sway in cm
         2.0
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         1.0
     }
 

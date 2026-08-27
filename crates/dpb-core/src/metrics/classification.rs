@@ -11,6 +11,7 @@ pub struct Accuracy {
 }
 
 impl Accuracy {
+    /// Creates a new [`Accuracy`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             correct: 0.0,
@@ -80,6 +81,7 @@ pub struct Precision {
 }
 
 impl Precision {
+    /// Creates a new [`Precision`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             true_positives: 0.0,
@@ -160,6 +162,7 @@ pub struct Recall {
 }
 
 impl Recall {
+    /// Creates a new [`Recall`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             true_positives: 0.0,
@@ -240,6 +243,7 @@ pub struct F1Score {
 }
 
 impl F1Score {
+    /// Creates a new [`F1Score`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             precision: Precision::new(),
@@ -300,6 +304,7 @@ pub struct AucRoc {
 }
 
 impl AucRoc {
+    /// Creates a new [`AucRoc`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             predictions: Vec::new(),
@@ -386,6 +391,7 @@ pub struct AucPr {
 }
 
 impl AucPr {
+    /// Creates a new [`AucPr`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             predictions: Vec::new(),
@@ -477,6 +483,7 @@ pub struct MatthewsCorrelation {
 }
 
 impl MatthewsCorrelation {
+    /// Creates a new [`MatthewsCorrelation`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             tp: 0.0,
@@ -576,6 +583,7 @@ pub struct CohenKappa {
 }
 
 impl CohenKappa {
+    /// Creates a new [`CohenKappa`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             tp: 0.0,
@@ -680,6 +688,7 @@ pub struct BalancedAccuracy {
 }
 
 impl BalancedAccuracy {
+    /// Creates a new [`BalancedAccuracy`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             tp: 0.0,
@@ -780,6 +789,7 @@ pub struct Specificity {
 }
 
 impl Specificity {
+    /// Creates a new [`Specificity`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             true_negatives: 0.0,

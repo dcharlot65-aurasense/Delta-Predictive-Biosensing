@@ -21,7 +21,7 @@ impl PopulationTemplate for TappingFrequencyTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         0.8
     }
 
@@ -34,11 +34,11 @@ impl PopulationTemplate for TappingFrequencyTemplate {
 pub struct TappingAmplitudeTemplate;
 
 impl PopulationTemplate for TappingAmplitudeTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         3.0 // cm
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         1.0
     }
 

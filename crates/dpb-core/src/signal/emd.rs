@@ -94,7 +94,12 @@ pub enum BoundaryCondition {
     /// Natural spline (second derivative = 0 at boundaries)
     Natural,
     /// Clamped spline (specified first derivatives at boundaries)
-    Clamped { left_slope: f64, right_slope: f64 },
+    Clamped {
+        /// First derivative imposed at the left endpoint.
+        left_slope: f64,
+        /// First derivative imposed at the right endpoint.
+        right_slope: f64,
+    },
     /// Not-a-knot condition (third derivative continuous at second and second-to-last points)
     NotAKnot,
 }
@@ -525,12 +530,23 @@ impl ImfSet {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum StoppingCriterion {
     /// Standard deviation threshold (Huang et al., 1998)
-    StandardDeviation { threshold: f64 },
+    StandardDeviation {
+        /// Normalised squared difference below which sifting stops;
+        /// Huang et al. suggest 0.2-0.3.
+        threshold: f64,
+    },
     /// S-number criterion (Huang et al., 2003)
-    SNumber { s_number: usize },
+    SNumber {
+        /// Consecutive siftings over which the extrema and zero-crossing
+        /// counts must stay equal before the IMF is accepted.
+        s_number: usize,
+    },
     /// Combined criterion
     Combined {
+        /// Standard-deviation threshold, as in
+        /// [`StoppingCriterion::StandardDeviation`].
         sd_threshold: f64,
+        /// S-number, as in [`StoppingCriterion::SNumber`].
         s_number: usize,
     },
 }

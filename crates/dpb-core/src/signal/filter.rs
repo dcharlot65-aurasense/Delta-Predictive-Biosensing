@@ -7,9 +7,13 @@ use std::f64::consts::PI;
 /// Filter type enum.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum FilterType {
+    /// Passes frequencies below the cutoff.
     Lowpass,
+    /// Passes frequencies above the cutoff.
     Highpass,
+    /// Passes frequencies between the two cutoffs.
     Bandpass,
+    /// Rejects frequencies between the two cutoffs; a notch filter.
     Bandstop,
 }
 

@@ -22,7 +22,7 @@ impl PopulationTemplate for CadenceTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         10.0
     }
 
@@ -43,7 +43,7 @@ impl PopulationTemplate for StrideLengthTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         0.2
     }
 
@@ -66,7 +66,7 @@ impl PopulationTemplate for GaitSpeedTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         0.2
     }
 
@@ -79,11 +79,11 @@ impl PopulationTemplate for GaitSpeedTemplate {
 pub struct StancePhaseTemplate;
 
 impl PopulationTemplate for StancePhaseTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         60.0 // 60% of gait cycle
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         5.0
     }
 

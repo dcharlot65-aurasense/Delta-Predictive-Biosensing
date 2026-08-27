@@ -37,7 +37,7 @@ impl PopulationTemplate for PeakGrfTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         0.1_f64.powi(2)
     }
 

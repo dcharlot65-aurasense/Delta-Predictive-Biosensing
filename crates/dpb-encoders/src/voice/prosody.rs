@@ -22,7 +22,7 @@ impl PopulationTemplate for SpeechRateTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         0.8
     }
 
@@ -35,12 +35,12 @@ impl PopulationTemplate for SpeechRateTemplate {
 pub struct PauseDurationTemplate;
 
 impl PopulationTemplate for PauseDurationTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // Average pause duration in seconds
         0.5
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         0.3
     }
 
@@ -266,7 +266,7 @@ impl EventEncoder for IntonationEncoder {
 
         for i in (config.window_size..samples.len()).step_by(config.window_size) {
             // Simplified F0 estimation
-            let window = &samples[i - config.window_size..i];
+            let _window = &samples[i - config.window_size..i];
             let f0 = 100.0f32; // Placeholder
 
             if prev_f0 > 0.0f32 {

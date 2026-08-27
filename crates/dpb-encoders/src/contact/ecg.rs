@@ -1,7 +1,7 @@
 //! ECG (Electrocardiogram) encoders and population templates
 
 use dpb_core::{
-    Context, DpbError, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent,
+    Context, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -55,7 +55,7 @@ impl PopulationTemplate for HrvTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         15.0 // Standard deviation of SDNN
     }
 
@@ -68,12 +68,12 @@ impl PopulationTemplate for HrvTemplate {
 pub struct QrsDurationTemplate;
 
 impl PopulationTemplate for QrsDurationTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // QRS duration in milliseconds
         90.0 // Normal: 80-100 ms
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         10.0 // Standard deviation
     }
 
@@ -86,12 +86,12 @@ impl PopulationTemplate for QrsDurationTemplate {
 pub struct PrIntervalTemplate;
 
 impl PopulationTemplate for PrIntervalTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // PR interval in milliseconds
         160.0 // Normal: 120-200 ms
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         20.0
     }
 
@@ -113,7 +113,7 @@ impl PopulationTemplate for QtIntervalTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         20.0
     }
 

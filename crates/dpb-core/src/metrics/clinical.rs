@@ -15,6 +15,7 @@ pub struct IntraclassCorrelation {
 }
 
 impl IntraclassCorrelation {
+    /// Creates a new [`IntraclassCorrelation`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             sum_x: 0.0,
@@ -134,6 +135,7 @@ pub struct BlandAltmanBias {
 }
 
 impl BlandAltmanBias {
+    /// Creates a new [`BlandAltmanBias`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             sum_diff: 0.0,
@@ -202,6 +204,7 @@ pub struct BlandAltmanLimits {
 }
 
 impl BlandAltmanLimits {
+    /// Creates a new [`BlandAltmanLimits`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             differences: Vec::new(),
@@ -292,6 +295,7 @@ pub struct ClinicalSensitivity {
 }
 
 impl ClinicalSensitivity {
+    /// Creates a new [`ClinicalSensitivity`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             true_positives: 0.0,
@@ -372,6 +376,7 @@ pub struct ClinicalSpecificity {
 }
 
 impl ClinicalSpecificity {
+    /// Creates a new [`ClinicalSpecificity`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             true_negatives: 0.0,
@@ -454,6 +459,7 @@ pub struct PredictiveValue {
 }
 
 impl PredictiveValue {
+    /// Creates a new [`PredictiveValue`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             tp: 0.0,

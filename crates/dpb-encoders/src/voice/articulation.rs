@@ -20,7 +20,7 @@ impl PopulationTemplate for FormantTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         100.0
     }
 
@@ -33,12 +33,12 @@ impl PopulationTemplate for FormantTemplate {
 pub struct VowelSpaceTemplate;
 
 impl PopulationTemplate for VowelSpaceTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // Vowel space area (Hz²)
         300000.0
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         50000.0
     }
 
@@ -173,7 +173,7 @@ impl Default for VowelSpaceEncoder {
 impl EventEncoder for VowelSpaceEncoder {
     type Config = VowelSpaceConfig;
 
-    fn encode(&self, signal: &dyn Signal, config: &Self::Config) -> Result<Vec<SpikeEvent>> {
+    fn encode(&self, _signal: &dyn Signal, _config: &Self::Config) -> Result<Vec<SpikeEvent>> {
         // This would typically operate on pre-segmented vowel tokens
         // For now, return empty as it requires phoneme-level annotation
         Ok(Vec::new())

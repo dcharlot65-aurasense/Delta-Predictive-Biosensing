@@ -28,6 +28,10 @@ pub struct MemoryAccessEstimator {
 // These are established domain acronyms -- clinical file formats, ECG
 // beat annotations, and hardware terms. Camel-casing them (Pvc, Wfdb,
 // Dram) would make this harder to read for anyone who works with them.
+/// Where a value lives in the memory hierarchy.
+///
+/// Access energy differs by orders of magnitude between these, so the
+/// distinction dominates any power estimate.
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MemoryType {

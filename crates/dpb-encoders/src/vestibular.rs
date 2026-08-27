@@ -56,13 +56,13 @@ impl PopulationTemplate for VorGainTemplate {
 pub struct NystagmusSPVTemplate;
 
 impl PopulationTemplate for NystagmusSPVTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // Normal spontaneous nystagmus SPV should be near 0
         // Pathological values can be 5-30+ deg/s
         0.0 // Normal is no spontaneous nystagmus
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         // Small variance for normal; up to ~3 deg/s considered normal
         2.0_f64.powi(2)
     }
@@ -76,12 +76,12 @@ impl PopulationTemplate for NystagmusSPVTemplate {
 pub struct CaloricAsymmetryTemplate;
 
 impl PopulationTemplate for CaloricAsymmetryTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // Normal asymmetry is near 0%, pathological is >20-25%
         0.0
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         // Up to ~20% asymmetry can be normal
         10.0_f64.powi(2)
     }

@@ -44,7 +44,7 @@ impl PopulationTemplate for PressurePainThresholdTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         // High individual variability
         80.0_f64.powi(2)
     }
@@ -67,7 +67,7 @@ impl PopulationTemplate for HeatPainThresholdTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         2.5_f64.powi(2)
     }
 
@@ -80,13 +80,13 @@ impl PopulationTemplate for HeatPainThresholdTemplate {
 pub struct WindUpRatioTemplate;
 
 impl PopulationTemplate for WindUpRatioTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // Normal wind-up ratio is ~1.5-2.5
         // Higher values indicate central sensitization
         1.8
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         0.5_f64.powi(2)
     }
 

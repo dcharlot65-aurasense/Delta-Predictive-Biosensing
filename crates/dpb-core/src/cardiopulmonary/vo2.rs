@@ -363,11 +363,17 @@ pub struct Vo2Metrics {
 /// Cardiorespiratory fitness level
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FitnessLevel {
+    /// Bottom band for age and sex.
     VeryPoor,
+    /// Below average for age and sex.
     Poor,
+    /// Around average for age and sex.
     Fair,
+    /// Above average for age and sex.
     Good,
+    /// Well above average for age and sex.
     Excellent,
+    /// Top band for age and sex, typical of trained endurance athletes.
     Superior,
 }
 

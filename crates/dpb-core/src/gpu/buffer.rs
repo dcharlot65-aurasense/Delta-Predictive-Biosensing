@@ -203,17 +203,24 @@ impl BufferPool {
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 pub struct GpuVec4 {
+    /// First component.
     pub x: f32,
+    /// Second component.
     pub y: f32,
+    /// Third component.
     pub z: f32,
+    /// Fourth component. Padding in a vec3 context, since WGSL aligns
+    /// three-component vectors to 16 bytes.
     pub w: f32,
 }
 
 impl GpuVec4 {
+    /// Creates a vector from its four components.
     pub fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
         Self { x, y, z, w }
     }
 
+    /// Creates a vector with every component set to `value`.
     pub fn splat(value: f32) -> Self {
         Self::new(value, value, value, value)
     }

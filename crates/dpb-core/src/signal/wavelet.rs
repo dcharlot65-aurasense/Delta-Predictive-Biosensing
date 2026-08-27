@@ -9,7 +9,11 @@ use std::f64::consts::PI;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum WaveletFamily {
     /// Morlet wavelet with center frequency parameter omega0 (typically 5.0-7.0)
-    Morlet { omega0: f64 },
+    Morlet {
+        /// Centre frequency, typically 5.0-7.0. Higher values trade time
+        /// resolution for frequency resolution.
+        omega0: f64,
+    },
     /// Mexican Hat wavelet (second derivative of Gaussian)
     MexicanHat,
     /// Daubechies wavelet with order (number of vanishing moments)

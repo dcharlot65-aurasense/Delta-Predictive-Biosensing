@@ -11,6 +11,7 @@ pub struct SpikeRate {
 }
 
 impl SpikeRate {
+    /// Creates a new [`SpikeRate`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             total_spikes: 0.0,
@@ -75,6 +76,7 @@ pub struct Sparsity {
 }
 
 impl Sparsity {
+    /// Creates a new [`Sparsity`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             zero_count: 0.0,
@@ -130,6 +132,7 @@ pub struct SynapticOperations {
 }
 
 impl SynapticOperations {
+    /// Creates a new [`SynapticOperations`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             total_synops: 0.0,
@@ -196,6 +199,7 @@ pub struct EnergyPerInference {
 }
 
 impl EnergyPerInference {
+    /// Creates a new [`EnergyPerInference`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             total_energy: 0.0,
@@ -251,6 +255,7 @@ pub struct LatencyToFirstSpike {
 }
 
 impl LatencyToFirstSpike {
+    /// Creates a new [`LatencyToFirstSpike`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             sum_latency: 0.0,
@@ -314,6 +319,7 @@ pub struct TemporalCodingEfficiency {
 }
 
 impl TemporalCodingEfficiency {
+    /// Creates a new [`TemporalCodingEfficiency`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             information_bits: 0.0,
@@ -392,6 +398,7 @@ pub struct InformationRate {
 }
 
 impl InformationRate {
+    /// Creates a new [`InformationRate`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             total_bits: 0.0,
@@ -453,6 +460,7 @@ pub struct MembraneUtilization {
 }
 
 impl MembraneUtilization {
+    /// Creates a new [`MembraneUtilization`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             sum_utilization: 0.0,
@@ -534,6 +542,7 @@ pub struct WeightSparsity {
 }
 
 impl WeightSparsity {
+    /// Creates a new [`WeightSparsity`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             zero_weights: 0.0,
@@ -589,6 +598,7 @@ pub struct ActivationSparsity {
 }
 
 impl ActivationSparsity {
+    /// Creates a new [`ActivationSparsity`] accumulator with no observations recorded.
     pub fn new() -> Self {
         Self {
             zero_activations: 0.0,

@@ -194,14 +194,18 @@ pub enum PptSite {
 /// Side of body
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Side {
+    /// Left side of the body.
     Left,
+    /// Right side of the body.
     Right,
 }
 
 /// Sex for normative comparison
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Sex {
+    /// Male reference norms.
     Male,
+    /// Female reference norms.
     Female,
 }
 

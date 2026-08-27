@@ -11,12 +11,12 @@ use serde::{Deserialize, Serialize};
 pub struct SaccadeVelocityTemplate;
 
 impl PopulationTemplate for SaccadeVelocityTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // Peak velocity in degrees/second for 10-degree saccade
         400.0
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         100.0
     }
 
@@ -40,7 +40,7 @@ impl PopulationTemplate for SaccadeLatencyTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         40.0
     }
 

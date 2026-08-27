@@ -1,7 +1,7 @@
 //! EDA (Electrodermal Activity / Galvanic Skin Response) encoders
 
 use dpb_core::{
-    Context, DpbError, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent,
+    Context, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -13,12 +13,12 @@ use serde::{Deserialize, Serialize};
 pub struct EdaTonicTemplate;
 
 impl PopulationTemplate for EdaTonicTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // Baseline SCL in microsiemens (μS)
         10.0 // Normal range: 5-20 μS
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         5.0
     }
 
@@ -31,12 +31,12 @@ impl PopulationTemplate for EdaTonicTemplate {
 pub struct EdaScrTemplate;
 
 impl PopulationTemplate for EdaScrTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // SCR amplitude in μS
         0.2 // Typical: 0.05-1.0 μS
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         0.3
     }
 
@@ -150,7 +150,7 @@ impl EdaScrEncoder {
 
     fn detect_scr(&self, signal: &[f32], config: &EdaScrConfig, sample_rate: f64) -> Vec<usize> {
         let mut scr_onsets = Vec::new();
-        let dt = 1.0 / sample_rate;
+        let _dt = 1.0 / sample_rate;
 
         for i in config.window_size..signal.len() - config.window_size {
             let window_before = &signal[i - config.window_size..i];

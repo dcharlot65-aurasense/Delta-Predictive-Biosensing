@@ -436,9 +436,13 @@ impl ChangeMetrics {
 /// Effect size interpretation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EffectSizeInterpretation {
+    /// Below Cohen's small threshold: no practically meaningful difference.
     Negligible,
+    /// Cohen's "small" band.
     Small,
+    /// Cohen's "medium" band.
     Medium,
+    /// Cohen's "large" band or above.
     Large,
 }
 

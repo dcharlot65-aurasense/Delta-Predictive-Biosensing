@@ -11,11 +11,11 @@ use serde::{Deserialize, Serialize};
 pub struct PhysiologicalTremorTemplate;
 
 impl PopulationTemplate for PhysiologicalTremorTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         10.0 // Hz - normal physiological tremor frequency
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         2.0
     }
 
@@ -28,11 +28,11 @@ impl PopulationTemplate for PhysiologicalTremorTemplate {
 pub struct PathologicalTremorTemplate;
 
 impl PopulationTemplate for PathologicalTremorTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         5.0 // Hz - Parkinsonian rest tremor
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         1.5
     }
 

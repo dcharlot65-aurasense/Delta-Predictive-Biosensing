@@ -122,7 +122,11 @@ impl SynapticConductance {
             }
             Self::DualReceptor { ampa, nmda } => {
                 use super::channels::IonChannel;
-                ampa.conductance() + nmda.conductance()
+                // The NMDA component has to be taken at the given voltage.
+                // Summing the raw conductances ignores the Mg block entirely,
+                // which lets NMDA conduct fully at rest -- the opposite of the
+                // behaviour that makes it a coincidence detector.
+                ampa.conductance() + nmda.conductance_at(voltage)
             }
             Self::GabaReceptors { gaba_a, gaba_b } => {
                 use super::channels::IonChannel;
@@ -535,6 +539,41 @@ pub struct SynapseStats {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The Mg block is the whole point of NMDA: near-silent at rest, opening
+    /// as the cell depolarises. Summing the raw receptor conductances -- which
+    /// this did -- made the synapse voltage-independent, so a resting cell saw
+    /// the full NMDA conductance.
+    #[test]
+    fn dual_receptor_conductance_is_voltage_dependent() {
+        use crate::dendritic::channels::IonChannel;
+
+        let mut ampa = AmpaReceptor::new(1.0);
+        let mut nmda = NmdaReceptor::new(1.0);
+        ampa.activate(1.0);
+        nmda.activate(1.0);
+
+        let model = SynapticConductance::DualReceptor { ampa, nmda };
+
+        let at_rest = model.conductance(-70.0);
+        let depolarised = model.conductance(0.0);
+
+        assert!(
+            depolarised > at_rest,
+            "conductance did not rise with depolarisation: {at_rest} -> {depolarised}"
+        );
+
+        // At rest the NMDA share should be heavily suppressed, so the total
+        // must sit close to the AMPA component alone.
+        let ampa_only = AmpaReceptor::new(1.0);
+        let mut ampa_only = ampa_only;
+        ampa_only.activate(1.0);
+        let ampa_share = ampa_only.conductance();
+        assert!(
+            at_rest < ampa_share * 1.5,
+            "NMDA is barely blocked at -70 mV: total {at_rest} vs AMPA {ampa_share}"
+        );
+    }
 
     #[test]
     fn test_alpha_conductance() {

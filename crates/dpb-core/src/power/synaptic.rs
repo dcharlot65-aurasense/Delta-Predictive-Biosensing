@@ -207,6 +207,7 @@ pub struct SpikeTransmitEstimator {
     pub comm_type: CommunicationType,
 }
 
+/// How far a spike has to travel, which sets its transport energy.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CommunicationType {
     /// On-chip local communication
@@ -317,6 +318,7 @@ pub struct NeuronUpdateEstimator {
     pub model_complexity: NeuronComplexity,
 }
 
+/// Neuron model complexity, which sets the per-update compute cost.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NeuronComplexity {
     /// Simple LIF (Leaky Integrate-and-Fire)

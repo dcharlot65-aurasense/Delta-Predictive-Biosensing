@@ -1,7 +1,7 @@
 //! PPG (Photoplethysmography) encoders and population templates
 
 use dpb_core::{
-    Context, DpbError, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent,
+    Context, EventEncoder, PopulationTemplate, Result, Signal, SpikeEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -26,7 +26,7 @@ impl PopulationTemplate for PulseRateTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         10.0
     }
 
@@ -39,12 +39,12 @@ impl PopulationTemplate for PulseRateTemplate {
 pub struct PpgAmplitudeNorms;
 
 impl PopulationTemplate for PpgAmplitudeNorms {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // Perfusion index (PI) percentage
         2.0 // Normal: 1-5%
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         1.0
     }
 
@@ -57,12 +57,12 @@ impl PopulationTemplate for PpgAmplitudeNorms {
 pub struct PttTemplate;
 
 impl PopulationTemplate for PttTemplate {
-    fn expected_value(&self, context: &Context) -> f64 {
+    fn expected_value(&self, _context: &Context) -> f64 {
         // PTT in milliseconds (ECG R-peak to PPG pulse)
         200.0 // Normal: 150-250 ms
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         30.0
     }
 
@@ -296,9 +296,9 @@ impl EventEncoder for PpgPttEncoder {
     type Config = PpgPttConfig;
 
     fn encode(&self, signal: &dyn Signal, config: &Self::Config) -> Result<Vec<SpikeEvent>> {
-        let samples = signal.samples();
+        let _samples = signal.samples();
         let sample_rate = signal.sample_rate();
-        let dt = 1.0 / sample_rate;
+        let _dt = 1.0 / sample_rate;
 
         // Detect PPG pulses
         let pulse_config = PpgPulseConfig::default();

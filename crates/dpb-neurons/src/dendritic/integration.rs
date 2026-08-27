@@ -12,7 +12,7 @@
 //! 2. **Active**: With voltage-gated channels
 //! 3. **Nonlinear**: Dendritic spikes, NMDA spikes, Ca²⁺ spikes
 
-use super::channels::{CalciumChannel, HodgkinHuxleyChannel, IonChannel, NmdaReceptor};
+use super::channels::{CalciumChannel, IonChannel, NmdaReceptor};
 
 /// Dendritic integration trait
 pub trait DendriticIntegration: Send + Sync {

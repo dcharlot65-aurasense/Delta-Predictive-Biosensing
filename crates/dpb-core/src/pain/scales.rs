@@ -177,19 +177,34 @@ pub struct McGillPainQuestionnaire {
     pub vas: f64,
 }
 
-/// McGill sensory subscale descriptors
+/// McGill sensory subscale descriptors.
+///
+/// The eleven sensory items of the Short-Form McGill Pain Questionnaire.
+/// Each is rated 0 = none, 1 = mild, 2 = moderate, 3 = severe, so
+/// [`McGillSensory::score`] ranges 0-33.
 #[derive(Debug, Clone)]
 pub struct McGillSensory {
+    /// Pulsing or beating quality, rated 0-3.
     pub throbbing: u8,
+    /// Pain that travels along a path, rated 0-3.
     pub shooting: u8,
+    /// Piercing, penetrating quality, rated 0-3.
     pub stabbing: u8,
+    /// Keen, cutting quality, rated 0-3.
     pub sharp: u8,
+    /// Constricting, clenching quality, rated 0-3.
     pub cramping: u8,
+    /// Persistent boring or grinding quality, rated 0-3.
     pub gnawing: u8,
+    /// Burning or scalding quality, rated 0-3.
     pub hot_burning: u8,
+    /// Dull, continuous quality, rated 0-3.
     pub aching: u8,
+    /// Sensation of weight or pressure, rated 0-3.
     pub heavy: u8,
+    /// Pain on touch or palpation, rated 0-3.
     pub tender: u8,
+    /// Bursting or rending quality, rated 0-3.
     pub splitting: u8,
 }
 
@@ -210,12 +225,21 @@ impl McGillSensory {
     }
 }
 
-/// McGill affective subscale descriptors
+/// McGill affective subscale descriptors.
+///
+/// The four affective items of the Short-Form McGill Pain Questionnaire,
+/// capturing the emotional rather than sensory dimension. Each is rated
+/// 0 = none, 1 = mild, 2 = moderate, 3 = severe, so
+/// [`McGillAffective::score`] ranges 0-12.
 #[derive(Debug, Clone)]
 pub struct McGillAffective {
+    /// Draining, wearing quality, rated 0-3.
     pub tiring_exhausting: u8,
+    /// Nausea-inducing quality, rated 0-3.
     pub sickening: u8,
+    /// Frightening quality, rated 0-3.
     pub fearful: u8,
+    /// Quality experienced as punitive or cruel, rated 0-3.
     pub punishing_cruel: u8,
 }
 

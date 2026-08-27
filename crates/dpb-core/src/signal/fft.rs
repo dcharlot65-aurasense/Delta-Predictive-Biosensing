@@ -166,10 +166,17 @@ impl Stft {
 /// Window function types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WindowType {
+    /// No taper. Best frequency resolution, worst spectral leakage.
     Rectangular,
+    /// Raised cosine. The usual default -- good leakage suppression for a
+    /// modest widening of the main lobe.
     Hann,
+    /// Raised cosine with a non-zero pedestal, cancelling the first side lobe.
     Hamming,
+    /// Three-term cosine window; lower side lobes than Hann at the cost of a
+    /// wider main lobe.
     Blackman,
+    /// Adjustable window trading main-lobe width against side-lobe level.
     Kaiser,
 }
 

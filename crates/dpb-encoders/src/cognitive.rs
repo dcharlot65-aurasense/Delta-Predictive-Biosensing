@@ -102,7 +102,7 @@ impl PopulationTemplate for LapseRateTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         1.0_f64.powi(2)
     }
 
@@ -126,7 +126,7 @@ impl PopulationTemplate for AccuracyTemplate {
         }
     }
 
-    fn variance(&self, context: &Context) -> f64 {
+    fn variance(&self, _context: &Context) -> f64 {
         0.05_f64.powi(2)
     }
 
