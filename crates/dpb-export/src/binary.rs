@@ -38,7 +38,11 @@ impl BinaryExporter {
         }
     }
 
-    /// Enable compression.
+    /// Enable zstd compression of the payload at `level` (0 disables, 9 max).
+    ///
+    /// Requires the `compression` feature; without it, [`Self::export`] fails
+    /// rather than writing a file whose header claims compression it does not
+    /// have.
     pub fn with_compression(mut self, level: u8) -> Self {
         self.compression = level.min(9);
         self
@@ -51,29 +55,55 @@ impl BinaryExporter {
 
         encoder.validate_for_export()?;
 
+        // Sections are built in memory so the whole payload can be handed to
+        // the compressor as one block. The header stays uncompressed: a reader
+        // has to parse the flags before it knows what the rest is.
+        let mut payload = Vec::new();
+        self.write_metadata_section(&mut payload)?;
+        self.write_params_section(&mut payload, &encoder.get_params())?;
+        if let Some(state) = encoder.get_state() {
+            self.write_state_section(&mut payload, &state)?;
+        }
+        self.write_footer(&mut payload)?;
+
+        let payload = self.maybe_compress(payload)?;
+
         let file = File::create(path)?;
         let mut writer = BufWriter::new(file);
-
-        // Write header
         self.write_header(&mut writer)?;
-
-        // Write metadata section
-        self.write_metadata_section(&mut writer)?;
-
-        // Write encoder parameters
-        self.write_params_section(&mut writer, &encoder.get_params())?;
-
-        // Write state if available
-        if let Some(state) = encoder.get_state() {
-            self.write_state_section(&mut writer, &state)?;
-        }
-
-        // Write footer with checksum
-        self.write_footer(&mut writer)?;
-
+        writer.write_all(&payload)?;
         writer.flush()?;
+
         debug!("Binary export complete");
         Ok(())
+    }
+
+    /// Compress the payload when a level was requested.
+    ///
+    /// The header flag is set from `self.compression`, so this must never
+    /// return the input unchanged for a non-zero level -- that combination
+    /// produces a file that claims to be compressed and is not, which is what
+    /// this code used to do.
+    #[cfg(feature = "compression")]
+    fn maybe_compress(&self, payload: Vec<u8>) -> Result<Vec<u8>> {
+        if self.compression == 0 {
+            return Ok(payload);
+        }
+        zstd::encode_all(payload.as_slice(), i32::from(self.compression))
+            .map_err(|e| ExportError::validation(format!("Compression failed: {e}")))
+    }
+
+    /// Without the `compression` feature there is no compressor, so asking for
+    /// one is an error rather than a silently mislabelled file.
+    #[cfg(not(feature = "compression"))]
+    fn maybe_compress(&self, payload: Vec<u8>) -> Result<Vec<u8>> {
+        if self.compression > 0 {
+            return Err(ExportError::validation(
+                "compression was requested but dpb-export was built without the \
+                 `compression` feature",
+            ));
+        }
+        Ok(payload)
     }
 
     /// Write file header.
@@ -197,6 +227,14 @@ impl BinaryImporter {
         // Read and verify header
         let header = Self::read_header(&mut reader)?;
 
+        // The header is plain, the payload may not be. Reading the flag and
+        // then parsing sections straight from the file -- which is what this
+        // did before -- silently misreads every compressed file.
+        let mut payload = Vec::new();
+        reader.read_to_end(&mut payload)?;
+        let payload = Self::maybe_decompress(payload, header.compressed)?;
+        let mut reader = payload.as_slice();
+
         // Read metadata
         let metadata = Self::read_metadata_section(&mut reader)?;
 
@@ -214,6 +252,29 @@ impl BinaryImporter {
             params,
             state,
         })
+    }
+
+    /// Undo [`BinaryExporter::maybe_compress`].
+    #[cfg(feature = "compression")]
+    fn maybe_decompress(payload: Vec<u8>, compressed: bool) -> Result<Vec<u8>> {
+        if !compressed {
+            return Ok(payload);
+        }
+        zstd::decode_all(payload.as_slice())
+            .map_err(|e| ExportError::validation(format!("Decompression failed: {e}")))
+    }
+
+    /// Without the `compression` feature a compressed file cannot be read, so
+    /// say so instead of parsing the compressed bytes as sections.
+    #[cfg(not(feature = "compression"))]
+    fn maybe_decompress(payload: Vec<u8>, compressed: bool) -> Result<Vec<u8>> {
+        if compressed {
+            return Err(ExportError::validation(
+                "file is compressed but dpb-export was built without the \
+                 `compression` feature",
+            ));
+        }
+        Ok(payload)
     }
 
     /// Read and verify header.
@@ -625,22 +686,64 @@ mod tests {
         assert!(file_size < 10000);
     }
 
+    /// Checking only the flag bit -- which this test used to do -- passes
+    /// happily on a file whose header says "compressed" and whose payload is
+    /// raw. The payload has to be checked too.
+    #[cfg(feature = "compression")]
     #[test]
-    fn test_binary_export_with_compression_flag() {
+    fn compressed_export_round_trips_and_is_actually_compressed() {
+        let dir = tempdir().unwrap();
+        let compressed_path = dir.path().join("compressed.dpb");
+        let plain_path = dir.path().join("plain.dpb");
+        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
+
+        BinaryExporter::new(ModelMetadata::new())
+            .with_compression(5)
+            .export(&compressed_path, &encoder)
+            .unwrap();
+        BinaryExporter::new(ModelMetadata::new())
+            .export(&plain_path, &encoder)
+            .unwrap();
+
+        let compressed = std::fs::read(&compressed_path).unwrap();
+        let plain = std::fs::read(&plain_path).unwrap();
+
+        // Flags live at offset 6-7, after magic[4] and version[2].
+        assert_eq!(u16::from_le_bytes([compressed[6], compressed[7]]) & 1, 1);
+        assert_eq!(u16::from_le_bytes([plain[6], plain[7]]) & 1, 0);
+
+        // The bytes after the 16-byte header must differ; identical payloads
+        // would mean the flag is lying.
+        assert_ne!(
+            &compressed[16..],
+            &plain[16..],
+            "payload is byte-identical to the uncompressed file"
+        );
+
+        // And it has to survive the round trip.
+        let back = BinaryImporter::import(&compressed_path).unwrap();
+        let plain_back = BinaryImporter::import(&plain_path).unwrap();
+        assert_eq!(back.params.encoder_type, plain_back.params.encoder_type);
+        assert_eq!(back.params.num_channels, plain_back.params.num_channels);
+        assert_eq!(back.params.thresholds, plain_back.params.thresholds);
+    }
+
+    /// A build with no compressor must refuse the request rather than write a
+    /// file that claims compression it cannot provide.
+    #[cfg(not(feature = "compression"))]
+    #[test]
+    fn compression_without_the_feature_is_an_error() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("compressed.dpb");
 
-        let metadata = ModelMetadata::new();
-        let exporter = BinaryExporter::new(metadata).with_compression(5);
-        let encoder = MockEncoder::level_crossing(8, 256.0, 0.1);
-
-        exporter.export(&path, &encoder).unwrap();
-
-        // Verify compression flag is set
-        let content = std::fs::read(&path).unwrap();
-        // Flags are at offset 6-7 (after magic[4] and version[2])
-        let flags = u16::from_le_bytes([content[6], content[7]]);
-        assert_eq!(flags & 1, 1); // Compression flag should be set
+        let err = BinaryExporter::new(ModelMetadata::new())
+            .with_compression(5)
+            .export(&path, &MockEncoder::level_crossing(8, 256.0, 0.1))
+            .expect_err("must not silently write an uncompressed file");
+        assert!(
+            err.to_string().contains("compression"),
+            "unhelpful error: {err}"
+        );
     }
 
     #[test]

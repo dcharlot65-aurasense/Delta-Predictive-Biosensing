@@ -16,6 +16,9 @@ default = []
 # OnnxExporter::write_onnx_model. This used to pull in tract-onnx,
 # which nothing ever called.
 onnx = []
+# zstd compression of the binary payload. Without it, asking for
+# compression is an error rather than a mislabelled file.
+compression = ["dep:zstd"]
 # Enable TensorFlow/Keras support
 tensorflow = []
 # Enable PyTorch export support
@@ -24,6 +27,7 @@ pytorch = []
 full = ["onnx", "tensorflow", "pytorch"]
 
 [dependencies]
+zstd = { version = "0.13", optional = true }
 # Error handling
 thiserror.workspace = true
 

@@ -6,9 +6,7 @@ use super::observations::{VitalSignsObservation, WaveformObservation, ComponentO
 use super::resources::{
     CodeableConcept, Device, DiagnosticReport, Observation, Patient, Quantity, Reference,
 };
-use super::Bundle;
-use crate::error::Result;
-use crate::types::{Context, SignalBuffer, TimeSeries};
+use crate::types::{Context, SignalBuffer};
 
 
 /// Converts DPB Context to FHIR Patient demographics

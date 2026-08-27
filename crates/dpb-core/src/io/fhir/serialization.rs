@@ -2,7 +2,6 @@
 //!
 //! Provides JSON and XML serialization support for FHIR R4 resources.
 
-use super::{Bundle, FhirResource};
 use crate::error::{DpbError, Result};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
@@ -340,6 +339,8 @@ impl Extension {
 mod tests {
     use super::*;
     use crate::io::fhir::resources::{Patient, HumanName, Observation};
+    // Only the tests build resources directly; the serializers are generic.
+    use crate::io::fhir::{Bundle, FhirResource};
     use crate::io::fhir::observations::VitalSignsObservation;
 
     #[test]

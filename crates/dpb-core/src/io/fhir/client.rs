@@ -6,7 +6,7 @@
 //! Note: This is a framework for FHIR client operations. Full HTTP implementation
 //! would require an HTTP client library like `reqwest` (not included in base dependencies).
 
-use super::{Bundle, BundleType, FhirResource, ResourceType};
+use super::{Bundle, FhirResource, ResourceType};
 use crate::error::{DpbError, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
