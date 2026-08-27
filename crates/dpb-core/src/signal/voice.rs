@@ -9,7 +9,7 @@
 //! - Spectral analysis for speech
 
 use crate::error::{DpbError, Result};
-use ndarray::{Array1, ArrayView1};
+use ndarray::{ArrayView1};
 use serde::{Deserialize, Serialize};
 
 /// Fundamental frequency (F0) metrics
@@ -765,6 +765,7 @@ impl VoiceAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ndarray::Array1;
 
     fn generate_synthetic_vowel(sample_rate: f64, duration: f64, f0: f64) -> Array1<f64> {
         let n_samples = (sample_rate * duration) as usize;

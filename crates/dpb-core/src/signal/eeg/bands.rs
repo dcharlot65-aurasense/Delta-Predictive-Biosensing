@@ -5,7 +5,6 @@
 
 use crate::error::{DpbError, Result};
 use crate::signal::fft::FftProcessor;
-use ndarray::ArrayView1;
 
 /// Standard EEG frequency bands.
 ///

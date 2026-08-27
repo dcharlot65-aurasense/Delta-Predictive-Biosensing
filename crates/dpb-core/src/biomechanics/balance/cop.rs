@@ -316,12 +316,16 @@ mod tests {
     #[test]
     fn test_path_length() {
         let analyzer = CopAnalyzer::new(100.0);
-        let cop_x = vec![0.0, 3.0, 3.0, 0.0];
-        let cop_y = vec![0.0, 0.0, 4.0, 4.0];
 
-        let path = analyzer.path_length(&cop_x, &cop_y);
-        // Expected: 3 + 4 + 5 = 12
-        assert!((path - 12.0).abs() < 0.01);
+        // Open path along the axes: 3 across, 4 up, 3 back.
+        let path = analyzer.path_length(&[0.0, 3.0, 3.0, 0.0], &[0.0, 0.0, 4.0, 4.0]);
+        assert!((path - 10.0).abs() < 0.01, "got {path}, expected 3 + 4 + 3");
+
+        // Closed 3-4-5 triangle, so the last leg is the hypotenuse. This is
+        // what the original expectation of 12 described, but the points it
+        // used returned to (0, 4) rather than the origin, tracing 10.
+        let path = analyzer.path_length(&[0.0, 3.0, 3.0, 0.0], &[0.0, 0.0, 4.0, 0.0]);
+        assert!((path - 12.0).abs() < 0.01, "got {path}, expected 3 + 4 + 5");
     }
 
     #[test]

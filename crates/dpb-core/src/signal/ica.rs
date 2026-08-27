@@ -2,7 +2,7 @@
 
 use crate::error::{DpbError, Result};
 use ndarray::{Array1, Array2, Axis};
-use rand::{Rng, RngExt};
+use rand::{RngExt};
 
 /// Nonlinear function types for FastICA algorithm.
 #[derive(Debug, Clone, Copy, PartialEq)]

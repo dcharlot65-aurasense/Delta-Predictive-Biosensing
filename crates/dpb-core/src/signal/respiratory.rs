@@ -9,7 +9,7 @@
 
 use crate::error::{DpbError, Result};
 use crate::signal::fft::{FftProcessor, fft_frequencies};
-use ndarray::{Array1, ArrayView1};
+use ndarray::{ArrayView1};
 use serde::{Deserialize, Serialize};
 
 /// Individual breath event
@@ -683,6 +683,7 @@ pub fn analyze_sleep_breathing(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ndarray::Array1;
 
     fn create_breathing_signal(sample_rate: f64, duration: f64, resp_rate: f64) -> Array1<f64> {
         let n_samples = (sample_rate * duration) as usize;

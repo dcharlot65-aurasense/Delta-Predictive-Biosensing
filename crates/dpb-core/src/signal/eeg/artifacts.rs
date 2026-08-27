@@ -5,7 +5,7 @@
 
 use crate::error::{DpbError, Result};
 use crate::signal::filter::IirFilter;
-use ndarray::{Array1, ArrayView1};
+use ndarray::{Array1};
 use std::f64::consts::PI;
 
 /// Types of artifacts that can be detected in EEG signals.

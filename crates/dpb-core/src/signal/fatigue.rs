@@ -7,7 +7,7 @@
 //! - Multi-modal fatigue integration
 
 use crate::error::{DpbError, Result};
-use ndarray::{Array1, ArrayView1};
+use ndarray::{ArrayView1};
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
@@ -752,6 +752,7 @@ pub fn integrate_fatigue(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ndarray::Array1;
 
     fn generate_fatiguing_emg(n_samples: usize, sample_rate: f64) -> Array1<f64> {
         let mut signal = Array1::zeros(n_samples);
