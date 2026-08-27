@@ -9,6 +9,10 @@ use crate::layers::SpikingLayer;
 use std::collections::HashMap;
 
 /// Early fusion network that concatenates all modality spike trains
+// Stored from the constructor but not consulted yet. Kept so a caller's
+// configuration is not silently dropped, which is the trap the removed
+// with_template had.
+#[allow(dead_code)]
 pub struct EarlyFusionSNN {
     config: FusionConfig,
     layers: Vec<SpikingLinear>,

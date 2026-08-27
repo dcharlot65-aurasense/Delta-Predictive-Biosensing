@@ -47,7 +47,9 @@ impl TFLiteTensor {
     }
 
     /// Mark as variable
-    pub fn as_variable(mut self) -> Self {
+    /// Marks this tensor as a variable. Consumes and returns `self`, so it
+    /// chains like the other builder methods.
+    pub fn into_variable(mut self) -> Self {
         self.is_variable = true;
         self
     }
@@ -209,7 +211,7 @@ impl TensorType {
     }
 
     /// Get TFLite type code
-    pub fn to_tflite_code(&self) -> u8 {
+    pub fn to_tflite_code(self) -> u8 {
         match self {
             TensorType::Float32 => 0,
             TensorType::Float16 => 1,

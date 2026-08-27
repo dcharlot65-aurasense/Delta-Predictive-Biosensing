@@ -365,6 +365,10 @@ impl CalibrationData {
 }
 
 /// Quantization-aware training support
+// Stored from the constructor but not consulted yet. Kept so a caller's
+// configuration is not silently dropped, which is the trap the removed
+// with_template had.
+#[allow(dead_code)]
 pub struct QuantizationAwareTraining {
     config: QuantizationConfig,
 }

@@ -10,6 +10,10 @@ use ndarray::Array3;
 use std::collections::HashMap;
 
 /// Gated fusion network with adaptive modality weighting
+// Stored from the constructor but not consulted yet. Kept so a caller's
+// configuration is not silently dropped, which is the trap the removed
+// with_template had.
+#[allow(dead_code)]
 pub struct GatedFusionSNN {
     config: FusionConfig,
     /// Feature extractors per modality

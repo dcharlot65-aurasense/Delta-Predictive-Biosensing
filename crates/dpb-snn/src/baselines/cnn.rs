@@ -3,6 +3,10 @@
 use super::{ANNBaseline, Tensor, count_params, xavier_init};
 
 /// 9. Small 1D CNN for signals
+// Stored from the constructor but not consulted yet. Kept so a caller's
+// configuration is not silently dropped, which is the trap the removed
+// with_template had.
+#[allow(dead_code)]
 pub struct CNN1DSmall {
     conv1: Tensor,
     conv2: Tensor,

@@ -1,7 +1,6 @@
 //! LSL inlet for receiving biosignal data.
 
 use crate::{LslError, Result, StreamInfo};
-use crossbeam_channel::{bounded};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tracing::{debug, info, warn};

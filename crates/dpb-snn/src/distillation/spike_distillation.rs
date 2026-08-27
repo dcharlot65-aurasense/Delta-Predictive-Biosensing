@@ -63,6 +63,10 @@ pub struct SpikePatternDistillation {
     pub tolerance: usize,
 }
 
+// Stored from the constructor but not consulted yet. Kept so a caller's
+// configuration is not silently dropped, which is the trap the removed
+// with_template had.
+#[allow(dead_code)]
 impl SpikePatternDistillation {
     pub fn new(config: SpikeDistillationConfig) -> Self {
         Self {

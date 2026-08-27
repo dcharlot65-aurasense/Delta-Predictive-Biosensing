@@ -174,7 +174,7 @@ pub enum BuiltinOperator {
 
 impl BuiltinOperator {
     /// Get operator code
-    pub fn to_code(&self) -> u8 {
+    pub fn to_code(self) -> u8 {
         match self {
             BuiltinOperator::Add => 0,
             BuiltinOperator::Sub => 1,

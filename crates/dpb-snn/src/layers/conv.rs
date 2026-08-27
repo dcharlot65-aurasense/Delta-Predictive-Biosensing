@@ -35,8 +35,17 @@ pub struct SpikingConv2d {
     pub adaptive: bool,
 }
 
+// Stored from the constructor but not consulted yet. Kept so a caller's
+// configuration is not silently dropped, which is the trap the removed
+// with_template had.
+#[allow(dead_code)]
 impl SpikingConv2d {
+    // Channels, kernel, stride, padding, bias and neuron dynamics are all
+    // independent; folding them into a config struct would be an API change
+    // rather than a simplification.
+    #[allow(clippy::too_many_arguments)]
     /// Create a new 2D convolutional spiking layer
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         in_channels: usize,
         out_channels: usize,
@@ -242,6 +251,7 @@ pub struct SpikingConv1d {
 
 impl SpikingConv1d {
     /// Create a new 1D convolutional spiking layer
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         in_channels: usize,
         out_channels: usize,

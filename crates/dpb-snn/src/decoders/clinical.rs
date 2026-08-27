@@ -40,7 +40,7 @@ impl UPDRSDecoder {
     pub fn for_part_iii(num_neurons: usize) -> Self {
         // UPDRS Part III has multiple subscores for different motor features
         // Simplified: 4 main categories
-        let categories = vec![
+        let categories = [
             "tremor",       // 0-4 scale
             "rigidity",     // 0-4 scale
             "bradykinesia", // 0-4 scale

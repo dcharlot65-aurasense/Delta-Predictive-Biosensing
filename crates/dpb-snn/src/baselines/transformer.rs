@@ -3,6 +3,10 @@
 use super::{ANNBaseline, Tensor, count_params, xavier_init};
 
 /// Multi-head attention layer (simplified)
+// Stored from the constructor but not consulted yet. Kept so a caller's
+// configuration is not silently dropped, which is the trap the removed
+// with_template had.
+#[allow(dead_code)]
 struct MultiHeadAttention {
     q_proj: Tensor,
     k_proj: Tensor,
@@ -418,6 +422,10 @@ impl ANNBaseline for Informer {
 }
 
 /// 36. Autoformer (Auto-correlation mechanism)
+// Stored from the constructor but not consulted yet. Kept so a caller's
+// configuration is not silently dropped, which is the trap the removed
+// with_template had.
+#[allow(dead_code)]
 pub struct Autoformer {
     encoder: TransformerEncoder,
     decomp_kernels: Vec<usize>,

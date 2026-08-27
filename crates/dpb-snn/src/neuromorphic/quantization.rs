@@ -352,6 +352,10 @@ pub struct QuantizationError {
 
 /// Calibration data for quantization
 #[derive(Debug, Clone)]
+// Stored from the constructor but not consulted yet. Kept so a caller's
+// configuration is not silently dropped, which is the trap the removed
+// with_template had.
+#[allow(dead_code)]
 struct CalibrationData {
     min: f32,
     max: f32,

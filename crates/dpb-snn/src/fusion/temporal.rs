@@ -21,6 +21,10 @@ pub enum AlignmentStrategy {
 }
 
 /// Temporal alignment fusion network
+// Stored from the constructor but not consulted yet. Kept so a caller's
+// configuration is not silently dropped, which is the trap the removed
+// with_template had.
+#[allow(dead_code)]
 pub struct TemporalAlignmentSNN {
     config: FusionConfig,
     /// Temporal processors per modality

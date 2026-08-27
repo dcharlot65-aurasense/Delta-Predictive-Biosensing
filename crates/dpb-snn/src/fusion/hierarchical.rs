@@ -12,6 +12,10 @@ use ndarray::Array3;
 use std::collections::HashMap;
 
 /// Hierarchical fusion with multi-level integration
+// Stored from the constructor but not consulted yet. Kept so a caller's
+// configuration is not silently dropped, which is the trap the removed
+// with_template had.
+#[allow(dead_code)]
 pub struct HierarchicalFusionSNN {
     config: FusionConfig,
     /// Low-level processors (per modality)

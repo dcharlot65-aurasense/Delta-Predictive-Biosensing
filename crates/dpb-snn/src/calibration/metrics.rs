@@ -77,9 +77,9 @@ pub fn negative_log_likelihood(probabilities: &[f64], labels: &[bool]) -> f64 {
     let mut nll = 0.0;
     for (&prob, &label) in probabilities.iter().zip(labels.iter()) {
         let p = if label {
-            prob.max(1e-10).min(1.0 - 1e-10)
+            prob.clamp(1e-10, 1.0 - 1e-10)
         } else {
-            (1.0 - prob).max(1e-10).min(1.0 - 1e-10)
+            (1.0 - prob).clamp(1e-10, 1.0 - 1e-10)
         };
         nll -= p.ln();
     }

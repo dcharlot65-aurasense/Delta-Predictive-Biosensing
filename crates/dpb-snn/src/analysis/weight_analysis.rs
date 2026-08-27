@@ -231,6 +231,10 @@ impl ConvergenceAnalyzer for WeightMagnitudeTracker {
 }
 
 /// Tracks weight sparsity (pruning) during training
+// Stored from the constructor but not consulted yet. Kept so a caller's
+// configuration is not silently dropped, which is the trap the removed
+// with_template had.
+#[allow(dead_code)]
 pub struct WeightSparsityTracker {
     sparsity_history: Vec<f64>,
     target_sparsity: f64,

@@ -53,9 +53,9 @@ pub use webnn::{WebNNEncoder, WebNNConfig, WebNNDeviceType, WebNNFeatures};
 /// Called automatically when the module loads.
 #[wasm_bindgen(start)]
 pub fn init() {
-    // Set up better panic messages in browser console
-    #[cfg(feature = "console_error_panic_hook")]
-    console_error_panic_hook::set_once();
+    // Was an inline copy of utils::set_panic_hook's body, which left the
+    // helper itself unreferenced.
+    utils::set_panic_hook();
 }
 
 /// Get DPB WASM version string.

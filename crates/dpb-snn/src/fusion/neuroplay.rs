@@ -22,6 +22,10 @@ pub enum ModalityGroup {
 }
 
 /// NeuroPlay full multi-modal integration network
+// Stored from the constructor but not consulted yet. Kept so a caller's
+// configuration is not silently dropped, which is the trap the removed
+// with_template had.
+#[allow(dead_code)]
 pub struct NeuroPlaySNN {
     config: FusionConfig,
     /// Low-level: Per-modality feature extraction
@@ -59,11 +63,24 @@ impl NeuroPlaySNN {
         let mut modality_encoders = HashMap::new();
         for modality in &all_modalities {
             let input_size = modality.default_feature_dim();
-            let mut layers = Vec::new();
-
-            layers.push(SpikingLinear::new(input_size, config.hidden_size / 2, true, neuron_params.clone(), dt, adaptive));
-
-            layers.push(SpikingLinear::new(config.hidden_size / 2, config.hidden_size, true, neuron_params.clone(), dt, adaptive));
+            let layers = vec![
+                SpikingLinear::new(
+                    input_size,
+                    config.hidden_size / 2,
+                    true,
+                    neuron_params.clone(),
+                    dt,
+                    adaptive,
+                ),
+                SpikingLinear::new(
+                    config.hidden_size / 2,
+                    config.hidden_size,
+                    true,
+                    neuron_params.clone(),
+                    dt,
+                    adaptive,
+                ),
+            ];
 
             modality_encoders.insert(*modality, layers);
         }
@@ -90,11 +107,25 @@ impl NeuroPlaySNN {
         let cognitive_fusion = SpikingLinear::new(2 * config.hidden_size, config.hidden_size, true, neuron_params.clone(), dt, adaptive);
 
         // Final integration layers
-        let mut final_fusion = Vec::new();
-        final_fusion.push(SpikingLinear::new(2 * config.hidden_size, // Motor + Cognitive
-            config.hidden_size, true, neuron_params.clone(), dt, adaptive));
-
-        final_fusion.push(SpikingLinear::new(config.hidden_size, config.hidden_size / 2, true, neuron_params.clone(), dt, adaptive));
+        let final_fusion = vec![
+            // Motor + Cognitive
+            SpikingLinear::new(
+                2 * config.hidden_size,
+                config.hidden_size,
+                true,
+                neuron_params.clone(),
+                dt,
+                adaptive,
+            ),
+            SpikingLinear::new(
+                config.hidden_size,
+                config.hidden_size / 2,
+                true,
+                neuron_params.clone(),
+                dt,
+                adaptive,
+            ),
+        ];
 
         // UPDRS score regression (typically 0-132 for total UPDRS)
         let updrs_head = SpikingLinear::new(

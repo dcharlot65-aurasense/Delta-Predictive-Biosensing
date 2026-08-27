@@ -267,23 +267,24 @@ impl SpikingVGG {
         }
 
         // Classifier
-        let mut classifier = Vec::new();
-        classifier.push(SpikingLinear::new(
+        let classifier = vec![
+            SpikingLinear::new(
             512, // Flattened feature size
             256,
             true,
             config.neuron_params.clone(),
             config.dt,
             false,
-        ));
-        classifier.push(SpikingLinear::new(
+        ),
+            SpikingLinear::new(
             256,
             num_classes,
             true,
             config.neuron_params.clone(),
             config.dt,
             false,
-        ));
+        ),
+        ];
 
         Self {
             conv_blocks,

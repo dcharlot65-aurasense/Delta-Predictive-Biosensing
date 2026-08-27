@@ -474,6 +474,10 @@ pub enum ChangeDirection {
 }
 
 /// Cognitive-motor fusion network
+// Stored from the constructor but not consulted yet. Kept so a caller's
+// configuration is not silently dropped, which is the trap the removed
+// with_template had.
+#[allow(dead_code)]
 pub struct CognitiveMotorFusion {
     /// Configuration
     config: CognitiveMotorFusionConfig,
@@ -885,6 +889,10 @@ impl CognitiveMotorFusion {
 }
 
 /// Wrapper to implement FusionNetwork trait
+// Stored from the constructor but not consulted yet. Kept so a caller's
+// configuration is not silently dropped, which is the trap the removed
+// with_template had.
+#[allow(dead_code)]
 pub struct CognitiveMotorFusionSNN {
     inner: CognitiveMotorFusion,
     config: FusionConfig,
