@@ -51,9 +51,9 @@
 //! // Describe the model: a name and its input/output widths.
 //! let model = MobileModel::new("demo".to_string(), 128, 8);
 //!
-//! // Create runtime with optimization settings. `MobileRuntime::new` returns a
+//! // Create runtime with optimization settings. `MobileRuntime::builder` returns a
 //! // builder; `build` yields the runtime.
-//! let mut runtime = MobileRuntime::new(model)
+//! let mut runtime = MobileRuntime::builder(model)
 //!     .with_max_memory_mb(50)
 //!     .with_thread_count(2)
 //!     .build()?;

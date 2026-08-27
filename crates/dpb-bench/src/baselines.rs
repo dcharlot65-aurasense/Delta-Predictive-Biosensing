@@ -67,7 +67,7 @@ pub struct ANNBaseline {
 impl ANNBaseline {
     /// Create a new ANN baseline
     pub fn new(input_dim: usize, hidden_dims: Vec<usize>, output_dim: usize) -> Self {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         let mut rng = rand::rng();
 
         // Initialize random weights

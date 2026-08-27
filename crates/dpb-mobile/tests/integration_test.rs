@@ -72,7 +72,7 @@ fn test_model_version() {
 #[test]
 fn test_runtime_creation() {
     let model = create_simple_model();
-    let runtime = MobileRuntime::new(model).build();
+    let runtime = MobileRuntime::builder(model).build();
 
     assert!(runtime.is_ok());
     let runtime = runtime.unwrap();
@@ -104,7 +104,7 @@ fn test_runtime_load_model() {
 #[test]
 fn test_inference() {
     let model = create_simple_model();
-    let mut runtime = MobileRuntime::new(model)
+    let mut runtime = MobileRuntime::builder(model)
         .with_warmup_iterations(0)
         .build()
         .unwrap();
@@ -121,7 +121,7 @@ fn test_inference() {
 #[test]
 fn test_inference_invalid_input() {
     let model = create_simple_model();
-    let mut runtime = MobileRuntime::new(model)
+    let mut runtime = MobileRuntime::builder(model)
         .with_warmup_iterations(0)
         .build()
         .unwrap();
@@ -145,7 +145,7 @@ fn test_inference_without_model() {
 #[test]
 fn test_inference_inplace() {
     let model = create_simple_model();
-    let mut runtime = MobileRuntime::new(model)
+    let mut runtime = MobileRuntime::builder(model)
         .with_warmup_iterations(0)
         .build()
         .unwrap();
@@ -161,7 +161,7 @@ fn test_inference_inplace() {
 #[test]
 fn test_inference_multiple() {
     let model = create_simple_model();
-    let mut runtime = MobileRuntime::new(model)
+    let mut runtime = MobileRuntime::builder(model)
         .with_warmup_iterations(0)
         .build()
         .unwrap();
@@ -178,7 +178,7 @@ fn test_inference_multiple() {
 #[test]
 fn test_runtime_config() {
     let model = create_simple_model();
-    let runtime = MobileRuntime::new(model)
+    let runtime = MobileRuntime::builder(model)
         .with_max_memory_mb(50)
         .with_thread_count(4)
         .with_batch_size(2)
@@ -202,7 +202,7 @@ fn test_runtime_config() {
 #[test]
 fn test_runtime_memory_usage() {
     let model = create_simple_model();
-    let runtime = MobileRuntime::new(model).build().unwrap();
+    let runtime = MobileRuntime::builder(model).build().unwrap();
 
     let memory_usage = runtime.memory_usage_bytes();
     assert!(memory_usage > 0);
@@ -211,7 +211,7 @@ fn test_runtime_memory_usage() {
 #[test]
 fn test_runtime_reset_statistics() {
     let model = create_simple_model();
-    let mut runtime = MobileRuntime::new(model)
+    let mut runtime = MobileRuntime::builder(model)
         .with_warmup_iterations(0)
         .build()
         .unwrap();
@@ -310,7 +310,7 @@ fn test_latency_metrics() {
 #[test]
 fn test_batch_inference() {
     let model = create_simple_model();
-    let mut runtime = MobileRuntime::new(model)
+    let mut runtime = MobileRuntime::builder(model)
         .with_batch_size(4)
         .with_warmup_iterations(0)
         .build()
@@ -392,7 +392,7 @@ fn test_multi_layer_model() {
     assert_eq!(model.num_layers(), 3);
 
     // Test inference
-    let mut runtime = MobileRuntime::new(model)
+    let mut runtime = MobileRuntime::builder(model)
         .with_warmup_iterations(0)
         .build()
         .unwrap();

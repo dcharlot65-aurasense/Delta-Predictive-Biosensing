@@ -341,15 +341,27 @@ pub struct EnergyEstimator {
     total_energy_mj: f64,
 }
 
+// Domain notation -- process nodes, file formats. Camel case would
+// diverge from how these are written everywhere else.
 /// Energy models for different hardware
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy)]
 pub enum EnergyModel {
     /// Neuromorphic hardware (energy per spike-synaptic operation)
-    Neuromorphic { energy_per_spike_op_pj: f64 },
+    Neuromorphic {
+        /// Energy per spike-synaptic operation, in picojoules.
+        energy_per_spike_op_pj: f64,
+    },
     /// CMOS ANN (energy per MAC operation)
-    CMOS { energy_per_mac_pj: f64 },
+    CMOS {
+        /// Energy per multiply-accumulate, in picojoules.
+        energy_per_mac_pj: f64,
+    },
     /// Custom model
-    Custom { energy_per_op_pj: f64 },
+    Custom {
+        /// Energy per operation, in picojoules.
+        energy_per_op_pj: f64,
+    },
 }
 
 impl Default for EnergyModel {

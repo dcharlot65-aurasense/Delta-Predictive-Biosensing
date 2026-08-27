@@ -12,7 +12,14 @@ pub enum ModelError {
 
     /// Unsupported model version
     #[error("Unsupported model version: {version}. Supported range: {min}-{max}")]
-    UnsupportedVersion { version: u32, min: u32, max: u32 },
+    UnsupportedVersion {
+        /// Version found in the file.
+        version: u32,
+        /// Oldest version this build reads.
+        min: u32,
+        /// Newest version this build reads.
+        max: u32,
+    },
 
     /// Corrupted model data
     #[error("Corrupted model data: {0}")]

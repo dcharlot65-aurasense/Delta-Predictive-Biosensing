@@ -1,7 +1,6 @@
 //! Performance benchmarking tools for mobile inference.
 
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 
 /// Benchmark result with detailed metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -288,6 +287,10 @@ fn detect_device_model() -> String {
     String::from("Unknown Device")
 }
 
+// cfg-gated dispatch: on any one target the first matching arm returns and
+// the rest is dead, but the final fallback is what a target matching none
+// of them uses.
+#[allow(unreachable_code)]
 /// Detect operating system
 fn detect_os() -> String {
     #[cfg(target_os = "ios")]
@@ -308,6 +311,10 @@ fn detect_os() -> String {
     String::from("Unknown")
 }
 
+// cfg-gated dispatch: on any one target the first matching arm returns and
+// the rest is dead, but the final fallback is what a target matching none
+// of them uses.
+#[allow(unreachable_code)]
 /// Detect CPU architecture
 fn detect_cpu_arch() -> String {
     #[cfg(target_arch = "aarch64")]

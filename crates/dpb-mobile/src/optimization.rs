@@ -33,6 +33,9 @@ pub enum PruningStrategy {
 }
 
 /// Weight pruner for model size reduction
+// Not consulted yet; kept so a caller's configuration is not silently
+// discarded.
+#[allow(dead_code)]
 pub struct WeightPruner {
     /// Pruning strategy
     strategy: PruningStrategy,
@@ -331,11 +334,13 @@ impl MemoryPlanner {
             return MemoryPlan::default();
         }
 
-        let mut plan = MemoryPlan::default();
-
-        // Calculate required memory for each buffer
-        plan.input_buffer_size = self.align(model.input_dim() * 4); // 4 bytes per float
-        plan.output_buffer_size = self.align(model.output_dim() * 4);
+        // 4 bytes per float. `mut` is still needed: the loop below accumulates
+        // the intermediate buffer sizes.
+        let mut plan = MemoryPlan {
+            input_buffer_size: self.align(model.input_dim() * 4),
+            output_buffer_size: self.align(model.output_dim() * 4),
+            ..Default::default()
+        };
 
         for layer in &model.layers {
             let layer_size = self.align(layer.output_dim * 4);
@@ -409,6 +414,10 @@ impl SimdOptimizer {
         }
     }
 
+    // cfg-gated dispatch: on any one target the first matching arm returns and
+    // the rest is dead, but the final fallback is what a target matching none
+    // of them uses.
+    #[allow(unreachable_code)]
     /// Detect SIMD architecture
     fn detect_arch() -> SimdArch {
         #[cfg(target_arch = "aarch64")]

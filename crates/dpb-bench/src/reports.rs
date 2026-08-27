@@ -12,6 +12,9 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
+// Domain notation -- process nodes, file formats. Camel case would
+// diverge from how these are written everywhere else.
+#[allow(clippy::upper_case_acronyms)]
 /// Report output format
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReportFormat {

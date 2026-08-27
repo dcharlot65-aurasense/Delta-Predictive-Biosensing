@@ -526,7 +526,7 @@ $ cargo run --release --example basic_usage -p dpb-mobile
 
 ```rust
 // Create runtime with builder pattern
-let runtime = MobileRuntime::new(model)
+let runtime = MobileRuntime::builder(model)
     .with_max_memory_mb(100)
     .with_thread_count(2)
     .with_batch_size(1)

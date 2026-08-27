@@ -1,6 +1,5 @@
 //! Mobile inference runtime optimized for low memory footprint and battery efficiency.
 
-use std::fmt;
 use serde::{Deserialize, Serialize};
 use crate::model::MobileModel;
 
@@ -13,11 +12,21 @@ pub enum RuntimeError {
 
     /// Invalid input dimensions
     #[error("Invalid input dimensions: expected {expected}, got {actual}")]
-    InvalidInputDimensions { expected: usize, actual: usize },
+    InvalidInputDimensions {
+        /// Dimensions the model declares.
+        expected: usize,
+        /// Dimensions the caller supplied.
+        actual: usize,
+    },
 
     /// Invalid output dimensions
     #[error("Invalid output dimensions: expected {expected}, got {actual}")]
-    InvalidOutputDimensions { expected: usize, actual: usize },
+    InvalidOutputDimensions {
+        /// Dimensions the model declares.
+        expected: usize,
+        /// Dimensions the caller supplied.
+        actual: usize,
+    },
 
     /// Memory allocation failed
     #[error("Memory allocation failed: {0}")]
@@ -107,8 +116,11 @@ pub struct MobileRuntime {
 }
 
 impl MobileRuntime {
-    /// Create a new mobile runtime with the given model
-    pub fn new(model: MobileModel) -> RuntimeBuilder {
+    /// Start building a runtime for `model`.
+    ///
+    /// Returns a [`RuntimeBuilder`] rather than a `MobileRuntime`, so it is
+    /// named for that rather than called `new`.
+    pub fn builder(model: MobileModel) -> RuntimeBuilder {
         RuntimeBuilder {
             model: Some(model),
             config: RuntimeConfig::default(),
@@ -247,6 +259,10 @@ impl MobileRuntime {
         }
 
         // Subsequent layers: read from previous layer's buffer
+        // The index reaches other collections too (a second axis, a confusion
+        // matrix row, the previous layer's buffer), so a single iterator over one
+        // of them will not do.
+        #[allow(clippy::needless_range_loop)]
         for layer_idx in 1..layer_sizes.len() {
             let layer_size = layer_sizes[layer_idx];
             let prev_buffer = &self.intermediate_buffers[layer_idx - 1].clone();

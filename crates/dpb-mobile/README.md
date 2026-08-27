@@ -163,7 +163,7 @@ let model_bytes = include_bytes!("path/to/model.dpb");
 let model = MobileModel::from_bytes(model_bytes)?;
 
 // Create runtime with configuration
-let mut runtime = MobileRuntime::new(model)
+let mut runtime = MobileRuntime::builder(model)
     .with_max_memory_mb(50)
     .with_thread_count(2)
     .with_batch_size(1)

@@ -206,6 +206,10 @@ impl ClassificationScenario {
 
         profiler.start();
 
+        // The index reaches other collections too (a second axis, a confusion
+        // matrix row, the previous layer's buffer), so a single iterator over one
+        // of them will not do.
+        #[allow(clippy::needless_range_loop)]
         for true_class in 0..self.num_classes {
             for _ in 0..self.samples_per_class {
                 // Generate synthetic sample for this class
@@ -235,6 +239,10 @@ impl ClassificationScenario {
         let mut avg_precision = 0.0;
         let mut avg_recall = 0.0;
 
+        // The index reaches other collections too (a second axis, a confusion
+        // matrix row, the previous layer's buffer), so a single iterator over one
+        // of them will not do.
+        #[allow(clippy::needless_range_loop)]
         for class in 0..self.num_classes {
             let tp = confusion[class][class] as f64;
             let fp: f64 = (0..self.num_classes)
@@ -277,13 +285,13 @@ impl ClassificationScenario {
     }
 
     fn generate_sample(&self, class: usize) -> Vec<f32> {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         let mut rng = rand::rng();
 
         // Generate a simple synthetic sample
         let mut sample = vec![0.0; 100];
-        for i in 0..100 {
-            sample[i] = rng.random::<f32>() * 0.1 + class as f32 * 0.3;
+        for slot in sample.iter_mut() {
+            *slot = rng.random::<f32>() * 0.1 + class as f32 * 0.3;
         }
         sample
     }
@@ -374,7 +382,7 @@ impl RegressionScenario {
     }
 
     fn generate_sample(&self) -> (Vec<f32>, f64) {
-        use rand::{Rng, RngExt};
+        use rand::RngExt;
         let mut rng = rand::rng();
 
         let input: Vec<f32> = (0..50).map(|_| rng.random::<f32>()).collect();

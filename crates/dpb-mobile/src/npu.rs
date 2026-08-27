@@ -58,6 +58,9 @@ pub enum NpuBackend {
     MediaTekApu,
 }
 
+// Not consulted yet; kept so a caller's configuration is not silently
+// discarded.
+#[allow(dead_code)]
 impl NpuBackend {
     /// Detect available NPU on current device.
     pub fn detect() -> Self {
@@ -454,6 +457,9 @@ impl NpuEncoder {
 }
 
 /// Hexagon DSP encoder (Qualcomm).
+// Not consulted yet; kept so a caller's configuration is not silently
+// discarded.
+#[allow(dead_code)]
 pub struct HexagonEncoder {
     /// Configuration.
     config: HexagonConfig,
@@ -506,17 +512,17 @@ impl HexagonEncoder {
         let mut prev = vec![0.0f32; self.num_channels];
 
         for sample_idx in 0..num_samples {
-            for ch in 0..self.num_channels {
+            for (ch, prev_val) in prev.iter_mut().enumerate().take(self.num_channels) {
                 let idx = sample_idx * self.num_channels + ch;
                 let curr = signal[idx];
 
-                if prev[ch] < self.threshold && curr >= self.threshold {
+                if *prev_val < self.threshold && curr >= self.threshold {
                     spikes[idx] = 1;
-                } else if prev[ch] >= self.threshold && curr < self.threshold {
+                } else if *prev_val >= self.threshold && curr < self.threshold {
                     spikes[idx] = -1;
                 }
 
-                prev[ch] = curr;
+                *prev_val = curr;
             }
         }
 
@@ -571,17 +577,17 @@ impl EthosUEncoder {
         let mut prev = vec![0.0f32; self.num_channels];
 
         for sample_idx in 0..num_samples {
-            for ch in 0..self.num_channels {
+            for (ch, prev_val) in prev.iter_mut().enumerate().take(self.num_channels) {
                 let idx = sample_idx * self.num_channels + ch;
                 let curr = signal[idx];
 
-                if prev[ch] < self.threshold && curr >= self.threshold {
+                if *prev_val < self.threshold && curr >= self.threshold {
                     spikes[idx] = 1;
-                } else if prev[ch] >= self.threshold && curr < self.threshold {
+                } else if *prev_val >= self.threshold && curr < self.threshold {
                     spikes[idx] = -1;
                 }
 
-                prev[ch] = curr;
+                *prev_val = curr;
             }
         }
 

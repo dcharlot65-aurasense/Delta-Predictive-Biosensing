@@ -274,8 +274,8 @@ impl BenchmarkDataset for SyntheticGait {
 
         // Add noise and baseline
         let noise = Normal::new(0.0, self.noise_level).unwrap();
-        for axis in 0..3 {
-            for sample in signal[axis].iter_mut() {
+        for (axis, channel) in signal.iter_mut().enumerate().take(3) {
+            for sample in channel.iter_mut() {
                 *sample += noise.sample(&mut rng) as f32;
                 if axis == 2 {
                     *sample += 9.81; // gravity baseline
@@ -382,6 +382,10 @@ impl BenchmarkDataset for SyntheticTremor {
         let noise = Normal::new(0.0, self.noise_level).unwrap();
         let omega = 2.0 * std::f64::consts::PI * self.tremor_frequency;
 
+        // The index reaches other collections too (a second axis, a confusion
+        // matrix row, the previous layer's buffer), so a single iterator over one
+        // of them will not do.
+        #[allow(clippy::needless_range_loop)]
         for i in 0..self.num_samples {
             let t = i as f64 / self.sample_rate;
 
@@ -394,6 +398,10 @@ impl BenchmarkDataset for SyntheticTremor {
             signal[2][i] = (0.4 * self.amplitude * (omega * t + 1.0).sin()) as f32;
 
             // Add noise to all axes
+            // The index reaches other collections too (a second axis, a confusion
+            // matrix row, the previous layer's buffer), so a single iterator over one
+            // of them will not do.
+            #[allow(clippy::needless_range_loop)]
             for axis in 0..3 {
                 signal[axis][i] += noise.sample(&mut rng) as f32;
             }
@@ -481,6 +489,10 @@ impl BenchmarkDataset for SyntheticVoice {
         let noise = Normal::new(0.0, self.noise_level).unwrap();
 
         // Generate harmonics
+        // The index reaches other collections too (a second axis, a confusion
+        // matrix row, the previous layer's buffer), so a single iterator over one
+        // of them will not do.
+        #[allow(clippy::needless_range_loop)]
         for i in 0..self.num_samples {
             let t = i as f64 / self.sample_rate;
 

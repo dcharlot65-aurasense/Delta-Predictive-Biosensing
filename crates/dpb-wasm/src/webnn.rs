@@ -30,7 +30,7 @@
 //! ```
 
 use wasm_bindgen::prelude::*;
-use js_sys::{Promise, Float32Array, Object, Reflect};
+use js_sys::Float32Array;
 use web_sys::console;
 
 /// WebNN device type for backend selection.
@@ -46,6 +46,9 @@ pub enum WebNNDeviceType {
 }
 
 impl WebNNDeviceType {
+    // Maps to the string the WebNN API expects; used once the calls
+    // below stop being stubs.
+    #[allow(dead_code)]
     fn as_str(&self) -> &'static str {
         match self {
             WebNNDeviceType::Cpu => "cpu",
@@ -68,6 +71,9 @@ pub enum WebNNPowerPreference {
 }
 
 impl WebNNPowerPreference {
+    // Maps to the string the WebNN API expects; used once the calls
+    // below stop being stubs.
+    #[allow(dead_code)]
     fn as_str(&self) -> &'static str {
         match self {
             WebNNPowerPreference::Default => "default",

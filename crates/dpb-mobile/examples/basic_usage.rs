@@ -104,7 +104,7 @@ fn main() {
 
     // 4. Create runtime
     println!("4. Creating runtime...");
-    let mut runtime = MobileRuntime::new(model)
+    let mut runtime = MobileRuntime::builder(model)
         .with_max_memory_mb(100)
         .with_thread_count(2)
         .with_batch_size(1)

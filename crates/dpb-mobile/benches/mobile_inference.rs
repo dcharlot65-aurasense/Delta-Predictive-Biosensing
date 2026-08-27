@@ -60,7 +60,7 @@ fn bench_inference(c: &mut Criterion) {
 
     for size in [32, 64, 128].iter() {
         let model = create_test_model(*size, *size * 2, *size);
-        let mut runtime = MobileRuntime::new(model).build().unwrap();
+        let mut runtime = MobileRuntime::builder(model).build().unwrap();
         let input = vec![0.5f32; *size];
 
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, _| {

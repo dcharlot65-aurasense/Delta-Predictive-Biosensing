@@ -115,7 +115,7 @@ impl GpuEncoder {
             }
 
             // Check WebGPU availability
-            let window = web_sys::window().ok_or_else(|| JsValue::from_str("No window"))?;
+            let _window = web_sys::window().ok_or_else(|| JsValue::from_str("No window"))?;
 
             // Log initialization
             console::log_1(&format!("Initializing GPU encoder for {} channels", num_channels).into());

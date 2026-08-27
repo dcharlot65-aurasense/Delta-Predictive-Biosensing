@@ -5,7 +5,7 @@
 
 use std::slice;
 use std::ptr;
-use std::ffi::{c_char, c_int, c_float, c_void};
+use std::ffi::{c_char, c_int, c_float};
 use crate::{MobileRuntime, MobileModel, RuntimeConfig};
 
 /// FFI error codes
@@ -105,7 +105,7 @@ impl DpbRuntimeConfig {
         }
     }
 
-    fn to_runtime_config(&self) -> RuntimeConfig {
+    fn to_runtime_config(self) -> RuntimeConfig {
         RuntimeConfig {
             max_memory_mb: self.max_memory_mb,
             thread_count: self.thread_count,
