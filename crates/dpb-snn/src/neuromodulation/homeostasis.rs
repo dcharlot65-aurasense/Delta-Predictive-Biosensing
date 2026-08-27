@@ -303,6 +303,10 @@ impl Metaplasticity {
     }
 }
 
+// Standard notation in the literature these implement -- network
+// architectures, training rules, neurotransmitters, pixel formats.
+// Camel case would diverge from every paper and API that names them.
+#[allow(clippy::upper_case_acronyms)]
 /// Sleep-dependent consolidation
 ///
 /// Models memory consolidation during sleep-like states with

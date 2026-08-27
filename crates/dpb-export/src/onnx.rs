@@ -12,13 +12,24 @@
 //! predecessor to compare against.
 
 use crate::{
-    encoder_export::ExportableEncoder,
     error::{ExportError, Result},
     metadata::ModelMetadata,
 };
-use crate::protobuf::Writer;
-use std::io::Write;
 use std::path::Path;
+
+// Everything below the exporter is gated on `onnx`, so these are too --
+// without the feature the module is just the stub that reports the feature
+// is off.
+#[cfg(feature = "onnx")]
+use crate::encoder_export::{EncoderParams, ExportableEncoder};
+#[cfg(feature = "onnx")]
+use crate::protobuf::Writer;
+#[cfg(feature = "onnx")]
+use std::fs::File;
+#[cfg(feature = "onnx")]
+use std::io::Write;
+#[cfg(feature = "onnx")]
+use tracing::{debug, info, warn};
 
 /// ONNX exporter for spike encoders.
 ///
@@ -386,6 +397,7 @@ pub struct OnnxExporter {
     _metadata: ModelMetadata,
 }
 
+#[cfg(feature = "onnx")]
 #[cfg(not(feature = "onnx"))]
 impl OnnxExporter {
     pub fn new(metadata: ModelMetadata) -> Self {
@@ -408,6 +420,7 @@ impl OnnxExporter {
 //   https://github.com/onnx/onnx/blob/main/onnx/onnx.proto
 // =============================================================================
 
+#[cfg(feature = "onnx")]
 /// `TensorProto.DataType` values used here.
 mod data_type {
     /// IEEE-754 single precision.
@@ -416,15 +429,18 @@ mod data_type {
     pub const INT64: i32 = 7;
 }
 
+#[cfg(feature = "onnx")]
 /// Time is the last axis of the `[batch, channels, time]` layout these
 /// encoders declare, so that is what gets sliced.
 const TIME_AXIS: i64 = 2;
 
+#[cfg(feature = "onnx")]
 /// Added before `Log` so the argument is strictly positive. Small enough not
 /// to shift the contrast of any real signal, large enough that `log` of it is
 /// finite in f32.
 const LOG_EPSILON: f32 = 1e-6;
 
+#[cfg(feature = "onnx")]
 /// `AttributeProto.AttributeType` values used here.
 mod attr_type {
     /// A single `float`.
@@ -435,6 +451,7 @@ mod attr_type {
     pub const STRING: i32 = 3;
 }
 
+#[cfg(feature = "onnx")]
 impl OnnxModel {
     /// Encodes this model as an ONNX `ModelProto`.
     fn to_proto(&self) -> Vec<u8> {
@@ -456,6 +473,7 @@ impl OnnxModel {
     }
 }
 
+#[cfg(feature = "onnx")]
 impl OnnxGraph {
     /// Encodes this graph as a `GraphProto`.
     fn to_proto(&self) -> Writer {
@@ -477,6 +495,7 @@ impl OnnxGraph {
     }
 }
 
+#[cfg(feature = "onnx")]
 impl OnnxNode {
     /// Encodes this node as a `NodeProto`.
     fn to_proto(&self) -> Writer {
@@ -496,6 +515,7 @@ impl OnnxNode {
     }
 }
 
+#[cfg(feature = "onnx")]
 impl OnnxAttribute {
     /// Encodes this attribute as an `AttributeProto`.
     fn to_proto(&self) -> Writer {
@@ -515,6 +535,7 @@ impl OnnxAttribute {
     }
 }
 
+#[cfg(feature = "onnx")]
 impl OnnxTensor {
     /// Encodes this tensor as a graph-level `ValueInfoProto`.
     ///
@@ -557,6 +578,7 @@ impl OnnxTensor {
     }
 }
 
+#[cfg(feature = "onnx")]
 impl OnnxInitializer {
     /// Encodes this initializer as a `TensorProto`.
     fn to_proto(&self) -> Writer {
@@ -573,6 +595,7 @@ impl OnnxInitializer {
     }
 }
 
+#[cfg(feature = "onnx")]
 /// ONNX model structure.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct OnnxModel {
@@ -586,6 +609,7 @@ struct OnnxModel {
     graph: OnnxGraph,
 }
 
+#[cfg(feature = "onnx")]
 impl OnnxModel {
     fn new(name: &str, opset_version: i64) -> Self {
         Self {
@@ -626,12 +650,14 @@ impl OnnxModel {
     }
 }
 
+#[cfg(feature = "onnx")]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct OnnxOpsetImport {
     domain: String,
     version: i64,
 }
 
+#[cfg(feature = "onnx")]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct OnnxGraph {
     name: String,
@@ -641,6 +667,7 @@ struct OnnxGraph {
     initializers: Vec<OnnxInitializer>,
 }
 
+#[cfg(feature = "onnx")]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct OnnxNode {
     name: String,
@@ -650,6 +677,7 @@ struct OnnxNode {
     attributes: Vec<OnnxAttribute>,
 }
 
+#[cfg(feature = "onnx")]
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 struct OnnxAttribute {
     name: String,
@@ -662,6 +690,7 @@ struct OnnxAttribute {
     s: Option<String>,
 }
 
+#[cfg(feature = "onnx")]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct OnnxTensor {
     name: String,
@@ -669,6 +698,7 @@ struct OnnxTensor {
     shape: Vec<i64>,
 }
 
+#[cfg(feature = "onnx")]
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 struct OnnxInitializer {
     name: String,
@@ -678,6 +708,7 @@ struct OnnxInitializer {
     int64_data: Vec<i64>,
 }
 
+#[cfg(feature = "onnx")]
 impl OnnxInitializer {
     /// A float tensor constant.
     fn float(name: &str, dims: Vec<i64>, data: Vec<f32>) -> Self {

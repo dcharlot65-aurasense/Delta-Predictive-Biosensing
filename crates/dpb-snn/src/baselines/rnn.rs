@@ -68,6 +68,10 @@ impl ANNBaseline for SimpleRNN {
     }
 }
 
+// Standard notation in the literature these implement -- network
+// architectures, training rules, neurotransmitters, pixel formats.
+// Camel case would diverge from every paper and API that names them.
+#[allow(clippy::upper_case_acronyms)]
 /// 20. Standard LSTM
 pub struct LSTM {
     // LSTM has 4 gates: input, forget, cell, output
@@ -234,6 +238,10 @@ impl ANNBaseline for StackedLSTM {
     }
 }
 
+// Standard notation in the literature these implement -- network
+// architectures, training rules, neurotransmitters, pixel formats.
+// Camel case would diverge from every paper and API that names them.
+#[allow(clippy::upper_case_acronyms)]
 /// 23. Gated Recurrent Unit (GRU)
 pub struct GRU {
     // GRU has 3 gates: reset, update, new

@@ -9,6 +9,10 @@ use std::collections::HashMap;
 
 use super::NeuromodResult;
 
+// Standard notation in the literature these implement -- network
+// architectures, training rules, neurotransmitters, pixel formats.
+// Camel case would diverge from every paper and API that names them.
+#[allow(clippy::upper_case_acronyms)]
 /// Types of neuromodulators
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum NeuromodulatorType {

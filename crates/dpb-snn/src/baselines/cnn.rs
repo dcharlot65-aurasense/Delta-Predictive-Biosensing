@@ -541,6 +541,10 @@ impl ANNBaseline for CNN2DMobileNet {
     }
 }
 
+// Standard notation in the literature these implement -- network
+// architectures, training rules, neurotransmitters, pixel formats.
+// Camel case would diverge from every paper and API that names them.
+#[allow(clippy::upper_case_acronyms)]
 /// 18. Temporal Convolutional Network (TCN)
 pub struct TCN {
     layers: Vec<Tensor>,

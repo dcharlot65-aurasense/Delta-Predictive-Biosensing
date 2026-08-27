@@ -266,6 +266,10 @@ pub enum ContentType {
     Custom(String),
 }
 
+// Standard notation in the literature these implement -- network
+// architectures, training rules, neurotransmitters, pixel formats.
+// Camel case would diverge from every paper and API that names them.
+#[allow(clippy::upper_case_acronyms)]
 /// Color space for image data
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ColorSpace {

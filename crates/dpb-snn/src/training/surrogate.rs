@@ -127,6 +127,10 @@ impl SurrogateGradient for SuperSpikeSurrogate {
     }
 }
 
+// Standard notation in the literature these implement -- network
+// architectures, training rules, neurotransmitters, pixel formats.
+// Camel case would diverge from every paper and API that names them.
+#[allow(clippy::upper_case_acronyms)]
 /// Backpropagation Through Time (BPTT) for SNNs
 pub struct BPTT {
     /// Surrogate gradient function
@@ -186,6 +190,10 @@ impl BPTT {
     }
 }
 
+// Standard notation in the literature these implement -- network
+// architectures, training rules, neurotransmitters, pixel formats.
+// Camel case would diverge from every paper and API that names them.
+#[allow(clippy::upper_case_acronyms)]
 /// Online Training Through Time (OTTT)
 /// More memory efficient than full BPTT
 pub struct OTTT {
@@ -216,6 +224,10 @@ impl OTTT {
     }
 }
 
+// Standard notation in the literature these implement -- network
+// architectures, training rules, neurotransmitters, pixel formats.
+// Camel case would diverge from every paper and API that names them.
+#[allow(clippy::upper_case_acronyms)]
 /// Spatial Layer-wise Training Through Time (SLTT)
 /// Train layers independently to reduce computational cost
 pub struct SLTT {

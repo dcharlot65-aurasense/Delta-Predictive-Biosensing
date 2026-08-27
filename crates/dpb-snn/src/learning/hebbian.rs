@@ -30,6 +30,10 @@ pub trait HebbianRule: Send + Sync + std::fmt::Debug {
     }
 }
 
+// Standard notation in the literature these implement -- network
+// architectures, training rules, neurotransmitters, pixel formats.
+// Camel case would diverge from every paper and API that names them.
+#[allow(clippy::upper_case_acronyms)]
 /// Spike-Timing-Dependent Plasticity (STDP)
 ///
 /// STDP is a biological learning rule where synaptic strength changes

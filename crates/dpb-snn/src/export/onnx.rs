@@ -34,6 +34,10 @@ pub struct QuantizationConfig {
     pub activation_bits: u8,
 }
 
+// Standard notation in the literature these implement -- network
+// architectures, training rules, neurotransmitters, pixel formats.
+// Camel case would diverge from every paper and API that names them.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum QuantizationMode {
     Dynamic,
