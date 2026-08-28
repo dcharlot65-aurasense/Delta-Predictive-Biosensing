@@ -3,12 +3,14 @@
 pub mod loss;
 pub mod optimizer;
 pub mod surrogate;
+pub mod trainer;
 
 pub use loss::{
     LossFunction, SpikeCountLoss, SpikeTimingLoss, SpikingCrossEntropy, TemporalCrossEntropy,
 };
 pub use optimizer::{AdamOptimizer, Optimizer, SGDOptimizer};
 pub use surrogate::{BPTT, OTTT, SLTT, SurrogateGradient, SurrogateType};
+pub use trainer::{StepReport, Trainer};
 
 /// Training configuration
 #[derive(Debug, Clone)]

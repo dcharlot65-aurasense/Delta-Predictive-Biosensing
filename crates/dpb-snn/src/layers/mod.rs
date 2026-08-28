@@ -82,8 +82,28 @@ impl NeuronState {
         params: &NeuronParams,
         dt: f32,
     ) -> Array1<f32> {
+        self.update_lif_recording(input_current, params, dt).0
+    }
+
+    /// Advance one step, also returning the membrane potential each neuron
+    /// reached *before* any spike reset was applied.
+    ///
+    /// Surrogate gradients are a function of how far the potential sat from
+    /// threshold at the moment of comparison. [`Self::update_lif`] overwrites
+    /// `v_mem` with `v_reset` for every neuron that fired, so that value cannot
+    /// be recovered afterwards -- it has to be captured here. Training uses
+    /// this; inference uses the simpler wrapper above.
+    pub fn update_lif_recording(
+        &mut self,
+        input_current: &Array1<f32>,
+        params: &NeuronParams,
+        dt: f32,
+    ) -> (Array1<f32>, Array1<f32>) {
         let num_neurons = self.v_mem.len();
         let mut spikes = Array1::zeros(num_neurons);
+        // Seeded with the current potential so refractory neurons -- which skip
+        // the update below -- still report the value they are holding.
+        let mut v_pre_reset = self.v_mem.clone();
 
         // Update synaptic current
         let alpha_syn = (-dt / params.tau_syn).exp();
@@ -98,6 +118,8 @@ impl NeuronState {
                 // Check for spike
                 let threshold =
                     params.v_threshold + self.threshold_adapt.as_ref().map(|a| a[i]).unwrap_or(0.0);
+
+                v_pre_reset[i] = self.v_mem[i];
 
                 if self.v_mem[i] >= threshold {
                     spikes[i] = 1.0;
@@ -119,7 +141,7 @@ impl NeuronState {
             *adapt *= 1.0 - dt / 100.0; // Slow decay
         }
 
-        spikes
+        (spikes, v_pre_reset)
     }
 }
 

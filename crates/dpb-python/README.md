@@ -13,11 +13,16 @@ shader validation.
 **Implemented here** rather than delegated, because the Rust crates have no
 equivalent: the van Rossum spike distance and the learning-rate schedules.
 
-**Not implemented, and refusing rather than pretending:** `Trainer.fit` and
-`evaluate` (no data-loader contract is defined yet), and GPU buffer allocation,
+**Training** runs through `Trainer`, which drives the Rust surrogate-gradient
+trainer over a stack of `SpikingLinear` layers. `fit` takes any iterable of
+`(inputs, targets)` pairs -- `inputs` shaped `(batch, time_steps, input_size)`,
+`targets` shaped `(batch, output_size)` as per-neuron firing rates in `[0, 1]`.
+Both go through `numpy.asarray(..., dtype='float32')`, so lists and float64
+arrays work too. Trained weights are written back into the model you passed in.
+
+**Not implemented, and refusing rather than pretending:** GPU buffer allocation,
 transfer and dispatch (the binding owns no device or queue). These raise
-`NotImplementedError` rather than returning zero loss or reporting a successful
-allocation.
+`NotImplementedError` rather than reporting a successful allocation.
 
 The `gpu` profiler measures wall-clock time, not GPU timestamps.
 

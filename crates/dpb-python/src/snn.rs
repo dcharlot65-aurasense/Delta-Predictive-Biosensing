@@ -137,10 +137,13 @@ impl PySpikingLayer {
 #[allow(dead_code)]
 pub struct PySpikingLinear {
     neuron_type: String,
-    weights: Vec<Vec<f32>>,
-    biases: Vec<f32>,
-    /// The library layer this delegates to.
-    inner: SpikingLinear,
+    // Python-visible mirrors of the layer's parameters, refreshed by
+    // `training::PyTrainer::write_back` after a fit.
+    pub(crate) weights: Vec<Vec<f32>>,
+    pub(crate) biases: Vec<f32>,
+    /// The library layer this delegates to. Visible to `training`, which
+    /// pulls it out to build a Rust-side trainer.
+    pub(crate) inner: SpikingLinear,
 }
 
 #[pymethods]
@@ -201,6 +204,10 @@ impl PySpikingLinear {
         for i in 0..shape[0] {
             for j in 0..shape[1] {
                 self.weights[i][j] = array[[i, j]];
+                // The mirror alone is not enough: `forward` runs on
+                // `self.inner`, so without this the assignment would be a
+                // silent no-op on everything except `get_weights`.
+                self.inner.weights[[i, j]] = array[[i, j]];
             }
         }
 
@@ -223,6 +230,16 @@ impl PySpikingLinear {
 
     fn reset(&mut self) {
         self.inner.reset_state();
+    }
+
+    /// Bias vector, empty when the layer was built without a bias.
+    #[getter]
+    fn biases(&self) -> Vec<f32> {
+        self.inner
+            .bias
+            .as_ref()
+            .map(|b| b.to_vec())
+            .unwrap_or_default()
     }
 }
 
@@ -401,7 +418,8 @@ impl PySpikingPooling {
 ///     >>> output = model.forward(input_spikes, dt=0.001)
 #[pyclass(name = "Sequential")]
 pub struct PySequential {
-    layers: Vec<Py<PyAny>>,
+    /// Visible to `training`, which reads them to assemble a trainer.
+    pub(crate) layers: Vec<Py<PyAny>>,
 }
 
 #[pymethods]
@@ -409,6 +427,12 @@ impl PySequential {
     #[new]
     fn new(layers: Vec<Py<PyAny>>) -> Self {
         Self { layers }
+    }
+
+    /// The layers in this model, in order.
+    #[getter]
+    fn layers(&self, py: Python) -> Vec<Py<PyAny>> {
+        self.layers.iter().map(|l| l.clone_ref(py)).collect()
     }
 
     /// Forward pass through all layers

@@ -101,6 +101,58 @@ impl SpikingLinear {
         Ok(output)
     }
 
+    /// Forward pass that also returns the membrane potential history.
+    ///
+    /// Returns `(spikes, v_mem)` where `v_mem` is `(batch, steps, neurons)` and
+    /// holds the potential each neuron reached before any spike reset. Training
+    /// needs that history to evaluate the surrogate gradient at each step;
+    /// [`SpikingLayer::forward`] discards it, keeping only the final state.
+    pub fn forward_recording(
+        &mut self,
+        input: &SpikeTensor,
+    ) -> SNNResult<(SpikeTensor, Array3<f32>)> {
+        let input_dense = input.to_dense();
+        let (batch_size, num_steps, input_size) = (
+            input_dense.shape()[0],
+            input_dense.shape()[1],
+            input_dense.shape()[2],
+        );
+
+        if input_size != self.weights.shape()[1] {
+            return Err(SNNError::DimensionMismatch {
+                expected: format!("input size {}", self.weights.shape()[1]),
+                actual: format!("input size {}", input_size),
+            });
+        }
+
+        let output_size = self.weights.shape()[0];
+        let mut output = Array3::zeros((batch_size, num_steps, output_size));
+        let mut v_mem = Array3::zeros((batch_size, num_steps, output_size));
+
+        self.ensure_state(batch_size);
+
+        for t in 0..num_steps {
+            for b in 0..batch_size {
+                let input_t = input_dense.slice(s![b, t, ..]);
+                let mut synaptic_input = self.weights.dot(&input_t);
+                if let Some(ref bias) = self.bias {
+                    synaptic_input += bias;
+                }
+
+                let (spikes, v_pre) = self.state[b].update_lif_recording(
+                    &synaptic_input,
+                    &self.neuron_params,
+                    self.dt,
+                );
+
+                output.slice_mut(s![b, t, ..]).assign(&spikes);
+                v_mem.slice_mut(s![b, t, ..]).assign(&v_pre);
+            }
+        }
+
+        Ok((SpikeTensor::from_dense(output, input.requires_grad), v_mem))
+    }
+
     /// Backward pass to compute gradients
     pub fn backward(
         &mut self,

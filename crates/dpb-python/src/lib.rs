@@ -19,11 +19,17 @@
 //! **Implemented here** rather than delegated, because the Rust crates have no
 //! equivalent: the van Rossum spike distance, and the learning-rate schedules.
 //!
-//! **Not implemented, and refusing rather than pretending:** `Trainer.fit` and
-//! `evaluate` (no data-loader contract is defined), and GPU buffer allocation,
-//! transfer and dispatch (the binding owns no device or queue). These raise
-//! `NotImplementedError` instead of returning zero loss or reporting a
-//! successful allocation.
+//! **Training** runs through `Trainer`, which drives the Rust
+//! surrogate-gradient trainer over a stack of `SpikingLinear` layers. `fit`
+//! takes any iterable of `(inputs, targets)` pairs -- `inputs` shaped
+//! `(batch, time_steps, input_size)`, `targets` shaped `(batch, output_size)`
+//! as per-neuron firing rates in `[0, 1]`. Trained weights are written back
+//! into the model that was passed in.
+//!
+//! **Not implemented, and refusing rather than pretending:** GPU buffer
+//! allocation, transfer and dispatch (the binding owns no device or queue).
+//! These raise `NotImplementedError` instead of reporting a successful
+//! allocation.
 //!
 //! The `gpu` profiler measures WALL-CLOCK time, not GPU timestamps, and says so
 //! at the call site.

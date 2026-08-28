@@ -1,9 +1,13 @@
 //! Python bindings for training infrastructure
 
-use dpb_snn::training::LossFunction as _;
+use crate::snn::{PySequential, PySpikingLinear};
+use dpb_snn::layers::SpikingLinear;
+use dpb_snn::training::{
+    AdamOptimizer, LossFunction, Optimizer, SGDOptimizer, SurrogateType, Trainer as RustTrainer,
+};
 use dpb_snn::{SpikeCountLoss, SpikeTensor, SpikeTimingLoss, SpikingCrossEntropy};
-use numpy::PyReadonlyArray2;
-use numpy::ndarray::Array2;
+use numpy::ndarray::{Array2, Array3};
+use numpy::{PyReadonlyArray2, PyReadonlyArray3};
 
 /// Lift a (samples x classes) prediction matrix into the single-timestep
 /// `SpikeTensor` the loss functions take.
@@ -400,33 +404,56 @@ impl PyCallback {
 ///     >>> trainer = Trainer(model, loss='spike_count', optimizer='adam')
 ///     >>> trainer.fit(train_data, epochs=10)
 #[pyclass(name = "Trainer")]
-// Recorded from the Python-side constructor. The wrapper does not consume
-// these yet, but dropping them would silently discard what a caller
-// passed through the binding.
-#[allow(dead_code)]
 pub struct PyTrainer {
+    /// The caller's model. Held so trained weights can be written back into
+    /// it when `fit` finishes -- otherwise training would update a private
+    /// copy and the user's model would be unchanged.
+    model: Py<PyAny>,
     loss_name: String,
     optimizer_name: String,
     learning_rate: f32,
     callbacks: Vec<Py<PyAny>>,
     history: HashMap<String, Vec<f32>>,
+    /// The Rust trainer doing the actual work.
+    inner: RustTrainer,
 }
 
 #[pymethods]
 impl PyTrainer {
-    // pyo3's signature attribute names these parameters, so they cannot be
-    // underscored; the body ignores the ones it has not wired up yet.
-    #[allow(unused_variables)]
     #[new]
-    #[pyo3(signature = (model, loss="spike_count", optimizer="adam", learning_rate=0.001))]
-    fn new(model: Py<PyAny>, loss: &str, optimizer: &str, learning_rate: f32) -> Self {
-        Self {
+    #[pyo3(signature = (
+        model,
+        loss="spike_count",
+        optimizer="adam",
+        learning_rate=0.001,
+        surrogate="fast_sigmoid",
+        target_rate=0.5,
+    ))]
+    fn new(
+        model: Py<PyAny>,
+        loss: &str,
+        optimizer: &str,
+        learning_rate: f32,
+        surrogate: &str,
+        target_rate: f32,
+        py: Python,
+    ) -> PyResult<Self> {
+        let layers = collect_layers(model.bind(py))?;
+        let inner = RustTrainer::new(
+            layers,
+            build_loss(loss, target_rate)?,
+            build_optimizer(optimizer, learning_rate)?,
+            parse_surrogate(surrogate)?,
+        );
+        Ok(Self {
+            model,
             loss_name: loss.to_string(),
             optimizer_name: optimizer.to_string(),
             learning_rate,
             callbacks: Vec::new(),
             history: HashMap::new(),
-        }
+            inner,
+        })
     }
 
     /// Add a training callback
@@ -434,19 +461,32 @@ impl PyTrainer {
         self.callbacks.push(callback);
     }
 
-    // pyo3's signature attribute names these parameters, so they cannot be
-    // underscored; the body ignores the ones it has not wired up yet.
-    #[allow(unused_variables)]
-    /// Fit the model on training data
+    /// Fit the model on training data.
+    ///
+    /// Data-loader contract: ``train_data`` is any iterable yielding
+    /// ``(inputs, targets)`` pairs, where
+    ///
+    /// * ``inputs`` has shape ``(batch, time_steps, input_size)`` -- spike
+    ///   trains, or any real-valued drive
+    /// * ``targets`` has shape ``(batch, output_size)`` -- the desired firing
+    ///   rate of each output neuron, in ``[0, 1]``
+    ///
+    /// Both are converted with ``numpy.asarray(..., dtype='float32')``, so
+    /// lists, numpy arrays and anything array-like all work.
+    ///
+    /// The whole iterable is materialised before the first epoch. That makes
+    /// one-shot generators behave correctly across ``epochs > 1``, at the cost
+    /// of holding the dataset in memory.
     ///
     /// Args:
-    ///     train_data: Training data loader
-    ///     epochs (int): Number of epochs
-    ///     validation_data: Optional validation data
-    ///     verbose (bool): Print progress
+    ///     train_data: Iterable of ``(inputs, targets)`` batches
+    ///     epochs (int): Number of passes over the data
+    ///     validation_data: Optional iterable in the same format
+    ///     verbose (bool): Print per-epoch loss
     ///
     /// Returns:
-    ///     dict: Training history
+    ///     dict: Training history -- ``loss`` always, ``val_loss`` when
+    ///     validation data is supplied
     #[pyo3(signature = (train_data, epochs, validation_data=None, verbose=false))]
     fn fit(
         &mut self,
@@ -456,40 +496,142 @@ impl PyTrainer {
         verbose: bool,
         py: Python,
     ) -> PyResult<HashMap<String, Vec<f32>>> {
-        // Call on_train_begin callbacks
+        let train = materialize(py, train_data.bind(py))?;
+        if train.is_empty() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "train_data yielded no batches",
+            ));
+        }
+        let validation = match validation_data {
+            Some(ref data) => Some(materialize(py, data.bind(py))?),
+            None => None,
+        };
+
         for callback in &self.callbacks {
             callback.call_method0(py, "on_train_begin")?;
         }
 
-        // Not implemented: a training loop needs a data-loader contract --
-        // how to iterate `data`, what a batch looks like, how targets pair with
-        // inputs -- and the Python API defines none, taking `data` as an opaque
-        // object.
-        //
-        // This used to run the epoch loop recording a loss of 0.0 each time and
-        // printing "loss = 0.0000", which reads as a perfectly converged model.
-        // Refusing is the honest answer until the contract exists.
-        let _ = (epochs, verbose, py);
-        Err(pyo3::exceptions::PyNotImplementedError::new_err(
-            "Trainer.fit is not implemented: no data-loader contract is defined yet. \
-             Use the loss functions and optimizers directly, or drive training from Rust.",
-        ))
+        for epoch in 0..epochs {
+            let mut total = 0.0;
+            for (inputs, targets) in &train {
+                total += self
+                    .inner
+                    .train_step(inputs, targets)
+                    .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+            }
+            let loss = total / train.len() as f32;
+            self.history
+                .entry("loss".to_string())
+                .or_default()
+                .push(loss);
+
+            let val_loss = match validation {
+                Some(ref batches) => {
+                    let mut total = 0.0;
+                    for (inputs, targets) in batches {
+                        total += self.inner.evaluate(inputs, targets).map_err(|e| {
+                            pyo3::exceptions::PyRuntimeError::new_err(e.to_string())
+                        })?;
+                    }
+                    let val = total / batches.len() as f32;
+                    self.history
+                        .entry("val_loss".to_string())
+                        .or_default()
+                        .push(val);
+                    Some(val)
+                }
+                None => None,
+            };
+
+            if verbose {
+                match val_loss {
+                    Some(val) => println!(
+                        "epoch {}/{} - loss {:.4} - val_loss {:.4}",
+                        epoch + 1,
+                        epochs,
+                        loss,
+                        val
+                    ),
+                    None => println!("epoch {}/{} - loss {:.4}", epoch + 1, epochs, loss),
+                }
+            }
+
+            for callback in &self.callbacks {
+                let metrics = PyDict::new(py);
+                metrics.set_item("loss", loss)?;
+                if let Some(val) = val_loss {
+                    metrics.set_item("val_loss", val)?;
+                }
+                callback.call_method1(py, "on_epoch_end", (epoch, metrics))?;
+            }
+        }
+
+        for callback in &self.callbacks {
+            callback.call_method0(py, "on_train_end")?;
+        }
+
+        // Push the trained weights back into the caller's model, so `model`
+        // reflects the training that just happened.
+        self.write_back(py)?;
+
+        Ok(self.history.clone())
     }
 
-    /// Evaluate model on data
+    /// Evaluate the model without updating any weights.
     ///
     /// Args:
-    ///     data: Evaluation data loader
+    ///     data: Iterable of ``(inputs, targets)`` batches, as for `fit`
     ///
     /// Returns:
-    ///     dict: Evaluation metrics
-    fn evaluate(&self, data: Py<PyAny>, py: Python) -> PyResult<HashMap<String, f32>> {
-        // Same gap as `fit`: reporting a loss of 0.0 for any input is worse
-        // than refusing.
-        let _ = (data, py);
-        Err(pyo3::exceptions::PyNotImplementedError::new_err(
-            "Trainer.evaluate is not implemented: no data-loader contract is defined yet",
-        ))
+    ///     dict: ``{"loss": mean loss over the batches}``
+    fn evaluate(&mut self, data: Py<PyAny>, py: Python) -> PyResult<HashMap<String, f32>> {
+        let batches = materialize(py, data.bind(py))?;
+        if batches.is_empty() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "data yielded no batches",
+            ));
+        }
+        let mut total = 0.0;
+        for (inputs, targets) in &batches {
+            total += self
+                .inner
+                .evaluate(inputs, targets)
+                .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+        }
+        Ok(HashMap::from([(
+            "loss".to_string(),
+            total / batches.len() as f32,
+        )]))
+    }
+
+    /// Name of the loss function this trainer was built with.
+    #[getter]
+    fn loss(&self) -> String {
+        self.loss_name.clone()
+    }
+
+    /// Name of the optimizer this trainer was built with.
+    #[getter]
+    fn optimizer(&self) -> String {
+        self.optimizer_name.clone()
+    }
+
+    /// Current optimizer learning rate.
+    #[getter]
+    fn learning_rate(&self) -> f32 {
+        self.inner.learning_rate()
+    }
+
+    /// Set the optimizer learning rate, e.g. from a scheduler.
+    #[setter]
+    fn set_learning_rate(&mut self, lr: f32) {
+        self.learning_rate = lr;
+        self.inner.set_learning_rate(lr);
+    }
+
+    /// Reset the membrane state of every layer.
+    fn reset_state(&mut self) {
+        self.inner.reset_state();
     }
 
     /// Get training history
@@ -608,4 +750,183 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyTrainer>()?;
     m.add_class::<PyLRScheduler>()?;
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Trainer support
+// ---------------------------------------------------------------------------
+
+/// Pulls the Rust layers out of a Python model.
+///
+/// Accepts a `Sequential`, a plain sequence of layers, or a single
+/// `SpikingLinear`. Only `SpikingLinear` can be trained: the convolutional and
+/// recurrent layers have no backward pass, so admitting them here would build a
+/// trainer that silently skipped them.
+fn collect_layers(model: &Bound<'_, PyAny>) -> PyResult<Vec<SpikingLinear>> {
+    let py = model.py();
+
+    let candidates: Vec<Py<PyAny>> = if let Ok(seq) = model.extract::<PyRef<'_, PySequential>>() {
+        seq.layers.iter().map(|l| l.clone_ref(py)).collect()
+    } else if let Ok(layer) = model.extract::<PyRef<'_, PySpikingLinear>>() {
+        return Ok(vec![layer.inner.clone()]);
+    } else {
+        model.extract::<Vec<Py<PyAny>>>().map_err(|_| {
+            pyo3::exceptions::PyTypeError::new_err(
+                "model must be a Sequential, a list of layers, or a SpikingLinear",
+            )
+        })?
+    };
+
+    let mut layers = Vec::with_capacity(candidates.len());
+    for (i, obj) in candidates.iter().enumerate() {
+        let layer = obj
+            .bind(py)
+            .extract::<PyRef<'_, PySpikingLinear>>()
+            .map_err(|_| {
+                pyo3::exceptions::PyTypeError::new_err(format!(
+                    "layer {i} is not a SpikingLinear; only SpikingLinear layers can be trained \
+                     (conv and recurrent layers have no backward pass)"
+                ))
+            })?;
+        layers.push(layer.inner.clone());
+    }
+    Ok(layers)
+}
+
+fn build_loss(name: &str, target_rate: f32) -> PyResult<Box<dyn LossFunction>> {
+    match name {
+        "spike_count" | "count" => Ok(Box::new(SpikeCountLoss::new(target_rate))),
+        "cross_entropy" | "ce" => Ok(Box::new(SpikingCrossEntropy::new())),
+        "spike_timing" | "timing" => Ok(Box::new(SpikeTimingLoss::new(1.0))),
+        other => Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "unknown loss '{other}'; expected one of: spike_count, cross_entropy, spike_timing"
+        ))),
+    }
+}
+
+fn build_optimizer(name: &str, learning_rate: f32) -> PyResult<Box<dyn Optimizer>> {
+    match name {
+        "adam" => Ok(Box::new(AdamOptimizer::new(learning_rate, 0.9, 0.999, 0.0))),
+        "sgd" => Ok(Box::new(SGDOptimizer::new(learning_rate, 0.0, 0.0))),
+        "momentum" => Ok(Box::new(SGDOptimizer::new(learning_rate, 0.9, 0.0))),
+        other => Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "unknown optimizer '{other}'; expected one of: adam, sgd, momentum"
+        ))),
+    }
+}
+
+fn parse_surrogate(name: &str) -> PyResult<SurrogateType> {
+    match name {
+        "fast_sigmoid" => Ok(SurrogateType::FastSigmoid),
+        "box" | "rectangular" => Ok(SurrogateType::Box),
+        "triangle" | "triangular" => Ok(SurrogateType::Triangle),
+        "exponential" => Ok(SurrogateType::Exponential),
+        "superspike" | "super_spike" => Ok(SurrogateType::SuperSpike),
+        other => Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "unknown surrogate '{other}'; expected one of: fast_sigmoid, box, triangle, \
+             exponential, superspike"
+        ))),
+    }
+}
+
+/// Converts an array-like to a contiguous f32 array via `numpy.asarray`.
+///
+/// Going through numpy is what lets callers pass lists, nested lists, float64
+/// arrays or torch tensors without converting first.
+fn as_f32_array<'py>(py: Python<'py>, obj: &Bound<'py, PyAny>) -> PyResult<Bound<'py, PyAny>> {
+    let kwargs = PyDict::new(py);
+    kwargs.set_item("dtype", "float32")?;
+    py.import("numpy")?
+        .call_method("asarray", (obj,), Some(&kwargs))
+}
+
+/// Reads the whole data loader into memory as `(inputs, targets)` pairs.
+///
+/// Materialising up front is deliberate: a Python generator is exhausted by its
+/// first pass, so streaming it would make every epoch after the first train on
+/// nothing.
+fn materialize(
+    py: Python<'_>,
+    data: &Bound<'_, PyAny>,
+) -> PyResult<Vec<(SpikeTensor, Array2<f32>)>> {
+    let mut batches = Vec::new();
+    for (i, item) in data.try_iter()?.enumerate() {
+        let item = item?;
+        let pair = item.extract::<Vec<Bound<'_, PyAny>>>().map_err(|_| {
+            pyo3::exceptions::PyTypeError::new_err(format!(
+                "batch {i} is not a (inputs, targets) pair"
+            ))
+        })?;
+        if pair.len() != 2 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "batch {i} has {} elements; expected exactly 2: (inputs, targets)",
+                pair.len()
+            )));
+        }
+
+        let inputs: Array3<f32> = as_f32_array(py, &pair[0])?
+            .extract::<PyReadonlyArray3<f32>>()
+            .map_err(|_| {
+                pyo3::exceptions::PyValueError::new_err(format!(
+                    "batch {i}: inputs must be 3-D (batch, time_steps, input_size)"
+                ))
+            })?
+            .as_array()
+            .to_owned();
+
+        let targets: Array2<f32> = as_f32_array(py, &pair[1])?
+            .extract::<PyReadonlyArray2<f32>>()
+            .map_err(|_| {
+                pyo3::exceptions::PyValueError::new_err(format!(
+                    "batch {i}: targets must be 2-D (batch, output_size)"
+                ))
+            })?
+            .as_array()
+            .to_owned();
+
+        if inputs.shape()[0] != targets.shape()[0] {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "batch {i}: inputs have batch size {} but targets have {}",
+                inputs.shape()[0],
+                targets.shape()[0]
+            )));
+        }
+
+        batches.push((SpikeTensor::from_dense(inputs, false), targets));
+    }
+    Ok(batches)
+}
+
+impl PyTrainer {
+    /// Copies the trained weights back into the caller's Python layers.
+    ///
+    /// Without this the model handed to the constructor would still hold its
+    /// initial weights after `fit` returned, since the trainer works on clones.
+    fn write_back(&self, py: Python<'_>) -> PyResult<()> {
+        let model = self.model.bind(py);
+        let objects: Vec<Py<PyAny>> = if let Ok(seq) = model.extract::<PyRef<'_, PySequential>>() {
+            seq.layers.iter().map(|l| l.clone_ref(py)).collect()
+        } else if model.extract::<PyRef<'_, PySpikingLinear>>().is_ok() {
+            vec![self.model.clone_ref(py)]
+        } else {
+            model.extract::<Vec<Py<PyAny>>>()?
+        };
+
+        for (obj, trained) in objects.iter().zip(self.inner.layers()) {
+            let mut layer = obj.bind(py).extract::<PyRefMut<'_, PySpikingLinear>>()?;
+            layer.inner = trained.clone();
+            layer.weights = trained
+                .weights
+                .rows()
+                .into_iter()
+                .map(|row| row.to_vec())
+                .collect();
+            layer.biases = trained
+                .bias
+                .as_ref()
+                .map(|b| b.to_vec())
+                .unwrap_or_default();
+        }
+        Ok(())
+    }
 }

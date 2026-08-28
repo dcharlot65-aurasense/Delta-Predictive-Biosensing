@@ -4,6 +4,9 @@ build-backend = "maturin"
 
 [project]
 name = "dpb"
+# Taken from the crate version in Cargo.toml, which inherits the workspace
+# version -- keeps the wheel and the crate from drifting apart.
+dynamic = ["version"]
 description = "Delta-Predictive Biosensing Framework - Neuromorphic signal processing"
 authors = [
     {name = "AuraSense Tech Corporation"}
