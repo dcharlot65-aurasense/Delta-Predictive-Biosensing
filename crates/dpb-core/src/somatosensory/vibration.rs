@@ -215,6 +215,11 @@ impl VibrationSense {
 
     /// Check if gradient is abnormal (suggests peripheral neuropathy)
     /// Normal gradient: distal VPT 1.0-1.5x proximal
+    // Deliberately not `!(0.8..=2.0).contains(&ratio)`: the two differ on NaN,
+    // which `gradient_ratio` can return when `distal_vpt` is NaN. The explicit
+    // comparison reports a NaN ratio as normal; `contains` would report it as
+    // abnormal. Changing which way a clinical flag falls is not a lint fix.
+    #[allow(clippy::manual_range_contains)]
     pub fn is_gradient_abnormal(distal_vpt: f64, proximal_vpt: f64) -> bool {
         let ratio = Self::gradient_ratio(distal_vpt, proximal_vpt);
         ratio > 2.0 || ratio < 0.8

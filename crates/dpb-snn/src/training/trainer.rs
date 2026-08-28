@@ -36,7 +36,7 @@
 //! use dpb_snn::layers::SpikingLinear;
 //! use dpb_snn::NeuronParams;
 //! use dpb_snn::tensor::SpikeTensor;
-//! use ndarray::{Array2, Array3};
+//! use ndarray::{Array1, Array2, Array3};
 //!
 //! # fn main() -> dpb_snn::SNNResult<()> {
 //! let layers = vec![
@@ -60,8 +60,9 @@
 //! # }
 //! ```
 
-use ndarray::{Array2, Array3};
+use ndarray::{Array1, Array2, Array3};
 
+use crate::layers::recurrent::{RecurrentTrace, SpikingRNN};
 use crate::layers::{SpikingLayer, SpikingLinear};
 use crate::tensor::SpikeTensor;
 use crate::training::loss::LossFunction;
@@ -84,9 +85,282 @@ pub struct StepReport {
     pub grad_norm: f32,
 }
 
+/// A layer the [`Trainer`] knows how to differentiate.
+///
+/// Feedforward and recurrent layers cannot share one backward signature. For a
+/// feedforward layer the caller applies the surrogate to the incoming gradient
+/// and then hands it over; for a recurrent layer the surrogate has to be
+/// applied inside the reverse-time loop, because a spike reaches the loss both
+/// directly and through every later step. This enum keeps that difference in
+/// one place instead of pushing it onto callers.
+///
+/// Convolutional and LSTM layers are deliberately absent: they have no backward
+/// pass yet, and admitting them here would produce a trainer that silently left
+/// them frozen.
+pub enum TrainableLayer {
+    /// A fully connected spiking layer.
+    Linear(SpikingLinear),
+    /// A recurrent spiking layer, trained by backpropagation through time.
+    Recurrent(SpikingRNN),
+}
+
+/// What a forward pass recorded for one layer's backward pass.
+enum LayerTrace {
+    /// Membrane potential per step.
+    Linear(Array3<f32>),
+    /// The recurrent trace, plus the layer's own output spikes -- which the
+    /// recurrent weight gradient is an outer product against.
+    Recurrent(RecurrentTrace, Array3<f32>),
+}
+
+impl TrainableLayer {
+    /// The spike threshold these neurons fire at.
+    fn threshold(&self) -> f32 {
+        match self {
+            Self::Linear(l) => l.neuron_params.v_threshold,
+            Self::Recurrent(l) => l.neuron_params.v_threshold,
+        }
+    }
+
+    /// The layer's primary weight matrix.
+    ///
+    /// For a recurrent layer this is the input weights; the recurrent weights
+    /// are reached through [`Self::as_recurrent`].
+    pub fn weights(&self) -> &Array2<f32> {
+        match self {
+            Self::Linear(l) => &l.weights,
+            Self::Recurrent(l) => &l.w_input,
+        }
+    }
+
+    /// The layer's bias, when it has one.
+    pub fn bias(&self) -> Option<&Array1<f32>> {
+        match self {
+            Self::Linear(l) => l.bias.as_ref(),
+            Self::Recurrent(l) => l.bias.as_ref(),
+        }
+    }
+
+    /// The accumulated bias gradient, when there is one.
+    pub fn bias_grad(&self) -> Option<&Array1<f32>> {
+        match self {
+            Self::Linear(l) => l.bias_grad.as_ref(),
+            Self::Recurrent(l) => l.bias_grad.as_ref(),
+        }
+    }
+
+    /// The underlying layer, when it is feedforward.
+    pub fn as_linear(&self) -> Option<&SpikingLinear> {
+        match self {
+            Self::Linear(l) => Some(l),
+            Self::Recurrent(_) => None,
+        }
+    }
+
+    /// The underlying layer, when it is recurrent.
+    pub fn as_recurrent(&self) -> Option<&SpikingRNN> {
+        match self {
+            Self::Recurrent(l) => Some(l),
+            Self::Linear(_) => None,
+        }
+    }
+
+    fn forward(&mut self, input: &SpikeTensor) -> SNNResult<SpikeTensor> {
+        match self {
+            Self::Linear(l) => l.forward(input),
+            Self::Recurrent(l) => l.forward(input),
+        }
+    }
+
+    fn forward_recording(&mut self, input: &SpikeTensor) -> SNNResult<(SpikeTensor, LayerTrace)> {
+        match self {
+            Self::Linear(l) => {
+                let (out, v) = l.forward_recording(input)?;
+                Ok((out, LayerTrace::Linear(v)))
+            }
+            Self::Recurrent(l) => {
+                let (out, trace) = l.forward_recording(input)?;
+                let spikes = out.to_dense();
+                Ok((out, LayerTrace::Recurrent(trace, spikes)))
+            }
+        }
+    }
+
+    /// Backward pass, returning the gradient with respect to this layer's input.
+    fn backward(
+        &mut self,
+        input: &Array3<f32>,
+        trace: &LayerTrace,
+        grad: &Array3<f32>,
+        surrogate: &dyn SurrogateGradient,
+        threshold: f32,
+    ) -> SNNResult<Array3<f32>> {
+        match (self, trace) {
+            (Self::Linear(layer), LayerTrace::Linear(v_mem)) => {
+                // A feedforward layer's backward treats the layer as linear, so
+                // the surrogate has to be folded in before the call.
+                let mut scaled = grad.clone();
+                for ((b, t, n), g) in scaled.indexed_iter_mut() {
+                    *g *= surrogate.compute_gradient(v_mem[[b, t, n]], threshold);
+                }
+                layer.backward(input, &scaled)
+            }
+            (Self::Recurrent(layer), LayerTrace::Recurrent(trace, outputs)) => {
+                layer.backward(input, trace, outputs, grad, surrogate)
+            }
+            _ => Err(SNNError::InvalidConfig(
+                "layer trace does not match the layer it came from".to_string(),
+            )),
+        }
+    }
+
+    fn reset_state(&mut self) {
+        match self {
+            Self::Linear(l) => l.reset_state(),
+            Self::Recurrent(l) => l.reset_state(),
+        }
+    }
+
+    fn zero_grad(&mut self) {
+        match self {
+            Self::Linear(l) => l.zero_grad(),
+            Self::Recurrent(l) => l.zero_grad(),
+        }
+    }
+
+    /// Weight gradients contributing to the global norm.
+    fn weight_grads(&self) -> Vec<&Array2<f32>> {
+        match self {
+            Self::Linear(l) => l.weight_grad.iter().collect(),
+            Self::Recurrent(l) => l
+                .w_input_grad
+                .iter()
+                .chain(l.w_recurrent_grad.iter())
+                .collect(),
+        }
+    }
+
+    /// Scale every accumulated gradient in place, for clipping.
+    fn scale_grads(&mut self, scale: f32) {
+        match self {
+            Self::Linear(l) => {
+                if let Some(ref mut g) = l.weight_grad {
+                    *g *= scale;
+                }
+                if let Some(ref mut g) = l.bias_grad {
+                    *g *= scale;
+                }
+            }
+            Self::Recurrent(l) => {
+                if let Some(ref mut g) = l.w_input_grad {
+                    *g *= scale;
+                }
+                if let Some(ref mut g) = l.w_recurrent_grad {
+                    *g *= scale;
+                }
+                if let Some(ref mut g) = l.bias_grad {
+                    *g *= scale;
+                }
+            }
+        }
+    }
+
+    /// `(value, gradient)` pairs for the optimizer, in a fixed order.
+    ///
+    /// Biases are presented as 1xN matrices because `Optimizer::step` is
+    /// Array2-only; see [`Trainer::apply_update`] for why that matters.
+    fn param_pairs(&self) -> Vec<(Array2<f32>, Array2<f32>)> {
+        fn row(v: &Array1<f32>) -> Array2<f32> {
+            let n = v.len();
+            v.clone()
+                .into_shape_with_order((1, n))
+                .expect("a length-n vector always reshapes to 1xn")
+        }
+
+        let mut out = Vec::new();
+        match self {
+            Self::Linear(l) => {
+                if let Some(g) = l.weight_grad.as_ref() {
+                    out.push((l.weights.clone(), g.clone()));
+                }
+                if let (Some(b), Some(g)) = (l.bias.as_ref(), l.bias_grad.as_ref()) {
+                    out.push((row(b), row(g)));
+                }
+            }
+            Self::Recurrent(l) => {
+                if let Some(g) = l.w_input_grad.as_ref() {
+                    out.push((l.w_input.clone(), g.clone()));
+                }
+                if let Some(g) = l.w_recurrent_grad.as_ref() {
+                    out.push((l.w_recurrent.clone(), g.clone()));
+                }
+                if let (Some(b), Some(g)) = (l.bias.as_ref(), l.bias_grad.as_ref()) {
+                    out.push((row(b), row(g)));
+                }
+            }
+        }
+        out
+    }
+
+    /// Writes updated values back, consuming them in [`Self::param_pairs`] order.
+    fn write_params(&mut self, values: &mut std::vec::IntoIter<Array2<f32>>) {
+        fn flat(v: Array2<f32>) -> Array1<f32> {
+            let n = v.len();
+            v.into_shape_with_order(n)
+                .expect("a 1xn matrix always reshapes to length n")
+        }
+
+        match self {
+            Self::Linear(l) => {
+                if l.weight_grad.is_some()
+                    && let Some(v) = values.next()
+                {
+                    l.weights = v;
+                }
+                if l.bias.is_some()
+                    && l.bias_grad.is_some()
+                    && let Some(v) = values.next()
+                {
+                    l.bias = Some(flat(v));
+                }
+            }
+            Self::Recurrent(l) => {
+                if l.w_input_grad.is_some()
+                    && let Some(v) = values.next()
+                {
+                    l.w_input = v;
+                }
+                if l.w_recurrent_grad.is_some()
+                    && let Some(v) = values.next()
+                {
+                    l.w_recurrent = v;
+                }
+                if l.bias.is_some()
+                    && l.bias_grad.is_some()
+                    && let Some(v) = values.next()
+                {
+                    l.bias = Some(flat(v));
+                }
+            }
+        }
+    }
+}
+
+impl From<SpikingLinear> for TrainableLayer {
+    fn from(l: SpikingLinear) -> Self {
+        Self::Linear(l)
+    }
+}
+
+impl From<SpikingRNN> for TrainableLayer {
+    fn from(l: SpikingRNN) -> Self {
+        Self::Recurrent(l)
+    }
+}
+
 /// Trains a stack of [`SpikingLinear`] layers by surrogate-gradient descent.
 pub struct Trainer {
-    layers: Vec<SpikingLinear>,
+    layers: Vec<TrainableLayer>,
     loss: Box<dyn LossFunction>,
     optimizer: Box<dyn Optimizer>,
     surrogate: Box<dyn SurrogateGradient>,
@@ -115,10 +389,22 @@ impl Trainer {
         optimizer: Box<dyn Optimizer>,
         surrogate: SurrogateType,
     ) -> Self {
-        let threshold = layers
-            .first()
-            .map(|l| l.neuron_params.v_threshold)
-            .unwrap_or(1.0);
+        Self::with_layers(
+            layers.into_iter().map(TrainableLayer::Linear).collect(),
+            loss,
+            optimizer,
+            surrogate,
+        )
+    }
+
+    /// Build a trainer over a mixed stack of feedforward and recurrent layers.
+    pub fn with_layers(
+        layers: Vec<TrainableLayer>,
+        loss: Box<dyn LossFunction>,
+        optimizer: Box<dyn Optimizer>,
+        surrogate: SurrogateType,
+    ) -> Self {
+        let threshold = layers.first().map(|l| l.threshold()).unwrap_or(1.0);
 
         Self {
             layers,
@@ -140,12 +426,12 @@ impl Trainer {
     }
 
     /// The layers being trained.
-    pub fn layers(&self) -> &[SpikingLinear] {
+    pub fn layers(&self) -> &[TrainableLayer] {
         &self.layers
     }
 
     /// Mutable access to the layers, for inference or checkpointing.
-    pub fn layers_mut(&mut self) -> &mut [SpikingLinear] {
+    pub fn layers_mut(&mut self) -> &mut [TrainableLayer] {
         &mut self.layers
     }
 
@@ -201,31 +487,29 @@ impl Trainer {
         // is where the surrogate is evaluated -- neither survives the forward
         // pass otherwise.
         let mut layer_inputs: Vec<Array3<f32>> = Vec::with_capacity(self.layers.len());
-        let mut v_mem_history: Vec<Array3<f32>> = Vec::with_capacity(self.layers.len());
+        let mut traces: Vec<LayerTrace> = Vec::with_capacity(self.layers.len());
 
         let mut activation = input.clone();
         for layer in &mut self.layers {
             layer_inputs.push(activation.to_dense());
-            let (output, v_mem) = layer.forward_recording(&activation)?;
-            v_mem_history.push(v_mem);
+            let (output, trace) = layer.forward_recording(&activation)?;
+            traces.push(trace);
             activation = output;
         }
 
         let loss = self.loss.compute(&activation, targets)?;
         let mut grad = self.loss.gradient(&activation, targets)?;
 
-        // Backward, output layer first.
+        // Backward, output layer first. Where the surrogate is applied differs
+        // between feedforward and recurrent layers, so each layer applies it.
         for idx in (0..self.layers.len()).rev() {
-            let v_mem = &v_mem_history[idx];
-
-            // The surrogate stands in for the spike's derivative.
-            for ((b, t, n), g) in grad.indexed_iter_mut() {
-                *g *= self
-                    .surrogate
-                    .compute_gradient(v_mem[[b, t, n]], self.threshold);
-            }
-
-            grad = self.layers[idx].backward(&layer_inputs[idx], &grad)?;
+            grad = self.layers[idx].backward(
+                &layer_inputs[idx],
+                &traces[idx],
+                &grad,
+                self.surrogate.as_ref(),
+                self.threshold,
+            )?;
         }
 
         let grad_norm = self.gradient_norm();
@@ -242,7 +526,7 @@ impl Trainer {
     fn gradient_norm(&self) -> f32 {
         self.layers
             .iter()
-            .filter_map(|l| l.weight_grad.as_ref())
+            .flat_map(|l| l.weight_grads())
             .map(|g| g.iter().map(|v| v * v).sum::<f32>())
             .sum::<f32>()
             .sqrt()
@@ -255,85 +539,42 @@ impl Trainer {
         }
         let scale = max_norm / current_norm;
         for layer in &mut self.layers {
-            if let Some(ref mut g) = layer.weight_grad {
-                *g *= scale;
-            }
-            if let Some(ref mut g) = layer.bias_grad {
-                *g *= scale;
-            }
+            layer.scale_grads(scale);
         }
     }
 
     /// Hand the gradients to the optimizer and update the weights.
     fn apply_update(&mut self) -> SNNResult<()> {
-        // The optimizer borrows parameters mutably and gradients immutably, and
-        // both live on the same layer, so the gradients are cloned out first.
-        //
         // `Optimizer::step` is Array2-only, but a bias is Array1. Rather than
         // hand-rolling a plain descent step for biases -- which would mean Adam
         // updated the weights adaptively while the biases crawled at the raw
         // learning rate -- each bias is presented as a 1xN matrix. The optimizer
-        // keys its moment buffers by position in the slice, and the order here
-        // (weights then bias, layer by layer) is the same on every step, so
-        // biases accumulate their own moment estimates exactly as weights do.
-        struct Slot {
-            layer: usize,
-            /// True when this slot is the layer's bias rather than its weights.
-            is_bias: bool,
-            value: Array2<f32>,
-            grad: Array2<f32>,
-        }
-
-        let mut slots: Vec<Slot> = Vec::new();
-        for (i, layer) in self.layers.iter().enumerate() {
-            if let Some(g) = layer.weight_grad.as_ref() {
-                slots.push(Slot {
-                    layer: i,
-                    is_bias: false,
-                    value: layer.weights.clone(),
-                    grad: g.clone(),
-                });
-            }
-            if let (Some(bias), Some(g)) = (layer.bias.as_ref(), layer.bias_grad.as_ref()) {
-                let n = bias.len();
-                slots.push(Slot {
-                    layer: i,
-                    is_bias: true,
-                    value: bias.clone().into_shape_with_order((1, n)).map_err(|e| {
-                        SNNError::InvalidConfig(format!("bias is not reshapable: {e}"))
-                    })?,
-                    grad: g.clone().into_shape_with_order((1, n)).map_err(|e| {
-                        SNNError::InvalidConfig(format!("bias gradient is not reshapable: {e}"))
-                    })?,
-                });
+        // keys its moment buffers by position in the slice, and each layer emits
+        // its parameters in the same order on every step, so biases and
+        // recurrent weights accumulate their own moment estimates exactly as
+        // input weights do.
+        let mut values: Vec<Array2<f32>> = Vec::new();
+        let mut grads: Vec<Array2<f32>> = Vec::new();
+        for layer in &self.layers {
+            for (value, grad) in layer.param_pairs() {
+                values.push(value);
+                grads.push(grad);
             }
         }
 
-        if slots.is_empty() {
+        if values.is_empty() {
             return Ok(());
         }
 
-        // Split the borrows: the optimizer needs `&mut` values and `&` grads at
-        // the same time, which it cannot get from one slice of `Slot`.
-        let grads: Vec<Array2<f32>> = slots.iter().map(|s| s.grad.clone()).collect();
-        let mut values: Vec<Array2<f32>> = slots.iter().map(|s| s.value.clone()).collect();
         {
             let mut param_refs: Vec<&mut Array2<f32>> = values.iter_mut().collect();
             let grad_refs: Vec<&Array2<f32>> = grads.iter().collect();
             self.optimizer.step(&mut param_refs, &grad_refs)?;
         }
 
-        for (slot, updated) in slots.iter().zip(values) {
-            let layer = &mut self.layers[slot.layer];
-            if slot.is_bias {
-                let n = updated.len();
-                let flat = updated.into_shape_with_order(n).map_err(|e| {
-                    SNNError::InvalidConfig(format!("bias update is not reshapable: {e}"))
-                })?;
-                layer.bias = Some(flat);
-            } else {
-                layer.weights = updated;
-            }
+        let mut updated = values.into_iter();
+        for layer in &mut self.layers {
+            layer.write_params(&mut updated);
         }
 
         Ok(())
@@ -451,11 +692,11 @@ mod tests {
         let (input, targets) = separable_batch();
         let mut trainer = make_trainer(0.02);
 
-        let before = trainer.layers()[0].weights.clone();
+        let before = trainer.layers()[0].weights().clone();
         for _ in 0..10 {
             trainer.train_step(&input, &targets).unwrap();
         }
-        let after = &trainer.layers()[0].weights;
+        let after = trainer.layers()[0].weights();
 
         let delta: f32 = (&before - after).iter().map(|d| d.abs()).sum();
         assert!(delta > 1e-6, "weights did not move (total change {delta})");
@@ -484,13 +725,19 @@ mod tests {
         // Clipping would rescale the gradients and blur the comparison.
         trainer.set_grad_clip(None);
 
-        let before = trainer.layers()[0].bias.clone().expect("layer has a bias");
+        let before = trainer.layers()[0]
+            .bias()
+            .cloned()
+            .expect("layer has a bias");
         trainer.train_step(&input, &targets).unwrap();
-        let after = trainer.layers()[0].bias.clone().expect("layer has a bias");
+        let after = trainer.layers()[0]
+            .bias()
+            .cloned()
+            .expect("layer has a bias");
 
         let grad = trainer.layers()[0]
-            .bias_grad
-            .clone()
+            .bias_grad()
+            .cloned()
             .expect("bias gradient was accumulated");
 
         let mut checked = 0;
@@ -512,6 +759,64 @@ mod tests {
         assert!(
             checked > 0,
             "no bias received a gradient, so nothing was tested"
+        );
+    }
+
+    /// A recurrent layer must train through the trainer, not merely compile
+    /// into it. The recurrent weights specifically have to move -- if only the
+    /// input weights changed, the BPTT path would not be reaching the optimizer.
+    #[test]
+    fn a_recurrent_stack_trains() {
+        use crate::layers::recurrent::SpikingRNN;
+
+        let (input, targets) = separable_batch();
+        let mut trainer = Trainer::with_layers(
+            vec![
+                TrainableLayer::Recurrent(SpikingRNN::new(
+                    4,
+                    8,
+                    true,
+                    NeuronParams::default(),
+                    1.0,
+                    false,
+                )),
+                TrainableLayer::Linear(SpikingLinear::new(
+                    8,
+                    2,
+                    true,
+                    NeuronParams::default(),
+                    1.0,
+                    false,
+                )),
+            ],
+            Box::new(SpikeCountLoss::new(1.0)),
+            Box::new(SGDOptimizer::new(0.02, 0.9, 0.0)),
+            SurrogateType::FastSigmoid,
+        );
+
+        let w_rec_before = trainer.layers()[0]
+            .as_recurrent()
+            .expect("first layer is recurrent")
+            .w_recurrent
+            .clone();
+
+        let first = trainer.train_step(&input, &targets).unwrap();
+        let mut last = first;
+        for _ in 0..40 {
+            last = trainer.train_step(&input, &targets).unwrap();
+        }
+
+        let w_rec_after = &trainer.layers()[0].as_recurrent().unwrap().w_recurrent;
+        let moved: f32 = (&w_rec_before - w_rec_after).iter().map(|d| d.abs()).sum();
+
+        assert!(last.is_finite(), "recurrent training produced {last}");
+        assert!(
+            moved > 1e-6,
+            "recurrent weights never moved (total change {moved})"
+        );
+        assert!(
+            last < first,
+            "loss did not fall over 40 recurrent steps: {first} -> {last}"
         );
     }
 
@@ -541,7 +846,7 @@ mod tests {
         }
 
         assert!(
-            trainer.layers()[0].weights.iter().all(|w| w.is_finite()),
+            trainer.layers()[0].weights().iter().all(|w| w.is_finite()),
             "weights diverged despite clipping"
         );
     }
@@ -551,9 +856,9 @@ mod tests {
         let (input, targets) = separable_batch();
         let mut trainer = make_trainer(0.02);
 
-        let before = trainer.layers()[0].weights.clone();
+        let before = trainer.layers()[0].weights().clone();
         let loss = trainer.evaluate(&input, &targets).unwrap();
-        let after = &trainer.layers()[0].weights;
+        let after = &trainer.layers()[0].weights();
 
         assert!(loss.is_finite());
         assert_eq!(before, *after, "evaluate modified the weights");

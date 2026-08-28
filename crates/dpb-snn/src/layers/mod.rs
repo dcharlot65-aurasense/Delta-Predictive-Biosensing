@@ -10,7 +10,7 @@ pub use attention::SpikingAttention;
 pub use conv::{SpikingConv1d, SpikingConv2d};
 pub use linear::SpikingLinear;
 pub use pool::{SpikingMaxPool2d, SpikingSumPool2d};
-pub use recurrent::{SpikingLSTM, SpikingRNN};
+pub use recurrent::{RecurrentTrace, SpikingLSTM, SpikingRNN};
 
 use crate::{NeuronParams, SNNResult, SpikeTensor};
 use ndarray::{Array1, Array2};

@@ -175,7 +175,12 @@ impl EmgFatigueAnalyzer {
         for k in 1..n / 2 {
             let freq = k as f64 * self.sample_rate / n as f64;
 
-            // Only consider EMG frequency range (20-500 Hz)
+            // Only consider EMG frequency range (20-500 Hz).
+            //
+            // Not `!(20.0..=500.0).contains(&freq)`: that also skips a NaN
+            // frequency, where this admits it. Equivalent for every real
+            // sample rate, but the two are not the same function.
+            #[allow(clippy::manual_range_contains)]
             if freq < 20.0 || freq > 500.0 {
                 continue;
             }

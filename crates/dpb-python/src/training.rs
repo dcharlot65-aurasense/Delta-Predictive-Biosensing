@@ -913,6 +913,12 @@ impl PyTrainer {
         };
 
         for (obj, trained) in objects.iter().zip(self.inner.layers()) {
+            // Only feedforward layers can come back through the Python model:
+            // `collect_layers` refuses anything else, so a non-linear layer here
+            // would mean the trainer and the model had drifted apart.
+            let Some(trained) = trained.as_linear() else {
+                continue;
+            };
             let mut layer = obj.bind(py).extract::<PyRefMut<'_, PySpikingLinear>>()?;
             layer.inner = trained.clone();
             layer.weights = trained
