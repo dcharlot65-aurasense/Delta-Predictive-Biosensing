@@ -62,6 +62,7 @@
 
 use ndarray::{Array1, Array2, Array3};
 
+use crate::layers::conv::{ConvTrace, SpikingConv1d};
 use crate::layers::recurrent::{RecurrentTrace, SpikingRNN};
 use crate::layers::{SpikingLayer, SpikingLinear};
 use crate::tensor::SpikeTensor;
@@ -94,14 +95,16 @@ pub struct StepReport {
 /// directly and through every later step. This enum keeps that difference in
 /// one place instead of pushing it onto callers.
 ///
-/// Convolutional and LSTM layers are deliberately absent: they have no backward
-/// pass yet, and admitting them here would produce a trainer that silently left
-/// them frozen.
+/// `SpikingConv2d` and `SpikingLSTM` are deliberately absent: they have no
+/// backward pass, and admitting them here would produce a trainer that silently
+/// left them frozen.
 pub enum TrainableLayer {
     /// A fully connected spiking layer.
     Linear(SpikingLinear),
     /// A recurrent spiking layer, trained by backpropagation through time.
     Recurrent(SpikingRNN),
+    /// A 1-D convolutional spiking layer.
+    Convolutional(SpikingConv1d),
 }
 
 /// What a forward pass recorded for one layer's backward pass.
@@ -111,6 +114,8 @@ enum LayerTrace {
     /// The recurrent trace, plus the layer's own output spikes -- which the
     /// recurrent weight gradient is an outer product against.
     Recurrent(RecurrentTrace, Array3<f32>),
+    /// The convolutional trace.
+    Convolutional(ConvTrace),
 }
 
 impl TrainableLayer {
@@ -119,17 +124,29 @@ impl TrainableLayer {
         match self {
             Self::Linear(l) => l.neuron_params.v_threshold,
             Self::Recurrent(l) => l.neuron_params.v_threshold,
+            Self::Convolutional(l) => l.neuron_params.v_threshold,
         }
     }
 
     /// The layer's primary weight matrix.
     ///
     /// For a recurrent layer this is the input weights; the recurrent weights
-    /// are reached through [`Self::as_recurrent`].
-    pub fn weights(&self) -> &Array2<f32> {
+    /// are reached through [`Self::as_recurrent`]. A convolutional layer has a
+    /// 3-D kernel and no 2-D weight matrix, so it returns `None` rather than a
+    /// reshaped view that would not be the layer's own storage.
+    pub fn weights(&self) -> Option<&Array2<f32>> {
         match self {
-            Self::Linear(l) => &l.weights,
-            Self::Recurrent(l) => &l.w_input,
+            Self::Linear(l) => Some(&l.weights),
+            Self::Recurrent(l) => Some(&l.w_input),
+            Self::Convolutional(_) => None,
+        }
+    }
+
+    /// The underlying layer, when it is convolutional.
+    pub fn as_conv(&self) -> Option<&SpikingConv1d> {
+        match self {
+            Self::Convolutional(l) => Some(l),
+            _ => None,
         }
     }
 
@@ -138,6 +155,7 @@ impl TrainableLayer {
         match self {
             Self::Linear(l) => l.bias.as_ref(),
             Self::Recurrent(l) => l.bias.as_ref(),
+            Self::Convolutional(l) => l.bias.as_ref(),
         }
     }
 
@@ -146,6 +164,7 @@ impl TrainableLayer {
         match self {
             Self::Linear(l) => l.bias_grad.as_ref(),
             Self::Recurrent(l) => l.bias_grad.as_ref(),
+            Self::Convolutional(l) => l.bias_grad.as_ref(),
         }
     }
 
@@ -153,7 +172,7 @@ impl TrainableLayer {
     pub fn as_linear(&self) -> Option<&SpikingLinear> {
         match self {
             Self::Linear(l) => Some(l),
-            Self::Recurrent(_) => None,
+            _ => None,
         }
     }
 
@@ -161,7 +180,7 @@ impl TrainableLayer {
     pub fn as_recurrent(&self) -> Option<&SpikingRNN> {
         match self {
             Self::Recurrent(l) => Some(l),
-            Self::Linear(_) => None,
+            _ => None,
         }
     }
 
@@ -169,6 +188,7 @@ impl TrainableLayer {
         match self {
             Self::Linear(l) => l.forward(input),
             Self::Recurrent(l) => l.forward(input),
+            Self::Convolutional(l) => l.forward(input),
         }
     }
 
@@ -182,6 +202,10 @@ impl TrainableLayer {
                 let (out, trace) = l.forward_recording(input)?;
                 let spikes = out.to_dense();
                 Ok((out, LayerTrace::Recurrent(trace, spikes)))
+            }
+            Self::Convolutional(l) => {
+                let (out, trace) = l.forward_recording(input)?;
+                Ok((out, LayerTrace::Convolutional(trace)))
             }
         }
     }
@@ -208,6 +232,9 @@ impl TrainableLayer {
             (Self::Recurrent(layer), LayerTrace::Recurrent(trace, outputs)) => {
                 layer.backward(input, trace, outputs, grad, surrogate)
             }
+            (Self::Convolutional(layer), LayerTrace::Convolutional(trace)) => {
+                layer.backward(input, trace, grad, surrogate)
+            }
             _ => Err(SNNError::InvalidConfig(
                 "layer trace does not match the layer it came from".to_string(),
             )),
@@ -218,6 +245,7 @@ impl TrainableLayer {
         match self {
             Self::Linear(l) => l.reset_state(),
             Self::Recurrent(l) => l.reset_state(),
+            Self::Convolutional(l) => l.reset_state(),
         }
     }
 
@@ -225,18 +253,25 @@ impl TrainableLayer {
         match self {
             Self::Linear(l) => l.zero_grad(),
             Self::Recurrent(l) => l.zero_grad(),
+            Self::Convolutional(l) => l.zero_grad(),
         }
     }
 
-    /// Weight gradients contributing to the global norm.
-    fn weight_grads(&self) -> Vec<&Array2<f32>> {
+    /// Sum of squared weight gradients, contributing to the global norm.
+    ///
+    /// Returned as a scalar rather than as matrices because a convolutional
+    /// kernel is 3-D and has no `Array2` to hand back.
+    fn weight_grad_sq(&self) -> f32 {
+        fn sq<'a>(it: impl Iterator<Item = &'a f32>) -> f32 {
+            it.map(|v| v * v).sum()
+        }
         match self {
-            Self::Linear(l) => l.weight_grad.iter().collect(),
-            Self::Recurrent(l) => l
-                .w_input_grad
-                .iter()
-                .chain(l.w_recurrent_grad.iter())
-                .collect(),
+            Self::Linear(l) => l.weight_grad.iter().map(|g| sq(g.iter())).sum(),
+            Self::Recurrent(l) => {
+                l.w_input_grad.iter().map(|g| sq(g.iter())).sum::<f32>()
+                    + l.w_recurrent_grad.iter().map(|g| sq(g.iter())).sum::<f32>()
+            }
+            Self::Convolutional(l) => l.kernel_grad.iter().map(|g| sq(g.iter())).sum(),
         }
     }
 
@@ -256,6 +291,14 @@ impl TrainableLayer {
                     *g *= scale;
                 }
                 if let Some(ref mut g) = l.w_recurrent_grad {
+                    *g *= scale;
+                }
+                if let Some(ref mut g) = l.bias_grad {
+                    *g *= scale;
+                }
+            }
+            Self::Convolutional(l) => {
+                if let Some(ref mut g) = l.kernel_grad {
                     *g *= scale;
                 }
                 if let Some(ref mut g) = l.bias_grad {
@@ -293,6 +336,17 @@ impl TrainableLayer {
                 }
                 if let Some(g) = l.w_recurrent_grad.as_ref() {
                     out.push((l.w_recurrent.clone(), g.clone()));
+                }
+                if let (Some(b), Some(g)) = (l.bias.as_ref(), l.bias_grad.as_ref()) {
+                    out.push((row(b), row(g)));
+                }
+            }
+            Self::Convolutional(l) => {
+                // The optimizer is Array2-only, so the (out, in, tap) kernel is
+                // flattened to (out, in * tap). Element order is preserved, so
+                // each weight keeps its own moment estimates across steps.
+                if let Some(g) = l.kernel_grad.as_ref() {
+                    out.push((flatten_kernel(&l.kernel), flatten_kernel(g)));
                 }
                 if let (Some(b), Some(g)) = (l.bias.as_ref(), l.bias_grad.as_ref()) {
                     out.push((row(b), row(g)));
@@ -342,8 +396,32 @@ impl TrainableLayer {
                     l.bias = Some(flat(v));
                 }
             }
+            Self::Convolutional(l) => {
+                if l.kernel_grad.is_some()
+                    && let Some(v) = values.next()
+                {
+                    let shape = l.kernel.raw_dim();
+                    l.kernel = v
+                        .into_shape_with_order(shape)
+                        .expect("the flattened kernel has the same element count");
+                }
+                if l.bias.is_some()
+                    && l.bias_grad.is_some()
+                    && let Some(v) = values.next()
+                {
+                    l.bias = Some(flat(v));
+                }
+            }
         }
     }
+}
+
+/// Reshapes an `(out, in, tap)` kernel to `(out, in * tap)` for the optimizer.
+fn flatten_kernel(k: &Array3<f32>) -> Array2<f32> {
+    let (o, i, t) = (k.shape()[0], k.shape()[1], k.shape()[2]);
+    k.clone()
+        .into_shape_with_order((o, i * t))
+        .expect("a 3-D kernel always flattens to 2-D")
 }
 
 impl From<SpikingLinear> for TrainableLayer {
@@ -355,6 +433,12 @@ impl From<SpikingLinear> for TrainableLayer {
 impl From<SpikingRNN> for TrainableLayer {
     fn from(l: SpikingRNN) -> Self {
         Self::Recurrent(l)
+    }
+}
+
+impl From<SpikingConv1d> for TrainableLayer {
+    fn from(l: SpikingConv1d) -> Self {
+        Self::Convolutional(l)
     }
 }
 
@@ -526,8 +610,7 @@ impl Trainer {
     fn gradient_norm(&self) -> f32 {
         self.layers
             .iter()
-            .flat_map(|l| l.weight_grads())
-            .map(|g| g.iter().map(|v| v * v).sum::<f32>())
+            .map(|l| l.weight_grad_sq())
             .sum::<f32>()
             .sqrt()
     }
@@ -692,11 +775,11 @@ mod tests {
         let (input, targets) = separable_batch();
         let mut trainer = make_trainer(0.02);
 
-        let before = trainer.layers()[0].weights().clone();
+        let before = trainer.layers()[0].weights().expect("linear layer").clone();
         for _ in 0..10 {
             trainer.train_step(&input, &targets).unwrap();
         }
-        let after = trainer.layers()[0].weights();
+        let after = trainer.layers()[0].weights().expect("linear layer");
 
         let delta: f32 = (&before - after).iter().map(|d| d.abs()).sum();
         assert!(delta > 1e-6, "weights did not move (total change {delta})");
@@ -820,6 +903,74 @@ mod tests {
         );
     }
 
+    /// A convolutional layer must train through the trainer, with its kernel
+    /// moving -- not merely pass tensors through while staying frozen.
+    #[test]
+    fn a_convolutional_stack_trains() {
+        use crate::layers::conv::SpikingConv1d;
+
+        // Two classes distinguished by which half of a length-8 signal is
+        // driven, so the convolution has something local to pick up on.
+        let (batch, steps, channels, length) = (4, 12, 1, 8);
+        let mut dense = Array3::zeros((batch, steps, channels * length));
+        let mut targets = Array2::zeros((batch, 2));
+        for b in 0..batch {
+            let class = b % 2;
+            for t in 0..steps {
+                for p in 0..4 {
+                    dense[[b, t, class * 4 + p]] = 1.0;
+                }
+            }
+            targets[[b, class]] = 0.5;
+        }
+        let input = SpikeTensor::from_dense(dense, false);
+
+        // 1 channel, 3 outputs, width-3 kernel, stride 1, padding 1 -> 8
+        // positions, so 24 neurons into the classifier.
+        let conv = SpikingConv1d::new(1, 3, 3, 1, 1, true, NeuronParams::default(), 1.0, false);
+        let mut trainer = Trainer::with_layers(
+            vec![
+                TrainableLayer::Convolutional(conv),
+                TrainableLayer::Linear(SpikingLinear::new(
+                    24,
+                    2,
+                    true,
+                    NeuronParams::default(),
+                    1.0,
+                    false,
+                )),
+            ],
+            Box::new(SpikeCountLoss::new(1.0)),
+            Box::new(SGDOptimizer::new(0.02, 0.9, 0.0)),
+            SurrogateType::FastSigmoid,
+        );
+
+        let kernel_before = trainer.layers()[0]
+            .as_conv()
+            .expect("first layer is convolutional")
+            .kernel
+            .clone();
+
+        let first = trainer.train_step(&input, &targets).unwrap();
+        let mut last = first;
+        for _ in 0..40 {
+            last = trainer.train_step(&input, &targets).unwrap();
+        }
+
+        let kernel_after = &trainer.layers()[0].as_conv().unwrap().kernel;
+        let moved: f32 = (&kernel_before - kernel_after)
+            .iter()
+            .map(|d| d.abs())
+            .sum();
+
+        assert!(last.is_finite(), "convolutional training produced {last}");
+        assert!(moved > 1e-6, "kernel never moved (total change {moved})");
+        assert!(
+            last < first,
+            "loss did not fall over 40 convolutional steps: {first} -> {last}"
+        );
+    }
+
     #[test]
     fn gradients_are_finite_and_non_zero() {
         let (input, targets) = separable_batch();
@@ -846,7 +997,11 @@ mod tests {
         }
 
         assert!(
-            trainer.layers()[0].weights().iter().all(|w| w.is_finite()),
+            trainer.layers()[0]
+                .weights()
+                .unwrap()
+                .iter()
+                .all(|w| w.is_finite()),
             "weights diverged despite clipping"
         );
     }
@@ -856,12 +1011,12 @@ mod tests {
         let (input, targets) = separable_batch();
         let mut trainer = make_trainer(0.02);
 
-        let before = trainer.layers()[0].weights().clone();
+        let before = trainer.layers()[0].weights().expect("linear layer").clone();
         let loss = trainer.evaluate(&input, &targets).unwrap();
-        let after = &trainer.layers()[0].weights();
+        let after = trainer.layers()[0].weights().expect("linear layer");
 
         assert!(loss.is_finite());
-        assert_eq!(before, *after, "evaluate modified the weights");
+        assert_eq!(&before, after, "evaluate modified the weights");
     }
 
     #[test]

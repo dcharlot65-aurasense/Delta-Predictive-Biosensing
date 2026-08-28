@@ -7,7 +7,7 @@ pub mod pool;
 pub mod recurrent;
 
 pub use attention::SpikingAttention;
-pub use conv::{SpikingConv1d, SpikingConv2d};
+pub use conv::{ConvTrace, SpikingConv1d, SpikingConv2d};
 pub use linear::SpikingLinear;
 pub use pool::{SpikingMaxPool2d, SpikingSumPool2d};
 pub use recurrent::{RecurrentTrace, SpikingLSTM, SpikingRNN};
