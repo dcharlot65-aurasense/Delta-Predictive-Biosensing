@@ -60,7 +60,7 @@
 //! # }
 //! ```
 
-use ndarray::{Array1, Array2, Array3};
+use ndarray::{Array2, Array3};
 
 use crate::layers::{SpikingLayer, SpikingLinear};
 use crate::tensor::SpikeTensor;
@@ -266,33 +266,73 @@ impl Trainer {
 
     /// Hand the gradients to the optimizer and update the weights.
     fn apply_update(&mut self) -> SNNResult<()> {
-        // The optimizer borrows weights mutably and gradients immutably, and
-        // both live on the same layer, so the gradients come out first.
-        let grads: Vec<Option<Array2<f32>>> =
-            self.layers.iter().map(|l| l.weight_grad.clone()).collect();
+        // The optimizer borrows parameters mutably and gradients immutably, and
+        // both live on the same layer, so the gradients are cloned out first.
+        //
+        // `Optimizer::step` is Array2-only, but a bias is Array1. Rather than
+        // hand-rolling a plain descent step for biases -- which would mean Adam
+        // updated the weights adaptively while the biases crawled at the raw
+        // learning rate -- each bias is presented as a 1xN matrix. The optimizer
+        // keys its moment buffers by position in the slice, and the order here
+        // (weights then bias, layer by layer) is the same on every step, so
+        // biases accumulate their own moment estimates exactly as weights do.
+        struct Slot {
+            layer: usize,
+            /// True when this slot is the layer's bias rather than its weights.
+            is_bias: bool,
+            value: Array2<f32>,
+            grad: Array2<f32>,
+        }
 
-        let mut params: Vec<&mut Array2<f32>> = Vec::new();
-        let mut owned_grads: Vec<&Array2<f32>> = Vec::new();
-        for (layer, grad) in self.layers.iter_mut().zip(grads.iter()) {
-            if let Some(g) = grad {
-                params.push(&mut layer.weights);
-                owned_grads.push(g);
+        let mut slots: Vec<Slot> = Vec::new();
+        for (i, layer) in self.layers.iter().enumerate() {
+            if let Some(g) = layer.weight_grad.as_ref() {
+                slots.push(Slot {
+                    layer: i,
+                    is_bias: false,
+                    value: layer.weights.clone(),
+                    grad: g.clone(),
+                });
+            }
+            if let (Some(bias), Some(g)) = (layer.bias.as_ref(), layer.bias_grad.as_ref()) {
+                let n = bias.len();
+                slots.push(Slot {
+                    layer: i,
+                    is_bias: true,
+                    value: bias.clone().into_shape_with_order((1, n)).map_err(|e| {
+                        SNNError::InvalidConfig(format!("bias is not reshapable: {e}"))
+                    })?,
+                    grad: g.clone().into_shape_with_order((1, n)).map_err(|e| {
+                        SNNError::InvalidConfig(format!("bias gradient is not reshapable: {e}"))
+                    })?,
+                });
             }
         }
 
-        if !params.is_empty() {
-            self.optimizer.step(&mut params, &owned_grads)?;
+        if slots.is_empty() {
+            return Ok(());
         }
 
-        // The Optimizer trait takes Array2 parameters, and a bias is Array1, so
-        // biases descend plainly at the optimizer's current rate rather than
-        // through its moment estimates. Stated rather than hidden: with Adam
-        // the biases are not Adam-updated.
-        let lr = self.optimizer.learning_rate();
-        for layer in &mut self.layers {
-            let step: Option<Array1<f32>> = layer.bias_grad.as_ref().map(|g| g * lr);
-            if let (Some(bias), Some(step)) = (layer.bias.as_mut(), step) {
-                *bias -= &step;
+        // Split the borrows: the optimizer needs `&mut` values and `&` grads at
+        // the same time, which it cannot get from one slice of `Slot`.
+        let grads: Vec<Array2<f32>> = slots.iter().map(|s| s.grad.clone()).collect();
+        let mut values: Vec<Array2<f32>> = slots.iter().map(|s| s.value.clone()).collect();
+        {
+            let mut param_refs: Vec<&mut Array2<f32>> = values.iter_mut().collect();
+            let grad_refs: Vec<&Array2<f32>> = grads.iter().collect();
+            self.optimizer.step(&mut param_refs, &grad_refs)?;
+        }
+
+        for (slot, updated) in slots.iter().zip(values) {
+            let layer = &mut self.layers[slot.layer];
+            if slot.is_bias {
+                let n = updated.len();
+                let flat = updated.into_shape_with_order(n).map_err(|e| {
+                    SNNError::InvalidConfig(format!("bias update is not reshapable: {e}"))
+                })?;
+                layer.bias = Some(flat);
+            } else {
+                layer.weights = updated;
             }
         }
 
@@ -333,7 +373,7 @@ mod tests {
     use super::*;
     use crate::NeuronParams;
     use crate::training::loss::SpikeCountLoss;
-    use crate::training::optimizer::SGDOptimizer;
+    use crate::training::optimizer::{AdamOptimizer, SGDOptimizer};
 
     /// Two classes, each a distinct input channel firing every step. A network
     /// that learns anything at all separates these.
@@ -419,6 +459,60 @@ mod tests {
 
         let delta: f32 = (&before - after).iter().map(|d| d.abs()).sum();
         assert!(delta > 1e-6, "weights did not move (total change {delta})");
+    }
+
+    /// Biases must go through the optimizer, not a hand-rolled descent step.
+    ///
+    /// Adam's first update is `lr * m_hat / (sqrt(v_hat) + eps)`, which for a
+    /// single step reduces to roughly `lr * sign(g)` -- the size of the step is
+    /// independent of the size of the gradient. Plain descent would instead move
+    /// the bias by `lr * g`. Asserting the step is close to `lr`, on a batch
+    /// whose bias gradients are far from unit magnitude, separates the two.
+    #[test]
+    fn adam_updates_biases_adaptively() {
+        let (input, targets) = separable_batch();
+        let lr = 0.01;
+        let mut trainer = Trainer::new(
+            vec![
+                SpikingLinear::new(4, 8, true, NeuronParams::default(), 1.0, false),
+                SpikingLinear::new(8, 2, true, NeuronParams::default(), 1.0, false),
+            ],
+            Box::new(SpikeCountLoss::new(1.0)),
+            Box::new(AdamOptimizer::new(lr, 0.9, 0.999, 0.0)),
+            SurrogateType::FastSigmoid,
+        );
+        // Clipping would rescale the gradients and blur the comparison.
+        trainer.set_grad_clip(None);
+
+        let before = trainer.layers()[0].bias.clone().expect("layer has a bias");
+        trainer.train_step(&input, &targets).unwrap();
+        let after = trainer.layers()[0].bias.clone().expect("layer has a bias");
+
+        let grad = trainer.layers()[0]
+            .bias_grad
+            .clone()
+            .expect("bias gradient was accumulated");
+
+        let mut checked = 0;
+        for i in 0..before.len() {
+            // Only neurons that actually received a gradient say anything.
+            if grad[i].abs() < 1e-6 {
+                continue;
+            }
+            let step = (after[i] - before[i]).abs();
+            assert!(
+                (step - lr).abs() < lr * 0.1,
+                "bias {i} moved {step}, expected about {lr} from an Adam step \
+                 (gradient was {}); a plain descent step would have moved it {}",
+                grad[i],
+                lr * grad[i].abs()
+            );
+            checked += 1;
+        }
+        assert!(
+            checked > 0,
+            "no bias received a gradient, so nothing was tested"
+        );
     }
 
     #[test]
