@@ -26,9 +26,17 @@ pub struct SpikingConv2d {
     pub bias_grad: Option<Array1<f32>>,
     /// Neuron parameters
     pub neuron_params: NeuronParams,
-    /// Neuron state
+    /// Neuron state, one entry per batch item covering every output neuron.
     #[serde(skip)]
-    pub state: Vec<Vec<NeuronState>>, // [batch][spatial_position]
+    pub state: Vec<NeuronState>,
+    /// Spatial extent of the input, as `(height, width)`.
+    ///
+    /// A `SpikeTensor` is `(batch, steps, flat)` and cannot carry `H` and `W`,
+    /// so a non-square input has to say so. When this is `None` the layer
+    /// assumes a square input and infers the side from `flat / in_channels`,
+    /// which covers the usual image case; a flat size that is not
+    /// `in_channels * n * n` is then an error rather than a silent reshape.
+    pub input_hw: Option<(usize, usize)>,
     /// Time step
     pub dt: f32,
     /// Adaptive neurons
@@ -83,9 +91,23 @@ impl SpikingConv2d {
             bias_grad: None,
             neuron_params,
             state: Vec::new(),
+            input_hw: None,
             dt,
             adaptive,
         }
+    }
+
+    /// Declare the input's spatial extent, for a non-square input.
+    ///
+    /// Without this the layer infers a square input from the flat size.
+    pub fn with_input_shape(mut self, height: usize, width: usize) -> Self {
+        self.input_hw = Some((height, width));
+        self
+    }
+
+    /// Set the input's spatial extent in place.
+    pub fn set_input_shape(&mut self, height: usize, width: usize) {
+        self.input_hw = Some((height, width));
     }
 
     /// Calculate output dimensions
@@ -94,127 +116,292 @@ impl SpikingConv2d {
         let out_w = (input_w + 2 * self.padding.1 - self.kernel.shape()[3]) / self.stride.1 + 1;
         (out_h, out_w)
     }
+}
 
-    /// Apply 2D convolution (simplified, no actual padding implementation)
-    fn conv2d(&self, input: &Array4<f32>) -> Array4<f32> {
-        let (batch_size, in_channels, in_h, in_w) = (
-            input.shape()[0],
-            input.shape()[1],
-            input.shape()[2],
-            input.shape()[3],
-        );
-        let (out_channels, _, kernel_h, kernel_w) = (
-            self.kernel.shape()[0],
-            self.kernel.shape()[1],
-            self.kernel.shape()[2],
-            self.kernel.shape()[3],
-        );
-
-        let (out_h, out_w) = self.output_size(in_h, in_w);
-        let mut output = Array4::zeros((batch_size, out_channels, out_h, out_w));
-
-        // Perform convolution
-        for b in 0..batch_size {
-            for oc in 0..out_channels {
-                for oh in 0..out_h {
-                    for ow in 0..out_w {
-                        let mut sum = 0.0;
-
-                        for ic in 0..in_channels {
-                            for kh in 0..kernel_h {
-                                for kw in 0..kernel_w {
-                                    let ih = oh * self.stride.0 + kh;
-                                    let iw = ow * self.stride.1 + kw;
-
-                                    if ih < in_h && iw < in_w {
-                                        sum +=
-                                            input[[b, ic, ih, iw]] * self.kernel[[oc, ic, kh, kw]];
-                                    }
-                                }
-                            }
-                        }
-
-                        if let Some(ref bias) = self.bias {
-                            sum += bias[oc];
-                        }
-
-                        output[[b, oc, oh, ow]] = sum;
-                    }
-                }
-            }
+impl SpikingConv2d {
+    /// Spatial extent of the input, from `input_hw` or inferred as square.
+    fn input_shape(&self, flat: usize) -> SNNResult<(usize, usize)> {
+        let in_channels = self.kernel.shape()[1];
+        if in_channels == 0 || !flat.is_multiple_of(in_channels) {
+            return Err(SNNError::DimensionMismatch {
+                expected: format!("a multiple of in_channels {in_channels}"),
+                actual: format!("input size {flat}"),
+            });
         }
+        let plane = flat / in_channels;
 
-        output
+        let (h, w) = match self.input_hw {
+            Some((h, w)) => {
+                if h * w != plane {
+                    return Err(SNNError::DimensionMismatch {
+                        expected: format!("{in_channels} x {h} x {w} = {}", in_channels * h * w),
+                        actual: format!("input size {flat}"),
+                    });
+                }
+                (h, w)
+            }
+            None => {
+                // No declared shape: assume square, and refuse to guess when
+                // the plane is not a perfect square rather than truncating.
+                let side = (plane as f64).sqrt().round() as usize;
+                if side * side != plane {
+                    return Err(SNNError::DimensionMismatch {
+                        expected: "a square input, or an explicit input shape via set_input_shape"
+                            .to_string(),
+                        actual: format!("{plane} positions per channel, which is not square"),
+                    });
+                }
+                (side, side)
+            }
+        };
+
+        let (kh, kw) = (self.kernel.shape()[2], self.kernel.shape()[3]);
+        if h + 2 * self.padding.0 < kh || w + 2 * self.padding.1 < kw {
+            return Err(SNNError::DimensionMismatch {
+                expected: format!("at least {kh}x{kw} after padding"),
+                actual: format!("{h}x{w} with padding {:?}", self.padding),
+            });
+        }
+        Ok((h, w))
     }
 
-    /// Initialize neuron states
-    fn ensure_state(&mut self, batch_size: usize, out_h: usize, out_w: usize) {
-        let spatial_size = out_h * out_w;
-        if self.state.len() != batch_size {
+    /// The input position a kernel tap reads, or `None` inside the zero padding.
+    fn source_index(
+        &self,
+        out_pos: (usize, usize),
+        tap: (usize, usize),
+        in_hw: (usize, usize),
+    ) -> Option<(usize, usize)> {
+        let sh = (out_pos.0 * self.stride.0 + tap.0) as isize - self.padding.0 as isize;
+        let sw = (out_pos.1 * self.stride.1 + tap.1) as isize - self.padding.1 as isize;
+        if sh < 0 || sw < 0 || sh as usize >= in_hw.0 || sw as usize >= in_hw.1 {
+            None
+        } else {
+            Some((sh as usize, sw as usize))
+        }
+    }
+
+    fn ensure_state(&mut self, batch_size: usize, num_neurons: usize) {
+        if self.state.len() != batch_size
+            || self.state.first().map(|s| s.v_mem.len()) != Some(num_neurons)
+        {
             self.state = (0..batch_size)
-                .map(|_| {
-                    (0..spatial_size)
-                        .map(|_| NeuronState::new(self.kernel.shape()[0], self.adaptive))
-                        .collect()
-                })
+                .map(|_| NeuronState::new(num_neurons, self.adaptive))
                 .collect();
         }
     }
-}
 
-impl SpikingLayer for SpikingConv2d {
-    fn forward(&mut self, input: &SpikeTensor) -> SNNResult<SpikeTensor> {
+    /// Synaptic current for one time step, indexed `[oc * OH * OW + oh * OW + ow]`.
+    fn convolve(
+        &self,
+        input_t: &ndarray::ArrayView1<f32>,
+        in_hw: (usize, usize),
+        out_hw: (usize, usize),
+    ) -> Array1<f32> {
+        let out_channels = self.kernel.shape()[0];
+        let in_channels = self.kernel.shape()[1];
+        let (kh, kw) = (self.kernel.shape()[2], self.kernel.shape()[3]);
+        let plane = in_hw.0 * in_hw.1;
+
+        let mut current = Array1::zeros(out_channels * out_hw.0 * out_hw.1);
+        for oc in 0..out_channels {
+            for oh in 0..out_hw.0 {
+                for ow in 0..out_hw.1 {
+                    let mut sum = 0.0;
+                    for ic in 0..in_channels {
+                        for i in 0..kh {
+                            for j in 0..kw {
+                                if let Some((sh, sw)) = self.source_index((oh, ow), (i, j), in_hw) {
+                                    sum += input_t[ic * plane + sh * in_hw.1 + sw]
+                                        * self.kernel[[oc, ic, i, j]];
+                                }
+                            }
+                        }
+                    }
+                    if let Some(ref bias) = self.bias {
+                        sum += bias[oc];
+                    }
+                    current[(oc * out_hw.0 + oh) * out_hw.1 + ow] = sum;
+                }
+            }
+        }
+        current
+    }
+
+    /// Forward pass that also records what the backward pass needs.
+    pub fn forward_recording(
+        &mut self,
+        input: &SpikeTensor,
+    ) -> SNNResult<(SpikeTensor, ConvTrace)> {
         let input_dense = input.to_dense();
-        let (batch_size, num_steps, _flat_input) = (
+        let (batch_size, num_steps, flat) = (
             input_dense.shape()[0],
             input_dense.shape()[1],
             input_dense.shape()[2],
         );
 
-        // Assume input is flattened from (C, H, W)
-        // For simplicity, we'll treat it as 1D convolution internally
-        // In a full implementation, we'd need proper reshaping
+        let in_hw = self.input_shape(flat)?;
+        let out_hw = self.output_size(in_hw.0, in_hw.1);
+        let num_neurons = self.kernel.shape()[0] * out_hw.0 * out_hw.1;
 
-        let output_size = self.kernel.shape()[0];
-        let mut output = Array3::zeros((batch_size, num_steps, output_size));
+        let mut output = Array3::zeros((batch_size, num_steps, num_neurons));
+        let mut v_mem = Array3::zeros((batch_size, num_steps, num_neurons));
+        let mut membrane_updated =
+            ndarray::Array3::from_elem((batch_size, num_steps, num_neurons), false);
 
-        // Simplified forward pass treating each spatial position independently
+        self.ensure_state(batch_size, num_neurons);
+
         for t in 0..num_steps {
             for b in 0..batch_size {
                 let input_t = input_dense.slice(s![b, t, ..]);
+                let current = self.convolve(&input_t, in_hw, out_hw);
 
-                // Simplified: just apply linear transformation for each output channel
-                for oc in 0..output_size {
-                    let kernel_slice: ndarray::ArrayView1<f32> =
-                        self.kernel.slice(s![oc, .., 0, 0]);
-                    let synaptic: f32 = kernel_slice.dot(&input_t);
-                    output[[b, t, oc]] = synaptic;
+                for n in 0..num_neurons {
+                    membrane_updated[[b, t, n]] = self.state[b].refrac[n] <= 0.0;
+                }
+
+                let (spikes, v_pre) =
+                    self.state[b].update_lif_recording(&current, &self.neuron_params, self.dt);
+                output.slice_mut(s![b, t, ..]).assign(&spikes);
+                v_mem.slice_mut(s![b, t, ..]).assign(&v_pre);
+            }
+        }
+
+        Ok((
+            SpikeTensor::from_dense(output, input.requires_grad),
+            ConvTrace {
+                v_mem,
+                membrane_updated,
+            },
+        ))
+    }
+
+    /// Backward pass, accumulating kernel and bias gradients.
+    ///
+    /// Differentiates the same two decay paths as the 1-D layer and gives
+    /// refractory steps no surrogate term; see [`SpikingConv1d::backward`] for
+    /// the derivation, which is identical bar the extra spatial axis.
+    pub fn backward(
+        &mut self,
+        inputs: &Array3<f32>,
+        trace: &ConvTrace,
+        output_grad: &Array3<f32>,
+        surrogate: &dyn crate::training::surrogate::SurrogateGradient,
+    ) -> SNNResult<Array3<f32>> {
+        let (batch_size, num_steps, flat) =
+            (inputs.shape()[0], inputs.shape()[1], inputs.shape()[2]);
+        let in_hw = self.input_shape(flat)?;
+        let out_hw = self.output_size(in_hw.0, in_hw.1);
+        let out_channels = self.kernel.shape()[0];
+        let in_channels = self.kernel.shape()[1];
+        let (kh, kw) = (self.kernel.shape()[2], self.kernel.shape()[3]);
+        let plane = in_hw.0 * in_hw.1;
+        let num_neurons = out_channels * out_hw.0 * out_hw.1;
+
+        if output_grad.shape() != [batch_size, num_steps, num_neurons] {
+            return Err(SNNError::DimensionMismatch {
+                expected: format!("output gradient {batch_size}x{num_steps}x{num_neurons}"),
+                actual: format!("{:?}", output_grad.shape()),
+            });
+        }
+
+        let alpha_syn = (-self.dt / self.neuron_params.tau_syn).exp();
+        let alpha_mem = (-self.dt / self.neuron_params.tau_mem).exp();
+        let threshold = self.neuron_params.v_threshold;
+
+        let mut kernel_grad = Array4::zeros(self.kernel.raw_dim());
+        let mut bias_grad = Array1::zeros(out_channels);
+        let mut input_grad = Array3::zeros(inputs.raw_dim());
+
+        for b in 0..batch_size {
+            let mut carry_v = Array1::<f32>::zeros(num_neurons);
+            let mut carry_syn = Array1::<f32>::zeros(num_neurons);
+
+            for t in (0..num_steps).rev() {
+                let mut d_v = carry_v.clone();
+                let mut d_syn_here = Array1::<f32>::zeros(num_neurons);
+                let mut next_carry_v = Array1::<f32>::zeros(num_neurons);
+
+                for n in 0..num_neurons {
+                    if trace.membrane_updated[[b, t, n]] {
+                        d_v[n] += output_grad[[b, t, n]]
+                            * surrogate.compute_gradient(trace.v_mem[[b, t, n]], threshold);
+                        d_syn_here[n] = d_v[n] * (1.0 - alpha_mem);
+                        next_carry_v[n] = d_v[n] * alpha_mem;
+                    } else {
+                        next_carry_v[n] = d_v[n];
+                    }
+                }
+                carry_v = next_carry_v;
+
+                let d_current = &d_syn_here + &carry_syn;
+                carry_syn = &d_current * alpha_syn;
+
+                let x_t = inputs.slice(s![b, t, ..]);
+                for oc in 0..out_channels {
+                    for oh in 0..out_hw.0 {
+                        for ow in 0..out_hw.1 {
+                            let g = d_current[(oc * out_hw.0 + oh) * out_hw.1 + ow];
+                            if g == 0.0 {
+                                continue;
+                            }
+                            bias_grad[oc] += g;
+                            for ic in 0..in_channels {
+                                for i in 0..kh {
+                                    for j in 0..kw {
+                                        if let Some((sh, sw)) =
+                                            self.source_index((oh, ow), (i, j), in_hw)
+                                        {
+                                            let idx = ic * plane + sh * in_hw.1 + sw;
+                                            kernel_grad[[oc, ic, i, j]] += g * x_t[idx];
+                                            input_grad[[b, t, idx]] +=
+                                                g * self.kernel[[oc, ic, i, j]];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        Ok(SpikeTensor::from_dense(output, input.requires_grad))
+        match self.kernel_grad {
+            Some(ref mut existing) => *existing += &kernel_grad,
+            None => self.kernel_grad = Some(kernel_grad),
+        }
+        if self.bias.is_some() {
+            match self.bias_grad {
+                Some(ref mut existing) => *existing += &bias_grad,
+                None => self.bias_grad = Some(bias_grad),
+            }
+        }
+
+        Ok(input_grad)
+    }
+}
+
+impl SpikingLayer for SpikingConv2d {
+    fn forward(&mut self, input: &SpikeTensor) -> SNNResult<SpikeTensor> {
+        self.forward_recording(input).map(|(out, _)| out)
     }
 
     fn reset_state(&mut self) {
-        for batch_states in &mut self.state {
-            for state in batch_states {
-                state.reset();
-            }
+        for state in &mut self.state {
+            state.reset();
         }
     }
 
     fn parameters(&self) -> Vec<&Array2<f32>> {
-        // Return flattened view of kernel as 2D array
-        Vec::new() // Simplified for now
+        Vec::new()
     }
 
     fn parameters_mut(&mut self) -> Vec<&mut Array2<f32>> {
-        Vec::new() // Simplified for now
+        Vec::new()
     }
 
     fn gradients(&self) -> Vec<Option<&Array2<f32>>> {
-        Vec::new() // Simplified for now
+        Vec::new()
     }
 
     fn zero_grad(&mut self) {
@@ -904,5 +1091,286 @@ mod tests {
             grad.iter().any(|g| g.abs() > 0.0),
             "no gradient reached the input"
         );
+    }
+
+    // ---- Conv2d backward validation -----------------------------------
+
+    /// Forward-mode directional derivative for one Conv2d kernel entry or bias.
+    fn conv2d_forward_mode(
+        layer: &SpikingConv2d,
+        inputs: &Array3<f32>,
+        trace: &ConvTrace,
+        output_grad: &Array3<f32>,
+        surrogate: &dyn SurrogateGradient,
+        wrt_kernel: Option<(usize, usize, usize, usize)>,
+        wrt_bias: Option<usize>,
+    ) -> f32 {
+        let (batch, steps, flat) = (inputs.shape()[0], inputs.shape()[1], inputs.shape()[2]);
+        let in_hw = layer.input_shape(flat).unwrap();
+        let out_hw = layer.output_size(in_hw.0, in_hw.1);
+        let out_channels = layer.kernel.shape()[0];
+        let plane = in_hw.0 * in_hw.1;
+        let neurons = out_channels * out_hw.0 * out_hw.1;
+
+        let a_syn = (-layer.dt / layer.neuron_params.tau_syn).exp();
+        let a_mem = (-layer.dt / layer.neuron_params.tau_mem).exp();
+        let threshold = layer.neuron_params.v_threshold;
+
+        let mut total = 0.0;
+        for b in 0..batch {
+            let mut d_syn = vec![0.0f32; neurons];
+            let mut d_v = vec![0.0f32; neurons];
+
+            for t in 0..steps {
+                for oc in 0..out_channels {
+                    for oh in 0..out_hw.0 {
+                        for ow in 0..out_hw.1 {
+                            let n = (oc * out_hw.0 + oh) * out_hw.1 + ow;
+
+                            let mut d_current = 0.0;
+                            if let Some((ko, ki, ki_h, ki_w)) = wrt_kernel
+                                && ko == oc
+                                && let Some((sh, sw)) =
+                                    layer.source_index((oh, ow), (ki_h, ki_w), in_hw)
+                            {
+                                d_current += inputs[[b, t, ki * plane + sh * in_hw.1 + sw]];
+                            }
+                            if let Some(bo) = wrt_bias
+                                && bo == oc
+                            {
+                                d_current += 1.0;
+                            }
+
+                            d_syn[n] = a_syn * d_syn[n] + d_current;
+                            let d_s = if trace.membrane_updated[[b, t, n]] {
+                                d_v[n] = a_mem * d_v[n] + d_syn[n] * (1.0 - a_mem);
+                                surrogate.compute_gradient(trace.v_mem[[b, t, n]], threshold)
+                                    * d_v[n]
+                            } else {
+                                0.0
+                            };
+                            total += output_grad[[b, t, n]] * d_s;
+                        }
+                    }
+                }
+            }
+        }
+        total
+    }
+
+    fn conv2d_fixture() -> (SpikingConv2d, Array3<f32>, Array3<f32>) {
+        // Deliberately not square: a height/width transposition anywhere in the
+        // indexing is invisible on a square input.
+        let (batch, steps, in_channels, h, w) = (2, 4, 2, 5, 6);
+        let mut layer = SpikingConv2d::new(
+            in_channels,
+            3,
+            (3, 3),
+            (2, 2),
+            (1, 1),
+            true,
+            NeuronParams::default(),
+            1.0,
+            false,
+        );
+        layer.set_input_shape(h, w);
+
+        for oc in 0..3 {
+            for ic in 0..in_channels {
+                for i in 0..3 {
+                    for j in 0..3 {
+                        layer.kernel[[oc, ic, i, j]] =
+                            0.4 + 0.09 * (oc as f32) - 0.05 * ((ic + i + j) as f32);
+                    }
+                }
+            }
+        }
+        if let Some(ref mut b) = layer.bias {
+            for oc in 0..3 {
+                b[oc] = 0.03 * (oc as f32);
+            }
+        }
+
+        let inputs = Array3::from_shape_fn((batch, steps, in_channels * h * w), |(b, t, i)| {
+            (((b * 3 + t * 5 + i) % 4) as f32) * 0.7
+        });
+        let (oh, ow) = layer.output_size(h, w);
+        let output_grad = Array3::from_shape_fn((batch, steps, 3 * oh * ow), |(b, t, n)| {
+            0.35 - 0.12 * (((b + t + n) % 3) as f32)
+        });
+        (layer, inputs, output_grad)
+    }
+
+    #[test]
+    fn conv2d_backward_matches_forward_mode() {
+        let (mut layer, inputs, output_grad) = conv2d_fixture();
+        let surrogate = FastSigmoidSurrogate::new(10.0);
+
+        let (spikes, trace) = layer
+            .forward_recording(&SpikeTensor::from_dense(inputs.clone(), false))
+            .unwrap();
+        let fired: f32 = spikes.to_dense().iter().sum();
+        let refractory = trace.membrane_updated.iter().filter(|u| !**u).count();
+        assert!(fired > 0.0, "fixture never spiked");
+        assert!(refractory > 0, "fixture never entered a refractory step");
+
+        layer
+            .backward(&inputs, &trace, &output_grad, &surrogate)
+            .unwrap();
+        let kernel_grad = layer.kernel_grad.clone().unwrap();
+        let bias_grad = layer.bias_grad.clone().unwrap();
+
+        let s = layer.kernel.shape().to_vec();
+        for oc in 0..s[0] {
+            for ic in 0..s[1] {
+                for i in 0..s[2] {
+                    for j in 0..s[3] {
+                        let expected = conv2d_forward_mode(
+                            &layer,
+                            &inputs,
+                            &trace,
+                            &output_grad,
+                            &surrogate,
+                            Some((oc, ic, i, j)),
+                            None,
+                        );
+                        let got = kernel_grad[[oc, ic, i, j]];
+                        assert!(
+                            (got - expected).abs() <= 1e-4 * expected.abs().max(1.0),
+                            "kernel[{oc},{ic},{i},{j}]: reverse {got} vs forward {expected}"
+                        );
+                    }
+                }
+            }
+            let expected = conv2d_forward_mode(
+                &layer,
+                &inputs,
+                &trace,
+                &output_grad,
+                &surrogate,
+                None,
+                Some(oc),
+            );
+            assert!(
+                (bias_grad[oc] - expected).abs() <= 1e-4 * expected.abs().max(1.0),
+                "bias[{oc}]: reverse {} vs forward {expected}",
+                bias_grad[oc]
+            );
+        }
+    }
+
+    /// Padding must shift the 2-D read window, in both axes. As for the 1-D
+    /// layer, the output shape alone cannot catch an ignored offset.
+    #[test]
+    fn conv2d_padding_shifts_the_read_window() {
+        let mut layer = SpikingConv2d::new(
+            1,
+            1,
+            (3, 3),
+            (1, 1),
+            (1, 1),
+            false,
+            NeuronParams::default(),
+            1.0,
+            false,
+        );
+        layer.set_input_shape(4, 4);
+        layer.kernel.fill(0.0);
+        // Only the top-left tap is live, so output (i,j) reads input (i-1,j-1).
+        layer.kernel[[0, 0, 0, 0]] = 4.0;
+
+        let mut dense = Array3::zeros((1, 1, 16));
+        dense[[0, 0, 0]] = 1.0; // input position (0, 0)
+        let (_, trace) = layer
+            .forward_recording(&SpikeTensor::from_dense(dense, false))
+            .unwrap();
+
+        // Output (0,0) reads (-1,-1): padding, so nothing.
+        assert_eq!(
+            trace.v_mem[[0, 0, 0]],
+            0.0,
+            "output (0,0) read real input instead of the corner pad"
+        );
+        // Output (1,1) reads (0,0), the value that was set. Width is 4.
+        let (row, col, width) = (1usize, 1usize, 4usize);
+        assert!(
+            trace.v_mem[[0, 0, row * width + col]] > 0.0,
+            "output (1,1) did not read input (0,0): {:?}",
+            trace.v_mem
+        );
+    }
+
+    /// Stride must move the read window by more than one position. Like
+    /// padding, this cannot be caught by the gradient check: `source_index` is
+    /// shared by the forward pass, the backward pass and the forward-mode
+    /// reference, so an error there moves all three together and they still
+    /// agree with each other.
+    #[test]
+    fn conv2d_stride_advances_the_read_window() {
+        let mut layer = SpikingConv2d::new(
+            1,
+            1,
+            (2, 2),
+            (2, 2),
+            (0, 0),
+            false,
+            NeuronParams::default(),
+            1.0,
+            false,
+        );
+        layer.set_input_shape(4, 4);
+        layer.kernel.fill(0.0);
+        layer.kernel[[0, 0, 0, 0]] = 4.0; // top-left tap only
+
+        let (oh, ow) = layer.output_size(4, 4);
+        assert_eq!((oh, ow), (2, 2));
+
+        // Both axes must advance, so both are probed: a stride dropped on only
+        // one axis survives a test that looks at the other.
+        for (label, input_rc, out_rc) in [
+            ("width", (0usize, 2usize), (0usize, 1usize)),
+            ("height", (2, 0), (1, 0)),
+        ] {
+            let mut dense = Array3::zeros((1, 1, 16));
+            dense[[0, 0, input_rc.0 * 4 + input_rc.1]] = 1.0;
+            let (_, trace) = layer
+                .forward_recording(&SpikeTensor::from_dense(dense, false))
+                .unwrap();
+
+            let out_idx = out_rc.0 * ow + out_rc.1;
+            assert!(
+                trace.v_mem[[0, 0, out_idx]] > 0.0,
+                "{label}: output {out_rc:?} did not read input {input_rc:?}; \
+                 stride is not advancing on that axis: {:?}",
+                trace.v_mem
+            );
+            assert_eq!(
+                trace.v_mem[[0, 0, 0]],
+                0.0,
+                "{label}: output (0,0) should read input (0,0) only"
+            );
+            layer.reset_state();
+        }
+    }
+
+    /// A non-square input needs a declared shape; guessing is refused.
+    #[test]
+    fn conv2d_rejects_an_ambiguous_shape() {
+        let mut layer = SpikingConv2d::new(
+            1,
+            2,
+            (3, 3),
+            (1, 1),
+            (1, 1),
+            true,
+            NeuronParams::default(),
+            1.0,
+            false,
+        );
+        // 12 is not a perfect square, and no shape was declared.
+        assert!(layer.forward(&SpikeTensor::zeros(1, 2, 12, false)).is_err());
+        // Declared 3x4, it works.
+        layer.set_input_shape(3, 4);
+        assert!(layer.forward(&SpikeTensor::zeros(1, 2, 12, false)).is_ok());
     }
 }

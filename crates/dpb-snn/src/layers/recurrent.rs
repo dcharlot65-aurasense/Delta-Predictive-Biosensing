@@ -463,6 +463,23 @@ pub struct SpikingLSTM {
     pub w_rec_forget: Array2<f32>,
     pub w_rec_output: Array2<f32>,
     pub w_rec_cell: Array2<f32>,
+    /// Gradients, in the same order as the weights above.
+    #[serde(skip)]
+    pub w_input_gate_grad: Option<Array2<f32>>,
+    #[serde(skip)]
+    pub w_forget_gate_grad: Option<Array2<f32>>,
+    #[serde(skip)]
+    pub w_output_gate_grad: Option<Array2<f32>>,
+    #[serde(skip)]
+    pub w_cell_gate_grad: Option<Array2<f32>>,
+    #[serde(skip)]
+    pub w_rec_input_grad: Option<Array2<f32>>,
+    #[serde(skip)]
+    pub w_rec_forget_grad: Option<Array2<f32>>,
+    #[serde(skip)]
+    pub w_rec_output_grad: Option<Array2<f32>>,
+    #[serde(skip)]
+    pub w_rec_cell_grad: Option<Array2<f32>>,
     /// Neuron parameters
     pub neuron_params: NeuronParams,
     /// Cell state
@@ -505,6 +522,14 @@ impl SpikingLSTM {
             w_rec_forget: init_weights((hidden_size, hidden_size)),
             w_rec_output: init_weights((hidden_size, hidden_size)),
             w_rec_cell: init_weights((hidden_size, hidden_size)),
+            w_input_gate_grad: None,
+            w_forget_gate_grad: None,
+            w_output_gate_grad: None,
+            w_cell_gate_grad: None,
+            w_rec_input_grad: None,
+            w_rec_forget_grad: None,
+            w_rec_output_grad: None,
+            w_rec_cell_grad: None,
             neuron_params,
             cell_state: None,
             hidden_state: None,
@@ -524,6 +549,380 @@ impl SpikingLSTM {
             self.cell_state = Some(Array2::zeros((batch_size, hidden_size)));
             self.hidden_state = Some(Array2::zeros((batch_size, hidden_size)));
         }
+    }
+}
+
+/// What [`SpikingLSTM::forward_recording`] captured for the backward pass.
+///
+/// Every gate activation is kept because each is needed to differentiate the
+/// step that produced it, and recomputing them backwards is not possible: the
+/// cell state is overwritten as the forward pass advances.
+#[derive(Debug, Clone)]
+pub struct LstmTrace {
+    /// Membrane potential of the output neuron, before any spike reset.
+    pub v_mem: Array3<f32>,
+    /// Whether each output neuron's membrane integrated on that step.
+    pub membrane_updated: ndarray::Array3<bool>,
+    /// Input gate activation, `(batch, steps, hidden)`.
+    pub i_gate: Array3<f32>,
+    /// Forget gate activation.
+    pub f_gate: Array3<f32>,
+    /// Output gate activation.
+    pub o_gate: Array3<f32>,
+    /// Cell candidate, already through `tanh`.
+    pub g_gate: Array3<f32>,
+    /// Cell state after the update.
+    pub cell: Array3<f32>,
+    /// Hidden state after the update, which is the LIF neuron's input current.
+    pub hidden: Array3<f32>,
+}
+
+impl SpikingLSTM {
+    /// Forward pass that records every intermediate the backward pass needs.
+    pub fn forward_recording(
+        &mut self,
+        input: &SpikeTensor,
+    ) -> SNNResult<(SpikeTensor, LstmTrace)> {
+        let input_dense = input.to_dense();
+        let (batch_size, num_steps, input_size) = (
+            input_dense.shape()[0],
+            input_dense.shape()[1],
+            input_dense.shape()[2],
+        );
+
+        if input_size != self.w_input_gate.shape()[1] {
+            return Err(SNNError::DimensionMismatch {
+                expected: format!("input size {}", self.w_input_gate.shape()[1]),
+                actual: format!("input size {input_size}"),
+            });
+        }
+
+        let hidden_size = self.w_input_gate.shape()[0];
+        self.ensure_state(batch_size);
+
+        let dims = (batch_size, num_steps, hidden_size);
+        let mut output = Array3::zeros(dims);
+        let mut trace = LstmTrace {
+            v_mem: Array3::zeros(dims),
+            membrane_updated: ndarray::Array3::from_elem(dims, false),
+            i_gate: Array3::zeros(dims),
+            f_gate: Array3::zeros(dims),
+            o_gate: Array3::zeros(dims),
+            g_gate: Array3::zeros(dims),
+            cell: Array3::zeros(dims),
+            hidden: Array3::zeros(dims),
+        };
+
+        // Both states start from zero, so the recorded history is complete:
+        // step 0's "previous" values are known rather than inherited from
+        // whatever a prior call left behind.
+        self.cell_state = Some(Array2::zeros((batch_size, hidden_size)));
+        self.hidden_state = Some(Array2::zeros((batch_size, hidden_size)));
+
+        let sigmoid = |x: f32| 1.0 / (1.0 + (-x).exp());
+
+        for t in 0..num_steps {
+            let h_prev = self.hidden_state.as_ref().expect("set above").clone();
+            let c_prev = self.cell_state.as_ref().expect("set above").clone();
+            let mut h_new = Array2::zeros((batch_size, hidden_size));
+            let mut c_new = Array2::zeros((batch_size, hidden_size));
+
+            for b in 0..batch_size {
+                let x = input_dense.slice(s![b, t, ..]);
+                let h = h_prev.slice(s![b, ..]);
+
+                let i_pre = self.w_input_gate.dot(&x) + self.w_rec_input.dot(&h);
+                let f_pre = self.w_forget_gate.dot(&x) + self.w_rec_forget.dot(&h);
+                let o_pre = self.w_output_gate.dot(&x) + self.w_rec_output.dot(&h);
+                let g_pre = self.w_cell_gate.dot(&x) + self.w_rec_cell.dot(&h);
+
+                for n in 0..hidden_size {
+                    let i_val = sigmoid(i_pre[n]);
+                    let f_val = sigmoid(f_pre[n]);
+                    let o_val = sigmoid(o_pre[n]);
+                    let g_val = g_pre[n].tanh();
+
+                    c_new[[b, n]] = f_val * c_prev[[b, n]] + i_val * g_val;
+                    h_new[[b, n]] = o_val * c_new[[b, n]].tanh();
+
+                    trace.i_gate[[b, t, n]] = i_val;
+                    trace.f_gate[[b, t, n]] = f_val;
+                    trace.o_gate[[b, t, n]] = o_val;
+                    trace.g_gate[[b, t, n]] = g_val;
+                    trace.cell[[b, t, n]] = c_new[[b, n]];
+                    trace.hidden[[b, t, n]] = h_new[[b, n]];
+
+                    trace.membrane_updated[[b, t, n]] = self.state[b].refrac[n] <= 0.0;
+                }
+
+                let (spikes, v_pre) = self.state[b].update_lif_recording(
+                    &h_new.slice(s![b, ..]).to_owned(),
+                    &self.neuron_params,
+                    self.dt,
+                );
+                output.slice_mut(s![b, t, ..]).assign(&spikes);
+                trace.v_mem.slice_mut(s![b, t, ..]).assign(&v_pre);
+            }
+
+            self.cell_state = Some(c_new);
+            self.hidden_state = Some(h_new);
+        }
+
+        Ok((SpikeTensor::from_dense(output, input.requires_grad), trace))
+    }
+
+    /// The eight gate matrices, in a fixed order.
+    ///
+    /// Order matters: the optimizer keys its moment buffers by position, so
+    /// every accessor here agrees on input gates first, then recurrent, each in
+    /// input/forget/output/cell order.
+    pub fn gate_weights(&self) -> Vec<&Array2<f32>> {
+        vec![
+            &self.w_input_gate,
+            &self.w_forget_gate,
+            &self.w_output_gate,
+            &self.w_cell_gate,
+            &self.w_rec_input,
+            &self.w_rec_forget,
+            &self.w_rec_output,
+            &self.w_rec_cell,
+        ]
+    }
+
+    /// The gradients that have been accumulated, in [`Self::gate_weights`] order.
+    pub fn gate_grads(&self) -> Vec<&Array2<f32>> {
+        self.gate_grads_all().into_iter().flatten().collect()
+    }
+
+    /// Every gradient slot, present or not, in [`Self::gate_weights`] order.
+    pub fn gate_grads_all(&self) -> Vec<Option<&Array2<f32>>> {
+        vec![
+            self.w_input_gate_grad.as_ref(),
+            self.w_forget_gate_grad.as_ref(),
+            self.w_output_gate_grad.as_ref(),
+            self.w_cell_gate_grad.as_ref(),
+            self.w_rec_input_grad.as_ref(),
+            self.w_rec_forget_grad.as_ref(),
+            self.w_rec_output_grad.as_ref(),
+            self.w_rec_cell_grad.as_ref(),
+        ]
+    }
+
+    /// Mutable access to the accumulated gradients, for clipping.
+    pub fn gate_grads_mut(&mut self) -> Vec<&mut Array2<f32>> {
+        [
+            self.w_input_gate_grad.as_mut(),
+            self.w_forget_gate_grad.as_mut(),
+            self.w_output_gate_grad.as_mut(),
+            self.w_cell_gate_grad.as_mut(),
+            self.w_rec_input_grad.as_mut(),
+            self.w_rec_forget_grad.as_mut(),
+            self.w_rec_output_grad.as_mut(),
+            self.w_rec_cell_grad.as_mut(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    /// Replace the gate matrices, in [`Self::gate_weights`] order.
+    ///
+    /// A `None` entry leaves that matrix untouched, which is what an optimizer
+    /// step does for a matrix that accumulated no gradient.
+    pub fn set_gate_weights(&mut self, values: Vec<Option<Array2<f32>>>) {
+        let mut it = values.into_iter();
+        let mut apply = |slot: &mut Array2<f32>| {
+            if let Some(Some(v)) = it.next() {
+                *slot = v;
+            }
+        };
+        apply(&mut self.w_input_gate);
+        apply(&mut self.w_forget_gate);
+        apply(&mut self.w_output_gate);
+        apply(&mut self.w_cell_gate);
+        apply(&mut self.w_rec_input);
+        apply(&mut self.w_rec_forget);
+        apply(&mut self.w_rec_output);
+        apply(&mut self.w_rec_cell);
+    }
+
+    /// Backpropagation through time across all eight weight matrices.
+    ///
+    /// The forward pass is
+    ///
+    /// ```text
+    /// i[t] = sigmoid(W_i x[t] + R_i h[t-1])
+    /// f[t] = sigmoid(W_f x[t] + R_f h[t-1])
+    /// o[t] = sigmoid(W_o x[t] + R_o h[t-1])
+    /// g[t] = tanh   (W_c x[t] + R_c h[t-1])
+    /// c[t] = f[t] * c[t-1] + i[t] * g[t]
+    /// h[t] = o[t] * tanh(c[t])
+    /// s[t] = LIF(h[t])
+    /// ```
+    ///
+    /// so `h[t]` is the LIF neuron's input current, and gradient reaches
+    /// `h[t-1]` through all four gates as well as through the cell path
+    /// `c[t-1]`. Both are carried backwards here.
+    ///
+    /// The LIF chain is the same as in the other layers: surrogate for the
+    /// spike, the two decay paths for the neuron state, no surrogate term on a
+    /// refractory step, and a detached reset.
+    pub fn backward(
+        &mut self,
+        inputs: &Array3<f32>,
+        trace: &LstmTrace,
+        output_grad: &Array3<f32>,
+        surrogate: &dyn crate::training::surrogate::SurrogateGradient,
+    ) -> SNNResult<Array3<f32>> {
+        let (batch_size, num_steps, input_size) =
+            (inputs.shape()[0], inputs.shape()[1], inputs.shape()[2]);
+        let hidden_size = self.w_input_gate.shape()[0];
+
+        if input_size != self.w_input_gate.shape()[1] {
+            return Err(SNNError::DimensionMismatch {
+                expected: format!("input size {}", self.w_input_gate.shape()[1]),
+                actual: format!("input size {input_size}"),
+            });
+        }
+        if output_grad.shape() != [batch_size, num_steps, hidden_size] {
+            return Err(SNNError::DimensionMismatch {
+                expected: format!("output gradient {batch_size}x{num_steps}x{hidden_size}"),
+                actual: format!("{:?}", output_grad.shape()),
+            });
+        }
+
+        let alpha_syn = (-self.dt / self.neuron_params.tau_syn).exp();
+        let alpha_mem = (-self.dt / self.neuron_params.tau_mem).exp();
+        let threshold = self.neuron_params.v_threshold;
+
+        let shape_in = (hidden_size, input_size);
+        let shape_rec = (hidden_size, hidden_size);
+        let mut d_wi = Array2::zeros(shape_in);
+        let mut d_wf = Array2::zeros(shape_in);
+        let mut d_wo = Array2::zeros(shape_in);
+        let mut d_wc = Array2::zeros(shape_in);
+        let mut d_ri = Array2::zeros(shape_rec);
+        let mut d_rf = Array2::zeros(shape_rec);
+        let mut d_ro = Array2::zeros(shape_rec);
+        let mut d_rc = Array2::zeros(shape_rec);
+        let mut input_grad = Array3::zeros(inputs.raw_dim());
+
+        for b in 0..batch_size {
+            let mut carry_v = Array1::<f32>::zeros(hidden_size);
+            let mut carry_syn = Array1::<f32>::zeros(hidden_size);
+            let mut carry_h = Array1::<f32>::zeros(hidden_size);
+            let mut carry_c = Array1::<f32>::zeros(hidden_size);
+
+            for t in (0..num_steps).rev() {
+                // --- through the output neuron, to h[t] ---
+                let mut d_v = carry_v.clone();
+                let mut d_syn_here = Array1::<f32>::zeros(hidden_size);
+                let mut next_carry_v = Array1::<f32>::zeros(hidden_size);
+                for n in 0..hidden_size {
+                    if trace.membrane_updated[[b, t, n]] {
+                        d_v[n] += output_grad[[b, t, n]]
+                            * surrogate.compute_gradient(trace.v_mem[[b, t, n]], threshold);
+                        d_syn_here[n] = d_v[n] * (1.0 - alpha_mem);
+                        next_carry_v[n] = d_v[n] * alpha_mem;
+                    } else {
+                        next_carry_v[n] = d_v[n];
+                    }
+                }
+                carry_v = next_carry_v;
+
+                // h[t] is the LIF's input current, so this is dL/dh[t] from the
+                // spike path; the gates at t+1 add their share through carry_h.
+                let d_current = &d_syn_here + &carry_syn;
+                carry_syn = &d_current * alpha_syn;
+                let d_h = &d_current + &carry_h;
+
+                // --- through h[t] = o[t] * tanh(c[t]) ---
+                let mut d_i_pre = Array1::<f32>::zeros(hidden_size);
+                let mut d_f_pre = Array1::<f32>::zeros(hidden_size);
+                let mut d_o_pre = Array1::<f32>::zeros(hidden_size);
+                let mut d_g_pre = Array1::<f32>::zeros(hidden_size);
+                let mut next_carry_c = Array1::<f32>::zeros(hidden_size);
+
+                for n in 0..hidden_size {
+                    let (i_v, f_v, o_v, g_v) = (
+                        trace.i_gate[[b, t, n]],
+                        trace.f_gate[[b, t, n]],
+                        trace.o_gate[[b, t, n]],
+                        trace.g_gate[[b, t, n]],
+                    );
+                    let c_v = trace.cell[[b, t, n]];
+                    let tanh_c = c_v.tanh();
+                    // c[t-1], which is zero before the first step.
+                    let c_prev = if t > 0 {
+                        trace.cell[[b, t - 1, n]]
+                    } else {
+                        0.0
+                    };
+
+                    let d_o = d_h[n] * tanh_c;
+                    // Both the direct path through tanh(c[t]) and whatever the
+                    // next step's cell update carried back.
+                    let d_c = d_h[n] * o_v * (1.0 - tanh_c * tanh_c) + carry_c[n];
+
+                    let d_f = d_c * c_prev;
+                    let d_i = d_c * g_v;
+                    let d_g = d_c * i_v;
+                    next_carry_c[n] = d_c * f_v;
+
+                    // Through the gate nonlinearities.
+                    d_i_pre[n] = d_i * i_v * (1.0 - i_v);
+                    d_f_pre[n] = d_f * f_v * (1.0 - f_v);
+                    d_o_pre[n] = d_o * o_v * (1.0 - o_v);
+                    d_g_pre[n] = d_g * (1.0 - g_v * g_v);
+                }
+                carry_c = next_carry_c;
+
+                // --- into the weights, the input, and h[t-1] ---
+                let x = inputs.slice(s![b, t, ..]);
+                let h_prev: Array1<f32> = if t > 0 {
+                    trace.hidden.slice(s![b, t - 1, ..]).to_owned()
+                } else {
+                    Array1::zeros(hidden_size)
+                };
+
+                for n in 0..hidden_size {
+                    for j in 0..input_size {
+                        d_wi[[n, j]] += d_i_pre[n] * x[j];
+                        d_wf[[n, j]] += d_f_pre[n] * x[j];
+                        d_wo[[n, j]] += d_o_pre[n] * x[j];
+                        d_wc[[n, j]] += d_g_pre[n] * x[j];
+                    }
+                    for j in 0..hidden_size {
+                        d_ri[[n, j]] += d_i_pre[n] * h_prev[j];
+                        d_rf[[n, j]] += d_f_pre[n] * h_prev[j];
+                        d_ro[[n, j]] += d_o_pre[n] * h_prev[j];
+                        d_rc[[n, j]] += d_g_pre[n] * h_prev[j];
+                    }
+                }
+
+                let dx = self.w_input_gate.t().dot(&d_i_pre)
+                    + self.w_forget_gate.t().dot(&d_f_pre)
+                    + self.w_output_gate.t().dot(&d_o_pre)
+                    + self.w_cell_gate.t().dot(&d_g_pre);
+                input_grad.slice_mut(s![b, t, ..]).assign(&dx);
+
+                carry_h = self.w_rec_input.t().dot(&d_i_pre)
+                    + self.w_rec_forget.t().dot(&d_f_pre)
+                    + self.w_rec_output.t().dot(&d_o_pre)
+                    + self.w_rec_cell.t().dot(&d_g_pre);
+            }
+        }
+
+        accumulate(&mut self.w_input_gate_grad, d_wi);
+        accumulate(&mut self.w_forget_gate_grad, d_wf);
+        accumulate(&mut self.w_output_gate_grad, d_wo);
+        accumulate(&mut self.w_cell_gate_grad, d_wc);
+        accumulate(&mut self.w_rec_input_grad, d_ri);
+        accumulate(&mut self.w_rec_forget_grad, d_rf);
+        accumulate(&mut self.w_rec_output_grad, d_ro);
+        accumulate(&mut self.w_rec_cell_grad, d_rc);
+
+        Ok(input_grad)
     }
 }
 
@@ -948,6 +1347,256 @@ mod tests {
         assert!(
             rnn.backward(&inputs, &trace, &outputs, &wrong, &surrogate)
                 .is_err()
+        );
+    }
+
+    // ---- LSTM backward validation -------------------------------------
+
+    /// Which single LSTM weight the forward-mode pass is differentiating.
+    #[derive(Clone, Copy)]
+    enum LstmWrt {
+        /// Input-path weight for one of the four gates.
+        Input(usize, usize, usize),
+        /// Recurrent-path weight for one of the four gates.
+        Rec(usize, usize, usize),
+    }
+
+    /// Forward-mode directional derivative of `sum(output_grad * spikes)`.
+    ///
+    /// Propagates tangents for every intermediate the LSTM carries: the four
+    /// gate pre-activations, the cell state, the hidden state and the output
+    /// neuron's synaptic and membrane state.
+    fn lstm_forward_mode(
+        layer: &SpikingLSTM,
+        inputs: &Array3<f32>,
+        trace: &LstmTrace,
+        output_grad: &Array3<f32>,
+        surrogate: &dyn SurrogateGradient,
+        wrt: LstmWrt,
+    ) -> f32 {
+        let (batch, steps, in_size) = (inputs.shape()[0], inputs.shape()[1], inputs.shape()[2]);
+        let hidden = layer.w_input_gate.shape()[0];
+        let a_syn = (-layer.dt / layer.neuron_params.tau_syn).exp();
+        let a_mem = (-layer.dt / layer.neuron_params.tau_mem).exp();
+        let threshold = layer.neuron_params.v_threshold;
+
+        // gate 0 = input, 1 = forget, 2 = output, 3 = cell candidate
+        let w_in = [
+            &layer.w_input_gate,
+            &layer.w_forget_gate,
+            &layer.w_output_gate,
+            &layer.w_cell_gate,
+        ];
+        let w_rec = [
+            &layer.w_rec_input,
+            &layer.w_rec_forget,
+            &layer.w_rec_output,
+            &layer.w_rec_cell,
+        ];
+
+        let mut total = 0.0;
+        for b in 0..batch {
+            let mut d_c = vec![0.0f32; hidden];
+            let mut d_h = vec![0.0f32; hidden];
+            let mut d_syn = vec![0.0f32; hidden];
+            let mut d_v = vec![0.0f32; hidden];
+
+            for t in 0..steps {
+                let mut d_h_new = vec![0.0f32; hidden];
+                let mut d_c_new = vec![0.0f32; hidden];
+
+                for n in 0..hidden {
+                    // Tangent of each gate's pre-activation.
+                    let mut pre = [0.0f32; 4];
+                    for (g, item) in pre.iter_mut().enumerate() {
+                        // Direct term, when this is the weight being varied.
+                        match wrt {
+                            LstmWrt::Input(wg, wn, wj) if wg == g && wn == n => {
+                                *item += inputs[[b, t, wj]];
+                            }
+                            LstmWrt::Rec(wg, wn, wj) if wg == g && wn == n => {
+                                *item += if t > 0 {
+                                    trace.hidden[[b, t - 1, wj]]
+                                } else {
+                                    0.0
+                                };
+                            }
+                            _ => {}
+                        }
+                        // Recurrent term: the previous hidden state moved.
+                        for (j, dh) in d_h.iter().enumerate() {
+                            *item += w_rec[g][[n, j]] * dh;
+                        }
+                    }
+
+                    let (i_v, f_v, o_v, g_v) = (
+                        trace.i_gate[[b, t, n]],
+                        trace.f_gate[[b, t, n]],
+                        trace.o_gate[[b, t, n]],
+                        trace.g_gate[[b, t, n]],
+                    );
+                    let d_i = pre[0] * i_v * (1.0 - i_v);
+                    let d_f = pre[1] * f_v * (1.0 - f_v);
+                    let d_o = pre[2] * o_v * (1.0 - o_v);
+                    let d_g = pre[3] * (1.0 - g_v * g_v);
+
+                    let c_prev = if t > 0 {
+                        trace.cell[[b, t - 1, n]]
+                    } else {
+                        0.0
+                    };
+                    // c = f*c_prev + i*g
+                    d_c_new[n] = d_f * c_prev + f_v * d_c[n] + d_i * g_v + i_v * d_g;
+
+                    // h = o * tanh(c)
+                    let tanh_c = trace.cell[[b, t, n]].tanh();
+                    d_h_new[n] = d_o * tanh_c + o_v * (1.0 - tanh_c * tanh_c) * d_c_new[n];
+
+                    // Through the output neuron, whose input current is h.
+                    d_syn[n] = a_syn * d_syn[n] + d_h_new[n];
+                    let d_s = if trace.membrane_updated[[b, t, n]] {
+                        d_v[n] = a_mem * d_v[n] + d_syn[n] * (1.0 - a_mem);
+                        surrogate.compute_gradient(trace.v_mem[[b, t, n]], threshold) * d_v[n]
+                    } else {
+                        0.0
+                    };
+                    total += output_grad[[b, t, n]] * d_s;
+                }
+
+                d_c = d_c_new;
+                d_h = d_h_new;
+            }
+            let _ = in_size;
+            let _ = w_in;
+        }
+        total
+    }
+
+    fn lstm_fixture() -> (SpikingLSTM, Array3<f32>, Array3<f32>) {
+        let (batch, steps, in_size, hidden) = (2, 5, 3, 3);
+        // h = o * tanh(c) is bounded in (-1, 1), so the default threshold of
+        // 1.0 is unreachable and the fixture would never spike -- which would
+        // make the surrogate term zero everywhere and the test vacuous.
+        let params = NeuronParams {
+            v_threshold: 0.15,
+            ..NeuronParams::default()
+        };
+        let mut lstm = SpikingLSTM::new(in_size, hidden, params, 1.0, false);
+
+        // Deterministic weights, so the test does not depend on the initialiser.
+        let fill = |m: &mut Array2<f32>, seed: f32| {
+            for n in 0..m.shape()[0] {
+                for j in 0..m.shape()[1] {
+                    m[[n, j]] = seed + 0.13 * (n as f32) - 0.09 * (j as f32);
+                }
+            }
+        };
+        fill(&mut lstm.w_input_gate, 0.5);
+        fill(&mut lstm.w_forget_gate, 0.4);
+        fill(&mut lstm.w_output_gate, 0.6);
+        fill(&mut lstm.w_cell_gate, 0.35);
+        fill(&mut lstm.w_rec_input, 0.2);
+        fill(&mut lstm.w_rec_forget, 0.15);
+        fill(&mut lstm.w_rec_output, 0.25);
+        fill(&mut lstm.w_rec_cell, 0.1);
+
+        let inputs = Array3::from_shape_fn((batch, steps, in_size), |(b, t, i)| {
+            (((b * 7 + t * 3 + i * 2) % 4) as f32) * 0.8
+        });
+        let output_grad = Array3::from_shape_fn((batch, steps, hidden), |(b, t, n)| {
+            0.3 - 0.11 * (((b + t + n) % 3) as f32)
+        });
+        (lstm, inputs, output_grad)
+    }
+
+    #[test]
+    fn lstm_backward_matches_forward_mode() {
+        let (mut lstm, inputs, output_grad) = lstm_fixture();
+        let surrogate = FastSigmoidSurrogate::new(10.0);
+
+        let (spikes, trace) = lstm
+            .forward_recording(&SpikeTensor::from_dense(inputs.clone(), false))
+            .unwrap();
+        let fired: f32 = spikes.to_dense().iter().sum();
+        assert!(fired > 0.0, "fixture never spiked");
+
+        lstm.backward(&inputs, &trace, &output_grad, &surrogate)
+            .unwrap();
+
+        let input_grads = [
+            lstm.w_input_gate_grad.clone().unwrap(),
+            lstm.w_forget_gate_grad.clone().unwrap(),
+            lstm.w_output_gate_grad.clone().unwrap(),
+            lstm.w_cell_gate_grad.clone().unwrap(),
+        ];
+        let rec_grads = [
+            lstm.w_rec_input_grad.clone().unwrap(),
+            lstm.w_rec_forget_grad.clone().unwrap(),
+            lstm.w_rec_output_grad.clone().unwrap(),
+            lstm.w_rec_cell_grad.clone().unwrap(),
+        ];
+
+        let hidden = lstm.w_input_gate.shape()[0];
+        let in_size = lstm.w_input_gate.shape()[1];
+        let names = ["input", "forget", "output", "cell"];
+
+        for g in 0..4 {
+            for n in 0..hidden {
+                for j in 0..in_size {
+                    let expected = lstm_forward_mode(
+                        &lstm,
+                        &inputs,
+                        &trace,
+                        &output_grad,
+                        &surrogate,
+                        LstmWrt::Input(g, n, j),
+                    );
+                    let got = input_grads[g][[n, j]];
+                    assert!(
+                        (got - expected).abs() <= 1e-3 * expected.abs().max(1.0),
+                        "w_{}_gate[{n},{j}]: reverse {got} vs forward {expected}",
+                        names[g]
+                    );
+                }
+                for j in 0..hidden {
+                    let expected = lstm_forward_mode(
+                        &lstm,
+                        &inputs,
+                        &trace,
+                        &output_grad,
+                        &surrogate,
+                        LstmWrt::Rec(g, n, j),
+                    );
+                    let got = rec_grads[g][[n, j]];
+                    assert!(
+                        (got - expected).abs() <= 1e-3 * expected.abs().max(1.0),
+                        "w_rec_{}[{n},{j}]: reverse {got} vs forward {expected}",
+                        names[g]
+                    );
+                }
+            }
+        }
+    }
+
+    /// The cell path must carry gradient across steps. If `carry_c` were
+    /// dropped the LSTM would train as if it had no memory, which is the one
+    /// thing distinguishing it from a plain gated layer.
+    #[test]
+    fn lstm_cell_path_carries_gradient() {
+        let (mut lstm, inputs, output_grad) = lstm_fixture();
+        let surrogate = FastSigmoidSurrogate::new(10.0);
+        let (_, trace) = lstm
+            .forward_recording(&SpikeTensor::from_dense(inputs.clone(), false))
+            .unwrap();
+        lstm.backward(&inputs, &trace, &output_grad, &surrogate)
+            .unwrap();
+
+        // The forget gate only ever receives gradient through the cell path:
+        // f[t] enters the network solely via c[t] = f[t]*c[t-1] + ...
+        let forget = lstm.w_forget_gate_grad.clone().unwrap();
+        assert!(
+            forget.iter().any(|g| g.abs() > 1e-9),
+            "forget gate received no gradient, so the cell path is not connected"
         );
     }
 }

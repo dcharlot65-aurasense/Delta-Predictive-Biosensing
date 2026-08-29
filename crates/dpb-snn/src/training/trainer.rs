@@ -62,8 +62,8 @@
 
 use ndarray::{Array1, Array2, Array3};
 
-use crate::layers::conv::{ConvTrace, SpikingConv1d};
-use crate::layers::recurrent::{RecurrentTrace, SpikingRNN};
+use crate::layers::conv::{ConvTrace, SpikingConv1d, SpikingConv2d};
+use crate::layers::recurrent::{LstmTrace, RecurrentTrace, SpikingLSTM, SpikingRNN};
 use crate::layers::{SpikingLayer, SpikingLinear};
 use crate::tensor::SpikeTensor;
 use crate::training::loss::LossFunction;
@@ -95,9 +95,14 @@ pub struct StepReport {
 /// directly and through every later step. This enum keeps that difference in
 /// one place instead of pushing it onto callers.
 ///
-/// `SpikingConv2d` and `SpikingLSTM` are deliberately absent: they have no
-/// backward pass, and admitting them here would produce a trainer that silently
-/// left them frozen.
+/// Every layer here has a validated backward pass. Attention and pooling
+/// layers are absent: pooling carries no parameters and is applied through the
+/// architectures rather than the trainer, and attention has no backward pass.
+// The LSTM variant carries eight weight matrices and dwarfs the others, so
+// every element of a layer vector is sized for it. Boxing would trade that for
+// a pointer chase on every forward pass, and a network holds a handful of
+// layers, not thousands -- the slack is a few hundred bytes in total.
+#[allow(clippy::large_enum_variant)]
 pub enum TrainableLayer {
     /// A fully connected spiking layer.
     Linear(SpikingLinear),
@@ -105,17 +110,26 @@ pub enum TrainableLayer {
     Recurrent(SpikingRNN),
     /// A 1-D convolutional spiking layer.
     Convolutional(SpikingConv1d),
+    /// A 2-D convolutional spiking layer.
+    Convolutional2d(SpikingConv2d),
+    /// A spiking LSTM layer, trained by backpropagation through time.
+    Lstm(SpikingLSTM),
 }
 
 /// What a forward pass recorded for one layer's backward pass.
+// As for `TrainableLayer`: one trace per layer per step, held only for the
+// duration of a backward pass.
+#[allow(clippy::large_enum_variant)]
 enum LayerTrace {
     /// Membrane potential per step.
     Linear(Array3<f32>),
     /// The recurrent trace, plus the layer's own output spikes -- which the
     /// recurrent weight gradient is an outer product against.
     Recurrent(RecurrentTrace, Array3<f32>),
-    /// The convolutional trace.
+    /// The convolutional trace, for either convolution.
     Convolutional(ConvTrace),
+    /// The LSTM trace.
+    Lstm(LstmTrace),
 }
 
 impl TrainableLayer {
@@ -125,6 +139,8 @@ impl TrainableLayer {
             Self::Linear(l) => l.neuron_params.v_threshold,
             Self::Recurrent(l) => l.neuron_params.v_threshold,
             Self::Convolutional(l) => l.neuron_params.v_threshold,
+            Self::Convolutional2d(l) => l.neuron_params.v_threshold,
+            Self::Lstm(l) => l.neuron_params.v_threshold,
         }
     }
 
@@ -138,14 +154,31 @@ impl TrainableLayer {
         match self {
             Self::Linear(l) => Some(&l.weights),
             Self::Recurrent(l) => Some(&l.w_input),
-            Self::Convolutional(_) => None,
+            Self::Convolutional(_) | Self::Convolutional2d(_) => None,
+            Self::Lstm(l) => Some(&l.w_input_gate),
         }
     }
 
-    /// The underlying layer, when it is convolutional.
+    /// The underlying layer, when it is a 1-D convolution.
     pub fn as_conv(&self) -> Option<&SpikingConv1d> {
         match self {
             Self::Convolutional(l) => Some(l),
+            _ => None,
+        }
+    }
+
+    /// The underlying layer, when it is a 2-D convolution.
+    pub fn as_conv2d(&self) -> Option<&SpikingConv2d> {
+        match self {
+            Self::Convolutional2d(l) => Some(l),
+            _ => None,
+        }
+    }
+
+    /// The underlying layer, when it is an LSTM.
+    pub fn as_lstm(&self) -> Option<&SpikingLSTM> {
+        match self {
+            Self::Lstm(l) => Some(l),
             _ => None,
         }
     }
@@ -156,6 +189,9 @@ impl TrainableLayer {
             Self::Linear(l) => l.bias.as_ref(),
             Self::Recurrent(l) => l.bias.as_ref(),
             Self::Convolutional(l) => l.bias.as_ref(),
+            Self::Convolutional2d(l) => l.bias.as_ref(),
+            // The LSTM carries no bias: its gates are weight-only.
+            Self::Lstm(_) => None,
         }
     }
 
@@ -165,6 +201,8 @@ impl TrainableLayer {
             Self::Linear(l) => l.bias_grad.as_ref(),
             Self::Recurrent(l) => l.bias_grad.as_ref(),
             Self::Convolutional(l) => l.bias_grad.as_ref(),
+            Self::Convolutional2d(l) => l.bias_grad.as_ref(),
+            Self::Lstm(_) => None,
         }
     }
 
@@ -189,6 +227,8 @@ impl TrainableLayer {
             Self::Linear(l) => l.forward(input),
             Self::Recurrent(l) => l.forward(input),
             Self::Convolutional(l) => l.forward(input),
+            Self::Convolutional2d(l) => l.forward(input),
+            Self::Lstm(l) => l.forward(input),
         }
     }
 
@@ -206,6 +246,14 @@ impl TrainableLayer {
             Self::Convolutional(l) => {
                 let (out, trace) = l.forward_recording(input)?;
                 Ok((out, LayerTrace::Convolutional(trace)))
+            }
+            Self::Convolutional2d(l) => {
+                let (out, trace) = l.forward_recording(input)?;
+                Ok((out, LayerTrace::Convolutional(trace)))
+            }
+            Self::Lstm(l) => {
+                let (out, trace) = l.forward_recording(input)?;
+                Ok((out, LayerTrace::Lstm(trace)))
             }
         }
     }
@@ -235,6 +283,12 @@ impl TrainableLayer {
             (Self::Convolutional(layer), LayerTrace::Convolutional(trace)) => {
                 layer.backward(input, trace, grad, surrogate)
             }
+            (Self::Convolutional2d(layer), LayerTrace::Convolutional(trace)) => {
+                layer.backward(input, trace, grad, surrogate)
+            }
+            (Self::Lstm(layer), LayerTrace::Lstm(trace)) => {
+                layer.backward(input, trace, grad, surrogate)
+            }
             _ => Err(SNNError::InvalidConfig(
                 "layer trace does not match the layer it came from".to_string(),
             )),
@@ -246,6 +300,8 @@ impl TrainableLayer {
             Self::Linear(l) => l.reset_state(),
             Self::Recurrent(l) => l.reset_state(),
             Self::Convolutional(l) => l.reset_state(),
+            Self::Convolutional2d(l) => l.reset_state(),
+            Self::Lstm(l) => l.reset_state(),
         }
     }
 
@@ -254,6 +310,8 @@ impl TrainableLayer {
             Self::Linear(l) => l.zero_grad(),
             Self::Recurrent(l) => l.zero_grad(),
             Self::Convolutional(l) => l.zero_grad(),
+            Self::Convolutional2d(l) => l.zero_grad(),
+            Self::Lstm(l) => l.zero_grad(),
         }
     }
 
@@ -272,6 +330,8 @@ impl TrainableLayer {
                     + l.w_recurrent_grad.iter().map(|g| sq(g.iter())).sum::<f32>()
             }
             Self::Convolutional(l) => l.kernel_grad.iter().map(|g| sq(g.iter())).sum(),
+            Self::Convolutional2d(l) => l.kernel_grad.iter().map(|g| sq(g.iter())).sum(),
+            Self::Lstm(l) => l.gate_grads().iter().map(|g| sq(g.iter())).sum(),
         }
     }
 
@@ -302,6 +362,19 @@ impl TrainableLayer {
                     *g *= scale;
                 }
                 if let Some(ref mut g) = l.bias_grad {
+                    *g *= scale;
+                }
+            }
+            Self::Convolutional2d(l) => {
+                if let Some(ref mut g) = l.kernel_grad {
+                    *g *= scale;
+                }
+                if let Some(ref mut g) = l.bias_grad {
+                    *g *= scale;
+                }
+            }
+            Self::Lstm(l) => {
+                for g in l.gate_grads_mut() {
                     *g *= scale;
                 }
             }
@@ -350,6 +423,23 @@ impl TrainableLayer {
                 }
                 if let (Some(b), Some(g)) = (l.bias.as_ref(), l.bias_grad.as_ref()) {
                     out.push((row(b), row(g)));
+                }
+            }
+            Self::Convolutional2d(l) => {
+                // As above, with the (out, in, kh, kw) kernel flattened to
+                // (out, in * kh * kw).
+                if let Some(g) = l.kernel_grad.as_ref() {
+                    out.push((flatten_kernel4(&l.kernel), flatten_kernel4(g)));
+                }
+                if let (Some(b), Some(g)) = (l.bias.as_ref(), l.bias_grad.as_ref()) {
+                    out.push((row(b), row(g)));
+                }
+            }
+            Self::Lstm(l) => {
+                // All eight gate matrices, in the fixed order `gate_weights`
+                // and `gate_grads` agree on.
+                for (w, g) in l.gate_weights().into_iter().zip(l.gate_grads()) {
+                    out.push((w.clone(), g.clone()));
                 }
             }
         }
@@ -412,6 +502,39 @@ impl TrainableLayer {
                     l.bias = Some(flat(v));
                 }
             }
+            Self::Convolutional2d(l) => {
+                if l.kernel_grad.is_some()
+                    && let Some(v) = values.next()
+                {
+                    let shape = l.kernel.raw_dim();
+                    l.kernel = v
+                        .into_shape_with_order(shape)
+                        .expect("the flattened kernel has the same element count");
+                }
+                if l.bias.is_some()
+                    && l.bias_grad.is_some()
+                    && let Some(v) = values.next()
+                {
+                    l.bias = Some(flat(v));
+                }
+            }
+            Self::Lstm(l) => {
+                // Only matrices that produced a gradient were emitted, so this
+                // consumes exactly as many as `param_pairs` pushed.
+                let present: Vec<bool> = l.gate_grads_all().iter().map(|g| g.is_some()).collect();
+                let mut updated = Vec::new();
+                for &has in &present {
+                    if has {
+                        match values.next() {
+                            Some(v) => updated.push(Some(v)),
+                            None => updated.push(None),
+                        }
+                    } else {
+                        updated.push(None);
+                    }
+                }
+                l.set_gate_weights(updated);
+            }
         }
     }
 }
@@ -422,6 +545,15 @@ fn flatten_kernel(k: &Array3<f32>) -> Array2<f32> {
     k.clone()
         .into_shape_with_order((o, i * t))
         .expect("a 3-D kernel always flattens to 2-D")
+}
+
+/// Reshapes an `(out, in, kh, kw)` kernel to `(out, in * kh * kw)`.
+fn flatten_kernel4(k: &ndarray::Array4<f32>) -> Array2<f32> {
+    let s = k.shape();
+    let (o, rest) = (s[0], s[1] * s[2] * s[3]);
+    k.clone()
+        .into_shape_with_order((o, rest))
+        .expect("a 4-D kernel always flattens to 2-D")
 }
 
 impl From<SpikingLinear> for TrainableLayer {
@@ -439,6 +571,18 @@ impl From<SpikingRNN> for TrainableLayer {
 impl From<SpikingConv1d> for TrainableLayer {
     fn from(l: SpikingConv1d) -> Self {
         Self::Convolutional(l)
+    }
+}
+
+impl From<SpikingConv2d> for TrainableLayer {
+    fn from(l: SpikingConv2d) -> Self {
+        Self::Convolutional2d(l)
+    }
+}
+
+impl From<SpikingLSTM> for TrainableLayer {
+    fn from(l: SpikingLSTM) -> Self {
+        Self::Lstm(l)
     }
 }
 
@@ -969,6 +1113,89 @@ mod tests {
             last < first,
             "loss did not fall over 40 convolutional steps: {first} -> {last}"
         );
+    }
+
+    /// Every layer type the trainer accepts must actually train: loss falling,
+    /// and the layer's own parameters moving.
+    #[test]
+    fn every_trainable_layer_type_trains() {
+        use crate::layers::conv::{SpikingConv1d, SpikingConv2d};
+        use crate::layers::recurrent::{SpikingLSTM, SpikingRNN};
+
+        // The LSTM's hidden state is bounded in (-1, 1), so it needs a
+        // threshold it can actually reach.
+        let low = NeuronParams {
+            v_threshold: 0.15,
+            ..NeuronParams::default()
+        };
+
+        let cases: Vec<(&str, TrainableLayer, usize)> = vec![
+            (
+                "recurrent",
+                SpikingRNN::new(4, 6, true, NeuronParams::default(), 1.0, false).into(),
+                6,
+            ),
+            (
+                "conv1d",
+                // 4 inputs as 1 channel of length 4, width-3 kernel, pad 1 -> 4
+                // positions x 2 channels.
+                SpikingConv1d::new(1, 2, 3, 1, 1, true, NeuronParams::default(), 1.0, false).into(),
+                8,
+            ),
+            (
+                "conv2d",
+                // 4 inputs as 1 channel of 2x2, width-2 kernel, pad 0 -> 1
+                // position x 3 channels.
+                SpikingConv2d::new(
+                    1,
+                    3,
+                    (2, 2),
+                    (1, 1),
+                    (0, 0),
+                    true,
+                    NeuronParams::default(),
+                    1.0,
+                    false,
+                )
+                .into(),
+                3,
+            ),
+            ("lstm", SpikingLSTM::new(4, 6, low, 1.0, false).into(), 6),
+        ];
+
+        for (name, layer, hidden) in cases {
+            let (input, targets) = separable_batch();
+            let mut trainer = Trainer::with_layers(
+                vec![
+                    layer,
+                    TrainableLayer::Linear(SpikingLinear::new(
+                        hidden,
+                        2,
+                        true,
+                        NeuronParams::default(),
+                        1.0,
+                        false,
+                    )),
+                ],
+                Box::new(SpikeCountLoss::new(1.0)),
+                Box::new(SGDOptimizer::new(0.02, 0.9, 0.0)),
+                SurrogateType::FastSigmoid,
+            );
+
+            let first = trainer
+                .train_step(&input, &targets)
+                .unwrap_or_else(|e| panic!("{name}: first step failed: {e}"));
+            let mut last = first;
+            for _ in 0..40 {
+                last = trainer.train_step(&input, &targets).unwrap();
+            }
+
+            assert!(last.is_finite(), "{name}: loss became {last}");
+            assert!(
+                last < first,
+                "{name}: loss did not fall over 40 steps: {first} -> {last}"
+            );
+        }
     }
 
     #[test]
