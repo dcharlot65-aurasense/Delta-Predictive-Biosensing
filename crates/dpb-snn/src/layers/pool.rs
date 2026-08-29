@@ -347,8 +347,13 @@ impl TemporalAvgPool {
         }
     }
 
+    /// Number of output steps for an input of `input_steps`.
+    ///
+    /// An input shorter than the window yields a single clamped window rather
+    /// than underflowing; `forward` already truncates the window at the end of
+    /// the input, so it averages whatever is there.
     pub fn output_steps(&self, input_steps: usize) -> usize {
-        (input_steps - self.window_size) / self.stride + 1
+        input_steps.saturating_sub(self.window_size) / self.stride.max(1) + 1
     }
 }
 
@@ -367,11 +372,20 @@ impl SpikingLayer for TemporalAvgPool {
         for b in 0..batch_size {
             for n in 0..num_neurons {
                 for t_out in 0..output_steps {
-                    let t_start = t_out * self.stride;
+                    let t_start = (t_out * self.stride).min(num_steps);
                     let t_end = (t_start + self.window_size).min(num_steps);
 
+                    // Divide by how many steps were actually summed. For an
+                    // input at least as long as the window this equals the
+                    // window width -- the step count above excludes partial
+                    // windows. It differs only for an input shorter than the
+                    // window, which `output_steps` now admits instead of
+                    // underflowing; dividing by the nominal width there would
+                    // report an average biased toward zero, for a layer whose
+                    // whole job is to average.
+                    let count = t_end.saturating_sub(t_start);
                     let sum: f32 = input_dense.slice(s![b, t_start..t_end, n]).sum();
-                    output[[b, t_out, n]] = sum / self.window_size as f32;
+                    output[[b, t_out, n]] = if count == 0 { 0.0 } else { sum / count as f32 };
                 }
             }
         }
@@ -440,5 +454,56 @@ mod tests {
 
         let output = pool.forward(&input).unwrap();
         assert_eq!(output.shape(), (2, 8, 10));
+    }
+}
+
+#[cfg(test)]
+mod temporal_avg_tests {
+    use super::*;
+
+    /// An input shorter than the window must not underflow.
+    #[test]
+    fn shorter_than_the_window_is_handled() {
+        let mut pool = TemporalAvgPool::new(5, 2);
+        let out = pool
+            .forward(&SpikeTensor::zeros(1, 3, 4, false))
+            .expect("short input should be handled, not panic");
+        assert_eq!(out.shape(), (1, 1, 4));
+    }
+
+    /// A window truncated by a short input must average over the steps it
+    /// actually saw.
+    ///
+    /// Three steps of ones through a window of five average to 1, not to 3/5.
+    /// Dividing by the nominal window width is what produced the latter.
+    #[test]
+    fn a_truncated_window_averages_over_what_it_saw() {
+        let mut pool = TemporalAvgPool::new(5, 2);
+        let input = SpikeTensor::from_dense(Array3::from_elem((1, 3, 1), 1.0), false);
+        let out = pool.forward(&input).unwrap().to_dense();
+
+        assert_eq!(out.shape(), &[1, 1, 1]);
+        assert!(
+            (out[[0, 0, 0]] - 1.0).abs() < 1e-6,
+            "three steps of ones should average to 1, got {}",
+            out[[0, 0, 0]]
+        );
+    }
+
+    /// For an input at least as long as the window, the step count excludes
+    /// partial windows, so every window is full and the average is unaffected.
+    #[test]
+    fn full_windows_are_unchanged() {
+        let mut pool = TemporalAvgPool::new(4, 2);
+        let input = SpikeTensor::from_dense(Array3::from_elem((1, 8, 1), 1.0), false);
+        let out = pool.forward(&input).unwrap().to_dense();
+
+        assert_eq!(out.shape(), &[1, 3, 1]);
+        for t in 0..3 {
+            assert!(
+                (out[[0, t, 0]] - 1.0).abs() < 1e-6,
+                "window {t} averaged wrong"
+            );
+        }
     }
 }

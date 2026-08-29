@@ -192,36 +192,61 @@ impl SpikingConv2d {
     }
 
     /// Synaptic current for one time step, indexed `[oc * OH * OW + oh * OW + ow]`.
+    /// Every `(out_index, tap_h, tap_w, in_offset)` whose tap lands inside the
+    /// input, where `in_offset` is the position within one input channel plane.
+    ///
+    /// As in the 1-D layer, tap geometry does not depend on the batch item or
+    /// the time step, so it is resolved once per forward pass rather than
+    /// `out_channels * in_channels` times per output position.
+    fn tap_table(
+        &self,
+        in_hw: (usize, usize),
+        out_hw: (usize, usize),
+    ) -> Vec<(usize, usize, usize, usize)> {
+        let (kh, kw) = (self.kernel.shape()[2], self.kernel.shape()[3]);
+        let mut taps = Vec::with_capacity(out_hw.0 * out_hw.1 * kh * kw);
+        for oh in 0..out_hw.0 {
+            for ow in 0..out_hw.1 {
+                let out_idx = oh * out_hw.1 + ow;
+                for i in 0..kh {
+                    for j in 0..kw {
+                        if let Some((sh, sw)) = self.source_index((oh, ow), (i, j), in_hw) {
+                            taps.push((out_idx, i, j, sh * in_hw.1 + sw));
+                        }
+                    }
+                }
+            }
+        }
+        taps
+    }
+
     fn convolve(
         &self,
         input_t: &ndarray::ArrayView1<f32>,
         in_hw: (usize, usize),
         out_hw: (usize, usize),
+        taps: &[(usize, usize, usize, usize)],
     ) -> Array1<f32> {
         let out_channels = self.kernel.shape()[0];
         let in_channels = self.kernel.shape()[1];
-        let (kh, kw) = (self.kernel.shape()[2], self.kernel.shape()[3]);
         let plane = in_hw.0 * in_hw.1;
+        let out_plane = out_hw.0 * out_hw.1;
 
-        let mut current = Array1::zeros(out_channels * out_hw.0 * out_hw.1);
-        for oc in 0..out_channels {
-            for oh in 0..out_hw.0 {
-                for ow in 0..out_hw.1 {
-                    let mut sum = 0.0;
-                    for ic in 0..in_channels {
-                        for i in 0..kh {
-                            for j in 0..kw {
-                                if let Some((sh, sw)) = self.source_index((oh, ow), (i, j), in_hw) {
-                                    sum += input_t[ic * plane + sh * in_hw.1 + sw]
-                                        * self.kernel[[oc, ic, i, j]];
-                                }
-                            }
-                        }
-                    }
-                    if let Some(ref bias) = self.bias {
-                        sum += bias[oc];
-                    }
-                    current[(oc * out_hw.0 + oh) * out_hw.1 + ow] = sum;
+        let mut current = Array1::zeros(out_channels * out_plane);
+        for &(out_idx, i, j, in_off) in taps {
+            for oc in 0..out_channels {
+                let mut acc = 0.0;
+                for ic in 0..in_channels {
+                    acc += input_t[ic * plane + in_off] * self.kernel[[oc, ic, i, j]];
+                }
+                current[oc * out_plane + out_idx] += acc;
+            }
+        }
+        if let Some(ref bias) = self.bias {
+            for oc in 0..out_channels {
+                let b = bias[oc];
+                for p in 0..out_plane {
+                    current[oc * out_plane + p] += b;
                 }
             }
         }
@@ -250,11 +275,12 @@ impl SpikingConv2d {
             ndarray::Array3::from_elem((batch_size, num_steps, num_neurons), false);
 
         self.ensure_state(batch_size, num_neurons);
+        let taps = self.tap_table(in_hw, out_hw);
 
         for t in 0..num_steps {
             for b in 0..batch_size {
                 let input_t = input_dense.slice(s![b, t, ..]);
-                let current = self.convolve(&input_t, in_hw, out_hw);
+                let current = self.convolve(&input_t, in_hw, out_hw, &taps);
 
                 for n in 0..num_neurons {
                     membrane_updated[[b, t, n]] = self.state[b].refrac[n] <= 0.0;
@@ -294,7 +320,6 @@ impl SpikingConv2d {
         let out_hw = self.output_size(in_hw.0, in_hw.1);
         let out_channels = self.kernel.shape()[0];
         let in_channels = self.kernel.shape()[1];
-        let (kh, kw) = (self.kernel.shape()[2], self.kernel.shape()[3]);
         let plane = in_hw.0 * in_hw.1;
         let num_neurons = out_channels * out_hw.0 * out_hw.1;
 
@@ -312,6 +337,8 @@ impl SpikingConv2d {
         let mut kernel_grad = Array4::zeros(self.kernel.raw_dim());
         let mut bias_grad = Array1::zeros(out_channels);
         let mut input_grad = Array3::zeros(inputs.raw_dim());
+        let taps = self.tap_table(in_hw, out_hw);
+        let out_plane = out_hw.0 * out_hw.1;
 
         for b in 0..batch_size {
             let mut carry_v = Array1::<f32>::zeros(num_neurons);
@@ -338,28 +365,25 @@ impl SpikingConv2d {
                 carry_syn = &d_current * alpha_syn;
 
                 let x_t = inputs.slice(s![b, t, ..]);
+
+                // One bias contribution per (out_channel, position); the tap
+                // loop below visits each of those once per kernel tap.
                 for oc in 0..out_channels {
-                    for oh in 0..out_hw.0 {
-                        for ow in 0..out_hw.1 {
-                            let g = d_current[(oc * out_hw.0 + oh) * out_hw.1 + ow];
-                            if g == 0.0 {
-                                continue;
-                            }
-                            bias_grad[oc] += g;
-                            for ic in 0..in_channels {
-                                for i in 0..kh {
-                                    for j in 0..kw {
-                                        if let Some((sh, sw)) =
-                                            self.source_index((oh, ow), (i, j), in_hw)
-                                        {
-                                            let idx = ic * plane + sh * in_hw.1 + sw;
-                                            kernel_grad[[oc, ic, i, j]] += g * x_t[idx];
-                                            input_grad[[b, t, idx]] +=
-                                                g * self.kernel[[oc, ic, i, j]];
-                                        }
-                                    }
-                                }
-                            }
+                    for p in 0..out_plane {
+                        bias_grad[oc] += d_current[oc * out_plane + p];
+                    }
+                }
+
+                for &(out_idx, i, j, in_off) in &taps {
+                    for oc in 0..out_channels {
+                        let g = d_current[oc * out_plane + out_idx];
+                        if g == 0.0 {
+                            continue;
+                        }
+                        for ic in 0..in_channels {
+                            let idx = ic * plane + in_off;
+                            kernel_grad[[oc, ic, i, j]] += g * x_t[idx];
+                            input_grad[[b, t, idx]] += g * self.kernel[[oc, ic, i, j]];
                         }
                     }
                 }
@@ -544,32 +568,52 @@ impl SpikingConv1d {
         }
     }
 
+    /// Every `(out_pos, tap, in_pos)` whose tap lands inside the input.
+    ///
+    /// Which taps are in bounds depends only on the geometry -- not on the batch
+    /// item or the time step -- so this is built once per forward pass. It used
+    /// to be decided inside the channel loops, which asked `source_index` the
+    /// same question `out_channels * in_channels` times per output position.
+    fn tap_table(&self, in_len: usize, out_len: usize) -> Vec<(usize, usize, usize)> {
+        let kernel_size = self.kernel.shape()[2];
+        let mut taps = Vec::with_capacity(out_len * kernel_size);
+        for op in 0..out_len {
+            for k in 0..kernel_size {
+                if let Some(ip) = self.source_index(op, k, in_len) {
+                    taps.push((op, k, ip));
+                }
+            }
+        }
+        taps
+    }
+
     /// Synaptic current for one time step, indexed `[out_channel * out_len + pos]`.
     fn convolve(
         &self,
         input_t: &ndarray::ArrayView1<f32>,
         in_len: usize,
         out_len: usize,
+        taps: &[(usize, usize, usize)],
     ) -> Array1<f32> {
         let out_channels = self.kernel.shape()[0];
         let in_channels = self.kernel.shape()[1];
-        let kernel_size = self.kernel.shape()[2];
 
         let mut current = Array1::zeros(out_channels * out_len);
-        for oc in 0..out_channels {
-            for op in 0..out_len {
-                let mut sum = 0.0;
+        for &(op, k, ip) in taps {
+            for oc in 0..out_channels {
+                let mut acc = 0.0;
                 for ic in 0..in_channels {
-                    for k in 0..kernel_size {
-                        if let Some(ip) = self.source_index(op, k, in_len) {
-                            sum += input_t[ic * in_len + ip] * self.kernel[[oc, ic, k]];
-                        }
-                    }
+                    acc += input_t[ic * in_len + ip] * self.kernel[[oc, ic, k]];
                 }
-                if let Some(ref bias) = self.bias {
-                    sum += bias[oc];
+                current[oc * out_len + op] += acc;
+            }
+        }
+        if let Some(ref bias) = self.bias {
+            for oc in 0..out_channels {
+                let b = bias[oc];
+                for op in 0..out_len {
+                    current[oc * out_len + op] += b;
                 }
-                current[oc * out_len + op] = sum;
             }
         }
         current
@@ -598,11 +642,12 @@ impl SpikingConv1d {
             ndarray::Array3::from_elem((batch_size, num_steps, num_neurons), false);
 
         self.ensure_state(batch_size, num_neurons);
+        let taps = self.tap_table(in_len, out_len);
 
         for t in 0..num_steps {
             for b in 0..batch_size {
                 let input_t = input_dense.slice(s![b, t, ..]);
-                let current = self.convolve(&input_t, in_len, out_len);
+                let current = self.convolve(&input_t, in_len, out_len, &taps);
 
                 // Read before the update: a refractory neuron skips the
                 // membrane update entirely, and nothing afterwards says which.
@@ -653,7 +698,6 @@ impl SpikingConv1d {
         let out_len = self.output_length(in_len);
         let out_channels = self.kernel.shape()[0];
         let in_channels = self.kernel.shape()[1];
-        let kernel_size = self.kernel.shape()[2];
         let num_neurons = out_channels * out_len;
 
         if output_grad.shape() != [batch_size, num_steps, num_neurons] {
@@ -670,6 +714,7 @@ impl SpikingConv1d {
         let mut kernel_grad = Array3::zeros(self.kernel.raw_dim());
         let mut bias_grad = Array1::zeros(out_channels);
         let mut input_grad = Array3::zeros(inputs.raw_dim());
+        let taps = self.tap_table(in_len, out_len);
 
         for b in 0..batch_size {
             let mut carry_v = Array1::<f32>::zeros(num_neurons);
@@ -697,21 +742,25 @@ impl SpikingConv1d {
 
                 // I[oc, op] = sum_{ic,k} x[ic, op*stride + k - pad] * K[oc,ic,k] + bias[oc]
                 let x_t = inputs.slice(s![b, t, ..]);
+
+                // Bias first, and separately: it takes one contribution per
+                // (out_channel, position), whereas the tap loop below visits
+                // each of those once per kernel tap.
                 for oc in 0..out_channels {
                     for op in 0..out_len {
+                        bias_grad[oc] += d_current[oc * out_len + op];
+                    }
+                }
+
+                for &(op, k, ip) in &taps {
+                    for oc in 0..out_channels {
                         let g = d_current[oc * out_len + op];
                         if g == 0.0 {
                             continue;
                         }
-                        bias_grad[oc] += g;
                         for ic in 0..in_channels {
-                            for k in 0..kernel_size {
-                                if let Some(ip) = self.source_index(op, k, in_len) {
-                                    kernel_grad[[oc, ic, k]] += g * x_t[ic * in_len + ip];
-                                    input_grad[[b, t, ic * in_len + ip]] +=
-                                        g * self.kernel[[oc, ic, k]];
-                                }
-                            }
+                            kernel_grad[[oc, ic, k]] += g * x_t[ic * in_len + ip];
+                            input_grad[[b, t, ic * in_len + ip]] += g * self.kernel[[oc, ic, k]];
                         }
                     }
                 }
@@ -904,6 +953,153 @@ mod tests {
             "output 1 did not read input 0: {:?}",
             trace.v_mem
         );
+    }
+
+    /// The tap-table convolution must agree with a direct transcription of the
+    /// definition.
+    ///
+    /// The optimised form hoists the bounds check out of the channel loops and
+    /// accumulates per tap rather than per output position, which changes the
+    /// order of the floating-point additions. This pins it against a naive
+    /// reference written straight from the convolution definition, so a future
+    /// restructuring cannot quietly change what the layer computes.
+    #[test]
+    fn conv1d_matches_a_naive_reference() {
+        let (in_ch, out_ch, k, stride, pad, in_len) =
+            (3usize, 4usize, 3usize, 2usize, 1usize, 9usize);
+        let mut layer = SpikingConv1d::new(
+            in_ch,
+            out_ch,
+            k,
+            stride,
+            pad,
+            true,
+            NeuronParams::default(),
+            1.0,
+            false,
+        );
+        for oc in 0..out_ch {
+            for ic in 0..in_ch {
+                for kk in 0..k {
+                    layer.kernel[[oc, ic, kk]] =
+                        0.3 + 0.17 * (oc as f32) - 0.11 * ((ic * 3 + kk) as f32);
+                }
+            }
+        }
+        if let Some(ref mut b) = layer.bias {
+            for oc in 0..out_ch {
+                b[oc] = 0.07 * (oc as f32) - 0.02;
+            }
+        }
+
+        let input: Vec<f32> = (0..in_ch * in_len)
+            .map(|i| 0.4 * ((i % 5) as f32) - 0.3)
+            .collect();
+        let out_len = layer.output_length(in_len);
+
+        // Naive reference, straight from the definition.
+        let mut expected = vec![0.0f32; out_ch * out_len];
+        for oc in 0..out_ch {
+            for op in 0..out_len {
+                let mut sum = layer.bias.as_ref().map_or(0.0, |b| b[oc]);
+                for ic in 0..in_ch {
+                    for kk in 0..k {
+                        let pos = (op * stride + kk) as isize - pad as isize;
+                        if pos >= 0 && (pos as usize) < in_len {
+                            sum += input[ic * in_len + pos as usize] * layer.kernel[[oc, ic, kk]];
+                        }
+                    }
+                }
+                expected[oc * out_len + op] = sum;
+            }
+        }
+
+        let arr = Array1::from(input.clone());
+        let taps = layer.tap_table(in_len, out_len);
+        let got = layer.convolve(&arr.view(), in_len, out_len, &taps);
+
+        assert_eq!(got.len(), expected.len());
+        for (i, (g, e)) in got.iter().zip(expected.iter()).enumerate() {
+            assert!(
+                (g - e).abs() <= 1e-5 * e.abs().max(1.0),
+                "position {i}: optimised {g} vs naive {e}"
+            );
+        }
+    }
+
+    /// The same, for the 2-D layer, on a non-square input with stride and
+    /// padding both in play.
+    #[test]
+    fn conv2d_matches_a_naive_reference() {
+        let (in_ch, out_ch, h, w) = (2usize, 3usize, 5usize, 6usize);
+        let (kh, kw, sh, sw, ph, pw) = (3usize, 2usize, 2usize, 1usize, 1usize, 0usize);
+        let mut layer = SpikingConv2d::new(
+            in_ch,
+            out_ch,
+            (kh, kw),
+            (sh, sw),
+            (ph, pw),
+            true,
+            NeuronParams::default(),
+            1.0,
+            false,
+        );
+        layer.set_input_shape(h, w);
+        for oc in 0..out_ch {
+            for ic in 0..in_ch {
+                for i in 0..kh {
+                    for j in 0..kw {
+                        layer.kernel[[oc, ic, i, j]] =
+                            0.25 + 0.13 * (oc as f32) - 0.08 * ((ic + i * 2 + j) as f32);
+                    }
+                }
+            }
+        }
+        if let Some(ref mut b) = layer.bias {
+            for oc in 0..out_ch {
+                b[oc] = 0.05 * (oc as f32) - 0.01;
+            }
+        }
+
+        let plane = h * w;
+        let input: Vec<f32> = (0..in_ch * plane)
+            .map(|i| 0.3 * ((i % 7) as f32) - 0.5)
+            .collect();
+        let (oh, ow) = layer.output_size(h, w);
+
+        let mut expected = vec![0.0f32; out_ch * oh * ow];
+        for oc in 0..out_ch {
+            for y in 0..oh {
+                for x in 0..ow {
+                    let mut sum = layer.bias.as_ref().map_or(0.0, |b| b[oc]);
+                    for ic in 0..in_ch {
+                        for i in 0..kh {
+                            for j in 0..kw {
+                                let py = (y * sh + i) as isize - ph as isize;
+                                let px = (x * sw + j) as isize - pw as isize;
+                                if py >= 0 && px >= 0 && (py as usize) < h && (px as usize) < w {
+                                    let idx = ic * plane + py as usize * w + px as usize;
+                                    sum += input[idx] * layer.kernel[[oc, ic, i, j]];
+                                }
+                            }
+                        }
+                    }
+                    expected[(oc * oh + y) * ow + x] = sum;
+                }
+            }
+        }
+
+        let arr = Array1::from(input.clone());
+        let taps = layer.tap_table((h, w), (oh, ow));
+        let got = layer.convolve(&arr.view(), (h, w), (oh, ow), &taps);
+
+        assert_eq!(got.len(), expected.len());
+        for (i, (g, e)) in got.iter().zip(expected.iter()).enumerate() {
+            assert!(
+                (g - e).abs() <= 1e-5 * e.abs().max(1.0),
+                "position {i}: optimised {g} vs naive {e}"
+            );
+        }
     }
 
     // ---- backward-pass validation -------------------------------------
