@@ -90,48 +90,62 @@ impl SpikingAttention {
         }
     }
 
-    /// Compute attention for a single time step
-    fn attention_step(
-        &self,
-        query: &Array2<f32>,
-        key: &Array2<f32>,
-        value: &Array2<f32>,
-    ) -> Array2<f32> {
-        let batch_size = query.shape()[0];
-        let _seq_len = query.shape()[0]; // Simplified: treat batch as sequence
+    /// Scaled dot-product self-attention over the time axis, for one batch item.
+    ///
+    /// `q`, `k`, `v` are `(num_steps, d_model)`. Attention runs *within* a
+    /// sample, across its own time steps: that is what self-attention in a
+    /// sequence model means, and the only axis a temporal layer can meaningfully
+    /// attend over.
+    ///
+    /// It used to run across the batch axis -- `forward` handed it one time step
+    /// at a time, so the "sequence" it attended over was the set of independent
+    /// samples in the batch. Two things followed. Samples contaminated each
+    /// other, so a result depended on who else was in the batch and changed with
+    /// batch size; and at batch size 1, the usual single-subject case, the
+    /// softmax was over one element, therefore exactly 1.0, so the output was
+    /// just the value vector and `w_query`/`w_key` had no effect at all.
+    ///
+    /// Attention is non-causal: a step attends over the whole window, later
+    /// steps included. That is standard for a sequence model reading a complete
+    /// recording, but it means this layer cannot be used for streaming
+    /// inference, where a causal mask would be required.
+    fn attention_step(&self, q: &Array2<f32>, k: &Array2<f32>, v: &Array2<f32>) -> Array2<f32> {
+        let num_steps = q.shape()[0];
+        let d_head = self.d_model / self.num_heads;
+        let mut output = Array2::zeros((num_steps, self.d_model));
 
-        // Compute attention scores: Q @ K^T / sqrt(d_head)
-        let mut scores = Array2::zeros((batch_size, batch_size));
-        for i in 0..batch_size {
-            for j in 0..batch_size {
-                let q = query.slice(s![i, ..]);
-                let k = key.slice(s![j, ..]);
-                let score = q.iter().zip(k.iter()).map(|(a, b)| a * b).sum::<f32>() * self.scale;
-                scores[[i, j]] = score;
+        // Each head attends over its own slice of the feature axis. Previously
+        // every head saw the full d_model and `num_heads` changed nothing but
+        // the scale factor.
+        for h in 0..self.num_heads {
+            let lo = h * d_head;
+            let hi = lo + d_head;
+
+            let mut scores = Array2::zeros((num_steps, num_steps));
+            for i in 0..num_steps {
+                for j in 0..num_steps {
+                    let mut dot = 0.0;
+                    for c in lo..hi {
+                        dot += q[[i, c]] * k[[j, c]];
+                    }
+                    scores[[i, j]] = dot * self.scale;
+                }
             }
-        }
 
-        // Apply softmax (spike-based approximation)
-        let mut attention_weights = Array2::zeros((batch_size, batch_size));
-        for i in 0..batch_size {
-            let row = scores.slice(s![i, ..]);
-            let max_val = row.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
-            let exp_row: Vec<f32> = row.iter().map(|&x| (x - max_val).exp()).collect();
-            let sum_exp: f32 = exp_row.iter().sum();
+            for i in 0..num_steps {
+                let row = scores.slice(s![i, ..]);
+                let max_val = row.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+                let exps: Vec<f32> = row.iter().map(|&x| (x - max_val).exp()).collect();
+                let total: f32 = exps.iter().sum();
 
-            for j in 0..batch_size {
-                attention_weights[[i, j]] = exp_row[j] / sum_exp;
-            }
-        }
-
-        // Apply attention to values: attention_weights @ V
-        let mut output = Array2::zeros((batch_size, self.d_model));
-        for i in 0..batch_size {
-            for j in 0..batch_size {
-                let weight = attention_weights[[i, j]];
-                let v = value.slice(s![j, ..]);
-                for k in 0..self.d_model {
-                    output[[i, k]] += weight * v[k];
+                for (j, e) in exps.iter().enumerate() {
+                    let w = e / total;
+                    if w == 0.0 {
+                        continue;
+                    }
+                    for c in lo..hi {
+                        output[[i, c]] += w * v[[j, c]];
+                    }
                 }
             }
         }
@@ -169,31 +183,26 @@ impl SpikingLayer for SpikingAttention {
 
         let mut output = Array3::zeros((batch_size, num_steps, self.d_model));
 
-        // Process each time step
-        for t in 0..num_steps {
-            let input_t = input_dense.slice(s![.., t, ..]).to_owned();
+        // One sample at a time, attending over that sample's own time steps.
+        // The previous loop was over time, handing attention a batch-wide slice.
+        for b in 0..batch_size {
+            let mut query = Array2::zeros((num_steps, self.d_model));
+            let mut key = Array2::zeros((num_steps, self.d_model));
+            let mut value = Array2::zeros((num_steps, self.d_model));
 
-            // Project to Q, K, V
-            let mut query = Array2::zeros((batch_size, self.d_model));
-            let mut key = Array2::zeros((batch_size, self.d_model));
-            let mut value = Array2::zeros((batch_size, self.d_model));
-
-            for b in 0..batch_size {
-                let inp = input_t.slice(s![b, ..]);
-                query.slice_mut(s![b, ..]).assign(&self.w_query.dot(&inp));
-                key.slice_mut(s![b, ..]).assign(&self.w_key.dot(&inp));
-                value.slice_mut(s![b, ..]).assign(&self.w_value.dot(&inp));
+            for t in 0..num_steps {
+                let inp = input_dense.slice(s![b, t, ..]);
+                query.slice_mut(s![t, ..]).assign(&self.w_query.dot(&inp));
+                key.slice_mut(s![t, ..]).assign(&self.w_key.dot(&inp));
+                value.slice_mut(s![t, ..]).assign(&self.w_value.dot(&inp));
             }
 
-            // Compute attention
             let attended = self.attention_step(&query, &key, &value);
 
-            // Output projection
-            for b in 0..batch_size {
-                let att = attended.slice(s![b, ..]);
-                let proj = self.w_output.dot(&att);
-
-                // Convert to spikes using neuron dynamics
+            // The neuron integrates along time, so the output projection and the
+            // membrane update stay in time order.
+            for t in 0..num_steps {
+                let proj = self.w_output.dot(&attended.slice(s![t, ..]));
                 let spikes = self.state[b].update_lif(&proj, &self.neuron_params, self.dt);
                 output.slice_mut(s![b, t, ..]).assign(&spikes);
             }
@@ -277,19 +286,61 @@ impl MultiHeadSpikingAttention {
 }
 
 impl SpikingLayer for MultiHeadSpikingAttention {
+    /// Runs every head and combines them through the output projection.
+    ///
+    /// The heads used to be computed and then discarded -- `forward` returned
+    /// the first and dropped the rest, and `w_output` was never applied at all,
+    /// so every head after the first was pure cost and the output projection
+    /// was dead weight that nothing read.
+    ///
+    /// Each head is a full `SpikingAttention` over `d_model`, so their outputs
+    /// cannot be concatenated into `d_model` the way a single module's internal
+    /// heads are; they are averaged instead, which keeps the scale independent
+    /// of the head count. The result is a linear projection of the heads' spike
+    /// trains rather than a spike train itself -- as with the pooling layers,
+    /// which likewise carry sums and averages in a `SpikeTensor`.
     fn forward(&mut self, input: &SpikeTensor) -> SNNResult<SpikeTensor> {
-        // Process through each head
-        let mut head_outputs = Vec::new();
-        for head in &mut self.heads {
-            head_outputs.push(head.forward(input)?);
+        if self.heads.is_empty() {
+            return Err(SNNError::InvalidConfig(
+                "No attention heads found".to_string(),
+            ));
         }
 
-        // Concatenate head outputs (simplified)
-        // In practice, we'd need proper concatenation and reshaping
-        head_outputs
-            .into_iter()
-            .next()
-            .ok_or_else(|| SNNError::InvalidConfig("No attention heads found".to_string()))
+        let mut summed: Option<Array3<f32>> = None;
+        for head in &mut self.heads {
+            let out = head.forward(input)?.to_dense();
+            summed = Some(match summed {
+                Some(acc) => acc + out,
+                None => out,
+            });
+        }
+
+        let mut combined = summed.expect("at least one head, checked above");
+        combined /= self.heads.len() as f32;
+
+        let (batch, steps, d_model) = (
+            combined.shape()[0],
+            combined.shape()[1],
+            combined.shape()[2],
+        );
+        if d_model != self.w_output.shape()[1] {
+            return Err(SNNError::DimensionMismatch {
+                expected: format!("head width {}", self.w_output.shape()[1]),
+                actual: format!("{d_model}"),
+            });
+        }
+
+        let mut projected = Array3::zeros((batch, steps, self.w_output.shape()[0]));
+        for b in 0..batch {
+            for t in 0..steps {
+                let row = combined.slice(s![b, t, ..]);
+                projected
+                    .slice_mut(s![b, t, ..])
+                    .assign(&self.w_output.dot(&row));
+            }
+        }
+
+        Ok(SpikeTensor::from_dense(projected, input.requires_grad))
     }
 
     fn reset_state(&mut self) {
@@ -358,5 +409,168 @@ mod tests {
 
         let output = mha.forward(&input).unwrap();
         assert_eq!(output.shape(), (2, 10, 64));
+    }
+
+    /// Deterministic weights, so a test measures the layer rather than the
+    /// draw. The constructors initialise randomly, and some draws never reach
+    /// threshold at all -- an all-zero output would make every comparison below
+    /// pass for the wrong reason.
+    fn fixed_attention(d_model: usize, num_heads: usize) -> SpikingAttention {
+        let mut layer =
+            SpikingAttention::new(d_model, num_heads, NeuronParams::default(), 1.0, false);
+        let fill = |m: &mut Array2<f32>, seed: f32| {
+            for i in 0..m.shape()[0] {
+                for j in 0..m.shape()[1] {
+                    m[[i, j]] = seed + 0.11 * (i as f32) - 0.07 * (j as f32);
+                }
+            }
+        };
+        fill(&mut layer.w_query, 0.30);
+        fill(&mut layer.w_key, 0.25);
+        fill(&mut layer.w_value, 0.40);
+        fill(&mut layer.w_output, 0.35);
+        layer
+    }
+
+    fn ramp(batch: usize, steps: usize, d_model: usize, seed: f32) -> Array3<f32> {
+        Array3::from_shape_fn((batch, steps, d_model), |(b, t, c)| {
+            ((seed + (b * 5 + t * 3 + c * 2) as f32) % 5.0) * 0.4
+        })
+    }
+
+    /// A sample's output must not depend on who else is in the batch.
+    ///
+    /// Attention used to run across the batch axis, so a softmax mixed
+    /// independent samples together: running a subject alone and running the
+    /// same subject alongside another gave different answers. For a library
+    /// that scores clinical recordings, that is the difference between a result
+    /// and an artefact of how the work was grouped.
+    #[test]
+    fn samples_do_not_leak_into_each_other() {
+        let (d_model, steps) = (8usize, 30usize);
+        let a = ramp(1, steps, d_model, 0.0);
+        let b = ramp(1, steps, d_model, 2.0);
+
+        let mut layer = fixed_attention(d_model, 2);
+        let alone = layer
+            .forward(&SpikeTensor::from_dense(a.clone(), false))
+            .unwrap()
+            .to_dense();
+        assert!(
+            alone.iter().sum::<f32>() > 0.0,
+            "the lone sample never spiked, so the comparison would be vacuous"
+        );
+
+        let mut both = Array3::zeros((2, steps, d_model));
+        both.slice_mut(s![0, .., ..])
+            .assign(&a.slice(s![0, .., ..]));
+        both.slice_mut(s![1, .., ..])
+            .assign(&b.slice(s![0, .., ..]));
+
+        let mut layer = fixed_attention(d_model, 2);
+        let batched = layer
+            .forward(&SpikeTensor::from_dense(both, false))
+            .unwrap()
+            .to_dense();
+
+        for t in 0..steps {
+            for c in 0..d_model {
+                assert_eq!(
+                    alone[[0, t, c]],
+                    batched[[0, t, c]],
+                    "step {t}, channel {c}: sample 0 changed when another sample \
+                     joined the batch"
+                );
+            }
+        }
+    }
+
+    /// The query projection must affect the output.
+    ///
+    /// Attending across the batch meant that at batch size 1 -- single-subject
+    /// inference -- the softmax was over one element and therefore exactly 1.0,
+    /// so `w_query` and `w_key` had no effect whatsoever and half the layer's
+    /// parameters were dead.
+    #[test]
+    fn query_weights_affect_the_output() {
+        let (d_model, steps) = (8usize, 30usize);
+        let input = SpikeTensor::from_dense(ramp(1, steps, d_model, 0.0), false);
+
+        let mut layer = fixed_attention(d_model, 2);
+        let before = layer.forward(&input).unwrap().to_dense();
+        assert!(
+            before.iter().sum::<f32>() > 0.0,
+            "no spikes at all, so a difference could not show up"
+        );
+
+        let mut layer = fixed_attention(d_model, 2);
+        layer.w_query.mapv_inplace(|w| w * -3.0);
+        let after = layer.forward(&input).unwrap().to_dense();
+
+        let delta: f32 = (&before - &after).iter().map(|d| d.abs()).sum();
+        assert!(
+            delta > 0.0,
+            "scaling w_query by -3 changed nothing; the query projection is dead"
+        );
+    }
+
+    /// Every head must reach the output, through the output projection.
+    #[test]
+    fn multi_head_uses_every_head_and_the_output_projection() {
+        // d_model must divide by num_heads.
+        let (d_model, heads, steps) = (8usize, 4usize, 30usize);
+        let input = SpikeTensor::from_dense(ramp(1, steps, d_model, 0.0), false);
+
+        let build = || {
+            let mut mha =
+                MultiHeadSpikingAttention::new(d_model, heads, NeuronParams::default(), 1.0, false);
+            for (i, h) in mha.heads.iter_mut().enumerate() {
+                let seed = 0.3 + 0.05 * i as f32;
+                for m in [
+                    &mut h.w_query,
+                    &mut h.w_key,
+                    &mut h.w_value,
+                    &mut h.w_output,
+                ] {
+                    for a in 0..m.shape()[0] {
+                        for b in 0..m.shape()[1] {
+                            m[[a, b]] = seed + 0.09 * (a as f32) - 0.06 * (b as f32);
+                        }
+                    }
+                }
+            }
+            for a in 0..d_model {
+                for b in 0..d_model {
+                    mha.w_output[[a, b]] = 0.2 + 0.03 * (a as f32) - 0.02 * (b as f32);
+                }
+            }
+            mha
+        };
+
+        let base = build().forward(&input).unwrap().to_dense();
+
+        // Perturbing the LAST head must change the result: previously only the
+        // first head's output was returned.
+        let mut altered = build();
+        altered
+            .heads
+            .last_mut()
+            .unwrap()
+            .w_value
+            .mapv_inplace(|w| w * -4.0);
+        let after_head = altered.forward(&input).unwrap().to_dense();
+        assert!(
+            (&base - &after_head).iter().map(|d| d.abs()).sum::<f32>() > 0.0,
+            "changing the last head changed nothing; heads after the first are discarded"
+        );
+
+        // And the output projection must be applied at all.
+        let mut scaled = build();
+        scaled.w_output.mapv_inplace(|w| w * 7.0);
+        let after_proj = scaled.forward(&input).unwrap().to_dense();
+        assert!(
+            (&base - &after_proj).iter().map(|d| d.abs()).sum::<f32>() > 0.0,
+            "scaling w_output changed nothing; the output projection is never applied"
+        );
     }
 }

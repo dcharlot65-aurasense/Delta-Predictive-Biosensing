@@ -1329,29 +1329,39 @@ mod tests {
     fn each_layer_uses_its_own_threshold() {
         fn output_layer_gradient(output_threshold: f32) -> f32 {
             let (input, targets) = separable_batch();
+
+            // Deterministic weights: with a random draw the bounded Box
+            // surrogate saturates on some inits, which would make this test
+            // flaky rather than a statement about thresholds.
+            let mut l0 = SpikingLinear::new(4, 6, true, NeuronParams::default(), 1.0, false);
+            let mut l1 = SpikingLinear::new(
+                6,
+                2,
+                true,
+                NeuronParams {
+                    v_threshold: output_threshold,
+                    ..NeuronParams::default()
+                },
+                1.0,
+                false,
+            );
+            for n in 0..6 {
+                for j in 0..4 {
+                    l0.weights[[n, j]] = 0.40 + 0.06 * (n as f32) - 0.03 * (j as f32);
+                }
+            }
+            for n in 0..2 {
+                for j in 0..6 {
+                    l1.weights[[n, j]] = 0.35 + 0.05 * (n as f32) - 0.02 * (j as f32);
+                }
+            }
+
             let mut trainer = Trainer::with_layers(
                 vec![
                     // Fires normally, so the output layer actually receives
                     // spikes to integrate.
-                    TrainableLayer::Linear(SpikingLinear::new(
-                        4,
-                        6,
-                        true,
-                        NeuronParams::default(),
-                        1.0,
-                        false,
-                    )),
-                    TrainableLayer::Linear(SpikingLinear::new(
-                        6,
-                        2,
-                        true,
-                        NeuronParams {
-                            v_threshold: output_threshold,
-                            ..NeuronParams::default()
-                        },
-                        1.0,
-                        false,
-                    )),
+                    TrainableLayer::Linear(l0),
+                    TrainableLayer::Linear(l1),
                 ],
                 Box::new(SpikeCountLoss::new(1.0)),
                 Box::new(SGDOptimizer::new(0.0, 0.0, 0.0)),
