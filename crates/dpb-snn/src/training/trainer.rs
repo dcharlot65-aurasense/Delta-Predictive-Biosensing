@@ -69,7 +69,8 @@ use crate::tensor::SpikeTensor;
 use crate::training::loss::LossFunction;
 use crate::training::optimizer::Optimizer;
 use crate::training::surrogate::{
-    BoxSurrogate, FastSigmoidSurrogate, SuperSpikeSurrogate, SurrogateGradient, SurrogateType,
+    BoxSurrogate, ExponentialSurrogate, FastSigmoidSurrogate, SuperSpikeSurrogate,
+    SurrogateGradient, SurrogateType, TriangleSurrogate,
 };
 use crate::{SNNError, SNNResult};
 
@@ -265,8 +266,13 @@ impl TrainableLayer {
         trace: &LayerTrace,
         grad: &Array3<f32>,
         surrogate: &dyn SurrogateGradient,
-        threshold: f32,
     ) -> SNNResult<Array3<f32>> {
+        // Each layer's surrogate is evaluated at that layer's own threshold.
+        // The trainer used to pass one threshold -- the first layer's -- to
+        // every layer, so in a stack whose layers have different thresholds the
+        // surrogate was evaluated for a neuron that does not exist. The
+        // recurrent and convolutional backward passes already read their own.
+        let threshold = self.threshold();
         match (self, trace) {
             (Self::Linear(layer), LayerTrace::Linear(v_mem)) => {
                 // A feedforward layer's backward treats the layer as linear, so
@@ -644,6 +650,29 @@ impl Trainer {
         }
     }
 
+    /// Build a trainer with a surrogate instance rather than one of the
+    /// [`SurrogateType`] presets.
+    ///
+    /// The presets fix each surrogate's shape parameter. This takes the
+    /// surrogate itself, so a caller can widen a box, sharpen a sigmoid, or
+    /// supply their own implementation of the trait.
+    pub fn with_surrogate(
+        layers: Vec<TrainableLayer>,
+        loss: Box<dyn LossFunction>,
+        optimizer: Box<dyn Optimizer>,
+        surrogate: Box<dyn SurrogateGradient>,
+    ) -> Self {
+        let threshold = layers.first().map(|l| l.threshold()).unwrap_or(1.0);
+        Self {
+            layers,
+            loss,
+            optimizer,
+            surrogate,
+            threshold,
+            grad_clip: Some(5.0),
+        }
+    }
+
     /// Set the max gradient norm, or `None` to disable clipping.
     ///
     /// Clipping is on by default at 5.0: BPTT through many time steps
@@ -710,6 +739,12 @@ impl Trainer {
 
         self.reset_state();
 
+        // Clear last step's gradients. The recurrent and convolutional backward
+        // passes accumulate rather than overwrite -- they must, so a caller can
+        // sum over micro-batches -- so without this each step would descend on
+        // the running sum of every step before it.
+        self.zero_grad();
+
         // Forward, keeping each layer's input and membrane history. The input
         // is what dL/dW is an outer product against, and the membrane history
         // is where the surrogate is evaluated -- neither survives the forward
@@ -736,7 +771,6 @@ impl Trainer {
                 &traces[idx],
                 &grad,
                 self.surrogate.as_ref(),
-                self.threshold,
             )?;
         }
 
@@ -827,12 +861,20 @@ impl Trainer {
 }
 
 fn build_surrogate(kind: SurrogateType) -> Box<dyn SurrogateGradient> {
+    // One implementation per variant. `Triangle` used to resolve to a box and
+    // `Exponential` to SuperSpike, so asking for either silently got a
+    // different function than the one named.
     match kind {
-        SurrogateType::Box | SurrogateType::Triangle => Box::new(BoxSurrogate::new(1.0)),
+        // Width 2.0, i.e. non-zero within 1.0 of the threshold. At the previous
+        // 1.0 the window was only +/-0.5 and, on a plain two-layer stack, no
+        // membrane sample landed inside it: the gradient norm was exactly zero
+        // and training was a silent no-op. This matches the support of the
+        // Triangle sibling rather than being picked to suit one network.
+        SurrogateType::Box => Box::new(BoxSurrogate::new(2.0)),
+        SurrogateType::Triangle => Box::new(TriangleSurrogate::new(1.0)),
         SurrogateType::FastSigmoid => Box::new(FastSigmoidSurrogate::new(10.0)),
-        SurrogateType::Exponential | SurrogateType::SuperSpike => {
-            Box::new(SuperSpikeSurrogate::new(10.0))
-        }
+        SurrogateType::Exponential => Box::new(ExponentialSurrogate::new(1.0, 5.0)),
+        SurrogateType::SuperSpike => Box::new(SuperSpikeSurrogate::new(10.0)),
     }
 }
 
@@ -1195,6 +1237,245 @@ mod tests {
                 last < first,
                 "{name}: loss did not fall over 40 steps: {first} -> {last}"
             );
+        }
+    }
+
+    /// Two identical training steps from the same state must produce the same
+    /// gradient, not twice it.
+    ///
+    /// `SpikingLinear::backward` overwrites its gradient, but the recurrent and
+    /// convolutional backward passes accumulate -- they have to, so a caller can
+    /// sum over micro-batches. That makes clearing the trainer's job, and it was
+    /// not doing it: every step saw the running sum of every step before it.
+    /// With gradient clipping on, the direction stayed roughly right and the
+    /// loss still fell, so a "loss goes down" test could not see this.
+    #[test]
+    fn gradients_do_not_carry_over_between_steps() {
+        use crate::layers::recurrent::SpikingRNN;
+
+        let (input, targets) = separable_batch();
+        let build = || {
+            Trainer::with_layers(
+                vec![
+                    TrainableLayer::Recurrent(SpikingRNN::new(
+                        4,
+                        6,
+                        true,
+                        NeuronParams::default(),
+                        1.0,
+                        false,
+                    )),
+                    TrainableLayer::Linear(SpikingLinear::new(
+                        6,
+                        2,
+                        true,
+                        NeuronParams::default(),
+                        1.0,
+                        false,
+                    )),
+                ],
+                Box::new(SpikeCountLoss::new(1.0)),
+                // No learning rate, so the weights never move and the second
+                // step sees exactly the state the first one did.
+                Box::new(SGDOptimizer::new(0.0, 0.0, 0.0)),
+                SurrogateType::FastSigmoid,
+            )
+        };
+
+        let mut trainer = build();
+        trainer.set_grad_clip(None);
+
+        trainer.train_step(&input, &targets).unwrap();
+        let after_one = trainer.layers()[0]
+            .as_recurrent()
+            .unwrap()
+            .w_input_grad
+            .clone()
+            .expect("gradient accumulated");
+
+        trainer.train_step(&input, &targets).unwrap();
+        let after_two = trainer.layers()[0]
+            .as_recurrent()
+            .unwrap()
+            .w_input_grad
+            .clone()
+            .unwrap();
+
+        let sum_one: f32 = after_one.iter().map(|g| g.abs()).sum();
+        let sum_two: f32 = after_two.iter().map(|g| g.abs()).sum();
+        assert!(
+            sum_one > 1e-9,
+            "no gradient at all, so the test proves nothing"
+        );
+        assert!(
+            (sum_two - sum_one).abs() <= 1e-4 * sum_one,
+            "second step's gradient is {sum_two} against the first step's {sum_one}; \
+             gradients are carrying over between steps"
+        );
+    }
+
+    /// Each layer's surrogate must be evaluated at that layer's own threshold.
+    ///
+    /// The trainer used to evaluate every layer at the FIRST layer's threshold.
+    /// The discriminator is the output layer's threshold: hold everything else
+    /// fixed and move only that, and the gradient it receives must change. If
+    /// the first layer's threshold were used throughout, moving the output
+    /// layer's would leave the surrogate evaluation point untouched.
+    ///
+    /// The Box surrogate has width 1.0 and is non-zero only within 0.5 of the
+    /// threshold it is handed, which makes the difference all-or-nothing rather
+    /// than a matter of degree.
+    #[test]
+    fn each_layer_uses_its_own_threshold() {
+        fn output_layer_gradient(output_threshold: f32) -> f32 {
+            let (input, targets) = separable_batch();
+            let mut trainer = Trainer::with_layers(
+                vec![
+                    // Fires normally, so the output layer actually receives
+                    // spikes to integrate.
+                    TrainableLayer::Linear(SpikingLinear::new(
+                        4,
+                        6,
+                        true,
+                        NeuronParams::default(),
+                        1.0,
+                        false,
+                    )),
+                    TrainableLayer::Linear(SpikingLinear::new(
+                        6,
+                        2,
+                        true,
+                        NeuronParams {
+                            v_threshold: output_threshold,
+                            ..NeuronParams::default()
+                        },
+                        1.0,
+                        false,
+                    )),
+                ],
+                Box::new(SpikeCountLoss::new(1.0)),
+                Box::new(SGDOptimizer::new(0.0, 0.0, 0.0)),
+                SurrogateType::Box,
+            );
+            trainer.set_grad_clip(None);
+            trainer.train_step(&input, &targets).unwrap();
+            trainer.layers()[1]
+                .as_linear()
+                .unwrap()
+                .weight_grad
+                .as_ref()
+                .map(|g| g.iter().map(|v| v.abs()).sum())
+                .unwrap_or(0.0)
+        }
+
+        // At its own default threshold the output layer's membranes fall inside
+        // the surrogate window and it learns.
+        let near = output_layer_gradient(1.0);
+        assert!(near > 0.0, "control case produced no gradient at all");
+
+        // Moved far away, its membranes never come within half a unit of it, so
+        // the surrogate is zero and nothing should reach the weights.
+        let far = output_layer_gradient(50.0);
+        assert_eq!(
+            far, 0.0,
+            "output layer still received gradient {far} with its threshold at \
+             50.0; its surrogate is being evaluated at another layer's threshold"
+        );
+    }
+
+    /// Every surrogate the enum offers must actually train.
+    ///
+    /// `Box` and `Triangle` both resolved to a box of width 1.0, whose window
+    /// is only +/-0.5 wide; on this stack no membrane sample fell inside it, so
+    /// the gradient norm was exactly zero, no weight moved, and the loss did not
+    /// change -- silently, for two of the five options. `Exponential` likewise
+    /// resolved to SuperSpike, so two names mapped to functions other than the
+    /// ones they named.
+    #[test]
+    fn every_surrogate_trains() {
+        for kind in [
+            SurrogateType::Box,
+            SurrogateType::Triangle,
+            SurrogateType::FastSigmoid,
+            SurrogateType::Exponential,
+            SurrogateType::SuperSpike,
+        ] {
+            let (input, targets) = separable_batch();
+            let params = NeuronParams::default();
+
+            // Deterministic weights. The constructors initialise randomly, and
+            // a bounded surrogate genuinely does saturate for some draws -- the
+            // dead-neuron problem -- which would make this test flaky rather
+            // than informative.
+            let mut l0 = SpikingLinear::new(4, 8, true, params.clone(), 1.0, false);
+            let mut l1 = SpikingLinear::new(8, 2, true, params, 1.0, false);
+            for n in 0..8 {
+                for j in 0..4 {
+                    l0.weights[[n, j]] = 0.35 + 0.05 * (n as f32) - 0.03 * (j as f32);
+                }
+            }
+            for n in 0..2 {
+                for j in 0..8 {
+                    l1.weights[[n, j]] = 0.30 + 0.04 * (n as f32) - 0.02 * (j as f32);
+                }
+            }
+
+            let mut trainer = Trainer::new(
+                vec![l0, l1],
+                Box::new(SpikeCountLoss::new(1.0)),
+                Box::new(SGDOptimizer::new(0.05, 0.9, 0.0)),
+                kind,
+            );
+
+            let first = trainer.train_step_reporting(&input, &targets).unwrap();
+            assert!(
+                first.grad_norm > 0.0,
+                "{kind:?}: gradient norm is exactly zero, so the surrogate is \
+                 saturated everywhere and nothing can train"
+            );
+
+            let mut last = first.loss;
+            for _ in 0..60 {
+                last = trainer.train_step(&input, &targets).unwrap();
+            }
+            assert!(
+                last < first.loss,
+                "{kind:?}: loss did not fall, {} -> {last}",
+                first.loss
+            );
+        }
+    }
+
+    /// Each `SurrogateType` must resolve to its own implementation, not a
+    /// stand-in for a neighbour.
+    #[test]
+    fn surrogate_types_are_distinct() {
+        // Evaluated well away from threshold, where the shapes differ most.
+        let probes = [0.2f32, 0.6, 0.95, 1.0, 1.4, 2.0];
+        let mut seen: Vec<(SurrogateType, Vec<f32>)> = Vec::new();
+        for kind in [
+            SurrogateType::Box,
+            SurrogateType::Triangle,
+            SurrogateType::FastSigmoid,
+            SurrogateType::Exponential,
+            SurrogateType::SuperSpike,
+        ] {
+            let s = build_surrogate(kind);
+            seen.push((
+                kind,
+                probes.iter().map(|v| s.compute_gradient(*v, 1.0)).collect(),
+            ));
+        }
+
+        for i in 0..seen.len() {
+            for j in (i + 1)..seen.len() {
+                assert_ne!(
+                    seen[i].1, seen[j].1,
+                    "{:?} and {:?} compute identical gradients; one is standing in \
+                     for the other",
+                    seen[i].0, seen[j].0
+                );
+            }
         }
     }
 

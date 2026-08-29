@@ -33,7 +33,16 @@ pub trait SurrogateGradient: Send + Sync {
     ) -> SNNResult<Array3<f32>>;
 }
 
-/// Box surrogate gradient (rectangular window)
+/// Box surrogate gradient (rectangular window).
+///
+/// Zero outside `width / 2` of the threshold. That bound is the point of the
+/// surrogate, but it also means a neuron whose membrane never comes that close
+/// receives no gradient at all and cannot recover -- the dead-neuron problem.
+/// If every neuron in a layer is outside the window the layer stops training
+/// silently; [`crate::training::StepReport::grad_norm`] going to exactly zero
+/// is how that shows up. [`TriangleSurrogate`] has twice the support for the
+/// same parameter and [`ExponentialSurrogate`] is never exactly zero, so either
+/// is a safer default when a network stops learning for no visible reason.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BoxSurrogate {
     /// Width of the box
@@ -73,6 +82,115 @@ impl SurrogateGradient for BoxSurrogate {
 
         Ok(gradient)
     }
+}
+
+/// Triangular surrogate gradient.
+///
+/// Piecewise linear, peaking at the threshold and falling to zero at
+/// `half_width` either side. Its support is `2 * half_width`, against the box's
+/// `width`, so it keeps passing gradient where a same-width box has already cut
+/// off -- which matters because a box that is everywhere zero makes training a
+/// silent no-op.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TriangleSurrogate {
+    /// Distance from the threshold at which the gradient reaches zero.
+    pub half_width: f32,
+}
+
+impl TriangleSurrogate {
+    pub fn new(half_width: f32) -> Self {
+        Self { half_width }
+    }
+}
+
+impl Default for TriangleSurrogate {
+    fn default() -> Self {
+        Self::new(1.0)
+    }
+}
+
+impl SurrogateGradient for TriangleSurrogate {
+    fn compute_gradient(&self, v_mem: f32, threshold: f32) -> f32 {
+        if self.half_width <= 0.0 {
+            return 0.0;
+        }
+        let dist = (v_mem - threshold).abs();
+        (1.0 - dist / self.half_width).max(0.0)
+    }
+
+    fn apply(
+        &self,
+        spikes: &SpikeTensor,
+        v_mem: &Array3<f32>,
+        threshold: f32,
+    ) -> SNNResult<Array3<f32>> {
+        apply_elementwise(self, spikes, v_mem, threshold)
+    }
+}
+
+/// Exponential surrogate gradient, `alpha * exp(-beta * |v - threshold|)`.
+///
+/// Never exactly zero, so a neuron far from threshold still receives some
+/// gradient and can recover. That is the dead-neuron problem the bounded
+/// surrogates suffer from, and the reason to reach for this one.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExponentialSurrogate {
+    /// Peak value, at the threshold.
+    pub alpha: f32,
+    /// Decay rate away from the threshold.
+    pub beta: f32,
+}
+
+impl ExponentialSurrogate {
+    pub fn new(alpha: f32, beta: f32) -> Self {
+        Self { alpha, beta }
+    }
+}
+
+impl Default for ExponentialSurrogate {
+    fn default() -> Self {
+        Self::new(1.0, 5.0)
+    }
+}
+
+impl SurrogateGradient for ExponentialSurrogate {
+    fn compute_gradient(&self, v_mem: f32, threshold: f32) -> f32 {
+        self.alpha * (-self.beta * (v_mem - threshold).abs()).exp()
+    }
+
+    fn apply(
+        &self,
+        spikes: &SpikeTensor,
+        v_mem: &Array3<f32>,
+        threshold: f32,
+    ) -> SNNResult<Array3<f32>> {
+        apply_elementwise(self, spikes, v_mem, threshold)
+    }
+}
+
+/// Evaluates a surrogate at every membrane sample.
+///
+/// Deliberately not gated on whether the neuron spiked. A surrogate exists to
+/// supply a derivative where the true one is zero -- above all for a neuron
+/// sitting just below threshold, which is the case a spike gate excludes.
+fn apply_elementwise(
+    surrogate: &dyn SurrogateGradient,
+    spikes: &SpikeTensor,
+    v_mem: &Array3<f32>,
+    threshold: f32,
+) -> SNNResult<Array3<f32>> {
+    let dense = spikes.to_dense();
+    if dense.shape() != v_mem.shape() {
+        return Err(crate::SNNError::DimensionMismatch {
+            expected: format!("membrane history shaped {:?}", dense.shape()),
+            actual: format!("{:?}", v_mem.shape()),
+        });
+    }
+    let mut gradient = Array3::zeros(dense.raw_dim());
+    for ((b, t, n), g) in gradient.indexed_iter_mut() {
+        *g = surrogate.compute_gradient(v_mem[[b, t, n]], threshold);
+    }
+    Ok(gradient)
 }
 
 /// Fast sigmoid surrogate gradient

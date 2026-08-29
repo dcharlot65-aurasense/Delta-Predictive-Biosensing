@@ -928,65 +928,12 @@ impl SpikingLSTM {
 
 impl SpikingLayer for SpikingLSTM {
     fn forward(&mut self, input: &SpikeTensor) -> SNNResult<SpikeTensor> {
-        let input_dense = input.to_dense();
-        let (batch_size, num_steps, _input_size) = (
-            input_dense.shape()[0],
-            input_dense.shape()[1],
-            input_dense.shape()[2],
-        );
-
-        self.ensure_state(batch_size);
-
-        let hidden_size = self.w_input_gate.shape()[0];
-        let mut output = Array3::zeros((batch_size, num_steps, hidden_size));
-
-        // Simplified LSTM dynamics with spikes
-        for t in 0..num_steps {
-            let input_t = input_dense.slice(s![.., t, ..]).to_owned();
-            let h_prev = self.hidden_state.as_ref().unwrap().clone();
-            let c_prev = self.cell_state.as_ref().unwrap().clone();
-
-            let mut h_new = Array2::zeros((batch_size, hidden_size));
-            let mut c_new = Array2::zeros((batch_size, hidden_size));
-
-            for b in 0..batch_size {
-                // Compute gates (simplified with sigmoid approximation)
-                let i_gate = self.w_input_gate.dot(&input_t.slice(s![b, ..]))
-                    + self.w_rec_input.dot(&h_prev.slice(s![b, ..]));
-                let f_gate = self.w_forget_gate.dot(&input_t.slice(s![b, ..]))
-                    + self.w_rec_forget.dot(&h_prev.slice(s![b, ..]));
-                let o_gate = self.w_output_gate.dot(&input_t.slice(s![b, ..]))
-                    + self.w_rec_output.dot(&h_prev.slice(s![b, ..]));
-                let c_gate = self.w_cell_gate.dot(&input_t.slice(s![b, ..]))
-                    + self.w_rec_cell.dot(&h_prev.slice(s![b, ..]));
-
-                // Apply sigmoid-like activation (spike-based gating)
-                let sigmoid = |x: f32| 1.0 / (1.0 + (-x).exp());
-
-                for i in 0..hidden_size {
-                    let i_val = sigmoid(i_gate[i]);
-                    let f_val = sigmoid(f_gate[i]);
-                    let o_val = sigmoid(o_gate[i]);
-                    let c_val = (c_gate[i]).tanh();
-
-                    c_new[[b, i]] = f_val * c_prev[[b, i]] + i_val * c_val;
-                    h_new[[b, i]] = o_val * c_new[[b, i]].tanh();
-                }
-
-                // Convert to spikes using neuron dynamics
-                let spikes = self.state[b].update_lif(
-                    &h_new.slice(s![b, ..]).to_owned(),
-                    &self.neuron_params,
-                    self.dt,
-                );
-                output.slice_mut(s![b, t, ..]).assign(&spikes);
-            }
-
-            self.cell_state = Some(c_new);
-            self.hidden_state = Some(h_new);
-        }
-
-        Ok(SpikeTensor::from_dense(output, input.requires_grad))
+        // Delegates so there is one implementation of the dynamics, and so the
+        // cell and hidden states are always initialised. The previous body read
+        // `self.hidden_state.as_ref().unwrap()`, which `reset_state` had set to
+        // None -- so a reset followed by a forward panicked, and `reset_state`
+        // is exactly what a caller does between samples.
+        self.forward_recording(input).map(|(out, _)| out)
     }
 
     fn reset_state(&mut self) {
@@ -998,12 +945,9 @@ impl SpikingLayer for SpikingLSTM {
     }
 
     fn parameters(&self) -> Vec<&Array2<f32>> {
-        vec![
-            &self.w_input_gate,
-            &self.w_forget_gate,
-            &self.w_output_gate,
-            &self.w_cell_gate,
-        ]
+        // All eight. Listing only the input-path gates hid the four recurrent
+        // matrices from anything iterating parameters -- half the layer.
+        self.gate_weights()
     }
 
     fn parameters_mut(&mut self) -> Vec<&mut Array2<f32>> {
@@ -1012,15 +956,32 @@ impl SpikingLayer for SpikingLSTM {
             &mut self.w_forget_gate,
             &mut self.w_output_gate,
             &mut self.w_cell_gate,
+            &mut self.w_rec_input,
+            &mut self.w_rec_forget,
+            &mut self.w_rec_output,
+            &mut self.w_rec_cell,
         ]
     }
 
     fn gradients(&self) -> Vec<Option<&Array2<f32>>> {
-        vec![None, None, None, None] // Simplified
+        // All eight, in `gate_weights` order -- the previous four `None`s
+        // reported every gradient as absent even after `backward` had filled
+        // them in.
+        self.gate_grads_all()
     }
 
     fn zero_grad(&mut self) {
-        // Simplified - no gradient storage in this implementation
+        // Not a no-op: `backward` accumulates into all eight gate gradients, so
+        // failing to clear them here made them grow without bound across a
+        // training run.
+        self.w_input_gate_grad = None;
+        self.w_forget_gate_grad = None;
+        self.w_output_gate_grad = None;
+        self.w_cell_gate_grad = None;
+        self.w_rec_input_grad = None;
+        self.w_rec_forget_grad = None;
+        self.w_rec_output_grad = None;
+        self.w_rec_cell_grad = None;
     }
 }
 
@@ -1348,6 +1309,74 @@ mod tests {
             rnn.backward(&inputs, &trace, &outputs, &wrong, &surrogate)
                 .is_err()
         );
+    }
+
+    /// A reset followed by a forward pass must work. The LSTM used to unwrap
+    /// the hidden state that `reset_state` had just cleared, so the trainer's
+    /// own between-sample reset would have panicked it.
+    #[test]
+    fn lstm_survives_reset_then_forward() {
+        let mut lstm = SpikingLSTM::new(3, 4, NeuronParams::default(), 1.0, false);
+        let input = SpikeTensor::zeros(2, 5, 3, false);
+        lstm.forward(&input).unwrap();
+        lstm.reset_state();
+        let out = lstm
+            .forward(&input)
+            .expect("forward after reset must not panic");
+        assert_eq!(out.shape(), (2, 5, 4));
+    }
+
+    /// `zero_grad` must actually clear, and `gradients()` must report what
+    /// `backward` accumulated -- both were stubs claiming the layer had no
+    /// gradient storage, while `backward` filled eight matrices.
+    #[test]
+    fn lstm_zero_grad_clears_and_gradients_are_reported() {
+        let (mut lstm, inputs, output_grad) = lstm_fixture();
+        let surrogate = FastSigmoidSurrogate::new(10.0);
+        let (_, trace) = lstm
+            .forward_recording(&SpikeTensor::from_dense(inputs.clone(), false))
+            .unwrap();
+
+        lstm.backward(&inputs, &trace, &output_grad, &surrogate)
+            .unwrap();
+        let reported = lstm.gradients().iter().filter(|g| g.is_some()).count();
+        assert_eq!(
+            reported, 8,
+            "gradients() reported {reported} of 8 gate gradients"
+        );
+
+        let before: f32 = lstm
+            .gate_grads()
+            .iter()
+            .map(|g| g.iter().map(|v| v * v).sum::<f32>())
+            .sum();
+        assert!(
+            before > 0.0,
+            "no gradient accumulated, so the test proves nothing"
+        );
+
+        lstm.zero_grad();
+        assert!(
+            lstm.gate_grads().is_empty(),
+            "zero_grad left gradients in place"
+        );
+
+        // And a fresh backward gives the same magnitude, not twice it.
+        lstm.backward(&inputs, &trace, &output_grad, &surrogate)
+            .unwrap();
+        let after: f32 = lstm
+            .gate_grads()
+            .iter()
+            .map(|g| g.iter().map(|v| v * v).sum::<f32>())
+            .sum();
+        assert!(
+            (after - before).abs() <= 1e-4 * before,
+            "after clearing, the gradient came back as {after} against {before}"
+        );
+
+        // parameters() must expose all eight matrices, not just the input path.
+        assert_eq!(lstm.parameters().len(), 8);
+        assert_eq!(lstm.parameters_mut().len(), 8);
     }
 
     // ---- LSTM backward validation -------------------------------------

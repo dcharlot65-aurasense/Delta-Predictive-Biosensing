@@ -9,7 +9,10 @@ pub use loss::{
     LossFunction, SpikeCountLoss, SpikeTimingLoss, SpikingCrossEntropy, TemporalCrossEntropy,
 };
 pub use optimizer::{AdamOptimizer, Optimizer, SGDOptimizer};
-pub use surrogate::{BPTT, OTTT, SLTT, SurrogateGradient, SurrogateType};
+pub use surrogate::{
+    BPTT, BoxSurrogate, ExponentialSurrogate, FastSigmoidSurrogate, OTTT, SLTT,
+    SuperSpikeSurrogate, SurrogateGradient, SurrogateType, TriangleSurrogate,
+};
 pub use trainer::{StepReport, TrainableLayer, Trainer};
 
 /// Training configuration
