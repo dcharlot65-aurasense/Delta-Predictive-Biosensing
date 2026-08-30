@@ -344,53 +344,135 @@ pub enum SkeletonType {
 
 impl SkeletonType {
     /// Get adjacency matrix for skeleton type
+    /// Node count and symmetric adjacency for this skeleton layout.
+    ///
+    /// The edges are the anatomical bones of each format, in that format's own
+    /// keypoint order. Two of the three used to return an all-zero matrix with
+    /// a comment reading "Simplified - would need proper connectivity"; with no
+    /// edges the graph convolution has no neighbours to gather from, so the GCN
+    /// silently degenerates into a per-node MLP -- structurally intact, and
+    /// blind to the skeleton it exists to exploit.
+    ///
+    /// COCO18's edges were present but wrong: limb chains skipped their middle
+    /// joint (shoulder straight to wrist) and several edges crossed between
+    /// limbs (right elbow to left shoulder, right hip to left elbow).
     pub fn get_adjacency(&self) -> (usize, Array2<f32>) {
-        match self {
-            SkeletonType::COCO18 => {
-                let num_nodes = 18;
-                let mut adj = Array2::zeros((num_nodes, num_nodes));
-
-                // Define skeleton connectivity (COCO format)
-                let edges = vec![
+        // Order matches each format's published keypoint indices.
+        let (num_nodes, edges): (usize, &[(usize, usize)]) = match self {
+            // 0 nose, 1 neck, 2-4 right arm, 5-7 left arm, 8-10 right leg,
+            // 11-13 left leg, 14/16 right eye/ear, 15/17 left eye/ear.
+            SkeletonType::COCO18 => (
+                18,
+                &[
                     (0, 1),
                     (0, 14),
-                    (0, 15),
                     (14, 16),
-                    (15, 17), // Head
-                    (0, 2),
-                    (2, 4),
-                    (0, 3),
-                    (3, 5), // Arms
-                    (0, 8),
-                    (8, 10),
-                    (0, 9),
-                    (9, 11), // Torso to hips
-                    (8, 6),
-                    (6, 12),
-                    (9, 7),
-                    (7, 13), // Legs
-                ];
+                    (0, 15),
+                    (15, 17),
+                    (1, 2),
+                    (2, 3),
+                    (3, 4),
+                    (1, 5),
+                    (5, 6),
+                    (6, 7),
+                    (1, 8),
+                    (8, 9),
+                    (9, 10),
+                    (1, 11),
+                    (11, 12),
+                    (12, 13),
+                ],
+            ),
+            // OpenPose BODY_25: 8 is the mid-hip root, 19-24 are the feet.
+            SkeletonType::OpenPose25 => (
+                25,
+                &[
+                    (0, 1),
+                    (0, 15),
+                    (15, 17),
+                    (0, 16),
+                    (16, 18),
+                    (1, 2),
+                    (2, 3),
+                    (3, 4),
+                    (1, 5),
+                    (5, 6),
+                    (6, 7),
+                    (1, 8),
+                    (8, 9),
+                    (9, 10),
+                    (10, 11),
+                    (8, 12),
+                    (12, 13),
+                    (13, 14),
+                    (11, 22),
+                    (22, 23),
+                    (11, 24),
+                    (14, 19),
+                    (19, 20),
+                    (14, 21),
+                ],
+            ),
+            // MediaPipe Pose: POSE_CONNECTIONS verbatim, including the hand
+            // and foot triangles that close on themselves.
+            //
+            // Worth knowing before using this for a GCN: the published list is
+            // not connected. It forms three components -- the face (0-8), the
+            // mouth pair (9, 10), and the body (11-32) -- because MediaPipe
+            // draws no edge from the head to the shoulders. Message passing
+            // therefore never carries information between head and body,
+            // however many layers are stacked. That is the format's own
+            // topology, not an omission here, and inventing a neck edge would
+            // change what the format means; a caller who needs head-body
+            // coupling should add that edge deliberately.
+            SkeletonType::MediaPipe33 => (
+                33,
+                &[
+                    (0, 1),
+                    (1, 2),
+                    (2, 3),
+                    (3, 7),
+                    (0, 4),
+                    (4, 5),
+                    (5, 6),
+                    (6, 8),
+                    (9, 10),
+                    (11, 12),
+                    (11, 13),
+                    (13, 15),
+                    (15, 17),
+                    (15, 19),
+                    (15, 21),
+                    (17, 19),
+                    (12, 14),
+                    (14, 16),
+                    (16, 18),
+                    (16, 20),
+                    (16, 22),
+                    (18, 20),
+                    (11, 23),
+                    (12, 24),
+                    (23, 24),
+                    (23, 25),
+                    (25, 27),
+                    (27, 29),
+                    (27, 31),
+                    (29, 31),
+                    (24, 26),
+                    (26, 28),
+                    (28, 30),
+                    (28, 32),
+                    (30, 32),
+                ],
+            ),
+        };
 
-                for (i, j) in edges {
-                    adj[[i, j]] = 1.0;
-                    adj[[j, i]] = 1.0; // Symmetric
-                }
-
-                (num_nodes, adj)
-            }
-            SkeletonType::OpenPose25 => {
-                let num_nodes = 25;
-                let adj = Array2::zeros((num_nodes, num_nodes));
-                // Simplified - would need proper connectivity
-                (num_nodes, adj)
-            }
-            SkeletonType::MediaPipe33 => {
-                let num_nodes = 33;
-                let adj = Array2::zeros((num_nodes, num_nodes));
-                // Simplified - would need proper connectivity
-                (num_nodes, adj)
-            }
+        let mut adj = Array2::zeros((num_nodes, num_nodes));
+        for &(i, j) in edges {
+            adj[[i, j]] = 1.0;
+            adj[[j, i]] = 1.0;
         }
+        (num_nodes, adj)
     }
 }
 
@@ -442,5 +524,115 @@ mod tests {
         let gcn =
             SpikingGCN::for_skeleton(SkeletonType::COCO18, 3, vec![8], 4, SNNConfig::default());
         assert_eq!(gcn.num_nodes, 18);
+    }
+
+    // ---- skeleton adjacency --------------------------------------------
+
+    /// Every layout must describe a real skeleton: symmetric, self-loop free,
+    /// with every joint attached to something.
+    ///
+    /// Two of the three used to return an all-zero matrix, which leaves the
+    /// graph convolution with no neighbours to gather from -- a GCN that has
+    /// quietly become a per-node MLP.
+    #[test]
+    fn every_skeleton_has_a_connected_graph() {
+        for skeleton in [
+            SkeletonType::COCO18,
+            SkeletonType::OpenPose25,
+            SkeletonType::MediaPipe33,
+        ] {
+            let (n, adj) = skeleton.get_adjacency();
+            assert_eq!(adj.shape(), &[n, n], "{skeleton:?}: wrong shape");
+
+            let total: f32 = adj.iter().sum();
+            assert!(total > 0.0, "{skeleton:?}: adjacency is entirely zero");
+
+            for i in 0..n {
+                assert_eq!(adj[[i, i]], 0.0, "{skeleton:?}: node {i} links to itself");
+                let degree: f32 = adj.row(i).sum();
+                assert!(
+                    degree > 0.0,
+                    "{skeleton:?}: node {i} is isolated, so it can never exchange \
+                     information with the rest of the skeleton"
+                );
+                for j in 0..n {
+                    assert_eq!(
+                        adj[[i, j]],
+                        adj[[j, i]],
+                        "{skeleton:?}: edge {i}-{j} is not symmetric"
+                    );
+                }
+            }
+        }
+    }
+
+    /// The whole skeleton must be one connected component: a limb that is not
+    /// reachable from the torso cannot influence it, whatever the depth.
+    #[test]
+    fn every_skeleton_is_a_single_component() {
+        for skeleton in [
+            SkeletonType::COCO18,
+            SkeletonType::OpenPose25,
+            SkeletonType::MediaPipe33,
+        ] {
+            let (n, adj) = skeleton.get_adjacency();
+            let mut seen = vec![false; n];
+            let mut stack = vec![0usize];
+            seen[0] = true;
+            while let Some(node) = stack.pop() {
+                for j in 0..n {
+                    if adj[[node, j]] > 0.0 && !seen[j] {
+                        seen[j] = true;
+                        stack.push(j);
+                    }
+                }
+            }
+            let unreachable: Vec<usize> = (0..n).filter(|&i| !seen[i]).collect();
+            // MediaPipe's published POSE_CONNECTIONS is genuinely in three
+            // pieces -- face, mouth pair, body -- so starting from the nose
+            // reaches only the face. COCO and OpenPose are single skeletons.
+            let expected: Vec<usize> = match skeleton {
+                SkeletonType::MediaPipe33 => (9..33).collect(),
+                _ => vec![],
+            };
+            assert_eq!(
+                unreachable, expected,
+                "{skeleton:?}: unexpected disconnected nodes"
+            );
+        }
+    }
+
+    /// Limb chains must pass through their middle joint, and must not cross
+    /// between limbs -- the two ways COCO18's edge list was wrong.
+    #[test]
+    fn coco18_limbs_are_anatomical() {
+        let (_, adj) = SkeletonType::COCO18.get_adjacency();
+        let linked = |a: usize, b: usize| adj[[a, b]] > 0.0;
+
+        // Right arm: neck-shoulder-elbow-wrist, each link present...
+        for (a, b) in [(1, 2), (2, 3), (3, 4)] {
+            assert!(linked(a, b), "right arm is missing the link {a}-{b}");
+        }
+        // ...and no shortcut past the elbow.
+        assert!(
+            !linked(2, 4),
+            "shoulder links straight to wrist, skipping the elbow"
+        );
+
+        // Left arm likewise.
+        for (a, b) in [(1, 5), (5, 6), (6, 7)] {
+            assert!(linked(a, b), "left arm is missing the link {a}-{b}");
+        }
+        assert!(!linked(5, 7), "left shoulder links straight to left wrist");
+
+        // Legs pass through the knee.
+        assert!(linked(8, 9) && linked(9, 10), "right leg chain is broken");
+        assert!(!linked(8, 10), "right hip links straight to right ankle");
+
+        // No cross-limb edges: right elbow to left shoulder, right hip to left
+        // elbow, right knee to left hip were all present.
+        for (a, b) in [(3, 5), (8, 6), (9, 11)] {
+            assert!(!linked(a, b), "cross-limb edge {a}-{b} is present");
+        }
     }
 }

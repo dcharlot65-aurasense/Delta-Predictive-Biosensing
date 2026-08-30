@@ -158,23 +158,62 @@ impl PostTrainingQuantizer {
         })
     }
 
-    /// Calibrate using representative dataset
+    /// Name a single unnamed calibration tensor is recorded under.
+    ///
+    /// [`Self::calibrate`] takes samples with no layer names attached, so the
+    /// range it observes is filed here and [`Self::quantize_activations`]
+    /// accepts this name.
+    pub const DEFAULT_LAYER: &'static str = "default";
+
+    /// Calibrate from a representative dataset.
+    ///
+    /// The samples carry no layer identity, so the observed range is recorded
+    /// under [`Self::DEFAULT_LAYER`]. Use [`Self::calibrate_layer`] to record
+    /// ranges per layer, which is what `quantize_activations` looks up.
+    ///
+    /// This used to walk the dataset calling a no-op `update`, so nothing was
+    /// ever recorded: calibration reported success and `quantize_activations`
+    /// then failed for every layer with "No calibration data".
     pub fn calibrate(&mut self, dataset: &[Vec<f32>]) -> Result<(), String> {
+        self.calibrate_layer(Self::DEFAULT_LAYER, dataset)
+    }
+
+    /// Calibrate one named layer from its representative activations.
+    pub fn calibrate_layer(
+        &mut self,
+        layer_name: &str,
+        dataset: &[Vec<f32>],
+    ) -> Result<(), String> {
         if dataset.is_empty() {
             return Err("Calibration dataset cannot be empty".to_string());
         }
 
-        // Compute statistics from representative dataset
-        let mut stats = CalibrationData::new();
-
+        let mut stats = self
+            .calibration_data
+            .take()
+            .unwrap_or_else(CalibrationData::new);
         for sample in dataset {
-            stats.update(sample);
+            stats.update(layer_name, sample);
+        }
+        stats.finalize();
+
+        if stats.get_range(layer_name).is_none() {
+            self.calibration_data = Some(stats);
+            return Err(format!(
+                "Calibration data for '{layer_name}' contained no finite values"
+            ));
         }
 
-        stats.finalize();
         self.calibration_data = Some(stats);
-
         Ok(())
+    }
+
+    /// Layers that currently have calibration data.
+    pub fn calibrated_layers(&self) -> Vec<String> {
+        self.calibration_data
+            .as_ref()
+            .map(CalibrationData::layers)
+            .unwrap_or_default()
     }
 
     /// Quantize weights
@@ -361,13 +400,55 @@ impl CalibrationData {
         }
     }
 
-    fn update(&mut self, _sample: &[f32]) {
-        // In a real implementation, this would track min/max per layer
-        // For now, this is a placeholder
+    /// Folds one sample into the running range for `layer`.
+    ///
+    /// This used to take `_sample` and do nothing, so `layer_stats` stayed
+    /// empty however much calibration data was supplied, and every later
+    /// `get_range` returned None.
+    fn update(&mut self, layer: &str, sample: &[f32]) {
+        // Non-finite values would poison the range and make the derived scale
+        // useless for every other value in the tensor.
+        let finite = sample.iter().copied().filter(|v| v.is_finite());
+        let mut lo = f32::INFINITY;
+        let mut hi = f32::NEG_INFINITY;
+        for v in finite {
+            lo = lo.min(v);
+            hi = hi.max(v);
+        }
+        if lo > hi {
+            return; // nothing usable in this sample
+        }
+
+        let entry = self
+            .layer_stats
+            .entry(layer.to_string())
+            .or_insert((f32::INFINITY, f32::NEG_INFINITY));
+        entry.0 = entry.0.min(lo);
+        entry.1 = entry.1.max(hi);
     }
 
+    /// Widens any degenerate range so a scale can be derived from it.
+    ///
+    /// A layer whose activations were constant gives min == max, and a zero
+    /// range yields a zero scale and a division by zero downstream.
     fn finalize(&mut self) {
-        // Finalize statistics
+        for (min, max) in self.layer_stats.values_mut() {
+            if (*max - *min).abs() < f32::EPSILON {
+                *min -= 0.5;
+                *max += 0.5;
+            }
+            // The int8 zero point can only represent zero if the range spans
+            // it, and activation ranges are expected to include zero.
+            *min = min.min(0.0);
+            *max = max.max(0.0);
+        }
+    }
+
+    /// Layers that have calibration data.
+    fn layers(&self) -> Vec<String> {
+        let mut names: Vec<String> = self.layer_stats.keys().cloned().collect();
+        names.sort();
+        names
     }
 
     fn get_range(&self, layer_name: &str) -> Option<(f32, f32)> {
@@ -394,16 +475,54 @@ impl QuantizationAwareTraining {
         Ok(Self { config })
     }
 
-    /// Get fake quantization parameters for training
+    /// Identity fake-quantization parameters: scale 1, zero point 0.
+    ///
+    /// Kept for callers that want the unscaled reference, but note what it
+    /// means: with an int8 grid of unit spacing, every value smaller than 0.5
+    /// rounds to zero. Typical weights are far smaller than that, so applying
+    /// these to a real tensor erases it. [`Self::fake_quantize`] derives a
+    /// scale from the data instead; use [`Self::fake_quant_params_for`] to see
+    /// the parameters it would use.
     pub fn get_fake_quant_params(&self) -> QuantizationParams {
-        // Return default params for QAT
         QuantizationParams::per_tensor(1.0, 0)
     }
 
-    /// Simulate quantization during forward pass
+    /// Quantization parameters covering `values`, as a QAT step would derive
+    /// them from the batch it is looking at.
+    pub fn fake_quant_params_for(&self, values: &[f32]) -> Result<QuantizationParams, String> {
+        if values.is_empty() {
+            return Err("Cannot derive quantization parameters from no values".to_string());
+        }
+        let mut min = f32::INFINITY;
+        let mut max = f32::NEG_INFINITY;
+        for &v in values.iter().filter(|v| v.is_finite()) {
+            min = min.min(v);
+            max = max.max(v);
+        }
+        if min > max {
+            return Err("Values contain nothing finite".to_string());
+        }
+        // The grid must span zero, and must not be degenerate.
+        min = min.min(0.0);
+        max = max.max(0.0);
+        if (max - min).abs() < f32::EPSILON {
+            min -= 0.5;
+            max += 0.5;
+        }
+        PostTrainingQuantizer::compute_quantization_params(min, max, TensorType::Int8)
+    }
+
+    /// Simulate quantization during the forward pass.
+    ///
+    /// The scale comes from the values themselves. It used to come from
+    /// `get_fake_quant_params`, which is scale 1.0: on an int8 grid of unit
+    /// spacing every weight below 0.5 rounds to zero, so fake-quantizing a
+    /// normally initialised layer returned all zeros and QAT trained against a
+    /// network that had been erased.
     pub fn fake_quantize(&self, values: &[f32]) -> Vec<f32> {
-        // Simulate quantization-dequantization
-        let params = self.get_fake_quant_params();
+        let Ok(params) = self.fake_quant_params_for(values) else {
+            return values.to_vec();
+        };
 
         values
             .iter()
@@ -600,5 +719,122 @@ mod tests {
         for (orig, quant) in values.iter().zip(fake_quant.iter()) {
             assert!((orig - quant).abs() < 2.0); // Within quantization error
         }
+    }
+
+    // ---- calibration and QAT -------------------------------------------
+
+    fn qat_config() -> QuantizationConfig {
+        QuantizationConfig {
+            mode: QuantizationMode::QAT,
+            ..QuantizationConfig::default()
+        }
+    }
+
+    /// Calibration must record a range, and activation quantization must then
+    /// succeed. `update` used to ignore its sample entirely, so calibration
+    /// reported success while recording nothing and every later lookup failed.
+    #[test]
+    fn calibration_records_a_range() {
+        let mut q = PostTrainingQuantizer::new(QuantizationConfig::default()).unwrap();
+        let data = vec![vec![-2.0, 0.5, 1.5], vec![0.0, 3.0, -1.0]];
+
+        assert!(
+            q.quantize_activations(PostTrainingQuantizer::DEFAULT_LAYER)
+                .is_err(),
+            "there is no calibration data yet"
+        );
+
+        q.calibrate(&data).unwrap();
+        assert_eq!(
+            q.calibrated_layers(),
+            vec![PostTrainingQuantizer::DEFAULT_LAYER.to_string()]
+        );
+
+        let params = q
+            .quantize_activations(PostTrainingQuantizer::DEFAULT_LAYER)
+            .expect("activation quantization should succeed after calibration");
+        assert!(
+            params.scales[0] > 0.0,
+            "a zero scale cannot represent anything"
+        );
+    }
+
+    /// Ranges accumulate across samples and across calls, per layer.
+    #[test]
+    fn calibration_tracks_each_layer_separately() {
+        let mut q = PostTrainingQuantizer::new(QuantizationConfig::default()).unwrap();
+        q.calibrate_layer("narrow", &[vec![-0.1, 0.1]]).unwrap();
+        q.calibrate_layer("wide", &[vec![-8.0, 8.0]]).unwrap();
+
+        assert_eq!(q.calibrated_layers(), vec!["narrow", "wide"]);
+        let narrow = q.quantize_activations("narrow").unwrap().scales[0];
+        let wide = q.quantize_activations("wide").unwrap().scales[0];
+        assert!(
+            wide > narrow,
+            "a wider activation range needs a coarser scale: {wide} vs {narrow}"
+        );
+        assert!(q.quantize_activations("absent").is_err());
+    }
+
+    /// A constant layer must not produce a zero scale.
+    #[test]
+    fn calibration_widens_a_degenerate_range() {
+        let mut q = PostTrainingQuantizer::new(QuantizationConfig::default()).unwrap();
+        q.calibrate(&[vec![2.0, 2.0, 2.0]]).unwrap();
+        let params = q
+            .quantize_activations(PostTrainingQuantizer::DEFAULT_LAYER)
+            .unwrap();
+        assert!(params.scales[0] > 0.0);
+    }
+
+    /// Fake quantization must preserve the tensor, not erase it.
+    ///
+    /// It used a scale of 1.0, so on an int8 grid of unit spacing every value
+    /// below 0.5 rounded to zero -- which is every weight in a normally
+    /// initialised layer.
+    #[test]
+    fn fake_quantization_preserves_typical_weights() {
+        let qat = QuantizationAwareTraining::new(qat_config()).unwrap();
+        let weights: Vec<f32> = (0..64)
+            .map(|i| (i as f32 - 32.0) * 0.01) // -0.32 .. 0.31
+            .collect();
+
+        let out = qat.fake_quantize(&weights);
+        assert_eq!(out.len(), weights.len());
+
+        let magnitude: f32 = out.iter().map(|v| v.abs()).sum();
+        assert!(
+            magnitude > 0.0,
+            "fake quantization returned an all-zero tensor: the whole layer was erased"
+        );
+
+        // Round-trip error must be a fraction of the range, not the whole of it.
+        let worst = weights
+            .iter()
+            .zip(out.iter())
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0f32, f32::max);
+        let span = 0.64f32;
+        assert!(
+            worst < span / 100.0,
+            "int8 round-trip error {worst} is too large for a range of {span}"
+        );
+    }
+
+    /// The identity parameters are still available, and still destroy small
+    /// weights -- which is why `fake_quantize` no longer uses them.
+    #[test]
+    fn identity_params_are_documented_as_destructive() {
+        let qat = QuantizationAwareTraining::new(qat_config()).unwrap();
+        let params = qat.get_fake_quant_params();
+        assert_eq!(params.scales[0], 1.0);
+
+        let small = 0.05f32;
+        let q = params.quantize_value(small, 0);
+        assert_eq!(
+            params.dequantize_value(q, 0),
+            0.0,
+            "unit scale should round a typical weight to zero"
+        );
     }
 }

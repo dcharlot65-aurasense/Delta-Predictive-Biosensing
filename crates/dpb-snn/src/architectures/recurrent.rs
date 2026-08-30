@@ -168,6 +168,53 @@ impl SNNArchitecture for RecurrentSNN {
     }
 }
 
+/// Estimates the spectral radius of a square matrix by power iteration.
+///
+/// Uses the growth rate of `||W^k v||`, averaged over the later iterations,
+/// rather than a Rayleigh quotient: the recurrent matrix is not symmetric, so
+/// its dominant eigenvalues can be a complex pair, and a Rayleigh quotient
+/// oscillates in that case while the growth rate still converges to the
+/// modulus.
+///
+/// Returns 0.0 for a matrix that annihilates the probe vector.
+fn estimate_spectral_radius(w: &Array2<f32>, iterations: usize) -> f32 {
+    let n = w.shape()[0];
+    if n == 0 {
+        return 0.0;
+    }
+
+    // Deterministic probe, so the same weights always give the same estimate.
+    let mut v = Array1::from_shape_fn(n, |i| ((i % 7) as f32) + 1.0);
+    let norm = v.dot(&v).sqrt();
+    if norm <= f32::EPSILON {
+        return 0.0;
+    }
+    v /= norm;
+
+    let burn_in = iterations / 2;
+    let mut log_growth = 0.0f32;
+    let mut counted = 0usize;
+
+    for k in 0..iterations {
+        let next = w.dot(&v);
+        let growth = next.dot(&next).sqrt();
+        if growth <= f32::EPSILON {
+            return 0.0;
+        }
+        if k >= burn_in {
+            log_growth += growth.ln();
+            counted += 1;
+        }
+        v = next / growth;
+    }
+
+    if counted == 0 {
+        0.0
+    } else {
+        (log_growth / counted as f32).exp()
+    }
+}
+
 /// Liquid State Machine (LSM)
 /// A reservoir computing approach with a randomly connected spiking reservoir
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -205,9 +252,17 @@ impl LiquidStateMachine {
             false,
         );
 
-        // Scale recurrent weights to desired spectral radius
-        // This is a simplified version - proper implementation would compute actual eigenvalues
-        reservoir.w_recurrent *= spectral_radius / reservoir_size as f32;
+        // Scale the recurrent weights so their spectral radius is the one asked
+        // for. This used to divide by `reservoir_size`, which is not the
+        // spectral radius of anything: for a random matrix with i.i.d. entries
+        // of standard deviation s, the radius grows as s*sqrt(N), so dividing
+        // by N undershot by a factor of about sqrt(N) -- and the radius is what
+        // decides whether the reservoir has any memory at all, so undershooting
+        // leaves a state that decays almost immediately.
+        let measured = estimate_spectral_radius(&reservoir.w_recurrent, 60);
+        if measured > f32::EPSILON {
+            reservoir.w_recurrent *= spectral_radius / measured;
+        }
 
         // Readout layer
         let readout = SpikingLinear::new(
@@ -604,6 +659,58 @@ mod tests {
         assert!(
             esn.train_readout(&states, &Array2::zeros((10, 2)), 0.0)
                 .is_err()
+        );
+    }
+
+    /// The reservoir's spectral radius must be the one requested.
+    ///
+    /// It used to be set by dividing the weights by `reservoir_size`, which is
+    /// not the radius of anything: for i.i.d. entries the radius grows as
+    /// s*sqrt(N), so the result undershot by roughly sqrt(N). The radius is
+    /// what gives a reservoir its memory, so a reservoir asked for 0.9 and
+    /// given 0.09 forgets almost immediately.
+    #[test]
+    fn liquid_state_machine_hits_its_spectral_radius() {
+        for &target in &[0.5f32, 0.9, 1.2] {
+            for &size in &[40usize, 120] {
+                let lsm = LiquidStateMachine::new(5, size, 3, target, SNNConfig::default());
+                let measured = estimate_spectral_radius(&lsm.reservoir.w_recurrent, 200);
+                let rel = (measured - target).abs() / target;
+                assert!(
+                    rel < 0.15,
+                    "reservoir of {size} asked for radius {target}, measured {measured}"
+                );
+            }
+        }
+    }
+
+    /// The estimator itself must be right on a matrix whose radius is known.
+    #[test]
+    fn spectral_radius_estimator_is_accurate() {
+        // Diagonal: the radius is the largest magnitude on the diagonal.
+        let mut d = Array2::zeros((4, 4));
+        for (i, v) in [0.3f32, -2.5, 1.1, 0.7].iter().enumerate() {
+            d[[i, i]] = *v;
+        }
+        let est = estimate_spectral_radius(&d, 200);
+        assert!(
+            (est - 2.5).abs() < 1e-2,
+            "diagonal: expected 2.5, got {est}"
+        );
+
+        // A rotation-and-scale block has a complex eigenvalue pair of modulus
+        // r -- the case a Rayleigh quotient cannot handle.
+        let r = 1.7f32;
+        let (c, s) = (0.6f32, 0.8f32);
+        let mut rot = Array2::zeros((2, 2));
+        rot[[0, 0]] = r * c;
+        rot[[0, 1]] = -r * s;
+        rot[[1, 0]] = r * s;
+        rot[[1, 1]] = r * c;
+        let est = estimate_spectral_radius(&rot, 200);
+        assert!(
+            (est - r).abs() < 1e-2,
+            "complex pair: expected {r}, got {est}"
         );
     }
 }
