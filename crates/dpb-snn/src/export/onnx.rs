@@ -1,4 +1,4 @@
-use super::config::{ExportMetadata, LayerConfig};
+use super::config::{ExportMetadata, LayerConfig, LayerType};
 use super::weights::ModelWeights;
 use serde::{Deserialize, Serialize};
 
@@ -372,10 +372,17 @@ impl OnnxExporter {
         output: &str,
         has_bias: bool,
     ) -> Result<OnnxNode, String> {
-        let layer_type_str = layer_config.layer_type.to_string();
-
-        let (op_type, attributes) = if layer_type_str.contains("Linear") {
-            (
+        // Match the layer type itself, not its name.
+        //
+        // This used to stringify the type and test the result for substrings,
+        // then emit attributes marked "Default": every exported convolution
+        // claimed a 3x3 kernel with stride 1 and padding 1, and every recurrent
+        // layer claimed hidden_size 128, whatever the model actually had. The
+        // variants carry those values -- `Display` is what drops them, with
+        // `{ .. }` -- so a 7x1 stride-2 convolution exported as a 3x3 stride-1
+        // one and the file described a different network than the one saved.
+        let (op_type, attributes) = match &layer_config.layer_type {
+            LayerType::SpikingLinear => (
                 "Gemm".to_string(),
                 vec![
                     ("alpha".to_string(), OnnxAttribute::Float(1.0)),
@@ -385,35 +392,68 @@ impl OnnxExporter {
                     ),
                     ("transB".to_string(), OnnxAttribute::Int(1)),
                 ],
-            )
-        } else if layer_type_str.contains("Conv1d") {
-            (
+            ),
+            LayerType::SpikingConv1d {
+                kernel_size,
+                stride,
+                padding,
+            } => (
                 "Conv".to_string(),
                 vec![
-                    ("kernel_shape".to_string(), OnnxAttribute::Ints(vec![3])), // Default
-                    ("strides".to_string(), OnnxAttribute::Ints(vec![1])),
-                    ("pads".to_string(), OnnxAttribute::Ints(vec![1, 1])),
+                    (
+                        "kernel_shape".to_string(),
+                        OnnxAttribute::Ints(vec![*kernel_size as i64]),
+                    ),
+                    (
+                        "strides".to_string(),
+                        OnnxAttribute::Ints(vec![*stride as i64]),
+                    ),
+                    // ONNX `pads` lists the start padding for every spatial
+                    // axis, then the end padding for every axis.
+                    (
+                        "pads".to_string(),
+                        OnnxAttribute::Ints(vec![*padding as i64, *padding as i64]),
+                    ),
                 ],
-            )
-        } else if layer_type_str.contains("Conv2d") {
-            (
+            ),
+            LayerType::SpikingConv2d {
+                kernel_size,
+                stride,
+                padding,
+            } => (
                 "Conv".to_string(),
                 vec![
-                    ("kernel_shape".to_string(), OnnxAttribute::Ints(vec![3, 3])), // Default
-                    ("strides".to_string(), OnnxAttribute::Ints(vec![1, 1])),
-                    ("pads".to_string(), OnnxAttribute::Ints(vec![1, 1, 1, 1])),
+                    (
+                        "kernel_shape".to_string(),
+                        OnnxAttribute::Ints(vec![kernel_size.0 as i64, kernel_size.1 as i64]),
+                    ),
+                    (
+                        "strides".to_string(),
+                        OnnxAttribute::Ints(vec![stride.0 as i64, stride.1 as i64]),
+                    ),
+                    (
+                        "pads".to_string(),
+                        OnnxAttribute::Ints(vec![
+                            padding.0 as i64,
+                            padding.1 as i64,
+                            padding.0 as i64,
+                            padding.1 as i64,
+                        ]),
+                    ),
                 ],
-            )
-        } else if layer_type_str.contains("Recurrent") {
-            (
+            ),
+            LayerType::SpikingRecurrent => (
                 "LSTM".to_string(),
-                vec![
-                    ("hidden_size".to_string(), OnnxAttribute::Int(128)), // Default
-                ],
-            )
-        } else {
-            // Default to identity for unknown types
-            ("Identity".to_string(), vec![])
+                vec![(
+                    "hidden_size".to_string(),
+                    // The layer's own output width, not a constant 128.
+                    OnnxAttribute::Int(layer_config.output_size as i64),
+                )],
+            ),
+            // Encoders, decoders, batch norm and dropout have no ONNX operator
+            // here; passing the tensor through unchanged is at least honest
+            // about that.
+            _ => ("Identity".to_string(), vec![]),
         };
 
         let mut inputs = vec![input.to_string(), format!("{}_weight", name)];
@@ -604,5 +644,138 @@ mod tests {
         let exporter = OnnxExporter::with_default_config();
         let result = exporter.validate(&[1, 2, 3, 4, 5]);
         assert!(result.is_ok());
+    }
+
+    // ---- exported convolution attributes -------------------------------
+
+    fn attr_ints(node: &OnnxNode, key: &str) -> Vec<i64> {
+        node.attributes
+            .iter()
+            .find(|(k, _)| k == key)
+            .map(|(_, v)| match v {
+                OnnxAttribute::Ints(vals) => vals.clone(),
+                other => panic!("{key} is {other:?}, not Ints"),
+            })
+            .unwrap_or_else(|| panic!("node has no {key} attribute"))
+    }
+
+    /// A convolution must export its own kernel, stride and padding.
+    ///
+    /// The exporter used to stringify the layer type and match substrings, then
+    /// emit hardcoded 3x3 / stride 1 / pad 1 attributes marked "Default" -- so
+    /// the file described a different network than the one being saved.
+    #[test]
+    fn conv2d_exports_its_real_geometry() {
+        let exporter = OnnxExporter::new(OnnxConfig::default());
+        let layer = LayerConfig::new(
+            "c1".to_string(),
+            LayerType::SpikingConv2d {
+                kernel_size: (7, 5),
+                stride: (2, 3),
+                padding: (3, 2),
+            },
+            8,
+            16,
+        );
+
+        let node = exporter
+            .create_layer_node(&layer, "c1", "in", "out", true)
+            .unwrap();
+
+        assert_eq!(node.op_type, "Conv");
+        assert_eq!(attr_ints(&node, "kernel_shape"), vec![7, 5]);
+        assert_eq!(attr_ints(&node, "strides"), vec![2, 3]);
+        // ONNX orders pads as all starts then all ends.
+        assert_eq!(attr_ints(&node, "pads"), vec![3, 2, 3, 2]);
+    }
+
+    #[test]
+    fn conv1d_exports_its_real_geometry() {
+        let exporter = OnnxExporter::new(OnnxConfig::default());
+        let layer = LayerConfig::new(
+            "c".to_string(),
+            LayerType::SpikingConv1d {
+                kernel_size: 9,
+                stride: 4,
+                padding: 2,
+            },
+            4,
+            6,
+        );
+
+        let node = exporter
+            .create_layer_node(&layer, "c", "in", "out", false)
+            .unwrap();
+        assert_eq!(attr_ints(&node, "kernel_shape"), vec![9]);
+        assert_eq!(attr_ints(&node, "strides"), vec![4]);
+        assert_eq!(attr_ints(&node, "pads"), vec![2, 2]);
+    }
+
+    /// Two convolutions that differ must export differently. Under the old
+    /// code every convolution exported identically, so this is the check that
+    /// would have caught it regardless of which constants were chosen.
+    #[test]
+    fn different_convolutions_export_differently() {
+        let exporter = OnnxExporter::new(OnnxConfig::default());
+        let make = |k: (usize, usize), s: (usize, usize), p: (usize, usize)| {
+            let layer = LayerConfig::new(
+                "c".to_string(),
+                LayerType::SpikingConv2d {
+                    kernel_size: k,
+                    stride: s,
+                    padding: p,
+                },
+                8,
+                16,
+            );
+            exporter
+                .create_layer_node(&layer, "c", "in", "out", true)
+                .unwrap()
+                .attributes
+        };
+
+        // OnnxAttribute has no PartialEq, so compare the extracted integers.
+        let ints = |attrs: Vec<(String, OnnxAttribute)>| -> Vec<Vec<i64>> {
+            ["kernel_shape", "strides", "pads"]
+                .iter()
+                .map(|key| {
+                    attrs
+                        .iter()
+                        .find(|(k, _)| k == key)
+                        .map(|(_, v)| match v {
+                            OnnxAttribute::Ints(vals) => vals.clone(),
+                            other => panic!("{key} is {other:?}"),
+                        })
+                        .unwrap_or_default()
+                })
+                .collect()
+        };
+
+        assert_ne!(
+            ints(make((3, 3), (1, 1), (1, 1))),
+            ints(make((5, 5), (2, 2), (0, 0))),
+            "two different convolutions produced identical ONNX attributes"
+        );
+    }
+
+    /// A recurrent layer's hidden size is its own width, not a constant.
+    #[test]
+    fn recurrent_exports_its_own_hidden_size() {
+        let exporter = OnnxExporter::new(OnnxConfig::default());
+        let layer = LayerConfig::new("r".to_string(), LayerType::SpikingRecurrent, 10, 37);
+        let node = exporter
+            .create_layer_node(&layer, "r", "in", "out", true)
+            .unwrap();
+        assert_eq!(node.op_type, "LSTM");
+        let hidden = node
+            .attributes
+            .iter()
+            .find(|(k, _)| k == "hidden_size")
+            .map(|(_, v)| match v {
+                OnnxAttribute::Int(i) => *i,
+                other => panic!("hidden_size is {other:?}"),
+            })
+            .expect("no hidden_size attribute");
+        assert_eq!(hidden, 37, "hidden size was not taken from the layer");
     }
 }

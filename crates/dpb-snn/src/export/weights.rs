@@ -241,44 +241,64 @@ impl WeightExporter {
         ) as usize;
         offset += 8;
 
-        // Read metadata
-        if data.len() < offset + metadata_len {
+        // Read metadata.
+        //
+        // `checked_add` rather than `offset + metadata_len`: the length comes
+        // straight off disk, so a corrupt file can carry a value near u64::MAX.
+        // The plain addition overflowed, which panicked here instead of
+        // returning the Err this function is written to return.
+        let metadata_end = offset
+            .checked_add(metadata_len)
+            .ok_or("Metadata length is impossibly large")?;
+        if data.len() < metadata_end {
             return Err("Data too short to contain metadata".to_string());
         }
-        let metadata: WeightMetadata = serde_json::from_slice(&data[offset..offset + metadata_len])
+        let metadata: WeightMetadata = serde_json::from_slice(&data[offset..metadata_end])
             .map_err(|e| format!("Failed to deserialize metadata: {}", e))?;
-        offset += metadata_len;
+        offset = metadata_end;
 
         // Read number of layers
-        if data.len() < offset + 8 {
+        let count_end = offset
+            .checked_add(8)
+            .ok_or("Metadata ran past the end of the file")?;
+        if data.len() < count_end {
             return Err("Data too short to contain layer count".to_string());
         }
         let layer_count = u64::from_le_bytes(
-            data[offset..offset + 8]
+            data[offset..count_end]
                 .try_into()
                 .map_err(|_| "Failed to read layer count")?,
         ) as usize;
-        offset += 8;
+        offset = count_end;
 
         // Read each layer
-        let mut layers = Vec::with_capacity(layer_count);
+        // Not `with_capacity(layer_count)`: the count comes off disk, so a
+        // corrupt file could ask for an allocation of any size before a single
+        // byte of it has been shown to exist.
+        let mut layers = Vec::new();
         for _ in 0..layer_count {
-            if data.len() < offset + 8 {
+            let len_end = offset
+                .checked_add(8)
+                .ok_or("Layer offset overflowed the file")?;
+            if data.len() < len_end {
                 return Err("Data too short to contain layer length".to_string());
             }
             let layer_len = u64::from_le_bytes(
-                data[offset..offset + 8]
+                data[offset..len_end]
                     .try_into()
                     .map_err(|_| "Failed to read layer length")?,
             ) as usize;
-            offset += 8;
+            offset = len_end;
 
-            if data.len() < offset + layer_len {
+            let layer_end = offset
+                .checked_add(layer_len)
+                .ok_or("Layer length is impossibly large")?;
+            if data.len() < layer_end {
                 return Err("Data too short to contain layer data".to_string());
             }
-            let layer: LayerWeights = serde_json::from_slice(&data[offset..offset + layer_len])
+            let layer: LayerWeights = serde_json::from_slice(&data[offset..layer_end])
                 .map_err(|e| format!("Failed to deserialize layer: {}", e))?;
-            offset += layer_len;
+            offset = layer_end;
 
             layers.push(layer);
         }
@@ -499,5 +519,79 @@ mod tests {
     fn test_npz_not_implemented() {
         let weights = create_test_weights();
         assert!(WeightExporter::export(&weights, WeightFormat::Npz).is_err());
+    }
+
+    /// A corrupt or truncated file must be reported, not panicked on.
+    ///
+    /// Every length is read straight off disk, so a damaged file can carry a
+    /// value near u64::MAX. `offset + len` overflowed on that, which panicked
+    /// inside a function whose whole signature is a Result.
+    #[test]
+    fn load_binary_rejects_corrupt_headers() {
+        let meta = b"{}".to_vec();
+
+        let cases: Vec<(&str, Vec<u8>)> = vec![
+            ("empty", vec![]),
+            ("truncated header", vec![1, 2, 3]),
+            ("metadata length near u64::MAX", {
+                let mut v = u64::MAX.to_le_bytes().to_vec();
+                v.extend_from_slice(b"junk");
+                v
+            }),
+            ("metadata length past the end", {
+                let mut v = (1_000_000u64).to_le_bytes().to_vec();
+                v.extend_from_slice(b"junk");
+                v
+            }),
+            ("layer count near u64::MAX", {
+                let mut v = (meta.len() as u64).to_le_bytes().to_vec();
+                v.extend_from_slice(&meta);
+                v.extend_from_slice(&u64::MAX.to_le_bytes());
+                v
+            }),
+            ("layer length near u64::MAX", {
+                let mut v = (meta.len() as u64).to_le_bytes().to_vec();
+                v.extend_from_slice(&meta);
+                v.extend_from_slice(&1u64.to_le_bytes());
+                v.extend_from_slice(&u64::MAX.to_le_bytes());
+                v
+            }),
+        ];
+
+        for (label, bytes) in cases {
+            let result = std::panic::catch_unwind(|| WeightExporter::load_binary(&bytes));
+            match result {
+                Err(_) => panic!("{label}: panicked instead of returning Err"),
+                Ok(Ok(_)) => panic!("{label}: accepted a corrupt file"),
+                Ok(Err(_)) => {}
+            }
+        }
+    }
+
+    /// A well-formed file still round-trips.
+    #[test]
+    fn load_binary_round_trips_a_valid_file() {
+        let weights = ModelWeights {
+            layers: vec![LayerWeights {
+                name: "l0".to_string(),
+                layer_type: "SpikingLinear".to_string(),
+                weights: vec![0.5, -0.25, 1.0],
+                shape: vec![1, 3],
+                bias: Some(vec![0.1]),
+            }],
+            metadata: WeightMetadata {
+                model_name: "probe".to_string(),
+                version: "1".to_string(),
+                created_at: "now".to_string(),
+                total_params: 4,
+                checksum: String::new(),
+            },
+        };
+
+        let bytes = WeightExporter::export_binary(&weights).expect("export");
+        let back = WeightExporter::load_binary(&bytes).expect("a file we just wrote must load");
+        assert_eq!(back.layers.len(), 1);
+        assert_eq!(back.layers[0].weights, weights.layers[0].weights);
+        assert_eq!(back.layers[0].bias, weights.layers[0].bias);
     }
 }
