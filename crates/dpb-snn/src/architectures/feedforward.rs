@@ -12,7 +12,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FeedforwardSNN {
     /// Network layers
-    #[serde(skip)]
     pub layers: Vec<SpikingLinear>,
     /// Layer sizes
     pub layer_sizes: Vec<usize>,

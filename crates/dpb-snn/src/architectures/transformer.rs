@@ -12,13 +12,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpikingTransformer {
     /// Embedding layer
-    #[serde(skip)]
     pub embedding: Option<SpikingLinear>,
     /// Transformer blocks
-    #[serde(skip)]
     pub blocks: Vec<SpikingTransformerBlock>,
     /// Output projection
-    #[serde(skip)]
     pub output_proj: SpikingLinear,
     /// Network configuration
     pub config: SNNConfig,
@@ -165,10 +162,8 @@ impl SNNArchitecture for SpikingTransformer {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpikingTransformerBlock {
     /// Self-attention layer
-    #[serde(skip)]
     pub attention: SpikingAttention,
     /// Feed-forward network
-    #[serde(skip)]
     pub ffn: Vec<SpikingLinear>,
     /// Layer normalization parameters (simplified)
     pub norm1_scale: f32,

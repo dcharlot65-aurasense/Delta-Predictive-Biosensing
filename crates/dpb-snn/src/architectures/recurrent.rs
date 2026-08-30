@@ -12,13 +12,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RecurrentSNN {
     /// Input projection layer
-    #[serde(skip)]
     pub input_layer: Option<SpikingLinear>,
     /// Recurrent layers
-    #[serde(skip)]
     pub recurrent_layers: Vec<SpikingRNN>,
     /// Output layer
-    #[serde(skip)]
     pub output_layer: SpikingLinear,
     /// Network configuration
     pub config: SNNConfig,
@@ -176,10 +173,8 @@ impl SNNArchitecture for RecurrentSNN {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LiquidStateMachine {
     /// Reservoir layer (randomly initialized, typically not trained)
-    #[serde(skip)]
     pub reservoir: SpikingRNN,
     /// Readout layer (trained)
-    #[serde(skip)]
     pub readout: SpikingLinear,
     /// Network configuration
     pub config: SNNConfig,
@@ -284,7 +279,6 @@ impl SNNArchitecture for LiquidStateMachine {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EchoStateSNN {
     /// Reservoir
-    #[serde(skip)]
     pub reservoir: SpikingRNN,
     /// Output weights (trained with simple regression)
     pub output_weights: Array2<f32>,

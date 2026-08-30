@@ -12,13 +12,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConvolutionalSNN {
     /// Convolutional layers
-    #[serde(skip)]
     pub conv_layers: Vec<SpikingConv2d>,
     /// Pooling layers
-    #[serde(skip)]
     pub pool_layers: Vec<SpikingSumPool2d>,
     /// Fully connected layers
-    #[serde(skip)]
     pub fc_layers: Vec<SpikingLinear>,
     /// Network configuration
     pub config: SNNConfig,
@@ -249,13 +246,10 @@ impl SNNArchitecture for ConvolutionalSNN {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpikingVGG {
     /// Network blocks
-    #[serde(skip)]
     pub conv_blocks: Vec<Vec<SpikingConv2d>>,
     /// Pooling layers
-    #[serde(skip)]
     pub pool_layers: Vec<SpikingSumPool2d>,
     /// Classifier
-    #[serde(skip)]
     pub classifier: Vec<SpikingLinear>,
     /// Config
     pub config: SNNConfig,
@@ -472,13 +466,10 @@ impl SNNArchitecture for SpikingVGG {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpikingResNet {
     /// Initial conv layer
-    #[serde(skip)]
     pub initial_conv: SpikingConv2d,
     /// Residual blocks
-    #[serde(skip)]
     pub res_blocks: Vec<ResidualBlock>,
     /// Final classifier
-    #[serde(skip)]
     pub classifier: SpikingLinear,
     /// Config
     pub config: SNNConfig,
@@ -489,11 +480,8 @@ pub struct SpikingResNet {
 /// Residual block for Spiking ResNet
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResidualBlock {
-    #[serde(skip)]
     pub conv1: SpikingConv2d,
-    #[serde(skip)]
     pub conv2: SpikingConv2d,
-    #[serde(skip)]
     pub shortcut: Option<SpikingConv2d>,
 }
 

@@ -12,10 +12,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpikingGCN {
     /// Graph convolutional layers
-    #[serde(skip)]
     pub gcn_layers: Vec<SpikingGraphConvLayer>,
     /// Output layer
-    #[serde(skip)]
     pub output_layer: SpikingLinear,
     /// Adjacency matrix (normalized)
     pub adjacency: Array2<f32>,
