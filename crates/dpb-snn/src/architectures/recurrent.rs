@@ -311,41 +311,146 @@ impl EchoStateSNN {
         }
     }
 
-    /// Train readout using ridge regression
+    /// Fit the readout by ridge regression.
+    ///
+    /// `states` is `(n_samples, reservoir_size)` -- the reservoir's response to
+    /// the training input -- and `targets` is `(n_samples, output_size)`. Only
+    /// the readout is fitted; the reservoir is left alone, which is the whole
+    /// idea of an echo state network.
+    ///
+    /// Solves `(X'X + lambda I) W = X'Y` by Cholesky decomposition. The matrix
+    /// is symmetric and, for `lambda > 0`, positive definite, so Cholesky is
+    /// both the right factorisation and cheaper than a general inverse.
+    ///
+    /// This used to build `X'X`, add the ridge term, and then stop at a comment
+    /// reading "would need matrix inversion" -- never assigning
+    /// `output_weights`, which are initialised to zero. The readout therefore
+    /// stayed zero however much data it was given, and the network predicted
+    /// zero for every input, reporting Ok(()) each time.
     pub fn train_readout(
         &mut self,
         states: &Array2<f32>,
-        _targets: &Array2<f32>,
+        targets: &Array2<f32>,
         ridge_param: f32,
     ) -> SNNResult<()> {
-        // Simplified ridge regression: W = Y X^T (X X^T + λI)^-1
-        // In practice, use proper linear algebra library for this
+        let (n_samples, reservoir_size) = (states.shape()[0], states.shape()[1]);
+        let output_size = self.output_weights.shape()[0];
 
-        let n_samples = states.shape()[0];
-        let reservoir_size = states.shape()[1];
-
-        // Compute X X^T
-        let mut xxt = Array2::zeros((reservoir_size, reservoir_size));
-        for i in 0..reservoir_size {
-            for j in 0..reservoir_size {
-                let mut sum = 0.0;
-                for k in 0..n_samples {
-                    sum += states[[k, i]] * states[[k, j]];
-                }
-                xxt[[i, j]] = sum;
-            }
+        if targets.shape()[0] != n_samples {
+            return Err(SNNError::DimensionMismatch {
+                expected: format!("{n_samples} target rows"),
+                actual: format!("{}", targets.shape()[0]),
+            });
+        }
+        if targets.shape()[1] != output_size {
+            return Err(SNNError::DimensionMismatch {
+                expected: format!("{output_size} target columns"),
+                actual: format!("{}", targets.shape()[1]),
+            });
+        }
+        if reservoir_size != self.output_weights.shape()[1] {
+            return Err(SNNError::DimensionMismatch {
+                expected: format!("{} state columns", self.output_weights.shape()[1]),
+                actual: format!("{reservoir_size}"),
+            });
+        }
+        if ridge_param <= 0.0 {
+            return Err(SNNError::InvalidConfig(
+                "ridge_param must be positive: it is what makes the normal \
+                 equations solvable when the reservoir states are collinear, \
+                 which they generally are"
+                    .to_string(),
+            ));
         }
 
-        // Add ridge parameter to diagonal
+        // A = X'X + lambda I
+        let mut a = states.t().dot(states);
         for i in 0..reservoir_size {
-            xxt[[i, i]] += ridge_param;
+            a[[i, i]] += ridge_param;
         }
+        // B = X'Y
+        let b = states.t().dot(targets);
 
-        // This is a placeholder - would need matrix inversion
-        // self.output_weights = targets.t().dot(&states).dot(&xxt_inv);
+        let l = cholesky(&a)?;
+        let z = cholesky_solve(&l, &b);
 
+        // Z is (reservoir, output); the readout is stored transposed.
+        self.output_weights = z.t().to_owned();
         Ok(())
     }
+
+    /// Apply the trained readout to reservoir states.
+    ///
+    /// Returns `(n_samples, output_size)`. Without this the fitted weights had
+    /// no consumer at all -- nothing in the type read `output_weights`.
+    pub fn predict(&self, states: &Array2<f32>) -> SNNResult<Array2<f32>> {
+        if states.shape()[1] != self.output_weights.shape()[1] {
+            return Err(SNNError::DimensionMismatch {
+                expected: format!("{} state columns", self.output_weights.shape()[1]),
+                actual: format!("{}", states.shape()[1]),
+            });
+        }
+        Ok(states.dot(&self.output_weights.t()))
+    }
+}
+
+/// Cholesky decomposition of a symmetric positive-definite matrix.
+///
+/// Returns the lower-triangular `L` with `A = L L'`. Errors rather than
+/// producing NaNs if the matrix turns out not to be positive definite, which
+/// for these normal equations means the ridge term was too small to lift a
+/// singular `X'X`.
+fn cholesky(a: &Array2<f32>) -> SNNResult<Array2<f32>> {
+    let n = a.shape()[0];
+    let mut l = Array2::zeros((n, n));
+    for i in 0..n {
+        for j in 0..=i {
+            let mut sum = a[[i, j]];
+            for k in 0..j {
+                sum -= l[[i, k]] * l[[j, k]];
+            }
+            if i == j {
+                if sum <= 0.0 {
+                    return Err(SNNError::InvalidConfig(format!(
+                        "readout normal equations are not positive definite at \
+                         pivot {i} (got {sum}); increase ridge_param"
+                    )));
+                }
+                l[[i, j]] = sum.sqrt();
+            } else {
+                l[[i, j]] = sum / l[[j, j]];
+            }
+        }
+    }
+    Ok(l)
+}
+
+/// Solves `L L' Z = B` for `Z`, one right-hand side column at a time.
+fn cholesky_solve(l: &Array2<f32>, b: &Array2<f32>) -> Array2<f32> {
+    let n = l.shape()[0];
+    let cols = b.shape()[1];
+    let mut z = Array2::zeros((n, cols));
+
+    for c in 0..cols {
+        // Forward substitution: L y = b
+        let mut y = vec![0.0f32; n];
+        for i in 0..n {
+            let mut sum = b[[i, c]];
+            for k in 0..i {
+                sum -= l[[i, k]] * y[k];
+            }
+            y[i] = sum / l[[i, i]];
+        }
+        // Back substitution: L' x = y
+        for i in (0..n).rev() {
+            let mut sum = y[i];
+            for k in (i + 1)..n {
+                sum -= l[[k, i]] * z[[k, c]];
+            }
+            z[[i, c]] = sum / l[[i, i]];
+        }
+    }
+    z
 }
 
 #[cfg(test)]
@@ -394,5 +499,111 @@ mod tests {
         let lsm = LiquidStateMachine::new(5, 20, 2, 0.9, SNNConfig::default());
         let states = lsm.get_reservoir_state();
         assert_eq!(states.len(), 0); // No state until forward pass
+    }
+
+    // ---- echo state readout -------------------------------------------
+
+    /// The readout must recover a linear map it was trained on.
+    ///
+    /// `train_readout` used to compute the normal equations and then stop at a
+    /// comment, never assigning the weights, which start at zero -- so the
+    /// network predicted zero for every input no matter how much data it saw,
+    /// returning Ok(()) each time. Fitting an exactly-linear target is the
+    /// sharpest check: with a small ridge term the recovered map should be very
+    /// close to the true one.
+    #[test]
+    fn echo_state_readout_recovers_a_linear_map() {
+        let (samples, reservoir, outputs) = (60usize, 6usize, 2usize);
+        let mut esn = EchoStateSNN::new(3, reservoir, outputs, SNNConfig::default());
+
+        // Deterministic, well-conditioned states.
+        let states = Array2::from_shape_fn((samples, reservoir), |(s, r)| {
+            ((s * 7 + r * 13) % 11) as f32 * 0.3 - 1.5
+        });
+        // A known map from states to targets.
+        let truth = Array2::from_shape_fn((outputs, reservoir), |(o, r)| {
+            0.4 - 0.15 * (o as f32) + 0.07 * (r as f32)
+        });
+        let targets = states.dot(&truth.t());
+
+        // Before training, the readout is zero and predicts zero.
+        let before = esn.predict(&states).unwrap();
+        assert_eq!(
+            before.iter().map(|v| v.abs()).sum::<f32>(),
+            0.0,
+            "an untrained readout should predict zero"
+        );
+
+        esn.train_readout(&states, &targets, 1e-6).unwrap();
+
+        let learned = &esn.output_weights;
+        let err: f32 =
+            (learned - &truth).iter().map(|d| d.abs()).sum::<f32>() / (outputs * reservoir) as f32;
+        assert!(
+            err < 1e-3,
+            "readout did not recover the map: mean |error| {err}\nlearned {learned:?}\ntruth {truth:?}"
+        );
+
+        // And prediction reproduces the targets.
+        let predicted = esn.predict(&states).unwrap();
+        let pred_err: f32 = (&predicted - &targets).iter().map(|d| d.abs()).sum::<f32>()
+            / (samples * outputs) as f32;
+        assert!(
+            pred_err < 1e-3,
+            "predictions are off by {pred_err} on average"
+        );
+    }
+
+    /// A larger ridge term must shrink the readout toward zero, which is what
+    /// the parameter is for.
+    #[test]
+    fn echo_state_ridge_parameter_shrinks_the_readout() {
+        let (samples, reservoir, outputs) = (40usize, 5usize, 1usize);
+        let states = Array2::from_shape_fn((samples, reservoir), |(s, r)| {
+            ((s * 5 + r * 3) % 7) as f32 * 0.4 - 1.0
+        });
+        let truth = Array2::from_shape_fn((outputs, reservoir), |(_, r)| 0.5 + 0.1 * r as f32);
+        let targets = states.dot(&truth.t());
+
+        let norm = |ridge: f32| {
+            let mut esn = EchoStateSNN::new(2, reservoir, outputs, SNNConfig::default());
+            esn.train_readout(&states, &targets, ridge).unwrap();
+            esn.output_weights.iter().map(|w| w * w).sum::<f32>().sqrt()
+        };
+
+        let light = norm(1e-6);
+        let heavy = norm(1e4);
+        assert!(
+            heavy < light,
+            "a heavy ridge ({heavy}) should shrink the readout below a light one ({light})"
+        );
+    }
+
+    /// Mismatched shapes and a non-positive ridge are reported, not ignored.
+    #[test]
+    fn echo_state_readout_validates_its_input() {
+        let mut esn = EchoStateSNN::new(2, 4, 2, SNNConfig::default());
+        let states = Array2::zeros((10, 4));
+
+        // Wrong number of target rows.
+        assert!(
+            esn.train_readout(&states, &Array2::zeros((9, 2)), 1e-3)
+                .is_err()
+        );
+        // Wrong number of target columns.
+        assert!(
+            esn.train_readout(&states, &Array2::zeros((10, 3)), 1e-3)
+                .is_err()
+        );
+        // Wrong state width.
+        assert!(
+            esn.train_readout(&Array2::zeros((10, 5)), &Array2::zeros((10, 2)), 1e-3)
+                .is_err()
+        );
+        // A zero ridge leaves the normal equations singular here.
+        assert!(
+            esn.train_readout(&states, &Array2::zeros((10, 2)), 0.0)
+                .is_err()
+        );
     }
 }

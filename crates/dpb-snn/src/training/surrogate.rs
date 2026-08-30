@@ -287,11 +287,14 @@ impl std::fmt::Debug for BPTT {
 
 impl BPTT {
     pub fn new(surrogate_type: SurrogateType, num_steps: Option<usize>) -> Self {
+        // One implementation per kind. Triangle used to resolve to a box and
+        // Exponential to SuperSpike, both marked "Simplified", so two of the
+        // five kinds silently selected a different function than the one named.
         let surrogate: Box<dyn SurrogateGradient> = match surrogate_type {
-            SurrogateType::Box => Box::new(BoxSurrogate::new(1.0)),
-            SurrogateType::Triangle => Box::new(BoxSurrogate::new(1.0)), // Simplified
+            SurrogateType::Box => Box::new(BoxSurrogate::new(2.0)),
+            SurrogateType::Triangle => Box::new(TriangleSurrogate::new(1.0)),
             SurrogateType::FastSigmoid => Box::new(FastSigmoidSurrogate::new(10.0)),
-            SurrogateType::Exponential => Box::new(SuperSpikeSurrogate::new(10.0)), // Simplified
+            SurrogateType::Exponential => Box::new(ExponentialSurrogate::new(1.0, 5.0)),
             SurrogateType::SuperSpike => Box::new(SuperSpikeSurrogate::new(10.0)),
         };
 
@@ -301,36 +304,52 @@ impl BPTT {
         }
     }
 
-    /// Compute gradients through time
+    /// Applies the surrogate across the time axis, within the truncation window.
+    ///
+    /// `output_grad` and `v_mem` are both `(batch, steps, neurons)`. Each
+    /// gradient element is scaled by the surrogate evaluated at the membrane
+    /// potential of *that same* element. Steps older than `num_steps` from the
+    /// end receive zero, which is what truncating backpropagation through time
+    /// means: the window is where gradient is allowed to flow.
+    ///
+    /// What this does NOT do is propagate gradient between steps. It cannot:
+    /// carrying `dL/dv[t]` back to `v[t-1]` needs the recurrent weights and the
+    /// membrane decay, and this type holds neither. That propagation lives in
+    /// the layers' own backward passes -- [`crate::layers::SpikingRNN::backward`]
+    /// and its siblings -- which have the parameters to do it.
+    ///
+    /// The previous version took a slice of per-step arrays and, for each step
+    /// `t`, scaled *every* element of a full gradient copy by the membrane at
+    /// that one step: the loop discarded each element's own time index
+    /// (`for ((b, _, n), g) in ...`) and substituted the outer `t`. It also
+    /// indexed `v_mem_history[t][[b, t, n]]`, so a genuine per-step history --
+    /// arrays of one step each -- panicked for every `t > 0`.
     pub fn backward(
         &self,
         output_grad: &Array3<f32>,
-        v_mem_history: &[Array3<f32>],
+        v_mem: &Array3<f32>,
         threshold: f32,
-    ) -> SNNResult<Vec<Array3<f32>>> {
-        let num_actual_steps = v_mem_history.len();
-        let bptt_steps = self
-            .num_steps
-            .unwrap_or(num_actual_steps)
-            .min(num_actual_steps);
-
-        let mut gradients = vec![Array3::zeros(output_grad.raw_dim()); num_actual_steps];
-
-        // Backpropagate through time
-        for t in (num_actual_steps - bptt_steps..num_actual_steps).rev() {
-            // Compute surrogate gradient for this time step
-            let v_mem = &v_mem_history[t];
-            let mut grad_t = output_grad.clone();
-
-            // Apply surrogate gradient
-            for ((b, _, n), grad_val) in grad_t.indexed_iter_mut() {
-                *grad_val *= self.surrogate.compute_gradient(v_mem[[b, t, n]], threshold);
-            }
-
-            gradients[t] = grad_t;
+    ) -> SNNResult<Array3<f32>> {
+        if output_grad.shape() != v_mem.shape() {
+            return Err(crate::SNNError::DimensionMismatch {
+                expected: format!("membrane history shaped {:?}", output_grad.shape()),
+                actual: format!("{:?}", v_mem.shape()),
+            });
         }
 
-        Ok(gradients)
+        let num_steps = output_grad.shape()[1];
+        let window = self.num_steps.unwrap_or(num_steps).min(num_steps);
+        let first = num_steps - window;
+
+        let mut out = Array3::zeros(output_grad.raw_dim());
+        for ((b, t, n), slot) in out.indexed_iter_mut() {
+            if t < first {
+                continue;
+            }
+            *slot = output_grad[[b, t, n]]
+                * self.surrogate.compute_gradient(v_mem[[b, t, n]], threshold);
+        }
+        Ok(out)
     }
 }
 
@@ -451,5 +470,91 @@ mod tests {
     fn test_bptt_creation() {
         let bptt = BPTT::new(SurrogateType::FastSigmoid, Some(20));
         assert_eq!(bptt.num_steps, Some(20));
+    }
+
+    // ---- BPTT ----------------------------------------------------------
+
+    /// Each gradient element must be scaled by the membrane at its OWN step.
+    ///
+    /// The old loop discarded the element's time index and used the outer
+    /// loop's instead, so every step was scaled by one step's membrane.
+    #[test]
+    fn bptt_scales_each_step_by_its_own_membrane() {
+        let (batch, steps, neurons) = (1, 4, 1);
+        let bptt = BPTT::new(SurrogateType::Box, None);
+        let threshold = 1.0;
+
+        // Only step 2 sits inside the Box window; the rest are far away.
+        let mut v = Array3::from_elem((batch, steps, neurons), 50.0);
+        v[[0, 2, 0]] = threshold;
+        let grad = Array3::from_elem((batch, steps, neurons), 1.0);
+
+        let out = bptt.backward(&grad, &v, threshold).unwrap();
+        assert!(out[[0, 2, 0]] > 0.0, "the in-window step got no gradient");
+        for t in [0usize, 1, 3] {
+            assert_eq!(
+                out[[0, t, 0]],
+                0.0,
+                "step {t} is far from threshold and should have been zeroed, \
+                 but was scaled by another step's membrane"
+            );
+        }
+    }
+
+    /// The truncation window must actually truncate.
+    #[test]
+    fn bptt_truncation_window_zeroes_older_steps() {
+        let (batch, steps, neurons) = (1, 6, 1);
+        let bptt = BPTT::new(SurrogateType::Box, Some(2));
+        let threshold = 1.0;
+
+        // Every step is in the surrogate's window, so only truncation can
+        // zero anything.
+        let v = Array3::from_elem((batch, steps, neurons), threshold);
+        let grad = Array3::from_elem((batch, steps, neurons), 1.0);
+
+        let out = bptt.backward(&grad, &v, threshold).unwrap();
+        for t in 0..4 {
+            assert_eq!(out[[0, t, 0]], 0.0, "step {t} is outside the window");
+        }
+        for t in 4..6 {
+            assert!(out[[0, t, 0]] > 0.0, "step {t} is inside the window");
+        }
+    }
+
+    /// A per-step history is a shape error, not a panic.
+    #[test]
+    fn bptt_reports_a_shape_mismatch() {
+        let bptt = BPTT::new(SurrogateType::FastSigmoid, None);
+        let grad = Array3::zeros((1, 4, 2));
+        let wrong = Array3::zeros((1, 1, 2));
+        assert!(bptt.backward(&grad, &wrong, 1.0).is_err());
+    }
+
+    /// Each surrogate kind must select its own implementation here too.
+    #[test]
+    fn bptt_surrogate_kinds_are_distinct() {
+        let probes = [0.2f32, 0.6, 0.95, 1.4, 2.0];
+        let mut seen: Vec<Vec<f32>> = Vec::new();
+        for kind in [
+            SurrogateType::Box,
+            SurrogateType::Triangle,
+            SurrogateType::FastSigmoid,
+            SurrogateType::Exponential,
+            SurrogateType::SuperSpike,
+        ] {
+            let b = BPTT::new(kind, None);
+            seen.push(
+                probes
+                    .iter()
+                    .map(|v| b.surrogate.compute_gradient(*v, 1.0))
+                    .collect(),
+            );
+        }
+        for i in 0..seen.len() {
+            for j in (i + 1)..seen.len() {
+                assert_ne!(seen[i], seen[j], "two kinds resolve to the same function");
+            }
+        }
     }
 }
