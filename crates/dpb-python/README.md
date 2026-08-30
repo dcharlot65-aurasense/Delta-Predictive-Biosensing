@@ -14,7 +14,11 @@ shader validation.
 equivalent: the van Rossum spike distance and the learning-rate schedules.
 
 **Training** runs through `Trainer`, which drives the Rust surrogate-gradient
-trainer over a stack of `SpikingLinear` layers. `fit` takes any iterable of
+trainer over a stack of `SpikingLinear` layers. `optimizer` takes a name
+(`'adam'`, `'sgd'`, `'momentum'`) or an `Adam`/`SGD` instance, whose learning
+rate and hyperparameters are then the ones used. Calling `step()` on an
+optimizer directly raises: an optimizer holds no parameters, so there is
+nothing for it to update. `fit` takes any iterable of
 `(inputs, targets)` pairs -- `inputs` shaped `(batch, time_steps, input_size)`,
 `targets` shaped `(batch, output_size)` as per-neuron firing rates in `[0, 1]`.
 Both go through `numpy.asarray(..., dtype='float32')`, so lists and float64

@@ -137,12 +137,14 @@ impl PySpikingLayer {
 #[allow(dead_code)]
 pub struct PySpikingLinear {
     neuron_type: String,
-    // Python-visible mirrors of the layer's parameters, refreshed by
-    // `training::PyTrainer::write_back` after a fit.
-    pub(crate) weights: Vec<Vec<f32>>,
-    pub(crate) biases: Vec<f32>,
-    /// The library layer this delegates to. Visible to `training`, which
-    /// pulls it out to build a Rust-side trainer.
+    /// The library layer this delegates to, and the single home of the
+    /// parameters.
+    ///
+    /// There used to be `weights` and `biases` mirrors beside it. They were
+    /// initialised to a constant 0.1 while `inner` was initialised randomly, so
+    /// `get_weights` reported numbers unrelated to the ones `forward` used, and
+    /// `set_weights` wrote to the mirror only -- assigning weights was a silent
+    /// no-op on the forward pass. One home for the parameters removes both.
     pub(crate) inner: SpikingLinear,
 }
 
@@ -159,10 +161,6 @@ impl PySpikingLinear {
         neuron: &str,
         weight_init: &str,
     ) -> PyClassInitializer<Self> {
-        // Initialize weights
-        let weights = vec![vec![0.1; input_size]; output_size];
-        let biases = vec![0.0; output_size];
-
         PyClassInitializer::from(PySpikingLayer {
             name: "SpikingLinear".to_string(),
             input_size,
@@ -170,8 +168,6 @@ impl PySpikingLinear {
         })
         .add_subclass(Self {
             neuron_type: neuron.to_string(),
-            weights,
-            biases,
             inner: SpikingLinear::new(
                 input_size,
                 output_size,
@@ -183,9 +179,16 @@ impl PySpikingLinear {
         })
     }
 
-    /// Get weights as numpy array
+    /// Weights as a numpy array, shape `(output_size, input_size)`.
     fn get_weights(&self, py: Python) -> PyResult<Py<PyArray2<f32>>> {
-        Ok(PyArray2::from_vec2(py, &self.weights)
+        let rows: Vec<Vec<f32>> = self
+            .inner
+            .weights
+            .rows()
+            .into_iter()
+            .map(|r| r.to_vec())
+            .collect();
+        Ok(PyArray2::from_vec2(py, &rows)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
             .into())
     }
@@ -195,7 +198,8 @@ impl PySpikingLinear {
         let array = weights.as_array();
         let shape = array.shape();
 
-        if shape[0] != self.weights.len() || shape[1] != self.weights[0].len() {
+        let expected = self.inner.weights.shape().to_vec();
+        if shape[0] != expected[0] || shape[1] != expected[1] {
             return Err(pyo3::exceptions::PyValueError::new_err(
                 "Weight shape mismatch",
             ));
@@ -203,10 +207,6 @@ impl PySpikingLinear {
 
         for i in 0..shape[0] {
             for j in 0..shape[1] {
-                self.weights[i][j] = array[[i, j]];
-                // The mirror alone is not enough: `forward` runs on
-                // `self.inner`, so without this the assignment would be a
-                // silent no-op on everything except `get_weights`.
                 self.inner.weights[[i, j]] = array[[i, j]];
             }
         }
@@ -217,7 +217,7 @@ impl PySpikingLinear {
     fn forward(&mut self, input_spikes: &PySpikeTrain, dt: f32) -> PyResult<PySpikeTrain> {
         // Delegated to `dpb_snn::SpikingLinear`. The train is binned onto a `dt`
         // grid on the way in and read back out as timed events.
-        let input_size = self.weights.first().map_or(0, |row| row.len());
+        let input_size = self.inner.weights.shape()[1];
         let tensor = train_to_tensor(input_spikes, dt, input_size);
 
         let output = self

@@ -230,16 +230,29 @@ impl PyOptimizer {
         }
     }
 
-    /// Perform optimization step
+    /// Not usable on its own.
+    ///
+    /// An optimizer object holds hyperparameters; it holds no parameters and no
+    /// gradients, so there is nothing here for it to update. Both of these used
+    /// to return Ok(()), so a training loop written around `optimizer.step()`
+    /// ran to completion having changed nothing.
+    ///
+    /// Pass the optimizer to `Trainer`, which owns the parameters and drives the
+    /// real update.
     fn step(&mut self) -> PyResult<()> {
-        // Base implementation
-        Ok(())
+        Err(pyo3::exceptions::PyNotImplementedError::new_err(
+            "Optimizer.step() does nothing on its own: an optimizer holds no \
+             parameters. Pass this optimizer to Trainer(model, optimizer=...) \
+             and call Trainer.fit, which performs the update.",
+        ))
     }
 
-    /// Zero gradients
+    /// Not usable on its own; see [`Self::step`].
     fn zero_grad(&mut self) -> PyResult<()> {
-        // Base implementation
-        Ok(())
+        Err(pyo3::exceptions::PyNotImplementedError::new_err(
+            "Optimizer.zero_grad() does nothing on its own: an optimizer holds \
+             no gradients. Trainer clears them at each step.",
+        ))
     }
 
     #[getter]
@@ -276,14 +289,13 @@ impl PyOptimizer {
 ///     >>> optimizer = Adam(learning_rate=0.001)
 ///     >>> optimizer.step()
 #[pyclass(name = "Adam", extends=PyOptimizer)]
-// Recorded from the Python-side constructor. The wrapper does not consume
-// these yet, but dropping them would silently discard what a caller
-// passed through the binding.
-#[allow(dead_code)]
 pub struct PyAdam {
-    beta1: f32,
-    beta2: f32,
-    epsilon: f32,
+    pub(crate) beta1: f32,
+    pub(crate) beta2: f32,
+    /// Recorded for completeness. The Rust `AdamOptimizer` fixes epsilon at
+    /// 1e-8 internally and exposes no way to set it, so this value is reported
+    /// back but does not reach the update.
+    pub(crate) epsilon: f32,
 }
 
 #[pymethods]
@@ -301,6 +313,27 @@ impl PyAdam {
             epsilon,
         })
     }
+
+    /// Exponential decay rate for the first moment estimate.
+    #[getter]
+    fn beta1(&self) -> f32 {
+        self.beta1
+    }
+
+    /// Exponential decay rate for the second moment estimate.
+    #[getter]
+    fn beta2(&self) -> f32 {
+        self.beta2
+    }
+
+    /// Denominator constant.
+    ///
+    /// Reported back as given, but the Rust optimizer fixes it at 1e-8 and
+    /// exposes no way to change it, so setting this does not affect training.
+    #[getter]
+    fn epsilon(&self) -> f32 {
+        self.epsilon
+    }
 }
 
 /// SGD optimizer
@@ -316,13 +349,9 @@ impl PyAdam {
 ///     >>> optimizer = SGD(learning_rate=0.01, momentum=0.9)
 ///     >>> optimizer.step()
 #[pyclass(name = "SGD", extends=PyOptimizer)]
-// Recorded from the Python-side constructor. The wrapper does not consume
-// these yet, but dropping them would silently discard what a caller
-// passed through the binding.
-#[allow(dead_code)]
 pub struct PySGD {
-    momentum: f32,
-    weight_decay: f32,
+    pub(crate) momentum: f32,
+    pub(crate) weight_decay: f32,
 }
 
 #[pymethods]
@@ -338,6 +367,18 @@ impl PySGD {
             momentum,
             weight_decay,
         })
+    }
+
+    /// Momentum factor.
+    #[getter]
+    fn momentum(&self) -> f32 {
+        self.momentum
+    }
+
+    /// L2 regularization coefficient.
+    #[getter]
+    fn weight_decay(&self) -> f32 {
+        self.weight_decay
     }
 }
 
@@ -424,7 +465,7 @@ impl PyTrainer {
     #[pyo3(signature = (
         model,
         loss="spike_count",
-        optimizer="adam",
+        optimizer=None,
         learning_rate=0.001,
         surrogate="fast_sigmoid",
         target_rate=0.5,
@@ -432,24 +473,36 @@ impl PyTrainer {
     fn new(
         model: Py<PyAny>,
         loss: &str,
-        optimizer: &str,
+        optimizer: Option<Py<PyAny>>,
         learning_rate: f32,
         surrogate: &str,
         target_rate: f32,
         py: Python,
     ) -> PyResult<Self> {
         let layers = collect_layers(model.bind(py))?;
+
+        // `optimizer` accepts a name or an `Adam`/`SGD` instance; an instance
+        // brings its own learning rate and hyperparameters.
+        let (built, lr, name) = match optimizer {
+            Some(ref obj) => optimizer_from_arg(obj.bind(py), learning_rate)?,
+            None => (
+                build_optimizer("adam", learning_rate)?,
+                learning_rate,
+                "adam".to_string(),
+            ),
+        };
+
         let inner = RustTrainer::new(
             layers,
             build_loss(loss, target_rate)?,
-            build_optimizer(optimizer, learning_rate)?,
+            built,
             parse_surrogate(surrogate)?,
         );
         Ok(Self {
             model,
             loss_name: loss.to_string(),
-            optimizer_name: optimizer.to_string(),
-            learning_rate,
+            optimizer_name: name,
+            learning_rate: lr,
             callbacks: Vec::new(),
             history: HashMap::new(),
             inner,
@@ -815,6 +868,56 @@ fn build_optimizer(name: &str, learning_rate: f32) -> PyResult<Box<dyn Optimizer
     }
 }
 
+/// Builds the Rust optimizer from whatever the caller passed for `optimizer`.
+///
+/// Accepts a name, or an `Adam`/`SGD` instance. The instances used to be inert:
+/// their hyperparameters were recorded at construction and then never read,
+/// because `Trainer` took only a name and built its own optimizer from
+/// defaults. Passing `Adam(learning_rate=0.01, beta1=0.5)` therefore trained at
+/// whatever `learning_rate` was passed separately, with beta1 = 0.9.
+///
+/// Returns the optimizer along with the learning rate it was built with, since
+/// an instance carries its own and it overrides the `learning_rate` argument.
+fn optimizer_from_arg(
+    arg: &Bound<'_, PyAny>,
+    fallback_lr: f32,
+) -> PyResult<(Box<dyn Optimizer>, f32, String)> {
+    if let Ok(name) = arg.extract::<String>() {
+        return Ok((build_optimizer(&name, fallback_lr)?, fallback_lr, name));
+    }
+
+    // An instance carries its own learning rate on the base class.
+    let base = arg.extract::<PyRef<'_, PyOptimizer>>().map_err(|_| {
+        pyo3::exceptions::PyTypeError::new_err(
+            "optimizer must be a name ('adam', 'sgd', 'momentum') or an Adam or \
+             SGD instance",
+        )
+    })?;
+    let lr = base.learning_rate;
+    let name = base.name.clone();
+    drop(base);
+
+    if let Ok(adam) = arg.extract::<PyRef<'_, PyAdam>>() {
+        return Ok((
+            Box::new(AdamOptimizer::new(lr, adam.beta1, adam.beta2, 0.0)),
+            lr,
+            name,
+        ));
+    }
+    if let Ok(sgd) = arg.extract::<PyRef<'_, PySGD>>() {
+        return Ok((
+            Box::new(SGDOptimizer::new(lr, sgd.momentum, sgd.weight_decay)),
+            lr,
+            name,
+        ));
+    }
+
+    Err(pyo3::exceptions::PyTypeError::new_err(format!(
+        "optimizer '{name}' is not a supported instance; use Adam or SGD, or \
+         pass a name"
+    )))
+}
+
 fn parse_surrogate(name: &str) -> PyResult<SurrogateType> {
     match name {
         "fast_sigmoid" => Ok(SurrogateType::FastSigmoid),
@@ -920,18 +1023,8 @@ impl PyTrainer {
                 continue;
             };
             let mut layer = obj.bind(py).extract::<PyRefMut<'_, PySpikingLinear>>()?;
+            // One assignment: the layer keeps no separate copy to refresh.
             layer.inner = trained.clone();
-            layer.weights = trained
-                .weights
-                .rows()
-                .into_iter()
-                .map(|row| row.to_vec())
-                .collect();
-            layer.biases = trained
-                .bias
-                .as_ref()
-                .map(|b| b.to_vec())
-                .unwrap_or_default();
         }
         Ok(())
     }
