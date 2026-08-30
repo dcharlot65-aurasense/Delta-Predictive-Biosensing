@@ -47,7 +47,6 @@ impl PruningStrategy {
     }
 
     fn magnitude_prune(&self, weights: &mut Array2<f64>, threshold: f64) -> PruningStats {
-        let total = weights.len();
         let mut pruned = 0;
 
         for w in weights.iter_mut() {
@@ -57,16 +56,11 @@ impl PruningStrategy {
             }
         }
 
-        PruningStats {
-            total_weights: total,
-            pruned_weights: pruned,
-            sparsity: pruned as f64 / total as f64,
-        }
+        PruningStats::measure(weights, pruned)
     }
 
     fn random_prune(&self, weights: &mut Array2<f64>, ratio: f64, seed: u64) -> PruningStats {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-        let total = weights.len();
         let mut pruned = 0;
 
         for w in weights.iter_mut() {
@@ -76,11 +70,7 @@ impl PruningStrategy {
             }
         }
 
-        PruningStats {
-            total_weights: total,
-            pruned_weights: pruned,
-            sparsity: pruned as f64 / total as f64,
-        }
+        PruningStats::measure(weights, pruned)
     }
 
     fn topk_prune(&self, weights: &mut Array2<f64>, target_sparsity: f64) -> PruningStats {
@@ -111,11 +101,7 @@ impl PruningStrategy {
             }
         }
 
-        PruningStats {
-            total_weights: total,
-            pruned_weights: pruned,
-            sparsity: pruned as f64 / total as f64,
-        }
+        PruningStats::measure(weights, pruned)
     }
 
     /// Prunes whole rows (neurons), ranked by L1 magnitude.
@@ -123,7 +109,6 @@ impl PruningStrategy {
     /// Deterministic: rows are selected by magnitude, so `_seed` is unused. It
     /// is kept in the signature to match the other strategies' shape.
     fn structured_prune(&self, weights: &mut Array2<f64>, ratio: f64, _seed: u64) -> PruningStats {
-        let total = weights.len();
         let n_rows = weights.nrows();
         let n_cols = weights.ncols();
 
@@ -159,11 +144,7 @@ impl PruningStrategy {
             }
         }
 
-        PruningStats {
-            total_weights: total,
-            pruned_weights: pruned,
-            sparsity: pruned as f64 / total as f64,
-        }
+        PruningStats::measure(weights, pruned)
     }
 }
 
@@ -308,20 +289,36 @@ impl NetworkPruner {
         }
     }
 
-    /// Prune weights if scheduled
+    /// Prune weights if the schedule calls for it at this step.
+    ///
+    /// The schedule sets both *when* to prune and *how far*: a gradual or
+    /// iterative schedule ramps its target sparsity over training, which is the
+    /// point of using one. That ramp used to be ignored -- `should_prune` was
+    /// consulted and `target_sparsity` never was, so the strategy pruned to its
+    /// own fixed figure every time and a schedule built by `magnitude_gradual`
+    /// jumped to its final sparsity on the first pruning step.
+    ///
+    /// A `TopK` strategy prunes to the schedule's target for this step. The
+    /// threshold- and ratio-based strategies have no sparsity target to
+    /// override, so they are left as configured; `OneShot`, which reports a
+    /// target of 0.0, likewise leaves the strategy alone.
     pub fn prune_weights(&mut self, weights: &mut Array2<f64>, step: usize) -> PruningStats {
         self.current_step = step;
 
         if self.schedule.should_prune(step) {
-            self.strategy.prune(weights, step)
+            let scheduled = self.schedule.target_sparsity(step);
+            match self.strategy {
+                PruningStrategy::TopK { .. } if scheduled > 0.0 => PruningStrategy::TopK {
+                    target_sparsity: scheduled,
+                }
+                .prune(weights, step),
+                _ => self.strategy.prune(weights, step),
+            }
         } else {
             // No pruning this step
-            let sparsity = self.compute_sparsity(weights);
-            PruningStats {
-                total_weights: weights.len(),
-                pruned_weights: (weights.len() as f64 * sparsity) as usize,
-                sparsity,
-            }
+            // Nothing pruned this step, but the tensor's existing sparsity is
+            // still what should be reported.
+            PruningStats::measure(weights, 0)
         }
     }
 
@@ -377,10 +374,36 @@ impl NetworkPruner {
 pub struct PruningStats {
     /// Total number of weights
     pub total_weights: usize,
-    /// Number of pruned (zero) weights
+    /// Number of pruned (zero) weights in the tensor as a whole.
+    ///
+    /// This counts every zero, not only the ones this call created. The
+    /// strategies used to report their own delta here, so after the first
+    /// pruning step the figure -- and `sparsity` with it -- described how much
+    /// had just changed rather than how much was pruned, and
+    /// `remaining_weights` and `compression_ratio` were wrong with them.
     pub pruned_weights: usize,
-    /// Sparsity ratio (0 = dense, 1 = all pruned)
+    /// Weights this call zeroed that were not already zero.
+    pub newly_pruned: usize,
+    /// Sparsity ratio (0 = dense, 1 = all pruned), over the whole tensor.
     pub sparsity: f64,
+}
+
+impl PruningStats {
+    /// Measures a tensor after pruning, recording how many zeros this call added.
+    fn measure(weights: &Array2<f64>, newly_pruned: usize) -> Self {
+        let total_weights = weights.len();
+        let pruned_weights = weights.iter().filter(|&&w| w == 0.0).count();
+        Self {
+            total_weights,
+            pruned_weights,
+            newly_pruned,
+            sparsity: if total_weights == 0 {
+                0.0
+            } else {
+                pruned_weights as f64 / total_weights as f64
+            },
+        }
+    }
 }
 
 impl PruningStats {
@@ -405,13 +428,17 @@ impl PruningStats {
 
     /// Combine stats from multiple layers
     pub fn merge(&self, other: &PruningStats) -> PruningStats {
-        let total = self.total_weights + other.total_weights;
-        let pruned = self.pruned_weights + other.pruned_weights;
-
+        let total_weights = self.total_weights + other.total_weights;
+        let pruned_weights = self.pruned_weights + other.pruned_weights;
         PruningStats {
-            total_weights: total,
-            pruned_weights: pruned,
-            sparsity: pruned as f64 / total as f64,
+            total_weights,
+            pruned_weights,
+            newly_pruned: self.newly_pruned + other.newly_pruned,
+            sparsity: if total_weights == 0 {
+                0.0
+            } else {
+                pruned_weights as f64 / total_weights as f64
+            },
         }
     }
 }
@@ -617,6 +644,7 @@ mod tests {
         let stats = PruningStats {
             total_weights: 100,
             pruned_weights: 75,
+            newly_pruned: 75,
             sparsity: 0.75,
         };
 
@@ -630,12 +658,14 @@ mod tests {
         let stats1 = PruningStats {
             total_weights: 100,
             pruned_weights: 50,
+            newly_pruned: 50,
             sparsity: 0.5,
         };
 
         let stats2 = PruningStats {
             total_weights: 200,
             pruned_weights: 100,
+            newly_pruned: 100,
             sparsity: 0.5,
         };
 
@@ -718,5 +748,89 @@ mod tests {
 
         let sparsity = pruner.compute_sparsity(&weights);
         assert_abs_diff_eq!(sparsity, 3.0 / 6.0, epsilon = 1e-6);
+    }
+
+    // ---- schedule and statistics ---------------------------------------
+
+    /// A gradual schedule must ramp the sparsity, not jump to its final value.
+    ///
+    /// `prune_weights` consulted `should_prune` and never `target_sparsity`, so
+    /// the strategy pruned to its own fixed figure every time: the schedule
+    /// decided when to prune but never how far, and the ramp was dead code.
+    #[test]
+    fn gradual_schedule_ramps_the_sparsity() {
+        let schedule = PruningSchedule::Gradual {
+            start_step: 0,
+            end_step: 10,
+            initial_sparsity: 0.0,
+            final_sparsity: 0.8,
+        };
+        let mut pruner = NetworkPruner::new(
+            PruningStrategy::TopK {
+                target_sparsity: 0.8,
+            },
+            schedule,
+        );
+
+        let fresh = || Array2::from_shape_fn((10, 10), |(i, j)| ((i * 10 + j) as f64 + 1.0) * 0.01);
+
+        // Early in the ramp, far less should be pruned than at the end.
+        let mut early = fresh();
+        let early_stats = pruner.prune_weights(&mut early, 2);
+
+        let mut late = fresh();
+        let late_stats = pruner.prune_weights(&mut late, 10);
+
+        assert!(
+            early_stats.sparsity < late_stats.sparsity,
+            "step 2 pruned {} and step 10 pruned {}; the ramp is being ignored",
+            early_stats.sparsity,
+            late_stats.sparsity
+        );
+        assert!(
+            early_stats.sparsity < 0.5,
+            "step 2 of a 10-step ramp to 0.8 pruned {}, which is already most of it",
+            early_stats.sparsity
+        );
+    }
+
+    /// Sparsity must describe the tensor, not the last call's delta.
+    ///
+    /// The strategies counted only the weights they newly zeroed, so pruning an
+    /// already-sparse tensor reported a fraction of the truth -- and
+    /// `remaining_weights` and `compression_ratio` inherited the error.
+    #[test]
+    fn stats_report_total_sparsity_not_the_delta() {
+        let strategy = PruningStrategy::TopK {
+            target_sparsity: 0.5,
+        };
+        let mut w = Array2::from_shape_fn((10, 10), |(i, j)| ((i * 10 + j) as f64 + 1.0) * 0.01);
+
+        let first = strategy.prune(&mut w, 0);
+        assert!(
+            (first.sparsity - 0.5).abs() < 0.05,
+            "first prune: {}",
+            first.sparsity
+        );
+        assert_eq!(first.pruned_weights, 50);
+        assert_eq!(first.newly_pruned, 50);
+
+        // Prune again to the same target: almost nothing new, but the tensor is
+        // still half zero.
+        let second = strategy.prune(&mut w, 1);
+        assert_eq!(
+            second.pruned_weights, 50,
+            "the tensor is still half pruned, whatever this call did"
+        );
+        assert!(
+            (second.sparsity - 0.5).abs() < 0.05,
+            "second: {}",
+            second.sparsity
+        );
+        assert_eq!(
+            second.newly_pruned, 0,
+            "nothing new should have been pruned"
+        );
+        assert_eq!(second.remaining_weights(), 50);
     }
 }
