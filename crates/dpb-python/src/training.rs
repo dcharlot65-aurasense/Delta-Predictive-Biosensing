@@ -76,25 +76,31 @@ impl PyLossFunction {
 /// Penalizes difference in total spike count.
 ///
 /// Args:
-///     weight (float): Loss weight/scaling factor
+///     weight (float): Scales the computed loss
+///     target_rate (float): Firing rate each neuron is penalised for missing,
+///         in `[0, 1]`
 ///
 /// Example:
-///     >>> loss = SpikeCountLoss(weight=1.0)
+///     >>> loss = SpikeCountLoss(weight=1.0, target_rate=0.5)
 ///     >>> value = loss.compute(predictions, targets)
 #[pyclass(name = "SpikeCountLoss", extends=PyLossFunction)]
 pub struct PySpikeCountLoss {
     weight: f32,
+    target_rate: f32,
 }
 
 #[pymethods]
 impl PySpikeCountLoss {
     #[new]
-    #[pyo3(signature = (weight=1.0))]
-    fn new(weight: f32) -> PyClassInitializer<Self> {
+    #[pyo3(signature = (weight=1.0, target_rate=0.5))]
+    fn new(weight: f32, target_rate: f32) -> PyClassInitializer<Self> {
         PyClassInitializer::from(PyLossFunction {
             name: "SpikeCount".to_string(),
         })
-        .add_subclass(Self { weight })
+        .add_subclass(Self {
+            weight,
+            target_rate,
+        })
     }
 
     /// Compute the loss.
@@ -110,7 +116,13 @@ impl PySpikeCountLoss {
         let tensor = predictions_to_tensor(&predictions)?;
         let target_array = targets_to_array(&targets);
 
-        SpikeCountLoss::new(self.weight)
+        // `weight` scales the loss and nothing else. It used to be passed as
+        // the Rust loss's `target_count` -- the firing rate being aimed at --
+        // and then multiplied in on the way out, so a "scaling factor" moved
+        // the target the network was trained toward *and* rescaled the squared
+        // error, compounding into roughly weight-cubed. The target rate is now
+        // its own parameter.
+        SpikeCountLoss::new(self.target_rate)
             .compute(&tensor, &target_array)
             .map(|loss| loss * self.weight)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("spike-count loss: {e}")))
@@ -122,8 +134,13 @@ impl PySpikeCountLoss {
 /// Penalizes differences in spike timing.
 ///
 /// Args:
-///     weight (float): Loss weight
-///     time_window (float): Time window for matching spikes
+///     weight (float): Scales the computed loss
+///     time_window (float): Recorded for the caller's reference. The Rust
+///         timing loss compares first-spike latencies against a target derived
+///         from the target array, and takes no matching tolerance, so this does
+///         not reach the computation. It used to be passed as that loss's
+///         `timing_weight`, which meant widening the documented tolerance
+///         multiplied the loss instead of relaxing it.
 ///
 /// Example:
 ///     >>> loss = SpikeTimeLoss(weight=1.0, time_window=0.01)
@@ -148,6 +165,22 @@ impl PySpikeTimeLoss {
         })
     }
 
+    /// Scales the computed loss.
+    #[getter]
+    fn weight(&self) -> f32 {
+        self.weight
+    }
+
+    /// The matching tolerance as given.
+    ///
+    /// Reported back rather than applied: the underlying timing loss compares
+    /// first-spike latencies and takes no tolerance parameter. See the class
+    /// documentation.
+    #[getter]
+    fn time_window(&self) -> f32 {
+        self.time_window
+    }
+
     /// Compute the loss.
     ///
     /// `predictions` and `targets` are (samples x classes) float32 arrays.
@@ -161,7 +194,13 @@ impl PySpikeTimeLoss {
         let tensor = predictions_to_tensor(&predictions)?;
         let target_array = targets_to_array(&targets);
 
-        SpikeTimingLoss::new(self.time_window)
+        // The Rust loss's parameter is a weight on the timing term, not a
+        // matching tolerance. `time_window` used to be passed here, so widening
+        // the documented tolerance multiplied the loss rather than relaxing it,
+        // and `weight` was then applied on top -- two scalings for one knob.
+        // The timing term is left at unit weight and `weight` scales the result,
+        // which is what both parameters are documented to do.
+        SpikeTimingLoss::new(1.0)
             .compute(&tensor, &target_array)
             .map(|loss| loss * self.weight)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("spike-timing loss: {e}")))

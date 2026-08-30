@@ -76,11 +76,13 @@ impl PyAccuracy {
 
     fn compute(
         &self,
-        predictions: PyReadonlyArray1<i32>,
-        targets: PyReadonlyArray1<i32>,
+        predictions: &Bound<'_, PyAny>,
+        targets: &Bound<'_, PyAny>,
+        py: Python<'_>,
     ) -> PyResult<f64> {
-        let preds = predictions.as_slice()?;
-        let targs = targets.as_slice()?;
+        let preds = to_i32_vec(py, predictions, "predictions")?;
+        let targs = to_i32_vec(py, targets, "targets")?;
+        let (preds, targs) = (&preds[..], &targs[..]);
 
         if preds.len() != targs.len() {
             return Err(pyo3::exceptions::PyValueError::new_err(
@@ -120,11 +122,13 @@ impl PyPrecision {
 
     fn compute(
         &self,
-        predictions: PyReadonlyArray1<i32>,
-        targets: PyReadonlyArray1<i32>,
+        predictions: &Bound<'_, PyAny>,
+        targets: &Bound<'_, PyAny>,
+        py: Python<'_>,
     ) -> PyResult<f64> {
-        let preds = predictions.as_slice()?;
-        let targs = targets.as_slice()?;
+        let preds = to_i32_vec(py, predictions, "predictions")?;
+        let targs = to_i32_vec(py, targets, "targets")?;
+        let (preds, targs) = (&preds[..], &targs[..]);
 
         if preds.len() != targs.len() {
             return Err(pyo3::exceptions::PyValueError::new_err(
@@ -175,11 +179,13 @@ impl PyRecall {
 
     fn compute(
         &self,
-        predictions: PyReadonlyArray1<i32>,
-        targets: PyReadonlyArray1<i32>,
+        predictions: &Bound<'_, PyAny>,
+        targets: &Bound<'_, PyAny>,
+        py: Python<'_>,
     ) -> PyResult<f64> {
-        let preds = predictions.as_slice()?;
-        let targs = targets.as_slice()?;
+        let preds = to_i32_vec(py, predictions, "predictions")?;
+        let targs = to_i32_vec(py, targets, "targets")?;
+        let (preds, targs) = (&preds[..], &targs[..]);
 
         if preds.len() != targs.len() {
             return Err(pyo3::exceptions::PyValueError::new_err(
@@ -230,15 +236,16 @@ impl PyF1Score {
 
     fn compute(
         &self,
-        predictions: PyReadonlyArray1<i32>,
-        targets: PyReadonlyArray1<i32>,
+        predictions: &Bound<'_, PyAny>,
+        targets: &Bound<'_, PyAny>,
+        py: Python<'_>,
     ) -> PyResult<f64> {
         // Compute precision and recall
         let precision_metric = PyPrecision;
         let recall_metric = PyRecall;
 
-        let precision = precision_metric.compute(predictions.clone(), targets.clone())?;
-        let recall = recall_metric.compute(predictions, targets)?;
+        let precision = precision_metric.compute(predictions, targets, py)?;
+        let recall = recall_metric.compute(predictions, targets, py)?;
 
         if precision + recall == 0.0 {
             Ok(0.0)
@@ -270,11 +277,13 @@ impl PyMSE {
 
     fn compute(
         &self,
-        predictions: PyReadonlyArray1<f32>,
-        targets: PyReadonlyArray1<f32>,
+        predictions: &Bound<'_, PyAny>,
+        targets: &Bound<'_, PyAny>,
+        py: Python<'_>,
     ) -> PyResult<f64> {
-        let preds = predictions.as_slice()?;
-        let targs = targets.as_slice()?;
+        let preds = to_f64_vec(py, predictions, "predictions")?;
+        let targs = to_f64_vec(py, targets, "targets")?;
+        let (preds, targs) = (&preds[..], &targs[..]);
 
         if preds.len() != targs.len() {
             return Err(pyo3::exceptions::PyValueError::new_err(
@@ -286,7 +295,7 @@ impl PyMSE {
             .iter()
             .zip(targs.iter())
             .map(|(p, t)| {
-                let diff = *p as f64 - *t as f64;
+                let diff = *p - *t;
                 diff * diff
             })
             .sum::<f64>()
@@ -318,11 +327,12 @@ impl PyRMSE {
 
     fn compute(
         &self,
-        predictions: PyReadonlyArray1<f32>,
-        targets: PyReadonlyArray1<f32>,
+        predictions: &Bound<'_, PyAny>,
+        targets: &Bound<'_, PyAny>,
+        py: Python<'_>,
     ) -> PyResult<f64> {
         let mse_metric = PyMSE;
-        let mse = mse_metric.compute(predictions, targets)?;
+        let mse = mse_metric.compute(predictions, targets, py)?;
         Ok(mse.sqrt())
     }
 }
@@ -349,11 +359,13 @@ impl PyMAE {
 
     fn compute(
         &self,
-        predictions: PyReadonlyArray1<f32>,
-        targets: PyReadonlyArray1<f32>,
+        predictions: &Bound<'_, PyAny>,
+        targets: &Bound<'_, PyAny>,
+        py: Python<'_>,
     ) -> PyResult<f64> {
-        let preds = predictions.as_slice()?;
-        let targs = targets.as_slice()?;
+        let preds = to_f64_vec(py, predictions, "predictions")?;
+        let targs = to_f64_vec(py, targets, "targets")?;
+        let (preds, targs) = (&preds[..], &targs[..]);
 
         if preds.len() != targs.len() {
             return Err(pyo3::exceptions::PyValueError::new_err(
@@ -364,7 +376,7 @@ impl PyMAE {
         let mae: f64 = preds
             .iter()
             .zip(targs.iter())
-            .map(|(p, t)| (*p as f64 - *t as f64).abs())
+            .map(|(p, t)| (*p - *t).abs())
             .sum::<f64>()
             / preds.len() as f64;
 
@@ -545,8 +557,9 @@ impl PySpikeDistance {
 
     fn compute(
         &self,
-        spikes1: PyReadonlyArray1<f64>,
-        spikes2: PyReadonlyArray1<f64>,
+        spikes1: &Bound<'_, PyAny>,
+        spikes2: &Bound<'_, PyAny>,
+        py: Python<'_>,
     ) -> PyResult<f64> {
         // van Rossum distance, computed here because the Rust crates do not
         // implement a spike metric to delegate to.
@@ -558,8 +571,9 @@ impl PySpikeDistance {
         //
         // This previously returned 0.0 -- "the trains are identical" -- for
         // every input.
-        let a = spikes1.as_slice()?;
-        let b = spikes2.as_slice()?;
+        let a_owned = to_f64_vec(py, spikes1, "spikes1")?;
+        let b_owned = to_f64_vec(py, spikes2, "spikes2")?;
+        let (a, b) = (&a_owned[..], &b_owned[..]);
         let tau = self.tau.max(f64::EPSILON);
 
         let kernel_sum = |xs: &[f64], ys: &[f64]| -> f64 {
@@ -568,10 +582,22 @@ impl PySpikeDistance {
                 .sum::<f64>()
         };
 
-        // |f - g|^2 = <f,f> - 2<f,g> + <g,g>
-        let distance_squared = kernel_sum(a, a) - 2.0 * kernel_sum(a, b) + kernel_sum(b, b);
+        // |f - g|^2 = <f,f> - 2<f,g> + <g,g>, in units of the kernel overlap.
+        let overlap = kernel_sum(a, a) - 2.0 * kernel_sum(a, b) + kernel_sum(b, b);
 
-        Ok((distance_squared.max(0.0) / (2.0 * tau)).sqrt())
+        // With h(t) = exp(-t/tau) for t >= 0, the overlap of two kernels is
+        //     <h_x, h_y> = (tau/2) * exp(-|x - y| / tau),
+        // so the integral above is (tau/2) * overlap. Van Rossum's distance is
+        //     D^2 = (1/tau) * integral (f - g)^2 dt
+        //         = (1/tau) * (tau/2) * overlap
+        //         = overlap / 2,
+        // and the tau cancels exactly.
+        //
+        // This divided by `2 * tau` instead, leaving a spurious 1/sqrt(tau).
+        // The visible symptom is that the distance stopped being invariant
+        // under a joint rescaling of the spike times and tau, which it must be:
+        // exp(-|x - y| / tau) depends only on their ratio.
+        Ok((overlap.max(0.0) / 2.0).sqrt())
     }
 }
 
@@ -640,4 +666,57 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PySpikeDistance>()?;
     m.add_class::<PyMetricCollection>()?;
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Input coercion
+// ---------------------------------------------------------------------------
+//
+// These metrics used to take `PyReadonlyArray1<i32>` or `<f32>` directly, which
+// accepts one exact dtype and rejects every other. numpy's defaults are int64
+// for integers and float64 for floats, so the ordinary
+// `np.array([0, 1, 1, 0])` was refused -- and pyo3 words that refusal
+// "'ndarray' object is not an instance of 'ndarray'", which tells a caller
+// nothing at all. Lists were refused too.
+//
+// Going through `numpy.asarray` accepts any array-like of any numeric dtype,
+// which is what a caller reasonably expects from a metrics function.
+
+/// Coerces an array-like to a `Vec<f64>`.
+fn to_f64_vec(py: Python<'_>, obj: &Bound<'_, PyAny>, what: &str) -> PyResult<Vec<f64>> {
+    let kwargs = pyo3::types::PyDict::new(py);
+    kwargs.set_item("dtype", "float64")?;
+    let arr = py
+        .import("numpy")?
+        .call_method("asarray", (obj,), Some(&kwargs))
+        .map_err(|e| {
+            pyo3::exceptions::PyTypeError::new_err(format!(
+                "{what} must be a 1-D sequence of numbers: {e}"
+            ))
+        })?;
+    let ro: numpy::PyReadonlyArray1<f64> = arr.extract().map_err(|_| {
+        pyo3::exceptions::PyValueError::new_err(format!("{what} must be one-dimensional"))
+    })?;
+    Ok(ro.as_array().to_vec())
+}
+
+/// Coerces an array-like to a `Vec<i32>` of class labels.
+fn to_i32_vec(py: Python<'_>, obj: &Bound<'_, PyAny>, what: &str) -> PyResult<Vec<i32>> {
+    let values = to_f64_vec(py, obj, what)?;
+    values
+        .into_iter()
+        .map(|v| {
+            if v.fract() != 0.0 || !v.is_finite() {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "{what} must contain whole-number class labels, found {v}"
+                )));
+            }
+            if v < f64::from(i32::MIN) || v > f64::from(i32::MAX) {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "{what} contains {v}, which is outside the range of a label"
+                )));
+            }
+            Ok(v as i32)
+        })
+        .collect()
 }
