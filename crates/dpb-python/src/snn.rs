@@ -2,6 +2,7 @@
 
 use crate::types::PySpikeEvent;
 use dpb_snn::layers::SpikingLayer;
+use dpb_snn::layers::{SpikingConv2d, SpikingMaxPool2d, SpikingRNN, SpikingSumPool2d};
 use dpb_snn::{NeuronParams, SpikeTensor, SpikingLinear};
 
 /// Bin a spike train into the dense (batch, step, neuron) tensor the layers take.
@@ -85,8 +86,15 @@ impl PySpikingLayer {
     /// Returns:
     ///     SpikeTrain: Output spike train
     fn forward(&self, _input_spikes: &PySpikeTrain, _dt: f32) -> PyResult<PySpikeTrain> {
-        // Base implementation - override in subclasses
-        Ok(PySpikeTrain::new(None, 0.0, self.output_size as u32))
+        // The base class has no layer to run. It used to return an empty spike
+        // train instead, which every subclass that did not override `forward`
+        // inherited -- so a network containing one reported success and emitted
+        // nothing, indistinguishable from a network that simply never fired.
+        Err(pyo3::exceptions::PyNotImplementedError::new_err(format!(
+            "{} does not implement forward; SpikingLayer is a base class and \
+             holds no parameters",
+            self.name
+        )))
     }
 
     /// Reset layer state
@@ -270,6 +278,13 @@ pub struct PySpikingConv2d {
     stride: usize,
     padding: usize,
     neuron_type: String,
+    /// The library layer this delegates to.
+    ///
+    /// This type used to be configuration only, with no layer behind it, so it
+    /// inherited the base class's `forward` -- which returns an empty spike
+    /// train. A model built with a convolution reported success and produced
+    /// nothing.
+    inner: SpikingConv2d,
 }
 
 #[pymethods]
@@ -296,7 +311,35 @@ impl PySpikingConv2d {
             stride,
             padding,
             neuron_type: neuron.to_string(),
+            inner: SpikingConv2d::new(
+                in_channels,
+                out_channels,
+                (kernel_size, kernel_size),
+                (stride, stride),
+                (padding, padding),
+                true,
+                NeuronParams::default(),
+                1.0,
+                neuron.eq_ignore_ascii_case("alif"),
+            ),
         })
+    }
+
+    /// Forward pass.
+    ///
+    /// The input is taken as `in_channels` of a square image, which is what
+    /// the underlying layer infers when no spatial shape is declared.
+    fn forward(&mut self, input_spikes: &PySpikeTrain, dt: f32) -> PyResult<PySpikeTrain> {
+        let num_neurons = (input_spikes.num_channels as usize).max(1);
+        let tensor = train_to_tensor(input_spikes, dt, num_neurons);
+        let output = self.inner.forward(&tensor).map_err(|e| {
+            pyo3::exceptions::PyValueError::new_err(format!("conv2d forward failed: {e}"))
+        })?;
+        Ok(tensor_to_train(&output, dt))
+    }
+
+    fn reset(&mut self) {
+        self.inner.reset_state();
     }
 
     #[getter]
@@ -335,6 +378,9 @@ impl PySpikingConv2d {
 pub struct PySpikingRecurrent {
     hidden_size: usize,
     neuron_type: String,
+    /// The library layer this delegates to; see `PySpikingConv2d::inner` for
+    /// why these types now hold one.
+    inner: SpikingRNN,
 }
 
 #[pymethods]
@@ -350,7 +396,28 @@ impl PySpikingRecurrent {
         .add_subclass(Self {
             hidden_size,
             neuron_type: neuron.to_string(),
+            inner: SpikingRNN::new(
+                input_size,
+                hidden_size,
+                true,
+                NeuronParams::default(),
+                1.0,
+                neuron.eq_ignore_ascii_case("alif"),
+            ),
         })
+    }
+
+    fn forward(&mut self, input_spikes: &PySpikeTrain, dt: f32) -> PyResult<PySpikeTrain> {
+        let input_size = self.inner.w_input.shape()[1];
+        let tensor = train_to_tensor(input_spikes, dt, input_size);
+        let output = self.inner.forward(&tensor).map_err(|e| {
+            pyo3::exceptions::PyValueError::new_err(format!("recurrent forward failed: {e}"))
+        })?;
+        Ok(tensor_to_train(&output, dt))
+    }
+
+    fn reset(&mut self) {
+        self.inner.reset_state();
     }
 
     #[getter]
@@ -374,6 +441,10 @@ impl PySpikingRecurrent {
 pub struct PySpikingPooling {
     pool_size: usize,
     pool_type: String,
+    /// Max and sum pooling are separate types in the library, so both are held
+    /// and `pool_type` selects between them at call time.
+    max_pool: SpikingMaxPool2d,
+    sum_pool: SpikingSumPool2d,
 }
 
 #[pymethods]
@@ -389,7 +460,33 @@ impl PySpikingPooling {
         .add_subclass(Self {
             pool_size,
             pool_type: pool_type.to_string(),
+            max_pool: SpikingMaxPool2d::new((pool_size, pool_size), (pool_size, pool_size)),
+            sum_pool: SpikingSumPool2d::new((pool_size, pool_size), (pool_size, pool_size)),
         })
+    }
+
+    /// Forward pass.
+    ///
+    /// The neuron axis is taken as a single square feature map, which is what
+    /// the underlying layers infer when no shape is declared. Like the other
+    /// layers here, this used to inherit a base `forward` that returned an
+    /// empty spike train.
+    fn forward(&mut self, input_spikes: &PySpikeTrain, dt: f32) -> PyResult<PySpikeTrain> {
+        let num_neurons = (input_spikes.num_channels as usize).max(1);
+        let tensor = train_to_tensor(input_spikes, dt, num_neurons);
+
+        let output = match self.pool_type.to_ascii_lowercase().as_str() {
+            "max" => self.max_pool.forward(&tensor),
+            "sum" | "avg" | "average" => self.sum_pool.forward(&tensor),
+            other => {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "unknown pool_type '{other}'; expected 'max' or 'sum'"
+                )));
+            }
+        }
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("pooling failed: {e}")))?;
+
+        Ok(tensor_to_train(&output, dt))
     }
 
     #[getter]

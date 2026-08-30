@@ -300,6 +300,30 @@ impl PyIzhikevichNeuron {
         })
     }
 
+    /// Recovery time-scale.
+    #[getter]
+    fn a(&self) -> f64 {
+        self.a
+    }
+
+    /// Recovery sensitivity to the membrane potential.
+    #[getter]
+    fn b(&self) -> f64 {
+        self.b
+    }
+
+    /// Post-spike reset potential.
+    #[getter]
+    fn c(&self) -> f64 {
+        self.c
+    }
+
+    /// Post-spike recovery increment.
+    #[getter]
+    fn d(&self) -> f64 {
+        self.d
+    }
+
     fn step(&mut self, input_current: f32, dt: f32) -> bool {
         let i = input_current as f64;
         let dt_ms = dt as f64 * 1000.0; // Convert to ms for Izhikevich model
@@ -401,6 +425,48 @@ impl PyHodgkinHuxleyNeuron {
         })
     }
 
+    /// Maximal sodium conductance.
+    #[getter]
+    #[allow(non_snake_case)]
+    fn gNa(&self) -> f64 {
+        self.g_na
+    }
+
+    /// Maximal potassium conductance.
+    #[getter]
+    #[allow(non_snake_case)]
+    fn gK(&self) -> f64 {
+        self.g_k
+    }
+
+    /// Leak conductance.
+    #[getter]
+    #[allow(non_snake_case)]
+    fn gL(&self) -> f64 {
+        self.g_l
+    }
+
+    /// Sodium reversal potential.
+    #[getter]
+    #[allow(non_snake_case)]
+    fn ENa(&self) -> f64 {
+        self.e_na
+    }
+
+    /// Potassium reversal potential.
+    #[getter]
+    #[allow(non_snake_case)]
+    fn EK(&self) -> f64 {
+        self.e_k
+    }
+
+    /// Leak reversal potential.
+    #[getter]
+    #[allow(non_snake_case)]
+    fn EL(&self) -> f64 {
+        self.e_l
+    }
+
     fn step(&mut self, input_current: f32, dt: f32) -> bool {
         let i_ext = input_current as f64;
 
@@ -448,33 +514,96 @@ impl PyHodgkinHuxleyNeuron {
 ///
 /// Example:
 ///     >>> neuron = create_neuron('lif', {'tau': 0.02, 'threshold': 1.0})
+/// Reads a float from the config dict, falling back to `default`.
+///
+/// A key present but not a number is an error rather than a silent fallback: a
+/// caller who writes `{"tau": "20"}` has made a mistake, and quietly using the
+/// default hides it.
+fn config_f64(config: Option<&Bound<'_, PyDict>>, key: &str, default: f64) -> PyResult<f64> {
+    let Some(dict) = config else {
+        return Ok(default);
+    };
+    match dict.get_item(key)? {
+        None => Ok(default),
+        Some(value) => value.extract::<f64>().map_err(|_| {
+            pyo3::exceptions::PyTypeError::new_err(format!(
+                "config['{key}'] must be a number, got {}",
+                value
+                    .get_type()
+                    .name()
+                    .map(|n| n.to_string())
+                    .unwrap_or_else(|_| "?".to_string())
+            ))
+        }),
+    }
+}
+
+/// Build a neuron by name, configured from `config`.
+///
+/// Every model reads every one of its parameters from the dict, and the
+/// defaults are the ones its own constructor uses -- so `create_neuron("lif")`
+/// and `LifNeuron()` produce the same neuron.
+///
+/// Neither was true before. `alif`, `izhikevich` and `hodgkin_huxley` ignored
+/// `config` entirely, so any configuration passed for them was silently
+/// dropped. `lif` read only `tau` and `threshold`, and passed hardcoded values
+/// for the other two -- along with defaults of 0.02 and 1.0 taken from a
+/// normalised scale, where `LifNeuron`'s own defaults are millivolts and
+/// milliseconds: threshold -50.0 with reset -65.0. Mixing them gave a neuron
+/// whose reset potential sat above its threshold, which fires on every step
+/// regardless of input.
 #[pyfunction]
+#[pyo3(signature = (name, config=None))]
 fn create_neuron(name: &str, config: Option<&Bound<'_, PyDict>>) -> PyResult<Py<PyAny>> {
     Python::attach(|py| {
         let neuron: Py<PyAny> = match name {
-            "lif" => {
-                let tau = config
-                    .and_then(|c| c.get_item("tau").ok().flatten())
-                    .map(|v| v.extract::<f64>().unwrap_or(0.02))
-                    .unwrap_or(0.02);
-                let threshold = config
-                    .and_then(|c| c.get_item("threshold").ok().flatten())
-                    .map(|v| v.extract::<f64>().unwrap_or(1.0))
-                    .unwrap_or(1.0);
-
-                Py::new(py, PyLifNeuron::new(tau, threshold, 0.0, 0.002))?.into_any()
-            }
-            "alif" => Py::new(py, PyAlifNeuron::new(0.02, 1.0, 0.0, 0.1, 0.1))?.into_any(),
-            "izhikevich" => Py::new(py, PyIzhikevichNeuron::new(0.02, 0.2, -65.0, 8.0))?.into_any(),
+            "lif" => Py::new(
+                py,
+                PyLifNeuron::new(
+                    config_f64(config, "tau", 20.0)?,
+                    config_f64(config, "threshold", -50.0)?,
+                    config_f64(config, "reset", -65.0)?,
+                    config_f64(config, "refractory_period", 2.0)?,
+                ),
+            )?
+            .into_any(),
+            "alif" => Py::new(
+                py,
+                PyAlifNeuron::new(
+                    config_f64(config, "tau", 0.02)?,
+                    config_f64(config, "threshold", 1.0)?,
+                    config_f64(config, "reset", 0.0)?,
+                    config_f64(config, "tau_adaptation", 0.1)?,
+                    config_f64(config, "adaptation_increment", 0.1)?,
+                ),
+            )?
+            .into_any(),
+            "izhikevich" => Py::new(
+                py,
+                PyIzhikevichNeuron::new(
+                    config_f64(config, "a", 0.02)?,
+                    config_f64(config, "b", 0.2)?,
+                    config_f64(config, "c", -65.0)?,
+                    config_f64(config, "d", 8.0)?,
+                ),
+            )?
+            .into_any(),
             "hodgkin_huxley" => Py::new(
                 py,
-                PyHodgkinHuxleyNeuron::new(120.0, 36.0, 0.3, 50.0, -77.0, -54.387),
+                PyHodgkinHuxleyNeuron::new(
+                    config_f64(config, "gNa", 120.0)?,
+                    config_f64(config, "gK", 36.0)?,
+                    config_f64(config, "gL", 0.3)?,
+                    config_f64(config, "ENa", 50.0)?,
+                    config_f64(config, "EK", -77.0)?,
+                    config_f64(config, "EL", -54.387)?,
+                ),
             )?
             .into_any(),
             _ => {
                 return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                    "Unknown neuron model: {}",
-                    name
+                    "Unknown neuron model: {name}; expected lif, alif, izhikevich \
+                     or hodgkin_huxley"
                 )));
             }
         };
