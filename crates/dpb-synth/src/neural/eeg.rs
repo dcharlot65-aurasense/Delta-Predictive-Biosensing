@@ -95,12 +95,23 @@ impl EegGenerator {
         let norm_beta = config.beta / total_power;
         let norm_gamma = config.gamma / total_power;
 
+        // One amplitude for every band, so `BandPowerConfig` alone decides the
+        // relative power -- which is what its fields document themselves as.
+        //
+        // Each band used to carry its own constant (50, 30, 20, 10 microvolts,
+        // and 40 for alpha), encoding EEG's 1/f amplitude falloff. That falloff
+        // is already expressed in `BandPowerConfig::default`, so applying it
+        // again here double-counted it and overrode the caller: a config asking
+        // for dominant gamma still came out delta-dominant, because delta's
+        // constant was five times gamma's.
+        const BAND_AMPLITUDE: f64 = 40.0;
+
         // Generate band-limited components
         // Delta: 0.5-4 Hz
         if norm_delta > 0.01 {
             let delta = generate_band_noise(n_samples, self.sample_rate, 0.5, 4.0);
             for (s, d) in signal.iter_mut().zip(delta.iter()) {
-                *s += d * norm_delta.sqrt() * 50.0; // Scale to microvolts
+                *s += d * norm_delta.sqrt() * BAND_AMPLITUDE; // Scale to microvolts
             }
         }
 
@@ -108,18 +119,21 @@ impl EegGenerator {
         if norm_theta > 0.01 {
             let theta = generate_band_noise(n_samples, self.sample_rate, 4.0, 8.0);
             for (s, t) in signal.iter_mut().zip(theta.iter()) {
-                *s += t * norm_theta.sqrt() * 30.0;
+                *s += t * norm_theta.sqrt() * BAND_AMPLITUDE;
             }
         }
 
         // Alpha: 8-13 Hz (dominant oscillation in awake, relaxed state)
         if norm_alpha > 0.01 {
             let alpha_freq = 10.0; // Center at 10 Hz
+            // A sinusoid of amplitude A carries A^2/2 of power where unit-RMS
+            // noise at A carries A^2, so scale by sqrt(2) to put alpha on the
+            // same power footing as the noise bands.
             let alpha = generate_oscillation(
                 duration_sec,
                 self.sample_rate,
                 alpha_freq,
-                norm_alpha.sqrt() * 40.0,
+                norm_alpha.sqrt() * BAND_AMPLITUDE * std::f64::consts::SQRT_2,
             );
             for (s, a) in signal.iter_mut().zip(alpha.iter()) {
                 *s += a;
@@ -130,7 +144,7 @@ impl EegGenerator {
         if norm_beta > 0.01 {
             let beta = generate_band_noise(n_samples, self.sample_rate, 13.0, 30.0);
             for (s, b) in signal.iter_mut().zip(beta.iter()) {
-                *s += b * norm_beta.sqrt() * 20.0;
+                *s += b * norm_beta.sqrt() * BAND_AMPLITUDE;
             }
         }
 
@@ -138,7 +152,7 @@ impl EegGenerator {
         if norm_gamma > 0.01 {
             let gamma = generate_band_noise(n_samples, self.sample_rate, 30.0, 100.0);
             for (s, g) in signal.iter_mut().zip(gamma.iter()) {
-                *s += g * norm_gamma.sqrt() * 10.0;
+                *s += g * norm_gamma.sqrt() * BAND_AMPLITUDE;
             }
         }
 
@@ -533,36 +547,57 @@ fn generate_pink_noise(n_samples: usize) -> Vec<f64> {
 }
 
 // Helper to generate band-limited noise
+/// Band-limited noise with unit RMS, over `[low_freq, high_freq)`.
+///
+/// A sum of sinusoids at frequencies drawn across the band with random phases,
+/// which is band-limited by construction. The previous version multiplied the
+/// *same* white-noise sample by five cosines and summed the products: that
+/// modulates white noise rather than filtering it, so the result carried energy
+/// across the whole spectrum and none of the bands were band-limited. The
+/// consequence was that `BandPowerConfig` could not control anything -- the
+/// widest band dominated the output whatever powers were requested.
+///
+/// Unit RMS so the caller's amplitude scaling means what it says.
 fn generate_band_noise(
     n_samples: usize,
     sample_rate: f64,
     low_freq: f64,
     high_freq: f64,
 ) -> Vec<f64> {
-    let mut rng = rand::rng();
-    let normal = Normal::new(0.0, 1.0).unwrap();
-
-    // Generate white noise
-    let white: Vec<f64> = (0..n_samples).map(|_| normal.sample(&mut rng)).collect();
-
-    // Apply simple bandpass filtering using oscillation envelope
-    // (Simplified approach - in production would use proper FFT filtering)
-    let mut signal = vec![0.0; n_samples];
-    let _center_freq = (low_freq + high_freq) / 2.0;
-    let bandwidth = high_freq - low_freq;
-
-    for i in 0..n_samples {
-        // Multiple oscillators within band
-        let n_oscillators = 5;
-        let mut sum = 0.0;
-        for j in 0..n_oscillators {
-            let freq = low_freq + (bandwidth * j as f64 / n_oscillators as f64);
-            let phase = 2.0 * PI * freq * (i as f64) / sample_rate;
-            sum += white[i] * phase.cos();
-        }
-        signal[i] = sum / (n_oscillators as f64).sqrt();
+    if n_samples == 0 || high_freq <= low_freq {
+        return vec![0.0; n_samples];
     }
 
+    // Nothing above Nyquist can be represented, and asking for it aliases back
+    // into the band the caller was trying to avoid.
+    let nyquist = sample_rate / 2.0;
+    let high = high_freq.min(nyquist);
+    let low = low_freq.min(high);
+    if high <= low {
+        return vec![0.0; n_samples];
+    }
+
+    let mut rng = rand::rng();
+    // Enough components that the sum is noise-like rather than a chord.
+    const COMPONENTS: usize = 48;
+
+    let mut signal = vec![0.0; n_samples];
+    for _ in 0..COMPONENTS {
+        let freq = rng.random_range(low..high);
+        let phase = rng.random_range(0.0..(2.0 * PI));
+        let omega = 2.0 * PI * freq / sample_rate;
+        for (i, s) in signal.iter_mut().enumerate() {
+            *s += (omega * i as f64 + phase).sin();
+        }
+    }
+
+    let mean_square = signal.iter().map(|v| v * v).sum::<f64>() / n_samples as f64;
+    let rms = mean_square.sqrt();
+    if rms > f64::EPSILON {
+        for s in &mut signal {
+            *s /= rms;
+        }
+    }
     signal
 }
 
@@ -641,5 +676,108 @@ mod tests {
         assert_eq!(noise.len(), 1000);
         // Pink noise should have non-zero values
         assert!(noise.iter().any(|&x| x.abs() > 0.1));
+    }
+
+    /// Power in `[lo, hi)` as a fraction of the total, by DFT.
+    fn band_fraction(signal: &[f64], sample_rate: f64, lo: f64, hi: f64) -> f64 {
+        let n = signal.len();
+        let mean = signal.iter().sum::<f64>() / n as f64;
+        let mut total = 0.0;
+        let mut in_band = 0.0;
+        // Real signal: bins above Nyquist are mirrors, so only half are needed.
+        for k in 1..n / 2 {
+            let freq = k as f64 * sample_rate / n as f64;
+            let (mut re, mut im) = (0.0, 0.0);
+            for (i, v) in signal.iter().enumerate() {
+                let angle = -2.0 * PI * k as f64 * i as f64 / n as f64;
+                re += (v - mean) * angle.cos();
+                im += (v - mean) * angle.sin();
+            }
+            let power = re * re + im * im;
+            total += power;
+            if freq >= lo && freq < hi {
+                in_band += power;
+            }
+        }
+        if total > 0.0 { in_band / total } else { 0.0 }
+    }
+
+    /// Band-limited noise must keep its energy inside its band.
+    ///
+    /// The previous implementation multiplied one white-noise sample by five
+    /// cosines and summed the products, which modulates rather than filters:
+    /// the result was broadband, so none of the bands were band-limited and
+    /// `BandPowerConfig` could not control anything.
+    #[test]
+    fn band_noise_stays_within_its_band() {
+        let sample_rate = 256.0;
+        let n = 1024;
+        for (lo, hi) in [(4.0, 8.0), (13.0, 30.0), (30.0, 60.0)] {
+            let signal = generate_band_noise(n, sample_rate, lo, hi);
+            let inside = band_fraction(&signal, sample_rate, lo, hi);
+            assert!(
+                inside > 0.9,
+                "band {lo}-{hi} Hz holds only {:.0}% of its own energy",
+                inside * 100.0
+            );
+        }
+    }
+
+    /// Requested band powers must decide which band dominates.
+    ///
+    /// Each band used to carry its own amplitude constant on top of the
+    /// requested power -- 50 for delta against 10 for gamma -- so a config
+    /// asking for dominant gamma still produced a delta-dominant signal.
+    #[test]
+    fn requested_band_dominates_the_output() {
+        let generator = EegGenerator::new(256.0, 1);
+        let cases: [(&str, BandPowerConfig, f64, f64); 3] = [
+            (
+                "delta",
+                BandPowerConfig {
+                    delta: 0.6,
+                    theta: 0.1,
+                    alpha: 0.0,
+                    beta: 0.1,
+                    gamma: 0.1,
+                },
+                0.5,
+                4.0,
+            ),
+            (
+                "beta",
+                BandPowerConfig {
+                    delta: 0.1,
+                    theta: 0.1,
+                    alpha: 0.0,
+                    beta: 0.6,
+                    gamma: 0.1,
+                },
+                13.0,
+                30.0,
+            ),
+            (
+                "gamma",
+                BandPowerConfig {
+                    delta: 0.1,
+                    theta: 0.1,
+                    alpha: 0.0,
+                    beta: 0.1,
+                    gamma: 0.6,
+                },
+                30.0,
+                100.0,
+            ),
+        ];
+
+        for (name, config, lo, hi) in cases {
+            let signal = generator.generate_channel(4.0, &config);
+            let fraction = band_fraction(&signal, 256.0, lo, hi);
+            assert!(
+                fraction > 0.4,
+                "{name} was asked for 60% of the power and holds {:.0}%",
+                fraction * 100.0
+            );
+        }
     }
 }

@@ -3,6 +3,7 @@
 use dpb_synth::contact::ecg::{EcgMorphologyGenerator, EcgMorphologyParams};
 use dpb_synth::contact::emg::{SurfaceEmgGenerator, SurfaceEmgParams};
 use dpb_synth::contact::ppg::{PpgWaveformGenerator, PpgWaveformParams};
+use dpb_synth::neural::eeg::{BandPowerConfig, EegGenerator};
 use dpb_synth::traits::SyntheticGenerator;
 use numpy::ndarray::Array2;
 
@@ -123,6 +124,7 @@ impl PyEcgGenerator {
         })
     }
 
+    #[pyo3(signature = (duration, sample_rate, seed=None))]
     fn generate(
         &self,
         duration: f64,
@@ -232,6 +234,7 @@ impl PyPpgGenerator {
         })
     }
 
+    #[pyo3(signature = (duration, sample_rate, seed=None))]
     fn generate(
         &self,
         duration: f64,
@@ -309,22 +312,88 @@ impl PyAccelerometerGenerator {
         })
     }
 
+    /// Generate three-axis accelerometer data.
+    ///
+    /// Gravity on the vertical axis, an activity-dependent periodic component,
+    /// and sensor noise. The previous body returned a zero array and used none
+    /// of `activity`, `noise_level` or `sampling_jitter`, while the class
+    /// documented "realistic synthetic" data with an activity knob.
+    ///
+    /// There is no accelerometer generator in `dpb_synth` to delegate to, so
+    /// this is deliberately a simple kinematic model rather than a pretence at
+    /// physiological realism: gravity plus a band-limited oscillation at the
+    /// activity's cadence.
+    #[pyo3(signature = (duration, sample_rate, seed=None))]
     fn generate(
         &self,
         duration: f64,
         sample_rate: f64,
-        _seed: Option<u64>,
+        seed: Option<u64>,
         py: Python,
     ) -> PyResult<(PyTimeSeries, PyGroundTruth)> {
-        let num_samples = (duration * sample_rate) as usize;
+        const GRAVITY: f64 = 9.81;
 
-        // Generate 3-axis accelerometer data
-        let data = PyArray2::<f32>::zeros(py, (num_samples, 3), false);
+        let num_samples = (duration * sample_rate) as usize;
+        if num_samples == 0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "duration * sample_rate rounds to zero samples",
+            ));
+        }
+
+        // Cadence in Hz and motion amplitude in m/s^2 per activity.
+        let (cadence, amplitude) = match self.activity.to_ascii_lowercase().as_str() {
+            "rest" | "resting" | "still" => (0.0, 0.0),
+            "walk" | "walking" => (1.9, 2.5),
+            "run" | "running" => (2.8, 8.0),
+            "tremor" => (5.0, 1.2),
+            other => {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "unknown activity '{other}'; expected rest, walking, running or tremor"
+                )));
+            }
+        };
+
+        // Deterministic given the seed, so a caller can reproduce a dataset.
+        let mut state = seed
+            .unwrap_or(0)
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1);
+        let mut noise = move || {
+            // xorshift, then map to roughly [-1, 1].
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            ((state >> 11) as f64 / (1u64 << 53) as f64) * 2.0 - 1.0
+        };
+
+        let mut flat = Vec::with_capacity(num_samples * 3);
+        for i in 0..num_samples {
+            // Jitter perturbs the sampling instant, which is what a real
+            // device's clock does.
+            let t = i as f64 / sample_rate + self.sampling_jitter * noise();
+            let phase = std::f64::consts::TAU * cadence * t;
+
+            // x and y carry the horizontal sway, z carries gravity plus the
+            // vertical component of the gait cycle.
+            let x = amplitude * 0.4 * phase.sin() + self.noise_level * noise();
+            let y = amplitude * 0.3 * (phase + 1.0).sin() + self.noise_level * noise();
+            let z = GRAVITY + amplitude * phase.cos() + self.noise_level * noise();
+
+            flat.push(x as f32);
+            flat.push(y as f32);
+            flat.push(z as f32);
+        }
+
+        let array = Array2::from_shape_vec((num_samples, 3), flat).map_err(|e| {
+            pyo3::exceptions::PyValueError::new_err(format!("accelerometer shape: {e}"))
+        })?;
+        let data = PyArray2::from_owned_array(py, array);
         let signal = PyTimeSeries::new(data.into(), sample_rate, 0.0);
 
         let mut ground_truth = PyGroundTruth::new(None, None, None);
         ground_truth.add_label("modality".to_string(), "accelerometer".to_string());
         ground_truth.add_label("activity".to_string(), self.activity.clone());
+        ground_truth.add_label("cadence_hz".to_string(), cadence.to_string());
 
         Ok((signal, ground_truth))
     }
@@ -378,6 +447,7 @@ impl PyEmgGenerator {
         })
     }
 
+    #[pyo3(signature = (duration, sample_rate, seed=None))]
     fn generate(
         &self,
         duration: f64,
@@ -460,24 +530,95 @@ impl PyEegGenerator {
         })
     }
 
+    /// Generate multi-channel EEG.
+    ///
+    /// Produced by `dpb_synth::EegGenerator` rather than returned as zeros.
+    /// The previous body allocated a zero array and ignored `num_channels`'
+    /// siblings entirely -- `dominant_frequency` and `noise_level` were
+    /// recorded at construction and never reached the signal -- while the class
+    /// documented "realistic synthetic" data.
+    #[pyo3(signature = (duration, sample_rate, seed=None))]
     fn generate(
         &self,
         duration: f64,
         sample_rate: f64,
-        _seed: Option<u64>,
+        seed: Option<u64>,
         py: Python,
     ) -> PyResult<(PyTimeSeries, PyGroundTruth)> {
-        let num_samples = (duration * sample_rate) as usize;
+        let generator = EegGenerator {
+            sample_rate,
+            channels: self.num_channels,
+            noise_level: self.noise_level,
+        };
 
-        // Generate multi-channel EEG data
-        let data = PyArray2::<f32>::zeros(py, (num_samples, self.num_channels), false);
+        // `dominant_frequency` selects which band carries the power, which is
+        // what a caller asking for a dominant frequency means.
+        let config = band_config_for(self.dominant_frequency);
+
+        let mut channels: Vec<Vec<f64>> = Vec::with_capacity(self.num_channels);
+        for _ in 0..self.num_channels {
+            channels.push(generator.generate_channel(duration, &config));
+        }
+
+        let num_samples = channels.first().map_or(0, Vec::len);
+        let mut flat = Vec::with_capacity(num_samples * self.num_channels);
+        for s in 0..num_samples {
+            for ch in &channels {
+                flat.push(ch[s] as f32);
+            }
+        }
+
+        let array = Array2::from_shape_vec((num_samples, self.num_channels), flat)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("eeg shape: {e}")))?;
+        let data = PyArray2::from_owned_array(py, array);
         let signal = PyTimeSeries::new(data.into(), sample_rate, 0.0);
 
         let mut ground_truth = PyGroundTruth::new(None, None, None);
         ground_truth.add_label("modality".to_string(), "eeg".to_string());
+        ground_truth.add_label(
+            "dominant_frequency".to_string(),
+            self.dominant_frequency.to_string(),
+        );
+        let _ = seed;
 
         Ok((signal, ground_truth))
     }
+}
+
+/// Band powers with the band containing `dominant_hz` carrying most of them.
+///
+/// A caller who asks for a dominant frequency is asking which rhythm should
+/// stand out; the underlying generator takes relative band powers, so the
+/// request is translated into them here.
+fn band_config_for(dominant_hz: f64) -> BandPowerConfig {
+    let mut c = BandPowerConfig {
+        delta: 0.1,
+        theta: 0.1,
+        alpha: 0.1,
+        beta: 0.1,
+        gamma: 0.1,
+    };
+    let dominant = 0.6;
+    let alpha_is_dominant = (8.0..13.0).contains(&dominant_hz);
+    match dominant_hz {
+        f if f < 4.0 => c.delta = dominant,
+        f if f < 8.0 => c.theta = dominant,
+        f if f < 13.0 => c.alpha = dominant,
+        f if f < 30.0 => c.beta = dominant,
+        _ => c.gamma = dominant,
+    }
+
+    // The generator models alpha as a pure 10 Hz tone while every other band is
+    // broadband noise. All of a tone's energy lands in one spectral bin, so a
+    // background alpha at any audible level takes the spectral peak no matter
+    // how much power the requested band carries -- the dominant frequency would
+    // be 10 Hz whatever was asked for. Alpha is therefore left out unless it is
+    // the band being asked for. (The generator drops any band whose normalised
+    // power is below 0.01.)
+    if !alpha_is_dominant {
+        c.alpha = 0.0;
+    }
+    c
 }
 
 /// Batch generator for creating multiple synthetic samples
