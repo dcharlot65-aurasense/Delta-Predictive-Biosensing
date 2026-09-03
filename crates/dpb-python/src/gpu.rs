@@ -94,10 +94,23 @@ impl PyGpuContext {
     /// Fails if no adapter is present, rather than reporting success and
     /// leaving the caller to discover it later.
     fn initialize(&mut self) -> PyResult<()> {
-        if real_adapters().is_empty() {
+        let adapters = real_adapters();
+        if adapters.is_empty() {
             return Err(pyo3::exceptions::PyRuntimeError::new_err(
                 "no GPU adapter available on this system",
             ));
+        }
+        // A device_id past the end is a mistake worth reporting here rather
+        // than silently ignoring: any id at all used to initialize
+        // successfully, and `device_info` then reported adapter 0 whatever was
+        // asked for.
+        if let Some(id) = self.device_id
+            && id >= adapters.len()
+        {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "device_id {id} does not exist; {} adapter(s) available",
+                adapters.len()
+            )));
         }
         self.initialized = true;
         Ok(())
@@ -111,8 +124,11 @@ impl PyGpuContext {
             ));
         }
 
-        real_adapters().into_iter().next().ok_or_else(|| {
-            pyo3::exceptions::PyRuntimeError::new_err("no GPU adapter available on this system")
+        // The selected adapter, not always the first one.
+        let adapters = real_adapters();
+        let index = self.device_id.unwrap_or(0);
+        adapters.into_iter().nth(index).ok_or_else(|| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("no GPU adapter at index {index}"))
         })
     }
 
@@ -122,7 +138,17 @@ impl PyGpuContext {
         Ok(real_adapters())
     }
 
-    /// Get memory usage statistics
+    /// Get memory usage statistics.
+    ///
+    /// Not available: wgpu exposes no portable query for device memory use, so
+    /// there is nothing here to report. This used to return a fixed 8 GB total
+    /// with 1 GB used on every machine -- the same fabrication this file's
+    /// header records removing from `list_devices`, left in place one method
+    /// further down.
+    ///
+    /// `device_info().max_buffer_size` is a real number from the adapter and is
+    /// the closest thing available: the largest single allocation it will
+    /// accept.
     fn memory_stats(&self) -> PyResult<HashMap<String, u64>> {
         if !self.initialized {
             return Err(pyo3::exceptions::PyRuntimeError::new_err(
@@ -130,12 +156,11 @@ impl PyGpuContext {
             ));
         }
 
-        let mut stats = HashMap::new();
-        stats.insert("total".to_string(), 8_000_000_000);
-        stats.insert("used".to_string(), 1_000_000_000);
-        stats.insert("free".to_string(), 7_000_000_000);
-
-        Ok(stats)
+        Err(pyo3::exceptions::PyNotImplementedError::new_err(
+            "memory_stats is not available: wgpu exposes no portable query for \
+             device memory usage. Use device_info() for the adapter's reported \
+             limits.",
+        ))
     }
 
     /// Synchronize GPU operations

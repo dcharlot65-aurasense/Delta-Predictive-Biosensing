@@ -469,6 +469,17 @@ impl PyHodgkinHuxleyNeuron {
 
     fn step(&mut self, input_current: f32, dt: f32) -> bool {
         let i_ext = input_current as f64;
+        // The rate constants below (0.1, 4.0, 0.07, 0.01, 0.125) are the
+        // standard Hodgkin-Huxley values, which are per *millisecond*, and the
+        // conductances are mS/cm^2. `dt` is documented in seconds throughout
+        // this module -- the Izhikevich sibling converts the same way -- so it
+        // has to be converted here too.
+        //
+        // It was previously used raw, so a caller passing dt = 0.001 (one
+        // millisecond, in seconds) integrated as though the step were a
+        // microsecond: the dynamics ran a thousand times too slowly and no
+        // action potential ever appeared within a plausible simulation.
+        let dt_ms = dt as f64 * 1000.0;
 
         // Calculate ionic currents (simplified)
         let i_na = self.g_na * self.m.powi(3) * self.h * (self.v - self.e_na);
@@ -476,18 +487,18 @@ impl PyHodgkinHuxleyNeuron {
         let i_l = self.g_l * (self.v - self.e_l);
 
         // Update voltage
-        let dv = (i_ext - i_na - i_k - i_l) * dt as f64;
+        let dv = (i_ext - i_na - i_k - i_l) * dt_ms;
         let old_v = self.v;
         self.v += dv;
 
         // Update gating variables (simplified)
-        self.m += dt as f64
+        self.m += dt_ms
             * (0.1 * (self.v + 40.0) / (1.0 - (-0.1 * (self.v + 40.0)).exp()) * (1.0 - self.m)
                 - 4.0 * ((-self.v - 65.0) / 18.0).exp() * self.m);
-        self.h += dt as f64
+        self.h += dt_ms
             * (0.07 * ((-self.v - 65.0) / 20.0).exp() * (1.0 - self.h)
                 - (1.0 / (1.0 + ((-self.v - 35.0) / 10.0).exp())) * self.h);
-        self.n += dt as f64
+        self.n += dt_ms
             * (0.01 * (self.v + 55.0) / (1.0 - (-0.1 * (self.v + 55.0)).exp()) * (1.0 - self.n)
                 - 0.125 * ((-self.v - 65.0) / 80.0).exp() * self.n);
 
@@ -500,6 +511,33 @@ impl PyHodgkinHuxleyNeuron {
         self.m = 0.05;
         self.h = 0.6;
         self.n = 0.32;
+    }
+
+    /// Membrane potential in mV.
+    ///
+    /// There was no way to read it: the model integrated a voltage that no
+    /// caller could observe, and `step` returns only whether it crossed zero.
+    #[getter]
+    fn v(&self) -> f64 {
+        self.v
+    }
+
+    /// Sodium activation gate.
+    #[getter]
+    fn m(&self) -> f64 {
+        self.m
+    }
+
+    /// Sodium inactivation gate.
+    #[getter]
+    fn h(&self) -> f64 {
+        self.h
+    }
+
+    /// Potassium activation gate.
+    #[getter]
+    fn n(&self) -> f64 {
+        self.n
     }
 }
 
