@@ -10,7 +10,7 @@ use super::operators::{
     BuiltinOperator, OperatorOptions, OperatorRegistry, OperatorType, TFLiteOperator,
 };
 use super::quantization::{PostTrainingQuantizer, QuantizationConfig};
-use super::tensors::{TFLiteTensor, TensorShape, TensorType};
+use super::tensors::{QuantizationParams, TFLiteTensor, TensorShape, TensorType};
 use super::validation::{TFLiteValidator, ValidationResult};
 
 use serde::{Deserialize, Serialize};
@@ -190,6 +190,10 @@ impl TFLiteExporter {
                 .unwrap_or(OperatorType::Builtin(BuiltinOperator::FullyConnected));
 
             // Add weight buffer
+            // The weight scale is needed again below: TFLite's convention is
+            // bias_scale = input_scale * weight_scale, so the bias cannot be
+            // quantized without it.
+            let mut weight_quant: Option<QuantizationParams> = None;
             let _weight_buffer_idx = if let Some(ref quantizer) = quantizer {
                 // Quantize weights
                 let (quantized_weights, quant_params) = quantizer.quantize_weights(
@@ -212,9 +216,11 @@ impl TFLiteExporter {
                     TensorShape::from_usize(layer_weights.shape.clone()),
                     TensorType::Int8,
                 )
-                .with_quantization(quant_params)
+                .with_quantization(quant_params.clone())
                 .with_buffer(buffer_idx);
+                let quant_params_for_bias = quant_params;
 
+                weight_quant = Some(quant_params_for_bias);
                 subgraph_builder.add_tensor(weight_tensor);
                 buffer_idx
             } else {
@@ -238,8 +244,32 @@ impl TFLiteExporter {
             // Add bias if present
             if let Some(ref bias) = layer_weights.bias {
                 let bias_buffer_idx = if quantizer.is_some() {
-                    // For quantized models, bias is typically Int32
-                    let bias_i32: Vec<i32> = bias.iter().map(|&b| (b * 1000.0) as i32).collect();
+                    // TFLite stores a quantized bias as Int32 on the scale
+                    // input_scale * weight_scale, so the quantized value is
+                    // bias / bias_scale.
+                    //
+                    // This used to multiply by a literal 1000.0, which
+                    // corresponds to no scale the file declares anywhere: the
+                    // stored integers did not match the tensor's own
+                    // quantization parameters, so a runtime dequantizing them
+                    // recovered the wrong bias.
+                    //
+                    // The input scale is not tracked through this exporter, so
+                    // it is taken as 1.0 and the bias tensor below carries the
+                    // scale actually used -- self-consistent, and stated rather
+                    // than hidden behind a constant.
+                    const ASSUMED_INPUT_SCALE: f32 = 1.0;
+                    let bias_scale = weight_quant
+                        .as_ref()
+                        .and_then(|q| q.scales.first().copied())
+                        .filter(|s| *s > 0.0)
+                        .map(|weight_scale| ASSUMED_INPUT_SCALE * weight_scale)
+                        .unwrap_or(1.0);
+
+                    let bias_i32: Vec<i32> = bias
+                        .iter()
+                        .map(|&b| ((b as f32) / bias_scale).round() as i32)
+                        .collect();
                     let bytes: Vec<u8> = bias_i32.iter().flat_map(|&i| i.to_le_bytes()).collect();
                     fb_builder.buffer_manager().add_buffer(bytes)
                 } else {
@@ -255,7 +285,21 @@ impl TFLiteExporter {
                     } else {
                         TensorType::Float32
                     },
-                )
+                );
+                // Declare the scale the integers above were produced with, so a
+                // runtime can dequantize them back to the original bias.
+                let bias_tensor = match (quantizer.is_some(), weight_quant.as_ref()) {
+                    (true, Some(q)) => {
+                        let scale = q
+                            .scales
+                            .first()
+                            .copied()
+                            .filter(|s| *s > 0.0)
+                            .unwrap_or(1.0);
+                        bias_tensor.with_quantization(QuantizationParams::per_tensor(scale, 0))
+                    }
+                    _ => bias_tensor,
+                }
                 .with_buffer(bias_buffer_idx);
 
                 subgraph_builder.add_tensor(bias_tensor);
@@ -554,7 +598,11 @@ mod tests {
 
         let result = exporter.export_model(&weights, &layers, &input_shape);
 
-        assert!(result.is_ok());
+        assert!(
+            result.is_ok(),
+            "quantized export failed: {:?}",
+            result.err()
+        );
         let export = result.unwrap();
         assert!(export.metadata.quantized);
     }

@@ -90,11 +90,21 @@ impl ANNToSNNConverter {
             snn.reset();
         }
 
-        // Adjust thresholds based on activation statistics
+        // Adjust thresholds from the statistics collected above.
+        //
+        // The mean over every calibration sample, not the first one. The loop
+        // above walks the whole dataset and records a rate per sample, and this
+        // used to read `.first()` -- so every sample after the first was
+        // computed and thrown away, and the calibration was decided by whichever
+        // one happened to be at the front. Passing more data changed the cost
+        // and not the result.
         for (layer_idx, layer) in snn.layers.iter_mut().enumerate() {
-            if let Some(&mean_activation) = layer_activations[layer_idx].first()
-                && mean_activation > 0.0
-            {
+            let rates = &layer_activations[layer_idx];
+            if rates.is_empty() {
+                continue;
+            }
+            let mean_activation = rates.iter().sum::<f32>() / rates.len() as f32;
+            if mean_activation > 0.0 {
                 // Scale threshold to achieve target spike rate
                 let scale = mean_activation / self.target_spike_rate;
                 layer.neuron_params.v_threshold *= scale;

@@ -207,6 +207,42 @@ impl SpikeTensor {
     }
 
     /// Convert to sparse representation
+    /// True when every value is exactly 0.0 or 1.0.
+    ///
+    /// Worth checking before [`Self::to_sparse`]: this crate routinely produces
+    /// `SpikeTensor`s that are not spike trains -- pooling layers carry sums and
+    /// averages, and the multi-head attention output is a linear projection --
+    /// and the sparse form can represent only events.
+    pub fn is_binary(&self) -> bool {
+        match &self.data {
+            SpikeRepresentation::Dense(arr) => arr.iter().all(|&v| v == 0.0 || v == 1.0),
+            SpikeRepresentation::Sparse(_) => true,
+        }
+    }
+
+    /// Sparse form, or an error when the tensor is not binary.
+    ///
+    /// [`Self::to_sparse`] thresholds, which silently discards magnitudes. This
+    /// is the checked path for a caller who believes the tensor is a spike
+    /// train and wants to be told when it is not.
+    pub fn try_to_sparse(&self) -> SNNResult<SparseSpikes> {
+        if !self.is_binary() {
+            return Err(SNNError::InvalidConfig(
+                "tensor is not binary, so converting it to sparse spikes would                  discard its values; use to_sparse if thresholding is intended"
+                    .to_string(),
+            ));
+        }
+        Ok(self.to_sparse())
+    }
+
+    /// Sparse form, thresholding at 0.5.
+    ///
+    /// `SparseSpikes` records `(batch, step, neuron)` events and carries no
+    /// values, so this is lossless only for a tensor that is already 0/1.
+    /// Anything else -- a pooled sum, an average, a projection, a membrane
+    /// current -- is reduced to which entries exceeded 0.5, and a round trip
+    /// through sparse will not return what went in. [`Self::try_to_sparse`]
+    /// reports that case instead of performing it.
     pub fn to_sparse(&self) -> SparseSpikes {
         match &self.data {
             SpikeRepresentation::Dense(arr) => {
@@ -422,5 +458,43 @@ mod tests {
         let dense_again = sparse.to_dense();
 
         assert_eq!(data, dense_again);
+    }
+
+    /// A binary tensor round-trips through the sparse form unchanged.
+    #[test]
+    fn binary_tensors_round_trip_through_sparse() {
+        let mut dense = Array3::zeros((2, 4, 3));
+        dense[[0, 1, 2]] = 1.0;
+        dense[[1, 3, 0]] = 1.0;
+        let tensor = SpikeTensor::from_dense(dense.clone(), false);
+
+        assert!(tensor.is_binary());
+        let sparse = tensor.try_to_sparse().expect("binary tensors convert");
+        let back = SpikeTensor::from_sparse(sparse, false).to_dense();
+        assert_eq!(back, dense);
+    }
+
+    /// A non-binary tensor is reported rather than silently thresholded.
+    ///
+    /// The crate produces these routinely -- pooling carries sums and averages,
+    /// multi-head attention carries a projection -- and the sparse form records
+    /// only events, so `to_sparse` discards the magnitudes.
+    #[test]
+    fn non_binary_tensors_are_reported_not_thresholded() {
+        let mut dense = Array3::zeros((1, 3, 2));
+        dense[[0, 0, 0]] = 0.25; // below the threshold: would vanish
+        dense[[0, 1, 1]] = 3.5; // above it: would become exactly 1.0
+        let tensor = SpikeTensor::from_dense(dense, false);
+
+        assert!(!tensor.is_binary());
+        assert!(
+            tensor.try_to_sparse().is_err(),
+            "a tensor carrying magnitudes should not convert silently"
+        );
+
+        // The unchecked path still thresholds, which is what it documents.
+        let thresholded = SpikeTensor::from_sparse(tensor.to_sparse(), false).to_dense();
+        assert_eq!(thresholded[[0, 0, 0]], 0.0, "0.25 is dropped");
+        assert_eq!(thresholded[[0, 1, 1]], 1.0, "3.5 becomes 1.0");
     }
 }

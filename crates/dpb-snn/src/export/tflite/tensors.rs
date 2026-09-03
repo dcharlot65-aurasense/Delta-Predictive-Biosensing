@@ -194,10 +194,17 @@ impl TensorType {
     }
 
     /// Check if type supports quantization
+    /// Whether a tensor of this type may carry quantization parameters.
+    ///
+    /// Int32 is included because that is how TFLite represents a quantized
+    /// bias: the bias is stored as Int32 on the scale `input_scale *
+    /// weight_scale`, and it needs that scale attached for a runtime to
+    /// dequantize it. Omitting Int32 made the validator reject any correctly
+    /// formed quantized model with a bias.
     pub fn supports_quantization(&self) -> bool {
         matches!(
             self,
-            TensorType::Int8 | TensorType::UInt8 | TensorType::Int16
+            TensorType::Int8 | TensorType::UInt8 | TensorType::Int16 | TensorType::Int32
         )
     }
 
