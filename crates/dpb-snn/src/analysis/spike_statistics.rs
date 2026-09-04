@@ -1,6 +1,6 @@
 //! Spike pattern and statistics analysis
 
-use super::{AnalysisReport, ConvergenceAnalyzer, TrainingMetrics};
+use super::{AnalysisReport, ConvergenceAnalyzer, StabilityDetector, TrainingMetrics};
 use std::collections::HashMap;
 
 /// Tracks firing rates across the network during training
@@ -8,7 +8,7 @@ pub struct SpikeRateTracker {
     spike_rate_history: Vec<f64>,
     mean_spike_rate: f64,
     target_spike_rate: f64,
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl SpikeRateTracker {
@@ -17,7 +17,7 @@ impl SpikeRateTracker {
             spike_rate_history: Vec::new(),
             mean_spike_rate: 0.0,
             target_spike_rate,
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 }
@@ -33,21 +33,24 @@ impl ConvergenceAnalyzer for SpikeRateTracker {
         "SpikeRateTracker"
     }
 
-    fn update(&mut self, _epoch: usize, metrics: &TrainingMetrics) {
+    fn update(&mut self, epoch: usize, metrics: &TrainingMetrics) {
         self.spike_rate_history.push(metrics.spike_rate);
 
         if !self.spike_rate_history.is_empty() {
             self.mean_spike_rate =
                 self.spike_rate_history.iter().sum::<f64>() / self.spike_rate_history.len() as f64;
         }
+
+        // Converged when the firing rate has stopped moving.
+        self.stability.observe(epoch, &self.spike_rate_history);
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -79,7 +82,7 @@ impl ConvergenceAnalyzer for SpikeRateTracker {
     fn reset(&mut self) {
         self.spike_rate_history.clear();
         self.mean_spike_rate = 0.0;
-        self.converged = false;
+        self.stability.reset();
     }
 }
 
@@ -87,7 +90,7 @@ impl ConvergenceAnalyzer for SpikeRateTracker {
 pub struct SparsityTracker {
     sparsity_history: Vec<f64>,
     target_sparsity: f64,
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl SparsityTracker {
@@ -95,7 +98,7 @@ impl SparsityTracker {
         Self {
             sparsity_history: Vec::new(),
             target_sparsity,
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 }
@@ -111,18 +114,21 @@ impl ConvergenceAnalyzer for SparsityTracker {
         "SparsityTracker"
     }
 
-    fn update(&mut self, _epoch: usize, metrics: &TrainingMetrics) {
+    fn update(&mut self, epoch: usize, metrics: &TrainingMetrics) {
         // Sparsity is 1 - spike_rate
         let sparsity = 1.0 - metrics.spike_rate;
         self.sparsity_history.push(sparsity);
+
+        // Converged when the sparsity has stopped moving.
+        self.stability.observe(epoch, &self.sparsity_history);
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -152,7 +158,7 @@ impl ConvergenceAnalyzer for SparsityTracker {
 
     fn reset(&mut self) {
         self.sparsity_history.clear();
-        self.converged = false;
+        self.stability.reset();
     }
 }
 
@@ -162,7 +168,9 @@ pub struct SilentNeuronDetector {
     total_updates: usize,
     silence_threshold: usize,
     detected_silent: Vec<usize>,
-    converged: bool,
+    /// How many neurons were silent at each epoch, for the stability check.
+    silent_count_history: Vec<f64>,
+    stability: StabilityDetector,
 }
 
 impl SilentNeuronDetector {
@@ -172,7 +180,8 @@ impl SilentNeuronDetector {
             total_updates: 0,
             silence_threshold,
             detected_silent: Vec::new(),
-            converged: false,
+            silent_count_history: Vec::new(),
+            stability: StabilityDetector::default(),
         }
     }
 
@@ -192,7 +201,7 @@ impl ConvergenceAnalyzer for SilentNeuronDetector {
         "SilentNeuronDetector"
     }
 
-    fn update(&mut self, _epoch: usize, _metrics: &TrainingMetrics) {
+    fn update(&mut self, epoch: usize, _metrics: &TrainingMetrics) {
         self.total_updates += 1;
 
         if self.total_updates >= self.silence_threshold {
@@ -203,14 +212,20 @@ impl ConvergenceAnalyzer for SilentNeuronDetector {
                 }
             }
         }
+
+        // Converged when the population of silent neurons has stopped
+        // changing: neurons are no longer dropping out or recovering.
+        self.silent_count_history
+            .push(self.detected_silent.len() as f64);
+        self.stability.observe(epoch, &self.silent_count_history);
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -246,7 +261,8 @@ impl ConvergenceAnalyzer for SilentNeuronDetector {
         self.neuron_spike_counts.clear();
         self.total_updates = 0;
         self.detected_silent.clear();
-        self.converged = false;
+        self.silent_count_history.clear();
+        self.stability.reset();
     }
 }
 
@@ -255,7 +271,9 @@ pub struct SaturatedNeuronDetector {
     neuron_activity_ratios: HashMap<usize, f64>,
     saturation_threshold: f64,
     detected_saturated: Vec<usize>,
-    converged: bool,
+    /// How many neurons were saturated at each epoch.
+    saturated_count_history: Vec<f64>,
+    stability: StabilityDetector,
 }
 
 impl SaturatedNeuronDetector {
@@ -264,7 +282,8 @@ impl SaturatedNeuronDetector {
             neuron_activity_ratios: HashMap::new(),
             saturation_threshold,
             detected_saturated: Vec::new(),
-            converged: false,
+            saturated_count_history: Vec::new(),
+            stability: StabilityDetector::default(),
         }
     }
 
@@ -285,7 +304,7 @@ impl ConvergenceAnalyzer for SaturatedNeuronDetector {
         "SaturatedNeuronDetector"
     }
 
-    fn update(&mut self, _epoch: usize, _metrics: &TrainingMetrics) {
+    fn update(&mut self, epoch: usize, _metrics: &TrainingMetrics) {
         self.detected_saturated.clear();
 
         for (&neuron_id, &ratio) in &self.neuron_activity_ratios {
@@ -293,14 +312,19 @@ impl ConvergenceAnalyzer for SaturatedNeuronDetector {
                 self.detected_saturated.push(neuron_id);
             }
         }
+
+        // Converged when the saturated population has stopped changing.
+        self.saturated_count_history
+            .push(self.detected_saturated.len() as f64);
+        self.stability.observe(epoch, &self.saturated_count_history);
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -338,7 +362,8 @@ impl ConvergenceAnalyzer for SaturatedNeuronDetector {
     fn reset(&mut self) {
         self.neuron_activity_ratios.clear();
         self.detected_saturated.clear();
-        self.converged = false;
+        self.saturated_count_history.clear();
+        self.stability.reset();
     }
 }
 
@@ -346,7 +371,7 @@ impl ConvergenceAnalyzer for SaturatedNeuronDetector {
 pub struct TemporalDynamicsAnalyzer {
     spike_timing_variance: Vec<f64>,
     synchrony_measures: Vec<f64>,
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl TemporalDynamicsAnalyzer {
@@ -354,7 +379,7 @@ impl TemporalDynamicsAnalyzer {
         Self {
             spike_timing_variance: Vec::new(),
             synchrony_measures: Vec::new(),
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 
@@ -378,18 +403,21 @@ impl ConvergenceAnalyzer for TemporalDynamicsAnalyzer {
         "TemporalDynamicsAnalyzer"
     }
 
-    fn update(&mut self, _epoch: usize, metrics: &TrainingMetrics) {
+    fn update(&mut self, epoch: usize, metrics: &TrainingMetrics) {
         // Use spike rate as a proxy for temporal dynamics
         // Higher variance in spike rate indicates more dynamic temporal patterns
         self.spike_timing_variance.push(metrics.spike_rate);
+
+        // Converged when the temporal pattern has stopped shifting.
+        self.stability.observe(epoch, &self.spike_timing_variance);
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -434,7 +462,7 @@ impl ConvergenceAnalyzer for TemporalDynamicsAnalyzer {
     fn reset(&mut self) {
         self.spike_timing_variance.clear();
         self.synchrony_measures.clear();
-        self.converged = false;
+        self.stability.reset();
     }
 }
 
@@ -531,5 +559,91 @@ mod tests {
 
         let report = tracker.analysis_report();
         assert!(!report.recommendations.is_empty());
+    }
+
+    // ---- convergence detection -----------------------------------------
+    //
+    // Every analyzer here had a `converged` field set to false in its
+    // constructor and in `reset`, and set to true nowhere at all -- so
+    // `is_converged` could not return true however the training went, and
+    // `convergence_epoch` returned a hardcoded None. An analyzer that always
+    // answers "not converged" is indistinguishable from one that is working
+    // and has nothing to report, which is what made this invisible.
+
+    fn metrics_with_rate(rate: f64) -> TrainingMetrics {
+        let mut m = TrainingMetrics::new(0, 1.0, 0.5);
+        m.spike_rate = rate;
+        m
+    }
+
+    /// A settled spike rate is detected, and the epoch is recorded.
+    #[test]
+    fn spike_rate_tracker_detects_a_settled_rate() {
+        let mut tracker = SpikeRateTracker::new(0.05);
+        assert!(!tracker.is_converged(), "nothing has been observed yet");
+
+        // Moving: should not converge.
+        for epoch in 0..20 {
+            tracker.update(epoch, &metrics_with_rate(0.01 + epoch as f64 * 0.01));
+        }
+        assert!(
+            !tracker.is_converged(),
+            "a rate still climbing was reported as converged"
+        );
+
+        // Settled.
+        for epoch in 20..45 {
+            tracker.update(epoch, &metrics_with_rate(0.05));
+        }
+        assert!(tracker.is_converged(), "a settled rate was never detected");
+        let at = tracker
+            .convergence_epoch()
+            .expect("an epoch must be recorded");
+        assert!(at >= 20, "converged at epoch {at}, before the rate settled");
+    }
+
+    /// Reset clears the verdict.
+    #[test]
+    fn reset_clears_convergence() {
+        let mut tracker = SpikeRateTracker::new(0.05);
+        for epoch in 0..40 {
+            tracker.update(epoch, &metrics_with_rate(0.05));
+        }
+        assert!(tracker.is_converged());
+        tracker.reset();
+        assert!(!tracker.is_converged());
+        assert_eq!(tracker.convergence_epoch(), None);
+    }
+
+    /// Every analyzer in this module can reach a converged state.
+    ///
+    /// The point is not the specific criterion but that none of them is wired
+    /// to a constant: a stable run has to be distinguishable from an unstable
+    /// one.
+    #[test]
+    fn every_analyzer_can_converge() {
+        let mut analyzers: Vec<Box<dyn ConvergenceAnalyzer>> = vec![
+            Box::new(SpikeRateTracker::default()),
+            Box::new(SparsityTracker::default()),
+            Box::new(SilentNeuronDetector::default()),
+            Box::new(SaturatedNeuronDetector::default()),
+            Box::new(TemporalDynamicsAnalyzer::default()),
+        ];
+
+        for analyzer in &mut analyzers {
+            for epoch in 0..60 {
+                analyzer.update(epoch, &metrics_with_rate(0.05));
+            }
+            assert!(
+                analyzer.is_converged(),
+                "{} never converged on a completely stable run",
+                analyzer.name()
+            );
+            assert!(
+                analyzer.convergence_epoch().is_some(),
+                "{} converged without recording an epoch",
+                analyzer.name()
+            );
+        }
     }
 }

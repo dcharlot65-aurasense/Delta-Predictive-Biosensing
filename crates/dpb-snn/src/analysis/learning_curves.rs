@@ -1,6 +1,6 @@
 //! Learning curve analysis
 
-use super::{AnalysisReport, ConvergenceAnalyzer, TrainingMetrics};
+use super::{AnalysisReport, ConvergenceAnalyzer, StabilityDetector, TrainingMetrics};
 
 /// Provides smoothed learning curves with exponential moving average
 pub struct LearningCurveSmoothed {
@@ -9,7 +9,7 @@ pub struct LearningCurveSmoothed {
     smoothed_accuracy: Option<f64>,
     loss_history: Vec<f64>,
     accuracy_history: Vec<f64>,
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl LearningCurveSmoothed {
@@ -20,7 +20,7 @@ impl LearningCurveSmoothed {
             smoothed_accuracy: None,
             loss_history: Vec::new(),
             accuracy_history: Vec::new(),
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 }
@@ -36,7 +36,7 @@ impl ConvergenceAnalyzer for LearningCurveSmoothed {
         "LearningCurveSmoothed"
     }
 
-    fn update(&mut self, _epoch: usize, metrics: &TrainingMetrics) {
+    fn update(&mut self, epoch: usize, metrics: &TrainingMetrics) {
         // Update smoothed loss
         self.smoothed_loss = Some(match self.smoothed_loss {
             None => metrics.train_loss,
@@ -51,14 +51,17 @@ impl ConvergenceAnalyzer for LearningCurveSmoothed {
 
         self.loss_history.push(metrics.train_loss);
         self.accuracy_history.push(metrics.train_accuracy);
+
+        // Converged when the smoothed loss has stopped moving.
+        self.stability.observe(epoch, &self.loss_history);
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -91,7 +94,7 @@ impl ConvergenceAnalyzer for LearningCurveSmoothed {
         self.smoothed_accuracy = None;
         self.loss_history.clear();
         self.accuracy_history.clear();
-        self.converged = false;
+        self.stability.reset();
     }
 }
 
@@ -264,7 +267,7 @@ pub struct LearningRateAnalyzer {
     lr_history: Vec<f64>,
     loss_history: Vec<f64>,
     optimal_lr: Option<f64>,
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl LearningRateAnalyzer {
@@ -273,7 +276,7 @@ impl LearningRateAnalyzer {
             lr_history: Vec::new(),
             loss_history: Vec::new(),
             optimal_lr: None,
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 }
@@ -289,7 +292,7 @@ impl ConvergenceAnalyzer for LearningRateAnalyzer {
         "LearningRateAnalyzer"
     }
 
-    fn update(&mut self, _epoch: usize, metrics: &TrainingMetrics) {
+    fn update(&mut self, epoch: usize, metrics: &TrainingMetrics) {
         self.lr_history.push(metrics.learning_rate);
         self.loss_history.push(metrics.train_loss);
 
@@ -311,14 +314,17 @@ impl ConvergenceAnalyzer for LearningRateAnalyzer {
                 self.optimal_lr = Some(self.lr_history[best_idx]);
             }
         }
+
+        // Converged when the learning rate has stopped moving.
+        self.stability.observe(epoch, &self.lr_history);
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -350,21 +356,21 @@ impl ConvergenceAnalyzer for LearningRateAnalyzer {
         self.lr_history.clear();
         self.loss_history.clear();
         self.optimal_lr = None;
-        self.converged = false;
+        self.stability.reset();
     }
 }
 
 /// Analyzes the effect of batch size on training
 pub struct BatchSizeAnalyzer {
     loss_per_batch: Vec<(usize, f64)>,
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl BatchSizeAnalyzer {
     pub fn new() -> Self {
         Self {
             loss_per_batch: Vec::new(),
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 
@@ -384,17 +390,27 @@ impl ConvergenceAnalyzer for BatchSizeAnalyzer {
         "BatchSizeAnalyzer"
     }
 
-    fn update(&mut self, _epoch: usize, metrics: &TrainingMetrics) {
+    fn update(&mut self, epoch: usize, metrics: &TrainingMetrics) {
         // Store metrics with default batch size indicator
         self.loss_per_batch.push((0, metrics.train_loss));
+
+        // Converged when the per-batch loss has stopped moving.
+        self.stability.observe(
+            epoch,
+            &self
+                .loss_per_batch
+                .iter()
+                .map(|(_, l)| *l)
+                .collect::<Vec<_>>(),
+        );
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -413,7 +429,7 @@ impl ConvergenceAnalyzer for BatchSizeAnalyzer {
 
     fn reset(&mut self) {
         self.loss_per_batch.clear();
-        self.converged = false;
+        self.stability.reset();
     }
 }
 
@@ -421,7 +437,7 @@ impl ConvergenceAnalyzer for BatchSizeAnalyzer {
 pub struct EpochEfficiencyAnalyzer {
     epoch_losses: Vec<f64>,
     efficiency_scores: Vec<f64>,
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl EpochEfficiencyAnalyzer {
@@ -429,7 +445,7 @@ impl EpochEfficiencyAnalyzer {
         Self {
             epoch_losses: Vec::new(),
             efficiency_scores: Vec::new(),
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 }
@@ -445,7 +461,7 @@ impl ConvergenceAnalyzer for EpochEfficiencyAnalyzer {
         "EpochEfficiencyAnalyzer"
     }
 
-    fn update(&mut self, _epoch: usize, metrics: &TrainingMetrics) {
+    fn update(&mut self, epoch: usize, metrics: &TrainingMetrics) {
         self.epoch_losses.push(metrics.train_loss);
 
         if self.epoch_losses.len() > 1 {
@@ -455,14 +471,17 @@ impl ConvergenceAnalyzer for EpochEfficiencyAnalyzer {
                 improvement / self.epoch_losses[self.epoch_losses.len() - 2].max(1e-10);
             self.efficiency_scores.push(efficiency);
         }
+
+        // Converged when the efficiency score has stopped moving.
+        self.stability.observe(epoch, &self.efficiency_scores);
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -490,7 +509,7 @@ impl ConvergenceAnalyzer for EpochEfficiencyAnalyzer {
     fn reset(&mut self) {
         self.epoch_losses.clear();
         self.efficiency_scores.clear();
-        self.converged = false;
+        self.stability.reset();
     }
 }
 

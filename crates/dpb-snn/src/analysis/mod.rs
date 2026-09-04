@@ -60,6 +60,96 @@ pub trait ConvergenceAnalyzer: Send + Sync {
     fn reset(&mut self);
 }
 
+/// Detects when a tracked series has stopped moving.
+///
+/// The criterion is the one the analyzers in `convergence.rs` already use:
+/// the trailing window's spread stays below a threshold for `patience`
+/// consecutive epochs. The spread is measured relative to the window's mean,
+/// so a single threshold is meaningful for series of different magnitudes --
+/// a loss of 40 and a sparsity of 0.02 do not need separate tuning.
+///
+/// This exists because most `ConvergenceAnalyzer` implementations had a
+/// `converged` field that was set to false in their constructor and reset, and
+/// never anywhere set to true: `is_converged` could not return true however
+/// the training went, and `convergence_epoch` returned a hardcoded None. An
+/// analyzer that always answers "not converged" is indistinguishable from one
+/// that is working and has nothing to report.
+#[derive(Debug, Clone)]
+pub struct StabilityDetector {
+    window: usize,
+    /// Maximum relative standard deviation still counted as stable.
+    tolerance: f64,
+    patience: usize,
+    stable_epochs: usize,
+    converged_at: Option<usize>,
+}
+
+impl StabilityDetector {
+    /// A detector over `window` recent values, requiring `patience`
+    /// consecutive stable windows.
+    pub fn new(window: usize, tolerance: f64, patience: usize) -> Self {
+        Self {
+            window: window.max(2),
+            tolerance,
+            patience: patience.max(1),
+            stable_epochs: 0,
+            converged_at: None,
+        }
+    }
+
+    /// Folds the latest state of `history` in, at `epoch`.
+    ///
+    /// Does nothing until the history is at least a window long: a series too
+    /// short to have a trend cannot be said to have settled into one.
+    pub fn observe(&mut self, epoch: usize, history: &[f64]) {
+        if history.len() < self.window {
+            return;
+        }
+        let recent = &history[history.len() - self.window..];
+        if recent.iter().any(|v| !v.is_finite()) {
+            self.stable_epochs = 0;
+            return;
+        }
+
+        let mean = recent.iter().sum::<f64>() / recent.len() as f64;
+        let variance = recent.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / recent.len() as f64;
+        // Relative to the mean's magnitude, with a floor so a series sitting at
+        // zero is judged on its absolute spread rather than dividing by nothing.
+        let relative = variance.sqrt() / mean.abs().max(1e-6);
+
+        if relative <= self.tolerance {
+            self.stable_epochs += 1;
+            if self.stable_epochs >= self.patience && self.converged_at.is_none() {
+                self.converged_at = Some(epoch);
+            }
+        } else {
+            self.stable_epochs = 0;
+        }
+    }
+
+    /// Whether the series has settled.
+    pub fn is_converged(&self) -> bool {
+        self.converged_at.is_some()
+    }
+
+    /// The epoch at which it first settled.
+    pub fn epoch(&self) -> Option<usize> {
+        self.converged_at
+    }
+
+    pub fn reset(&mut self) {
+        self.stable_epochs = 0;
+        self.converged_at = None;
+    }
+}
+
+impl Default for StabilityDetector {
+    /// Ten-epoch window, 1% relative spread, sustained for three epochs.
+    fn default() -> Self {
+        Self::new(10, 0.01, 3)
+    }
+}
+
 /// Training metrics collected during training
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrainingMetrics {
@@ -231,5 +321,88 @@ mod tests {
         assert_eq!(report.metrics.get("test_metric"), Some(&1.5));
         assert_eq!(report.recommendations.len(), 1);
         assert_eq!(report.details.get("note"), Some(&"Test detail".to_string()));
+    }
+}
+
+#[cfg(test)]
+mod stability_tests {
+    use super::*;
+
+    /// A settled series is detected, and the epoch recorded.
+    #[test]
+    fn a_settled_series_converges() {
+        let mut d = StabilityDetector::new(5, 0.01, 2);
+        let mut history = Vec::new();
+        for epoch in 0..30 {
+            history.push(1.0);
+            d.observe(epoch, &history);
+        }
+        assert!(d.is_converged());
+        assert!(d.epoch().is_some());
+    }
+
+    /// A series still moving does not.
+    #[test]
+    fn a_moving_series_does_not_converge() {
+        let mut d = StabilityDetector::new(5, 0.01, 2);
+        let mut history = Vec::new();
+        for epoch in 0..30 {
+            history.push(epoch as f64);
+            d.observe(epoch, &history);
+        }
+        assert!(
+            !d.is_converged(),
+            "a series climbing by 1.0 each epoch was called converged"
+        );
+    }
+
+    /// Too little history is not evidence of anything.
+    #[test]
+    fn a_short_series_does_not_converge() {
+        let mut d = StabilityDetector::new(10, 0.01, 2);
+        let history = vec![1.0, 1.0, 1.0];
+        d.observe(2, &history);
+        assert!(!d.is_converged());
+    }
+
+    /// The relative criterion works across magnitudes: a series jittering by
+    /// the same fraction is judged the same way whether it sits at 0.02 or 40.
+    #[test]
+    fn the_criterion_is_scale_free() {
+        for level in [0.02f64, 1.0, 40.0] {
+            let mut d = StabilityDetector::new(6, 0.02, 2);
+            let mut history = Vec::new();
+            for epoch in 0..25 {
+                // 0.5% jitter: well inside a 2% tolerance at every level.
+                let jitter = if epoch % 2 == 0 { 1.005 } else { 0.995 };
+                history.push(level * jitter);
+                d.observe(epoch, &history);
+            }
+            assert!(d.is_converged(), "level {level} was not detected as stable");
+
+            let mut d = StabilityDetector::new(6, 0.02, 2);
+            let mut history = Vec::new();
+            for epoch in 0..25 {
+                // 20% jitter: outside the tolerance at every level.
+                let jitter = if epoch % 2 == 0 { 1.2 } else { 0.8 };
+                history.push(level * jitter);
+                d.observe(epoch, &history);
+            }
+            assert!(!d.is_converged(), "level {level} was wrongly called stable");
+        }
+    }
+
+    /// Non-finite values break the run rather than being averaged in.
+    #[test]
+    fn non_finite_values_reset_the_count() {
+        let mut d = StabilityDetector::new(4, 0.01, 3);
+        let mut history = Vec::new();
+        for epoch in 0..10 {
+            history.push(if epoch == 5 { f64::NAN } else { 1.0 });
+            d.observe(epoch, &history);
+        }
+        // The NaN sits inside the trailing window for four epochs after it
+        // appears, so convergence cannot be reached before then.
+        assert!(d.epoch().is_none_or(|e| e >= 9), "converged across a NaN");
     }
 }

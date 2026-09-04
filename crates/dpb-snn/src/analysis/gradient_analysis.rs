@@ -1,6 +1,6 @@
 //! Gradient flow analysis for SNNs
 
-use super::{AnalysisReport, ConvergenceAnalyzer, TrainingMetrics};
+use super::{AnalysisReport, ConvergenceAnalyzer, StabilityDetector, TrainingMetrics};
 use std::collections::HashMap;
 
 /// Tracks gradient norms throughout training
@@ -9,7 +9,7 @@ pub struct GradientNormTracker {
     mean_gradient: f64,
     max_gradient: f64,
     min_gradient: f64,
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl GradientNormTracker {
@@ -19,7 +19,7 @@ impl GradientNormTracker {
             mean_gradient: 0.0,
             max_gradient: 0.0,
             min_gradient: f64::INFINITY,
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 }
@@ -35,7 +35,7 @@ impl ConvergenceAnalyzer for GradientNormTracker {
         "GradientNormTracker"
     }
 
-    fn update(&mut self, _epoch: usize, metrics: &TrainingMetrics) {
+    fn update(&mut self, epoch: usize, metrics: &TrainingMetrics) {
         let grad_norm = metrics.gradient_norm;
         self.gradient_history.push(grad_norm);
 
@@ -46,14 +46,17 @@ impl ConvergenceAnalyzer for GradientNormTracker {
             self.mean_gradient =
                 self.gradient_history.iter().sum::<f64>() / self.gradient_history.len() as f64;
         }
+
+        // Converged when gradient history has stopped moving.
+        self.stability.observe(epoch, &self.gradient_history);
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -83,21 +86,21 @@ impl ConvergenceAnalyzer for GradientNormTracker {
         self.mean_gradient = 0.0;
         self.max_gradient = 0.0;
         self.min_gradient = f64::INFINITY;
-        self.converged = false;
+        self.stability.reset();
     }
 }
 
 /// Analyzes gradient flow through network layers
 pub struct GradientFlowAnalyzer {
     layer_gradients: HashMap<String, Vec<f64>>,
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl GradientFlowAnalyzer {
     pub fn new() -> Self {
         Self {
             layer_gradients: HashMap::new(),
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 
@@ -126,11 +129,11 @@ impl ConvergenceAnalyzer for GradientFlowAnalyzer {
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -161,7 +164,7 @@ impl ConvergenceAnalyzer for GradientFlowAnalyzer {
 
     fn reset(&mut self) {
         self.layer_gradients.clear();
-        self.converged = false;
+        self.stability.reset();
     }
 }
 
@@ -330,14 +333,14 @@ impl ConvergenceAnalyzer for ExplodingGradientDetector {
 /// Analyzes the quality of surrogate gradients in SNNs
 pub struct SurrogateGradientAnalyzer {
     surrogate_stats: Vec<(f64, f64)>, // (mean, std)
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl SurrogateGradientAnalyzer {
     pub fn new() -> Self {
         Self {
             surrogate_stats: Vec::new(),
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 
@@ -364,11 +367,11 @@ impl ConvergenceAnalyzer for SurrogateGradientAnalyzer {
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -399,7 +402,7 @@ impl ConvergenceAnalyzer for SurrogateGradientAnalyzer {
 
     fn reset(&mut self) {
         self.surrogate_stats.clear();
-        self.converged = false;
+        self.stability.reset();
     }
 }
 

@@ -1,6 +1,6 @@
 //! Weight distribution and analysis
 
-use super::{AnalysisReport, ConvergenceAnalyzer, TrainingMetrics};
+use super::{AnalysisReport, ConvergenceAnalyzer, StabilityDetector, TrainingMetrics};
 use std::collections::HashMap;
 
 /// Tracks weight distribution evolution during training
@@ -9,7 +9,7 @@ pub struct WeightDistributionTracker {
     snapshot_epochs: Vec<usize>,
     snapshot_interval: usize,
     last_snapshot_epoch: Option<usize>,
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl WeightDistributionTracker {
@@ -19,7 +19,7 @@ impl WeightDistributionTracker {
             snapshot_epochs: Vec::new(),
             snapshot_interval,
             last_snapshot_epoch: None,
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 
@@ -62,11 +62,11 @@ impl ConvergenceAnalyzer for WeightDistributionTracker {
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -120,7 +120,7 @@ impl ConvergenceAnalyzer for WeightDistributionTracker {
         self.weight_snapshots.clear();
         self.snapshot_epochs.clear();
         self.last_snapshot_epoch = None;
-        self.converged = false;
+        self.stability.reset();
     }
 }
 
@@ -128,7 +128,7 @@ impl ConvergenceAnalyzer for WeightDistributionTracker {
 pub struct WeightMagnitudeTracker {
     weight_norm_history: Vec<f64>,
     layer_norms: HashMap<String, Vec<f64>>,
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl WeightMagnitudeTracker {
@@ -136,7 +136,7 @@ impl WeightMagnitudeTracker {
         Self {
             weight_norm_history: Vec::new(),
             layer_norms: HashMap::new(),
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 
@@ -156,16 +156,19 @@ impl ConvergenceAnalyzer for WeightMagnitudeTracker {
         "WeightMagnitudeTracker"
     }
 
-    fn update(&mut self, _epoch: usize, metrics: &TrainingMetrics) {
+    fn update(&mut self, epoch: usize, metrics: &TrainingMetrics) {
         self.weight_norm_history.push(metrics.weight_norm);
+
+        // Converged when weight norm history has stopped moving.
+        self.stability.observe(epoch, &self.weight_norm_history);
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -233,7 +236,7 @@ impl ConvergenceAnalyzer for WeightMagnitudeTracker {
     fn reset(&mut self) {
         self.weight_norm_history.clear();
         self.layer_norms.clear();
-        self.converged = false;
+        self.stability.reset();
     }
 }
 
@@ -246,7 +249,7 @@ pub struct WeightSparsityTracker {
     sparsity_history: Vec<f64>,
     target_sparsity: f64,
     sparsity_threshold: f64,
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl WeightSparsityTracker {
@@ -255,7 +258,7 @@ impl WeightSparsityTracker {
             sparsity_history: Vec::new(),
             target_sparsity,
             sparsity_threshold,
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 
@@ -280,11 +283,11 @@ impl ConvergenceAnalyzer for WeightSparsityTracker {
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -343,7 +346,7 @@ impl ConvergenceAnalyzer for WeightSparsityTracker {
 
     fn reset(&mut self) {
         self.sparsity_history.clear();
-        self.converged = false;
+        self.stability.reset();
     }
 }
 
@@ -351,7 +354,7 @@ impl ConvergenceAnalyzer for WeightSparsityTracker {
 pub struct WeightUpdateTracker {
     update_magnitude_history: Vec<f64>,
     layer_update_magnitudes: HashMap<String, Vec<f64>>,
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl WeightUpdateTracker {
@@ -359,7 +362,7 @@ impl WeightUpdateTracker {
         Self {
             update_magnitude_history: Vec::new(),
             layer_update_magnitudes: HashMap::new(),
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 
@@ -382,18 +385,22 @@ impl ConvergenceAnalyzer for WeightUpdateTracker {
         "WeightUpdateTracker"
     }
 
-    fn update(&mut self, _epoch: usize, metrics: &TrainingMetrics) {
+    fn update(&mut self, epoch: usize, metrics: &TrainingMetrics) {
         // Use gradient norm as proxy for update magnitude
         let update_magnitude = metrics.gradient_norm * metrics.learning_rate;
         self.update_magnitude_history.push(update_magnitude);
+
+        // Converged when update magnitude history has stopped moving.
+        self.stability
+            .observe(epoch, &self.update_magnitude_history);
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -460,7 +467,7 @@ impl ConvergenceAnalyzer for WeightUpdateTracker {
     fn reset(&mut self) {
         self.update_magnitude_history.clear();
         self.layer_update_magnitudes.clear();
-        self.converged = false;
+        self.stability.reset();
     }
 }
 

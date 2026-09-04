@@ -1,19 +1,19 @@
 //! Method comparison and hyperparameter sensitivity analysis
 
-use super::{AnalysisReport, ConvergenceAnalyzer, TrainingMetrics};
+use super::{AnalysisReport, ConvergenceAnalyzer, StabilityDetector, TrainingMetrics};
 use std::collections::HashMap;
 
 /// Compares different training methods/runs
 pub struct MethodComparisonAnalyzer {
     method_histories: HashMap<String, Vec<TrainingMetrics>>,
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl MethodComparisonAnalyzer {
     pub fn new() -> Self {
         Self {
             method_histories: HashMap::new(),
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 
@@ -97,11 +97,11 @@ impl ConvergenceAnalyzer for MethodComparisonAnalyzer {
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -167,21 +167,21 @@ impl ConvergenceAnalyzer for MethodComparisonAnalyzer {
 
     fn reset(&mut self) {
         self.method_histories.clear();
-        self.converged = false;
+        self.stability.reset();
     }
 }
 
 /// Analyzes sensitivity to hyperparameter changes
 pub struct HyperparameterSensitivityAnalyzer {
     hp_configurations: HashMap<String, (HashMap<String, f64>, Vec<TrainingMetrics>)>,
-    converged: bool,
+    stability: StabilityDetector,
 }
 
 impl HyperparameterSensitivityAnalyzer {
     pub fn new() -> Self {
         Self {
             hp_configurations: HashMap::new(),
-            converged: false,
+            stability: StabilityDetector::default(),
         }
     }
 
@@ -285,11 +285,11 @@ impl ConvergenceAnalyzer for HyperparameterSensitivityAnalyzer {
     }
 
     fn is_converged(&self) -> bool {
-        self.converged
+        self.stability.is_converged()
     }
 
     fn convergence_epoch(&self) -> Option<usize> {
-        None
+        self.stability.epoch()
     }
 
     fn analysis_report(&self) -> AnalysisReport {
@@ -372,7 +372,7 @@ impl ConvergenceAnalyzer for HyperparameterSensitivityAnalyzer {
 
     fn reset(&mut self) {
         self.hp_configurations.clear();
-        self.converged = false;
+        self.stability.reset();
     }
 }
 
