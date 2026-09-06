@@ -321,6 +321,45 @@ impl SpikingConv2d {
     }
 
     /// Forward pass that also records what the backward pass needs.
+    /// Forward pass for inference: spikes only, no training trace.
+    ///
+    /// [`Self::forward_recording`] additionally builds a `(batch, steps,
+    /// neurons)` membrane history and an equally sized refractory mask, because
+    /// the surrogate gradient needs both. Inference throws them away, so
+    /// building them is pure cost -- for a 16-channel layer over a length-256
+    /// signal that is roughly ten megabytes written and discarded per call,
+    /// plus a per-neuron bookkeeping loop over every step.
+    ///
+    /// The dynamics are the same code either way: both paths reach the neuron
+    /// through [`NeuronState::update_lif_recording`], so the spikes agree
+    /// exactly. A test pins that.
+    pub fn forward_inference(&mut self, input: &SpikeTensor) -> SNNResult<SpikeTensor> {
+        let input_dense = input.to_dense();
+        let (batch_size, num_steps, flat) = (
+            input_dense.shape()[0],
+            input_dense.shape()[1],
+            input_dense.shape()[2],
+        );
+
+        let in_hw = self.input_shape(flat)?;
+        let out_hw = self.output_size(in_hw.0, in_hw.1);
+        let num_neurons = self.kernel.shape()[0] * out_hw.0 * out_hw.1;
+
+        let mut output = Array3::zeros((batch_size, num_steps, num_neurons));
+        self.ensure_state(batch_size, num_neurons);
+
+        for t in 0..num_steps {
+            for b in 0..batch_size {
+                let input_t = input_dense.slice(s![b, t, ..]);
+                let current = self.convolve(&input_t, in_hw, out_hw);
+                let spikes = self.state[b].update_lif(&current, &self.neuron_params, self.dt);
+                output.slice_mut(s![b, t, ..]).assign(&spikes);
+            }
+        }
+
+        Ok(SpikeTensor::from_dense(output, input.requires_grad))
+    }
+
     pub fn forward_recording(
         &mut self,
         input: &SpikeTensor,
@@ -473,7 +512,7 @@ impl SpikingConv2d {
 
 impl SpikingLayer for SpikingConv2d {
     fn forward(&mut self, input: &SpikeTensor) -> SNNResult<SpikeTensor> {
-        self.forward_recording(input).map(|(out, _)| out)
+        self.forward_inference(input)
     }
 
     fn reset_state(&mut self) {
@@ -739,6 +778,45 @@ impl SpikingConv1d {
             .expect("a (channels, positions) matrix always flattens")
     }
 
+    /// Forward pass for inference: spikes only, no training trace.
+    ///
+    /// [`Self::forward_recording`] additionally builds a `(batch, steps,
+    /// neurons)` membrane history and an equally sized refractory mask, because
+    /// the surrogate gradient needs both. Inference throws them away, so
+    /// building them is pure cost -- for a 16-channel layer over a length-256
+    /// signal that is roughly ten megabytes written and discarded per call,
+    /// plus a per-neuron bookkeeping loop over every step.
+    ///
+    /// The dynamics are the same code either way: both paths reach the neuron
+    /// through [`NeuronState::update_lif_recording`], so the spikes agree
+    /// exactly. A test pins that.
+    pub fn forward_inference(&mut self, input: &SpikeTensor) -> SNNResult<SpikeTensor> {
+        let input_dense = input.to_dense();
+        let (batch_size, num_steps, input_size) = (
+            input_dense.shape()[0],
+            input_dense.shape()[1],
+            input_dense.shape()[2],
+        );
+
+        let in_len = self.input_length(input_size)?;
+        let out_len = self.output_length(in_len);
+        let num_neurons = self.kernel.shape()[0] * out_len;
+
+        let mut output = Array3::zeros((batch_size, num_steps, num_neurons));
+        self.ensure_state(batch_size, num_neurons);
+
+        for t in 0..num_steps {
+            for b in 0..batch_size {
+                let input_t = input_dense.slice(s![b, t, ..]);
+                let current = self.convolve(&input_t, in_len, out_len);
+                let spikes = self.state[b].update_lif(&current, &self.neuron_params, self.dt);
+                output.slice_mut(s![b, t, ..]).assign(&spikes);
+            }
+        }
+
+        Ok(SpikeTensor::from_dense(output, input.requires_grad))
+    }
+
     /// Forward pass that also records what the backward pass needs.
     pub fn forward_recording(
         &mut self,
@@ -903,7 +981,7 @@ impl SpikingConv1d {
 
 impl SpikingLayer for SpikingConv1d {
     fn forward(&mut self, input: &SpikeTensor) -> SNNResult<SpikeTensor> {
-        self.forward_recording(input).map(|(out, _)| out)
+        self.forward_inference(input)
     }
 
     fn reset_state(&mut self) {
@@ -955,6 +1033,63 @@ impl Default for SpikingConv1d {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Inference and training must see the same neuron.
+    ///
+    /// `forward` no longer routes through `forward_recording`, so the two could
+    /// drift apart silently -- a wrong inference path still returns
+    /// well-shaped spikes, and every shape assertion in this file would still
+    /// pass. Spikes are compared exactly: the dynamics are the same code, so
+    /// anything but bit-equality means the paths really have diverged.
+    ///
+    /// Both layers are driven over several steps with a stateful input, since a
+    /// single step would not exercise the refractory and decay carry-over that
+    /// distinguishes the two loops.
+    #[test]
+    fn inference_forward_matches_the_recording_forward() {
+        let params = NeuronParams::default();
+        let (batch, steps) = (2, 6);
+
+        let mut conv1 = SpikingConv1d::new(3, 4, 3, 1, 1, true, params.clone(), 1.0, false);
+        // Kernels are randomly initialised, so whether anything crosses
+        // threshold varies run to run. Pin them: a vacuously-zero output would
+        // make the comparison below pass without comparing anything.
+        conv1.kernel.fill(0.3);
+        if let Some(bias) = conv1.bias.as_mut() {
+            bias.fill(0.0);
+        }
+        let input1 = SpikeTensor::from_dense(
+            Array3::from_shape_fn((batch, steps, 3 * 12), |(b, t, i)| {
+                ((b * 7 + t * 5 + i) % 4) as f32 * 0.4
+            }),
+            false,
+        );
+        conv1.reset_state();
+        let lean = conv1.forward(&input1).unwrap().to_dense();
+        conv1.reset_state();
+        let recorded = conv1.forward_recording(&input1).unwrap().0.to_dense();
+        assert_eq!(lean, recorded, "1-D inference diverged from the trace path");
+        assert!(lean.sum() > 0.0, "input never made anything spike");
+
+        let mut conv2 = SpikingConv2d::new(2, 3, (3, 3), (1, 1), (1, 1), true, params, 1.0, false);
+        conv2.set_input_shape(5, 6);
+        conv2.kernel.fill(0.3);
+        if let Some(bias) = conv2.bias.as_mut() {
+            bias.fill(0.0);
+        }
+        let input2 = SpikeTensor::from_dense(
+            Array3::from_shape_fn((batch, steps, 2 * 5 * 6), |(b, t, i)| {
+                ((b * 3 + t * 11 + i) % 4) as f32 * 0.4
+            }),
+            false,
+        );
+        conv2.reset_state();
+        let lean = conv2.forward(&input2).unwrap().to_dense();
+        conv2.reset_state();
+        let recorded = conv2.forward_recording(&input2).unwrap().0.to_dense();
+        assert_eq!(lean, recorded, "2-D inference diverged from the trace path");
+        assert!(lean.sum() > 0.0, "input never made anything spike");
+    }
 
     #[test]
     fn test_conv2d_creation() {
