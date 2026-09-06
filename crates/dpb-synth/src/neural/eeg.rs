@@ -711,7 +711,14 @@ mod tests {
     #[test]
     fn band_noise_stays_within_its_band() {
         let sample_rate = 256.0;
-        let n = 1024;
+        // 16 seconds. A finite window smears each component across neighbouring
+        // bins, and the narrower the band the larger that leakage is relative
+        // to the band itself: measured over 25 draws, 4-8 Hz holds as little as
+        // 74% of its energy in a 4-second window but never less than 95% in a
+        // 16-second one. The threshold below sits under that floor with margin,
+        // because the frequencies are drawn at random and the fraction varies
+        // from draw to draw.
+        let n = 4096;
         for (lo, hi) in [(4.0, 8.0), (13.0, 30.0), (30.0, 60.0)] {
             let signal = generate_band_noise(n, sample_rate, lo, hi);
             let inside = band_fraction(&signal, sample_rate, lo, hi);

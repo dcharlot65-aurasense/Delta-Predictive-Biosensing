@@ -178,10 +178,17 @@ impl SpikingLinear {
                 let input_t = input.slice(s![b, t, ..]);
                 let out_grad_t = output_grad.slice(s![b, t, ..]);
 
-                // Weight gradient: outer product of output_grad and input
-                for i in 0..output_size {
-                    for j in 0..input_size {
-                        weight_grad[[i, j]] += out_grad_t[i] * input_t[j];
+                // Weight gradient: outer product of output_grad and input.
+                //
+                // Row at a time rather than element at a time: each row of
+                // `weight_grad` is contiguous, so this is an axpy per output
+                // neuron instead of `output_size * input_size` separate 2-D
+                // index computations. A zero coefficient contributes nothing,
+                // and surrogate gradients are zero for every neuron whose
+                // membrane sat outside the surrogate's support.
+                for (i, &g) in out_grad_t.iter().enumerate() {
+                    if g != 0.0 {
+                        weight_grad.row_mut(i).scaled_add(g, &input_t);
                     }
                 }
 
@@ -192,8 +199,11 @@ impl SpikingLinear {
                     }
                 }
 
-                // Input gradient: W^T * output_grad
-                let in_grad = self.weights.t().dot(&out_grad_t);
+                // Input gradient: W^T * output_grad, accumulated over rows
+                // rather than through a transposed view. See
+                // `super::transpose_dot` for why: this runs once per
+                // (batch, step).
+                let in_grad = super::transpose_dot(&self.weights, &out_grad_t);
                 input_grad.slice_mut(s![b, t, ..]).assign(&in_grad);
             }
         }
@@ -298,5 +308,75 @@ mod tests {
         // Reset state
         layer.reset_state();
         assert!(layer.state[0].v_mem.iter().all(|&v| v == 0.0));
+    }
+
+    /// The optimised backward must agree with a direct transcription of the
+    /// definition.
+    ///
+    /// Both the weight gradient and the input gradient were rewritten for
+    /// speed -- row-wise accumulation instead of element-wise indexing, and
+    /// accumulation over rows instead of a transposed view. The accumulation
+    /// order changes, so the gradient tests are checked against an independent
+    /// naive implementation as well as against forward mode.
+    #[test]
+    fn backward_matches_a_naive_reference() {
+        let (batch, steps, in_size, out_size) = (2usize, 5usize, 6usize, 4usize);
+        let mut layer =
+            SpikingLinear::new(in_size, out_size, true, NeuronParams::default(), 1.0, false);
+        for i in 0..out_size {
+            for j in 0..in_size {
+                layer.weights[[i, j]] = 0.3 + 0.11 * (i as f32) - 0.07 * (j as f32);
+            }
+        }
+
+        let input = Array3::from_shape_fn((batch, steps, in_size), |(b, t, i)| {
+            (((b * 3 + t * 2 + i) % 5) as f32) * 0.25 - 0.5
+        });
+        let grad = Array3::from_shape_fn((batch, steps, out_size), |(b, t, n)| {
+            (((b + t * 3 + n) % 4) as f32) * 0.3 - 0.4
+        });
+
+        // Naive reference, straight from the definitions.
+        let mut expected_wg = Array2::<f32>::zeros((out_size, in_size));
+        let mut expected_bg = Array1::<f32>::zeros(out_size);
+        let mut expected_ig = Array3::<f32>::zeros(input.raw_dim());
+        for b in 0..batch {
+            for t in 0..steps {
+                for i in 0..out_size {
+                    expected_bg[i] += grad[[b, t, i]];
+                    for j in 0..in_size {
+                        expected_wg[[i, j]] += grad[[b, t, i]] * input[[b, t, j]];
+                        expected_ig[[b, t, j]] += layer.weights[[i, j]] * grad[[b, t, i]];
+                    }
+                }
+            }
+        }
+
+        let got_ig = layer.backward(&input, &grad).unwrap();
+        let got_wg = layer.weight_grad.clone().expect("weight gradient");
+        let got_bg = layer.bias_grad.clone().expect("bias gradient");
+
+        let close = |a: f32, b: f32| (a - b).abs() <= 1e-4 * b.abs().max(1.0);
+        for ((i, j), v) in got_wg.indexed_iter() {
+            assert!(
+                close(*v, expected_wg[[i, j]]),
+                "weight_grad[{i},{j}]: {v} vs {}",
+                expected_wg[[i, j]]
+            );
+        }
+        for (i, v) in got_bg.iter().enumerate() {
+            assert!(
+                close(*v, expected_bg[i]),
+                "bias_grad[{i}]: {v} vs {}",
+                expected_bg[i]
+            );
+        }
+        for ((b, t, j), v) in got_ig.indexed_iter() {
+            assert!(
+                close(*v, expected_ig[[b, t, j]]),
+                "input_grad[{b},{t},{j}]: {v} vs {}",
+                expected_ig[[b, t, j]]
+            );
+        }
     }
 }

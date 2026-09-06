@@ -352,7 +352,7 @@ impl SpikingRNN {
                 input_grad.slice_mut(s![b, t, ..]).assign(&dx);
 
                 // What the previous step's spikes owe the loss.
-                carry_spike = self.w_recurrent.t().dot(&d_current);
+                carry_spike = super::transpose_dot(&self.w_recurrent, &d_current);
             }
         }
 
@@ -900,16 +900,21 @@ impl SpikingLSTM {
                     }
                 }
 
-                let dx = self.w_input_gate.t().dot(&d_i_pre)
-                    + self.w_forget_gate.t().dot(&d_f_pre)
-                    + self.w_output_gate.t().dot(&d_o_pre)
-                    + self.w_cell_gate.t().dot(&d_g_pre);
+                // Accumulated into one buffer: four transposed dots meant
+                // four strided passes and three temporary allocations per
+                // (batch, step).
+                let mut dx = Array1::<f32>::zeros(input_size);
+                super::accumulate_transpose_dot(&mut dx, &self.w_input_gate, &d_i_pre);
+                super::accumulate_transpose_dot(&mut dx, &self.w_forget_gate, &d_f_pre);
+                super::accumulate_transpose_dot(&mut dx, &self.w_output_gate, &d_o_pre);
+                super::accumulate_transpose_dot(&mut dx, &self.w_cell_gate, &d_g_pre);
                 input_grad.slice_mut(s![b, t, ..]).assign(&dx);
 
-                carry_h = self.w_rec_input.t().dot(&d_i_pre)
-                    + self.w_rec_forget.t().dot(&d_f_pre)
-                    + self.w_rec_output.t().dot(&d_o_pre)
-                    + self.w_rec_cell.t().dot(&d_g_pre);
+                carry_h = Array1::<f32>::zeros(hidden_size);
+                super::accumulate_transpose_dot(&mut carry_h, &self.w_rec_input, &d_i_pre);
+                super::accumulate_transpose_dot(&mut carry_h, &self.w_rec_forget, &d_f_pre);
+                super::accumulate_transpose_dot(&mut carry_h, &self.w_rec_output, &d_o_pre);
+                super::accumulate_transpose_dot(&mut carry_h, &self.w_rec_cell, &d_g_pre);
             }
         }
 
