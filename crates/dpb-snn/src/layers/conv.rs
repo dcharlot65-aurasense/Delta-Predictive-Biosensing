@@ -220,37 +220,104 @@ impl SpikingConv2d {
         taps
     }
 
+    /// Output indices a tap reaches along one axis, and where it starts.
+    ///
+    /// Shared by both spatial axes; see `SpikingConv1d::tap_span` for the
+    /// derivation.
+    fn axis_span(
+        out_len: usize,
+        in_len: usize,
+        k: usize,
+        stride: usize,
+        padding: usize,
+    ) -> Option<(usize, usize, usize)> {
+        let stride = stride.max(1);
+        let (pad, k) = (padding as isize, k as isize);
+
+        let lo = if k >= pad {
+            0
+        } else {
+            ((pad - k) as usize).div_ceil(stride)
+        };
+        let top = in_len as isize - 1 - k + pad;
+        if top < 0 {
+            return None;
+        }
+        let hi = ((top as usize) / stride + 1).min(out_len);
+        if lo >= hi {
+            return None;
+        }
+        Some((lo, hi, ((lo * stride) as isize + k - pad) as usize))
+    }
+
+    /// Synaptic current for one time step, indexed
+    /// `[out_channel * OH * OW + oh * OW + ow]`.
+    ///
+    /// Ordered so the innermost operation is an axpy along a contiguous run of
+    /// output columns, as in the 1-D layer. Visiting taps individually made
+    /// every multiply-add a pair of strided index computations.
     fn convolve(
         &self,
         input_t: &ndarray::ArrayView1<f32>,
         in_hw: (usize, usize),
         out_hw: (usize, usize),
-        taps: &[(usize, usize, usize, usize)],
     ) -> Array1<f32> {
         let out_channels = self.kernel.shape()[0];
         let in_channels = self.kernel.shape()[1];
-        let plane = in_hw.0 * in_hw.1;
-        let out_plane = out_hw.0 * out_hw.1;
+        let (kh, kw) = (self.kernel.shape()[2], self.kernel.shape()[3]);
+        let (in_h, in_w) = in_hw;
+        let (out_h, out_w) = out_hw;
+        let plane = in_h * in_w;
+        let out_plane = out_h * out_w;
+        let (sh, sw) = (self.stride.0.max(1), self.stride.1.max(1));
 
-        let mut current = Array1::zeros(out_channels * out_plane);
-        for &(out_idx, i, j, in_off) in taps {
-            for oc in 0..out_channels {
-                let mut acc = 0.0;
+        let mut current = Array2::<f32>::zeros((out_channels, out_plane));
+
+        for i in 0..kh {
+            let Some((oh_lo, oh_hi, ih_start)) =
+                Self::axis_span(out_h, in_h, i, sh, self.padding.0)
+            else {
+                continue;
+            };
+            for j in 0..kw {
+                let Some((ow_lo, ow_hi, iw_start)) =
+                    Self::axis_span(out_w, in_w, j, sw, self.padding.1)
+                else {
+                    continue;
+                };
+                let cols = ow_hi - ow_lo;
+
                 for ic in 0..in_channels {
-                    acc += input_t[ic * plane + in_off] * self.kernel[[oc, ic, i, j]];
+                    for oc in 0..out_channels {
+                        let weight = self.kernel[[oc, ic, i, j]];
+                        if weight == 0.0 {
+                            continue;
+                        }
+                        for (step, oh) in (oh_lo..oh_hi).enumerate() {
+                            let ih = ih_start + step * sh;
+                            let base = ic * plane + ih * in_w + iw_start;
+                            let end = base + (cols - 1) * sw + 1;
+                            let source = input_t.slice(s![base..end; sw]);
+
+                            let row_start = oh * out_w + ow_lo;
+                            current
+                                .slice_mut(s![oc, row_start..row_start + cols])
+                                .scaled_add(weight, &source);
+                        }
+                    }
                 }
-                current[oc * out_plane + out_idx] += acc;
             }
         }
+
         if let Some(ref bias) = self.bias {
             for oc in 0..out_channels {
-                let b = bias[oc];
-                for p in 0..out_plane {
-                    current[oc * out_plane + p] += b;
-                }
+                current.slice_mut(s![oc, ..]).mapv_inplace(|v| v + bias[oc]);
             }
         }
+
         current
+            .into_shape_with_order(out_channels * out_plane)
+            .expect("a (channels, positions) matrix always flattens")
     }
 
     /// Forward pass that also records what the backward pass needs.
@@ -275,12 +342,11 @@ impl SpikingConv2d {
             ndarray::Array3::from_elem((batch_size, num_steps, num_neurons), false);
 
         self.ensure_state(batch_size, num_neurons);
-        let taps = self.tap_table(in_hw, out_hw);
 
         for t in 0..num_steps {
             for b in 0..batch_size {
                 let input_t = input_dense.slice(s![b, t, ..]);
-                let current = self.convolve(&input_t, in_hw, out_hw, &taps);
+                let current = self.convolve(&input_t, in_hw, out_hw);
 
                 for n in 0..num_neurons {
                     membrane_updated[[b, t, n]] = self.state[b].refrac[n] <= 0.0;
@@ -587,36 +653,90 @@ impl SpikingConv1d {
         taps
     }
 
+    /// Output positions this tap reaches, and where in the input it starts.
+    ///
+    /// For tap `k`, output position `op` reads input `op * stride + k -
+    /// padding`. The positions that stay in bounds form a contiguous run, and
+    /// the inputs they read form an arithmetic sequence -- which is what lets
+    /// `convolve` handle a whole run with one axpy instead of one element at a
+    /// time.
+    fn tap_span(&self, k: usize, in_len: usize, out_len: usize) -> Option<(usize, usize, usize)> {
+        let stride = self.stride.max(1);
+        let pad = self.padding as isize;
+        let k = k as isize;
+
+        // Smallest op with op * stride + k - pad >= 0.
+        let lo = if k >= pad {
+            0
+        } else {
+            ((pad - k) as usize).div_ceil(stride)
+        };
+        // Largest op with op * stride + k - pad <= in_len - 1.
+        let top = in_len as isize - 1 - k + pad;
+        if top < 0 {
+            return None;
+        }
+        let hi = ((top as usize) / stride + 1).min(out_len);
+        if lo >= hi {
+            return None;
+        }
+
+        let start = (lo * stride) as isize + k - pad;
+        Some((lo, hi, start as usize))
+    }
+
     /// Synaptic current for one time step, indexed `[out_channel * out_len + pos]`.
+    ///
+    /// Loops are ordered so the innermost operation is an axpy over a
+    /// contiguous run of output positions. Walking taps individually, as this
+    /// used to, made both operands gathers: `kernel[[oc, ic, k]]` strides by
+    /// the kernel width and `input[ic * in_len + ip]` by the input length, so
+    /// every multiply-add carried two strided index computations.
     fn convolve(
         &self,
         input_t: &ndarray::ArrayView1<f32>,
         in_len: usize,
         out_len: usize,
-        taps: &[(usize, usize, usize)],
     ) -> Array1<f32> {
         let out_channels = self.kernel.shape()[0];
         let in_channels = self.kernel.shape()[1];
+        let kernel_size = self.kernel.shape()[2];
+        let stride = self.stride.max(1);
 
-        let mut current = Array1::zeros(out_channels * out_len);
-        for &(op, k, ip) in taps {
-            for oc in 0..out_channels {
-                let mut acc = 0.0;
-                for ic in 0..in_channels {
-                    acc += input_t[ic * in_len + ip] * self.kernel[[oc, ic, k]];
+        let mut current = Array2::<f32>::zeros((out_channels, out_len));
+
+        for k in 0..kernel_size {
+            let Some((op_lo, op_hi, ip_start)) = self.tap_span(k, in_len, out_len) else {
+                continue;
+            };
+            let count = op_hi - op_lo;
+
+            for ic in 0..in_channels {
+                let base = ic * in_len + ip_start;
+                let end = base + (count - 1) * stride + 1;
+                let source = input_t.slice(s![base..end; stride]);
+
+                for oc in 0..out_channels {
+                    let weight = self.kernel[[oc, ic, k]];
+                    if weight == 0.0 {
+                        continue;
+                    }
+                    current
+                        .slice_mut(s![oc, op_lo..op_hi])
+                        .scaled_add(weight, &source);
                 }
-                current[oc * out_len + op] += acc;
             }
         }
+
         if let Some(ref bias) = self.bias {
             for oc in 0..out_channels {
-                let b = bias[oc];
-                for op in 0..out_len {
-                    current[oc * out_len + op] += b;
-                }
+                current.slice_mut(s![oc, ..]).mapv_inplace(|v| v + bias[oc]);
             }
         }
+
         current
+            .into_shape_with_order(out_channels * out_len)
+            .expect("a (channels, positions) matrix always flattens")
     }
 
     /// Forward pass that also records what the backward pass needs.
@@ -642,12 +762,11 @@ impl SpikingConv1d {
             ndarray::Array3::from_elem((batch_size, num_steps, num_neurons), false);
 
         self.ensure_state(batch_size, num_neurons);
-        let taps = self.tap_table(in_len, out_len);
 
         for t in 0..num_steps {
             for b in 0..batch_size {
                 let input_t = input_dense.slice(s![b, t, ..]);
-                let current = self.convolve(&input_t, in_len, out_len, &taps);
+                let current = self.convolve(&input_t, in_len, out_len);
 
                 // Read before the update: a refractory neuron skips the
                 // membrane update entirely, and nothing afterwards says which.
@@ -1015,8 +1134,7 @@ mod tests {
         }
 
         let arr = Array1::from(input.clone());
-        let taps = layer.tap_table(in_len, out_len);
-        let got = layer.convolve(&arr.view(), in_len, out_len, &taps);
+        let got = layer.convolve(&arr.view(), in_len, out_len);
 
         assert_eq!(got.len(), expected.len());
         for (i, (g, e)) in got.iter().zip(expected.iter()).enumerate() {
@@ -1090,8 +1208,7 @@ mod tests {
         }
 
         let arr = Array1::from(input.clone());
-        let taps = layer.tap_table((h, w), (oh, ow));
-        let got = layer.convolve(&arr.view(), (h, w), (oh, ow), &taps);
+        let got = layer.convolve(&arr.view(), (h, w), (oh, ow));
 
         assert_eq!(got.len(), expected.len());
         for (i, (g, e)) in got.iter().zip(expected.iter()).enumerate() {
