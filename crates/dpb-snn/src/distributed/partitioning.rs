@@ -148,8 +148,13 @@ pub struct ModelParallel {
 }
 
 impl ModelParallel {
-    /// Create new model parallel partitioner
-    pub fn new(world_size: usize, num_layers: usize) -> DistributedResult<()> {
+    /// Check that `num_layers` layers can be spread over `world_size` workers.
+    ///
+    /// Named `new` until now, which it never was: it returns `()`, not `Self`,
+    /// so `ModelParallel::new(..)` could not construct anything and the name
+    /// promised the opposite of what the signature delivered. Use
+    /// [`Self::from_runtime`] to build one.
+    pub fn validate(world_size: usize, num_layers: usize) -> DistributedResult<()> {
         if num_layers < world_size {
             return Err(DistributedError::Partition(format!(
                 "Number of layers {} must be >= world size {}",
@@ -164,7 +169,7 @@ impl ModelParallel {
         runtime: &DistributedRuntime,
         num_layers: usize,
     ) -> DistributedResult<Self> {
-        Self::new(runtime.world_size(), num_layers)?;
+        Self::validate(runtime.world_size(), num_layers)?;
 
         let layer_assignments = Self::assign_layers(num_layers, runtime.world_size());
 

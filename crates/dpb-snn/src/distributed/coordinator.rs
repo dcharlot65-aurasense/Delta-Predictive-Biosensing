@@ -3,7 +3,7 @@
 //! Coordinates distributed training across multiple workers, handling gradient
 //! aggregation, synchronization, and checkpoint management.
 
-use super::{DistributedResult, DistributedRuntime, ReduceOp};
+use super::{DistributedError, DistributedResult, DistributedRuntime, ReduceOp};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -220,34 +220,34 @@ impl TrainingCoordinator {
         let is_master = self.runtime.is_master();
 
         if is_master {
-            // Master: aggregate updates from workers
-            let mut state = self.state.write().unwrap();
-
-            // Process pending updates.
+            // The master half of this protocol is missing. Nothing in the crate
+            // ever constructs a GradientUpdate, so `pending_updates` is always
+            // empty: the master receives no worker gradients, and the averaging
+            // that used to follow divided its *own* gradients by the world
+            // size. That is wrong output, not a missing feature -- every
+            // worker's contribution was dropped, and the one surviving gradient
+            // was then scaled down by the number of workers that never arrived.
             //
-            // NOTE: this loop is currently never entered. Nothing in the crate
-            // ever pushes a GradientUpdate, so the master receives no worker
-            // gradients and the averaging below divides its own gradients by
-            // the world size -- which is wrong, not merely incomplete. Closing
-            // it needs the master-side counterpart of the worker's send/recv
-            // below (receive from each rank, push an update, send results
-            // back), which cannot be written blind against a real backend.
-            for update in state.pending_updates.drain(..) {
-                if update.param_name == param_name {
-                    // Apply staleness-aware update
-                    let staleness_factor = 1.0 / (1.0 + update.staleness as f32);
-                    for (i, &grad) in update.gradients.iter().enumerate() {
-                        if i < gradients.len() {
-                            gradients[i] += grad * staleness_factor;
-                        }
-                    }
-                }
-            }
-
-            // Average
-            let num_workers = self.runtime.world_size() as f32;
-            for grad in gradients.iter_mut() {
-                *grad /= num_workers;
+            // Closing it needs the counterpart of the worker branch below:
+            // receive from each rank, push an update, aggregate, send the
+            // result back. That cannot be written blind here -- the mock
+            // backend's send/recv are no-ops, so no test in this crate could
+            // tell a correct implementation from a deadlocking one.
+            //
+            // A single process has no counterpart to wait for: the master is
+            // the only contributor, its gradients are already the aggregate,
+            // and dividing by a world size of one changes nothing. That case
+            // keeps working; every other one refuses instead of lying.
+            let world_size = self.runtime.world_size();
+            if world_size > 1 {
+                return Err(DistributedError::Communication(format!(
+                    "async SGD needs a master-side receive loop, which is not \
+                     implemented: aggregating '{param_name}' would return the \
+                     master's own gradients scaled by 1/{world_size}, silently \
+                     discarding all {} worker contributions. Use \
+                     AggregationStrategy::AllReduce.",
+                    world_size - 1
+                )));
             }
         } else {
             // Worker: send gradients to master
@@ -495,6 +495,46 @@ mod tests {
         assert!(!AggregationStrategy::AsyncSGD.is_synchronous());
         assert!(AggregationStrategy::AllReduce.needs_coordinator());
         assert!(!AggregationStrategy::GossipSGD.needs_coordinator());
+    }
+
+    /// Async SGD must not quietly return a wrong answer.
+    ///
+    /// Its master branch never receives worker gradients, so for more than one
+    /// process it used to return the master's own gradients divided by the
+    /// world size -- a plausible-looking vector that has dropped every other
+    /// worker. A test that only checked `is_ok()` would have passed throughout.
+    #[test]
+    fn async_sgd_refuses_multi_worker_aggregation_it_cannot_perform() {
+        // Rank 0 of 4 is the master, and there is no receive path.
+        let config = DistributedConfig::new(4, 0, DistributedBackend::Mock);
+        let runtime = DistributedRuntime::init(config).unwrap();
+        let coordinator = TrainingCoordinator::new(runtime, AggregationStrategy::AsyncSGD);
+
+        let mut gradients = vec![1.0, 2.0, 3.0, 4.0];
+        let before = gradients.clone();
+        let result = coordinator.aggregate_gradients("layer.weight", &mut gradients);
+
+        assert!(result.is_err(), "silently aggregated nothing");
+        assert_eq!(
+            gradients, before,
+            "gradients must be left untouched when aggregation is refused"
+        );
+        // The behaviour this replaces: a quarter of the input, three workers gone.
+        assert_ne!(gradients, vec![0.25, 0.5, 0.75, 1.0]);
+    }
+
+    /// One process has nothing to receive from, so it is still a valid aggregate.
+    #[test]
+    fn async_sgd_single_process_is_an_identity() {
+        let config = DistributedConfig::new(1, 0, DistributedBackend::Mock);
+        let runtime = DistributedRuntime::init(config).unwrap();
+        let coordinator = TrainingCoordinator::new(runtime, AggregationStrategy::AsyncSGD);
+
+        let mut gradients = vec![1.0, 2.0, 3.0, 4.0];
+        coordinator
+            .aggregate_gradients("layer.weight", &mut gradients)
+            .expect("a single process has no workers to wait for");
+        assert_eq!(gradients, vec![1.0, 2.0, 3.0, 4.0]);
     }
 
     #[test]
