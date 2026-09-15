@@ -26,7 +26,6 @@ dpb-synth.workspace = true
 pyo3.workspace = true
 numpy.workspace = true
 ndarray.workspace = true
-thiserror.workspace = true
 # For real GPU adapter enumeration rather than fabricated device info.
 wgpu.workspace = true
 pollster.workspace = true

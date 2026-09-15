@@ -18,17 +18,12 @@ distributed = ["dep:crossbeam"]
 
 [dependencies]
 dpb-core.workspace = true
-dpb-neurons.workspace = true
-dpb-encoders.workspace = true
 crossbeam = { workspace = true, optional = true }
 ndarray = { workspace = true, features = ["serde"] }
-nalgebra.workspace = true
-wgpu.workspace = true
 bytemuck.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-rayon.workspace = true
 rand.workspace = true
 rand_distr.workspace = true
 

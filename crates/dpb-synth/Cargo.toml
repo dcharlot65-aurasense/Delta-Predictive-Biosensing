@@ -7,19 +7,15 @@ license.workspace = true
 description = "Synthetic data generation for DPB Framework validation"
 
 [dependencies]
-dpb-core.workspace = true
 ndarray.workspace = true
-nalgebra.workspace = true
 num-complex.workspace = true
 rustfft.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-rayon.workspace = true
 rand.workspace = true
 rand_distr.workspace = true
 rand_chacha.workspace = true
-statrs.workspace = true
 log = "0.4"
 which = "8.0"
 image = "0.25"

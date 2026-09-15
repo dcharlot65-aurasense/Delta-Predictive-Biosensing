@@ -181,7 +181,5 @@ dpb-snn = { workspace = true }
 dpb-synth = { workspace = true }
 
 # Test dependencies
-approx = { workspace = true }
-serde = { workspace = true }
 serde_json = { workspace = true }
 ndarray = { workspace = true }

@@ -21,7 +21,6 @@ iai-callgrind.workspace = true
 
 # Data structures
 ndarray.workspace = true
-nalgebra.workspace = true
 
 # Serialization
 serde.workspace = true
@@ -31,18 +30,15 @@ serde_json.workspace = true
 chrono = "0.4"
 
 # Statistics
-statrs.workspace = true
 
 # Random
 rand.workspace = true
 rand_distr.workspace = true
 
 # Error handling
-thiserror.workspace = true
 anyhow.workspace = true
 
 # Parallel processing
-rayon.workspace = true
 
 [dev-dependencies]
 approx.workspace = true

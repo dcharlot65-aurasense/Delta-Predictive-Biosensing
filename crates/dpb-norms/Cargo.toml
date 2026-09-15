@@ -8,10 +8,7 @@ repository.workspace = true
 description = "Normative databases for Delta-Predictive Biosensing assessments"
 
 [dependencies]
-dpb-core = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
-statrs = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]

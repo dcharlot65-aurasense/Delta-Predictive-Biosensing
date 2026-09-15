@@ -14,7 +14,6 @@ crate-type = ["cdylib", "staticlib"]
 [dependencies]
 dpb-core = { workspace = true }
 dpb-encoders = { workspace = true }
-dpb-synth = { workspace = true }
 libc = "0.2"
 
 [build-dependencies]

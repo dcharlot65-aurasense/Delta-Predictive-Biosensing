@@ -41,7 +41,6 @@ serde_json = "1.0"
 # ONNX runtime (optional)
 
 # Numeric operations
-ndarray.workspace = true
 
 # UUID for model identification
 uuid = { version = "1.0", features = ["v4"] }

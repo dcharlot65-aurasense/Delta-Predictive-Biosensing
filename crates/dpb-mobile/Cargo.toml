@@ -10,16 +10,10 @@ description = "Mobile runtime for iOS and Android inference in DPB Framework"
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
-dpb-core.workspace = true
 dpb-snn.workspace = true
-dpb-neurons.workspace = true
-dpb-encoders.workspace = true
 serde.workspace = true
-serde_json.workspace = true
 bincode.workspace = true
-ndarray = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
-anyhow.workspace = true
 
 [target.'cfg(target_os = "ios")'.dependencies]
 # iOS-specific dependencies for future Metal/CoreML integration
