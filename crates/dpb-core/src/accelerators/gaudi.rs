@@ -48,6 +48,7 @@ pub struct GaudiDevice {
     pub total_memory: u64,
     /// Free memory in bytes
     pub free_memory: u64,
+    #[allow(dead_code)] // set from the SDK path that is not implemented
     /// Module ID (loaded TPC programs)
     module_id: u64,
 }
@@ -67,6 +68,7 @@ pub struct GaudiBuffer {
 /// Gaudi stream for asynchronous operations.
 #[cfg(feature = "intel-gaudi")]
 #[derive(Debug)]
+#[allow(dead_code)] // set from the SDK path that is not implemented
 pub struct GaudiStream {
     /// Stream handle
     handle: u64,
@@ -79,6 +81,7 @@ pub struct GaudiStream {
 pub struct GaudiKernel {
     /// Kernel name
     pub name: String,
+    #[allow(dead_code)] // set from the SDK path that is not implemented
     /// Kernel code (compiled or source)
     code: Vec<u8>,
     /// Block dimensions
@@ -92,6 +95,7 @@ pub struct GaudiAccelerator {
     capabilities: AcceleratorCapabilities,
     buffers: Mutex<HashMap<u64, GaudiBuffer>>,
     next_buffer_id: AtomicU64,
+    #[allow(dead_code)] // set from the SDK path that is not implemented
     default_stream: GaudiStream,
     kernels: Mutex<HashMap<String, GaudiKernel>>,
 }
@@ -130,8 +134,20 @@ impl GaudiAccelerator {
         // Simulated device initialization
         // In production: synDeviceAcquire(index, &handle)
 
-        // Check if HABANA_VISIBLE_DEVICES is set
+        // HABANA_VISIBLE_DEVICES, when set, is the list of device indices this
+        // process may touch. It used to be read and then dropped, so a device
+        // the operator had masked off was acquired anyway.
         let visible_devices = std::env::var("HABANA_VISIBLE_DEVICES").unwrap_or_default();
+        if !visible_devices.trim().is_empty()
+            && !visible_devices
+                .split(',')
+                .filter_map(|entry| entry.trim().parse::<u32>().ok())
+                .any(|visible| visible == index)
+        {
+            return Err(AcceleratorError::NotAvailable(format!(
+                "Gaudi device {index} is not in HABANA_VISIBLE_DEVICES ({visible_devices})"
+            )));
+        }
 
         if cfg!(feature = "intel-gaudi-runtime") {
             // Would call actual Synapse API here
@@ -389,6 +405,11 @@ pub struct GaudiGraph {
     tensors: Vec<GaudiTensor>,
 }
 
+/// One node of a Gaudi computation graph.
+/// Fields mirror the Synapse object model and are populated for a compile
+/// step that is not implemented while the vendor SDK is absent, so they are
+/// written but not read.
+#[allow(dead_code)]
 #[cfg(feature = "intel-gaudi")]
 pub struct GaudiGraphNode {
     /// Node type (TPC kernel, MME op, DMA)
@@ -401,6 +422,7 @@ pub struct GaudiGraphNode {
     kernel: Option<String>,
 }
 
+/// Which Gaudi engine executes a graph node.
 #[cfg(feature = "intel-gaudi")]
 pub enum GaudiNodeType {
     /// TPC kernel
@@ -413,6 +435,11 @@ pub enum GaudiNodeType {
     Reduction,
 }
 
+/// A tensor in a Gaudi graph: name, shape, dtype, and graph role.
+/// Fields mirror the Synapse object model and are populated for a compile
+/// step that is not implemented while the vendor SDK is absent, so they are
+/// written but not read.
+#[allow(dead_code)]
 #[cfg(feature = "intel-gaudi")]
 pub struct GaudiTensor {
     /// Tensor name
@@ -427,13 +454,19 @@ pub struct GaudiTensor {
     is_output: bool,
 }
 
+/// Element types a Gaudi tensor can hold.
 #[cfg(feature = "intel-gaudi")]
 #[derive(Clone, Copy)]
 pub enum GaudiDtype {
+    /// 32-bit IEEE float.
     Float32,
+    /// 16-bit IEEE half.
     Float16,
+    /// 16-bit brain float: float32 range at half the width.
     BFloat16,
+    /// 32-bit signed integer.
     Int32,
+    /// 8-bit signed integer, for quantized tensors.
     Int8,
 }
 
@@ -538,6 +571,11 @@ impl GaudiGraph {
     }
 }
 
+/// A Gaudi graph that has been through `compile`, ready to launch.
+/// Fields mirror the Synapse object model and are populated for a compile
+/// step that is not implemented while the vendor SDK is absent, so they are
+/// written but not read.
+#[allow(dead_code)]
 #[cfg(feature = "intel-gaudi")]
 pub struct CompiledGaudiGraph {
     handle: u64,
@@ -556,6 +594,7 @@ impl CompiledGaudiGraph {
 
 // Placeholder for TPC kernel source (would be actual TPC-C code)
 #[cfg(feature = "intel-gaudi")]
+#[allow(dead_code)] // loaded once the Synapse SDK path can launch them
 mod kernels {
     pub const LEVEL_CROSSING_TPC: &[u8] = include_bytes!("kernels/level_crossing.tpc");
     pub const DELTA_MODULATION_TPC: &[u8] = include_bytes!("kernels/delta_modulation.tpc");

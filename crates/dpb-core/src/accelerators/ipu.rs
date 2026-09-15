@@ -88,6 +88,7 @@ pub struct IpuDevice {
     pub exchange_memory: usize,
 }
 
+/// Generation of Graphcore IPU hardware being targeted.
 #[cfg(feature = "graphcore-ipu")]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum IpuDeviceType {
@@ -117,18 +118,26 @@ pub struct IpuTensor {
     pub tile_mapping: Option<Vec<u32>>,
 }
 
+/// Element types an IPU tensor can hold.
 #[cfg(feature = "graphcore-ipu")]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum IpuDtype {
+    /// 32-bit IEEE float.
     Float32,
+    /// 16-bit IEEE half.
     Float16,
+    /// 32-bit signed integer.
     Int32,
+    /// 16-bit signed integer.
     Int16,
+    /// 8-bit signed integer.
     Int8,
+    /// One byte per element, 0 or 1.
     Bool,
 }
 
 impl IpuDtype {
+    /// Width of one element in bytes.
     pub fn size_bytes(&self) -> usize {
         match self {
             IpuDtype::Float32 | IpuDtype::Int32 => 4,
@@ -151,6 +160,11 @@ pub struct IpuGraph {
     engine: Option<IpuEngine>,
 }
 
+/// A named sequence of IPU compute steps.
+/// Fields mirror the Poplar object model and are populated for a compile
+/// step that is not implemented while the vendor SDK is absent, so they are
+/// written but not read.
+#[allow(dead_code)]
 #[cfg(feature = "graphcore-ipu")]
 #[derive(Debug)]
 pub struct IpuProgram {
@@ -160,6 +174,11 @@ pub struct IpuProgram {
     vertices: Vec<IpuVertex>,
 }
 
+/// One codelet invocation, with its tensors and the tiles it runs on.
+/// Fields mirror the Poplar object model and are populated for a compile
+/// step that is not implemented while the vendor SDK is absent, so they are
+/// written but not read.
+#[allow(dead_code)]
 #[cfg(feature = "graphcore-ipu")]
 #[derive(Debug)]
 pub struct IpuVertex {
@@ -173,6 +192,11 @@ pub struct IpuVertex {
     tiles: Vec<u32>,
 }
 
+/// A compiled IPU program plus its host stream bindings.
+/// Fields mirror the Poplar object model and are populated for a compile
+/// step that is not implemented while the vendor SDK is absent, so they are
+/// written but not read.
+#[allow(dead_code)]
 #[cfg(feature = "graphcore-ipu")]
 pub struct IpuEngine {
     /// Engine handle
@@ -187,10 +211,12 @@ pub struct IpuEngine {
 #[cfg(feature = "graphcore-ipu")]
 pub struct IpuAccelerator {
     device: IpuDevice,
+    #[allow(dead_code)] // consumed by the Poplar path that is not implemented
     config: IpuConfig,
     capabilities: AcceleratorCapabilities,
     buffers: Mutex<HashMap<u64, Vec<f32>>>,
     next_buffer_id: AtomicU64,
+    #[allow(dead_code)] // consumed by the Poplar path that is not implemented
     graphs: Mutex<HashMap<String, IpuGraph>>,
 }
 
@@ -294,12 +320,13 @@ impl IpuAccelerator {
     }
 
     /// Create a level crossing encoding graph.
-    pub fn create_level_crossing_graph(
-        &self,
-        num_samples: usize,
-        num_channels: usize,
-        threshold: f32,
-    ) -> IpuGraph {
+    ///
+    /// Thresholds are not baked in: an `IpuTensor` describes a tensor's shape,
+    /// dtype and tile mapping, never its contents. The graph declares a
+    /// `thresholds` input of shape `[num_channels]`, and the values are written
+    /// to that stream at execution time. This used to take a `threshold: f32`
+    /// that nothing could read, so callers were silently ignored.
+    pub fn create_level_crossing_graph(&self, num_samples: usize, num_channels: usize) -> IpuGraph {
         let mut graph = self.create_graph("level_crossing");
 
         // Add input tensor
@@ -505,6 +532,10 @@ pub mod poprt {
     use super::*;
 
     /// PopRT session for runtime inference.
+    ///
+    /// Populated from the ONNX path and read back by the PopRT calls that are
+    /// not implemented while the vendor SDK is absent.
+    #[allow(dead_code)]
     pub struct PopRTSession {
         /// Session handle
         handle: u64,
@@ -561,7 +592,7 @@ mod tests {
     #[test]
     fn test_level_crossing_graph() {
         let ipu = IpuAccelerator::new().unwrap();
-        let graph = ipu.create_level_crossing_graph(1000, 8, 0.1);
+        let graph = ipu.create_level_crossing_graph(1000, 8);
 
         assert_eq!(graph.tensors.len(), 3);
         assert_eq!(graph.programs.len(), 1);
@@ -570,7 +601,7 @@ mod tests {
     #[test]
     fn test_memory_estimation() {
         let ipu = IpuAccelerator::new().unwrap();
-        let graph = ipu.create_level_crossing_graph(1000, 8, 0.1);
+        let graph = ipu.create_level_crossing_graph(1000, 8);
 
         let memory = ipu.estimate_memory(&graph);
         // 2 * (1000 * 8 * 4) + (8 * 4) = 64,032 bytes

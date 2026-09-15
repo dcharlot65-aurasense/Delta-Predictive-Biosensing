@@ -10,6 +10,10 @@ description = "Core types, traits, and GPU infrastructure for DPB Framework"
 default = []
 # Intel Gaudi AI accelerator support
 intel-gaudi = []
+# Link the real Synapse AI SDK rather than the simulation path. gaudi.rs
+# branched on this with cfg!() while it was never declared, so the test was
+# always false and the branch unreachable.
+intel-gaudi-runtime = ["intel-gaudi"]
 # Graphcore IPU accelerator support
 graphcore-ipu = []
 # RISC-V vector accelerator support (src/accelerators/riscv.rs). This gate

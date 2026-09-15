@@ -272,6 +272,7 @@ pub struct DmaChannel {
     pub on_complete: Option<fn()>,
 }
 
+/// Direction of a DMA transfer.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum DmaDirection {
     /// Memory to memory.

@@ -87,6 +87,9 @@ jobs:
       # has. This lists the sets that are portable; the hardware backends are
       # covered on machines that have the hardware.
       - run: cargo check -p dpb-core      --features hardware-accelerators --all-targets
+      # Separate set: it selects the Synapse SDK branch that
+      # hardware-accelerators leaves unreachable.
+      - run: cargo check -p dpb-core      --features intel-gaudi-runtime --all-targets
       - run: cargo check -p dpb-clinical  --features full        --all-targets
       - run: cargo check -p dpb-export    --features full        --all-targets
       - run: cargo check -p dpb-federated --features full        --all-targets
