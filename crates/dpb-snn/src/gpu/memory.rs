@@ -23,18 +23,19 @@
 //! ```rust
 //! use dpb_snn::gpu::memory::{MemoryPool, PinnedMemory};
 //! use dpb_snn::gpu::{Backend, GpuDevice};
+//! use std::sync::Arc;
 //!
 //! # fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! # let backend = Backend::Cpu;
 //! # if backend == Backend::Cpu { return Ok(()); }
-//! let device = backend.create_device(0)?;
-//! let mut pool = MemoryPool::new(device.as_ref(), 1024 * 1024 * 100); // 100MB pool
+//! let device: Arc<dyn GpuDevice> = Arc::from(backend.create_device(0)?);
+//! let mut pool = MemoryPool::with_device(device, 1024 * 1024 * 100); // 100MB pool
 //!
 //! // Allocate from pool
 //! let buffer = pool.allocate(1024)?;
 //!
-//! // Create pinned memory for fast transfers
-//! let pinned = PinnedMemory::new(1024)?;
+//! // Pinned memory is generic over the element type, so name it.
+//! let pinned = PinnedMemory::<f32>::new(1024)?;
 //! # Ok(())
 //! # }
 //! ```
@@ -42,7 +43,7 @@
 use super::{Backend, GpuBuffer, GpuDevice, GpuError, GpuResult};
 use std::collections::HashMap;
 use std::sync::{
-    Arc, Mutex, Weak,
+    Arc, Mutex,
     atomic::{AtomicU64, Ordering},
 };
 use std::time::Instant;
@@ -94,7 +95,7 @@ impl MemoryPool {
         since = "0.2.0",
         note = "Use with_device() with Arc<dyn GpuDevice> instead"
     )]
-    pub fn new(device: &dyn GpuDevice, capacity: usize) -> Self {
+    pub fn new(_device: &dyn GpuDevice, capacity: usize) -> Self {
         // Create a CPU-fallback pool that doesn't actually use the device
         // This is unsafe but maintained for backward compatibility
         MemoryPool {

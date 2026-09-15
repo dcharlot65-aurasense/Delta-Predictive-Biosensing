@@ -308,7 +308,18 @@ impl DistributedRuntime {
 
     /// Shutdown runtime
     pub fn shutdown(&self) -> DistributedResult<()> {
-        self.backend.shutdown()
+        self.backend.shutdown()?;
+        self.state.write().unwrap().initialized = false;
+        Ok(())
+    }
+
+    /// Whether this runtime is still live.
+    ///
+    /// False once [`Self::shutdown`] has run. The `initialized` flag was set at
+    /// construction and then never read or cleared, so a shut-down runtime was
+    /// indistinguishable from a live one.
+    pub fn is_initialized(&self) -> bool {
+        self.state.read().unwrap().initialized
     }
 }
 

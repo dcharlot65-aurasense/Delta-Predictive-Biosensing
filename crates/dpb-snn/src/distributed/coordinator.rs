@@ -3,7 +3,7 @@
 //! Coordinates distributed training across multiple workers, handling gradient
 //! aggregation, synchronization, and checkpoint management.
 
-use super::{DistributedError, DistributedResult, DistributedRuntime, ReduceOp};
+use super::{DistributedResult, DistributedRuntime, ReduceOp};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -105,6 +105,14 @@ struct CoordinatorState {
 }
 
 /// Gradient update message
+///
+/// Nothing constructs one. `pending_updates` is created empty, drained, and
+/// cleared, but never pushed to, which is why the master branch of
+/// [`TrainingCoordinator::async_sgd_gradients`] aggregates nothing -- see the
+/// note there. The type is kept because it describes the parameter-server
+/// message the async path is written against; the gap is the missing receive
+/// loop, not this definition.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct GradientUpdate {
     /// Source worker rank
@@ -215,7 +223,15 @@ impl TrainingCoordinator {
             // Master: aggregate updates from workers
             let mut state = self.state.write().unwrap();
 
-            // Process pending updates
+            // Process pending updates.
+            //
+            // NOTE: this loop is currently never entered. Nothing in the crate
+            // ever pushes a GradientUpdate, so the master receives no worker
+            // gradients and the averaging below divides its own gradients by
+            // the world size -- which is wrong, not merely incomplete. Closing
+            // it needs the master-side counterpart of the worker's send/recv
+            // below (receive from each rank, push an update, send results
+            // back), which cannot be written blind against a real backend.
             for update in state.pending_updates.drain(..) {
                 if update.param_name == param_name {
                     // Apply staleness-aware update

@@ -213,6 +213,16 @@ impl ModelParallel {
     pub fn layer_assignments(&self) -> &[usize] {
         &self.layer_assignments
     }
+
+    /// Number of workers this partition was computed for.
+    pub fn world_size(&self) -> usize {
+        self.world_size
+    }
+
+    /// Number of layers this partition covers.
+    pub fn num_layers(&self) -> usize {
+        self.num_layers
+    }
 }
 
 /// Pipeline parallel partitioner
@@ -275,6 +285,12 @@ impl PipelineParallel {
     }
 
     /// Get number of stages
+    /// Number of workers this pipeline was computed for.
+    pub fn world_size(&self) -> usize {
+        self.world_size
+    }
+
+    /// Number of pipeline stages.
     pub fn num_stages(&self) -> usize {
         self.num_stages
     }

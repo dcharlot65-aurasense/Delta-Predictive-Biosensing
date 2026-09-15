@@ -459,6 +459,11 @@ impl ElasticTrainingManager {
     }
 
     /// Get active workers
+    /// The runtime this manager is elastic over.
+    pub fn runtime(&self) -> &Arc<DistributedRuntime> {
+        &self.runtime
+    }
+
     pub fn active_workers(&self) -> Vec<usize> {
         let state = self.state.read().unwrap();
         state.active_workers.iter().copied().collect()

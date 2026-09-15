@@ -22,6 +22,7 @@
 //!
 //! ```rust
 //! use dpb_snn::gpu::metal::{MetalDevice, MetalCommandQueue};
+//! use dpb_snn::gpu::GpuDevice;
 //!
 //! # #[cfg(feature = "metal")]
 //! # fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -44,9 +45,9 @@ use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "metal")]
 use metal::{
-    Buffer as MtlBuffer, CommandBuffer as MtlCommandBuffer, CommandQueue as MtlCommandQueue,
-    ComputeCommandEncoder as MtlComputeEncoder, ComputePipelineState as MtlPipeline,
-    Device as MtlDevice, Library as MtlLibrary, MTLResourceOptions,
+    CommandBuffer as MtlCommandBuffer, CommandQueue as MtlCommandQueue,
+    ComputePipelineState as MtlPipeline, Device as MtlDevice, Library as MtlLibrary,
+    MTLResourceOptions,
 };
 
 /// Check if Metal is available on this system
@@ -204,47 +205,46 @@ impl MetalDevice {
     ) -> GpuResult<()> {
         let pipeline = self.get_pipeline("spike_propagation")?;
 
-        if let Some(encoder) = command_buffer.buffer.new_compute_command_encoder() {
-            encoder.set_compute_pipeline_state(&pipeline);
+        let encoder = command_buffer.buffer.new_compute_command_encoder();
+        encoder.set_compute_pipeline_state(&pipeline);
 
-            // Set buffers
-            if let Some(v_buf) = voltages.as_any().downcast_ref::<MetalBuffer>() {
-                if let Some(ref buf) = v_buf.mtl_buffer {
-                    encoder.set_buffer(0, Some(buf), 0);
-                }
+        // Set buffers
+        if let Some(v_buf) = voltages.as_any().downcast_ref::<MetalBuffer>() {
+            if let Some(ref buf) = v_buf.mtl_buffer {
+                encoder.set_buffer(0, Some(buf), 0);
             }
-            if let Some(s_buf) = spikes.as_any().downcast_ref::<MetalBuffer>() {
-                if let Some(ref buf) = s_buf.mtl_buffer {
-                    encoder.set_buffer(1, Some(buf), 0);
-                }
-            }
-            if let Some(w_buf) = weights.as_any().downcast_ref::<MetalBuffer>() {
-                if let Some(ref buf) = w_buf.mtl_buffer {
-                    encoder.set_buffer(2, Some(buf), 0);
-                }
-            }
-
-            // Set constants
-            encoder.set_bytes(
-                3,
-                std::mem::size_of::<f32>() as u64,
-                &dt as *const f32 as *const _,
-            );
-            encoder.set_bytes(
-                4,
-                std::mem::size_of::<f32>() as u64,
-                &threshold as *const f32 as *const _,
-            );
-
-            let threads_per_group = 256;
-            let num_groups = (num_neurons + threads_per_group - 1) / threads_per_group;
-
-            let thread_group_size = metal::MTLSize::new(threads_per_group as u64, 1, 1);
-            let grid_size = metal::MTLSize::new(num_groups as u64, 1, 1);
-
-            encoder.dispatch_thread_groups(grid_size, thread_group_size);
-            encoder.end_encoding();
         }
+        if let Some(s_buf) = spikes.as_any().downcast_ref::<MetalBuffer>() {
+            if let Some(ref buf) = s_buf.mtl_buffer {
+                encoder.set_buffer(1, Some(buf), 0);
+            }
+        }
+        if let Some(w_buf) = weights.as_any().downcast_ref::<MetalBuffer>() {
+            if let Some(ref buf) = w_buf.mtl_buffer {
+                encoder.set_buffer(2, Some(buf), 0);
+            }
+        }
+
+        // Set constants
+        encoder.set_bytes(
+            3,
+            std::mem::size_of::<f32>() as u64,
+            &dt as *const f32 as *const _,
+        );
+        encoder.set_bytes(
+            4,
+            std::mem::size_of::<f32>() as u64,
+            &threshold as *const f32 as *const _,
+        );
+
+        let threads_per_group = 256;
+        let num_groups = (num_neurons + threads_per_group - 1) / threads_per_group;
+
+        let thread_group_size = metal::MTLSize::new(threads_per_group as u64, 1, 1);
+        let grid_size = metal::MTLSize::new(num_groups as u64, 1, 1);
+
+        encoder.dispatch_thread_groups(grid_size, thread_group_size);
+        encoder.end_encoding();
 
         Ok(())
     }
@@ -281,57 +281,56 @@ impl MetalDevice {
     ) -> GpuResult<()> {
         let pipeline = self.get_pipeline("stdp_update")?;
 
-        if let Some(encoder) = command_buffer.buffer.new_compute_command_encoder() {
-            encoder.set_compute_pipeline_state(&pipeline);
+        let encoder = command_buffer.buffer.new_compute_command_encoder();
+        encoder.set_compute_pipeline_state(&pipeline);
 
-            // Set buffers
-            if let Some(w_buf) = weights.as_any().downcast_ref::<MetalBuffer>() {
-                if let Some(ref buf) = w_buf.mtl_buffer {
-                    encoder.set_buffer(0, Some(buf), 0);
-                }
+        // Set buffers
+        if let Some(w_buf) = weights.as_any().downcast_ref::<MetalBuffer>() {
+            if let Some(ref buf) = w_buf.mtl_buffer {
+                encoder.set_buffer(0, Some(buf), 0);
             }
-            if let Some(pre_buf) = pre_spikes.as_any().downcast_ref::<MetalBuffer>() {
-                if let Some(ref buf) = pre_buf.mtl_buffer {
-                    encoder.set_buffer(1, Some(buf), 0);
-                }
-            }
-            if let Some(post_buf) = post_spikes.as_any().downcast_ref::<MetalBuffer>() {
-                if let Some(ref buf) = post_buf.mtl_buffer {
-                    encoder.set_buffer(2, Some(buf), 0);
-                }
-            }
-            if let Some(t_buf) = traces.as_any().downcast_ref::<MetalBuffer>() {
-                if let Some(ref buf) = t_buf.mtl_buffer {
-                    encoder.set_buffer(3, Some(buf), 0);
-                }
-            }
-
-            // Set constants
-            encoder.set_bytes(
-                4,
-                std::mem::size_of::<f32>() as u64,
-                &learning_rate as *const f32 as *const _,
-            );
-            encoder.set_bytes(
-                5,
-                std::mem::size_of::<f32>() as u64,
-                &tau_plus as *const f32 as *const _,
-            );
-            encoder.set_bytes(
-                6,
-                std::mem::size_of::<f32>() as u64,
-                &tau_minus as *const f32 as *const _,
-            );
-
-            let threads_per_group = 256;
-            let num_groups = (num_synapses + threads_per_group - 1) / threads_per_group;
-
-            let thread_group_size = metal::MTLSize::new(threads_per_group as u64, 1, 1);
-            let grid_size = metal::MTLSize::new(num_groups as u64, 1, 1);
-
-            encoder.dispatch_thread_groups(grid_size, thread_group_size);
-            encoder.end_encoding();
         }
+        if let Some(pre_buf) = pre_spikes.as_any().downcast_ref::<MetalBuffer>() {
+            if let Some(ref buf) = pre_buf.mtl_buffer {
+                encoder.set_buffer(1, Some(buf), 0);
+            }
+        }
+        if let Some(post_buf) = post_spikes.as_any().downcast_ref::<MetalBuffer>() {
+            if let Some(ref buf) = post_buf.mtl_buffer {
+                encoder.set_buffer(2, Some(buf), 0);
+            }
+        }
+        if let Some(t_buf) = traces.as_any().downcast_ref::<MetalBuffer>() {
+            if let Some(ref buf) = t_buf.mtl_buffer {
+                encoder.set_buffer(3, Some(buf), 0);
+            }
+        }
+
+        // Set constants
+        encoder.set_bytes(
+            4,
+            std::mem::size_of::<f32>() as u64,
+            &learning_rate as *const f32 as *const _,
+        );
+        encoder.set_bytes(
+            5,
+            std::mem::size_of::<f32>() as u64,
+            &tau_plus as *const f32 as *const _,
+        );
+        encoder.set_bytes(
+            6,
+            std::mem::size_of::<f32>() as u64,
+            &tau_minus as *const f32 as *const _,
+        );
+
+        let threads_per_group = 256;
+        let num_groups = (num_synapses + threads_per_group - 1) / threads_per_group;
+
+        let thread_group_size = metal::MTLSize::new(threads_per_group as u64, 1, 1);
+        let grid_size = metal::MTLSize::new(num_groups as u64, 1, 1);
+
+        encoder.dispatch_thread_groups(grid_size, thread_group_size);
+        encoder.end_encoding();
 
         Ok(())
     }
@@ -368,28 +367,27 @@ impl MetalDevice {
     ) -> GpuResult<()> {
         let pipeline = self.get_pipeline("sparse_matmul_csr")?;
 
-        if let Some(encoder) = command_buffer.buffer.new_compute_command_encoder() {
-            encoder.set_compute_pipeline_state(&pipeline);
+        let encoder = command_buffer.buffer.new_compute_command_encoder();
+        encoder.set_compute_pipeline_state(&pipeline);
 
-            // Set buffers
-            let buffers = [output, matrix_values, matrix_indices, matrix_indptr, vector];
-            for (i, buf) in buffers.iter().enumerate() {
-                if let Some(m_buf) = buf.as_any().downcast_ref::<MetalBuffer>() {
-                    if let Some(ref mtl_buf) = m_buf.mtl_buffer {
-                        encoder.set_buffer(i as u64, Some(mtl_buf), 0);
-                    }
+        // Set buffers
+        let buffers = [output, matrix_values, matrix_indices, matrix_indptr, vector];
+        for (i, buf) in buffers.iter().enumerate() {
+            if let Some(m_buf) = buf.as_any().downcast_ref::<MetalBuffer>() {
+                if let Some(ref mtl_buf) = m_buf.mtl_buffer {
+                    encoder.set_buffer(i as u64, Some(mtl_buf), 0);
                 }
             }
-
-            let threads_per_group = 256;
-            let num_groups = (num_rows + threads_per_group - 1) / threads_per_group;
-
-            let thread_group_size = metal::MTLSize::new(threads_per_group as u64, 1, 1);
-            let grid_size = metal::MTLSize::new(num_groups as u64, 1, 1);
-
-            encoder.dispatch_thread_groups(grid_size, thread_group_size);
-            encoder.end_encoding();
         }
+
+        let threads_per_group = 256;
+        let num_groups = (num_rows + threads_per_group - 1) / threads_per_group;
+
+        let thread_group_size = metal::MTLSize::new(threads_per_group as u64, 1, 1);
+        let grid_size = metal::MTLSize::new(num_groups as u64, 1, 1);
+
+        encoder.dispatch_thread_groups(grid_size, thread_group_size);
+        encoder.end_encoding();
 
         Ok(())
     }
@@ -428,36 +426,35 @@ impl MetalDevice {
 
         let pipeline = self.get_pipeline(function_name)?;
 
-        if let Some(encoder) = command_buffer.buffer.new_compute_command_encoder() {
-            encoder.set_compute_pipeline_state(&pipeline);
+        let encoder = command_buffer.buffer.new_compute_command_encoder();
+        encoder.set_compute_pipeline_state(&pipeline);
 
-            if let Some(i_buf) = input.as_any().downcast_ref::<MetalBuffer>() {
-                if let Some(ref buf) = i_buf.mtl_buffer {
-                    encoder.set_buffer(0, Some(buf), 0);
-                }
+        if let Some(i_buf) = input.as_any().downcast_ref::<MetalBuffer>() {
+            if let Some(ref buf) = i_buf.mtl_buffer {
+                encoder.set_buffer(0, Some(buf), 0);
             }
-            if let Some(o_buf) = output.as_any().downcast_ref::<MetalBuffer>() {
-                if let Some(ref buf) = o_buf.mtl_buffer {
-                    encoder.set_buffer(1, Some(buf), 0);
-                }
-            }
-
-            let n = num_elements as u32;
-            encoder.set_bytes(
-                2,
-                std::mem::size_of::<u32>() as u64,
-                &n as *const u32 as *const _,
-            );
-
-            let threads_per_group = 256;
-            let num_groups = (num_elements + threads_per_group - 1) / threads_per_group;
-
-            let thread_group_size = metal::MTLSize::new(threads_per_group as u64, 1, 1);
-            let grid_size = metal::MTLSize::new(num_groups as u64, 1, 1);
-
-            encoder.dispatch_thread_groups(grid_size, thread_group_size);
-            encoder.end_encoding();
         }
+        if let Some(o_buf) = output.as_any().downcast_ref::<MetalBuffer>() {
+            if let Some(ref buf) = o_buf.mtl_buffer {
+                encoder.set_buffer(1, Some(buf), 0);
+            }
+        }
+
+        let n = num_elements as u32;
+        encoder.set_bytes(
+            2,
+            std::mem::size_of::<u32>() as u64,
+            &n as *const u32 as *const _,
+        );
+
+        let threads_per_group = 256;
+        let num_groups = (num_elements + threads_per_group - 1) / threads_per_group;
+
+        let thread_group_size = metal::MTLSize::new(threads_per_group as u64, 1, 1);
+        let grid_size = metal::MTLSize::new(num_groups as u64, 1, 1);
+
+        encoder.dispatch_thread_groups(grid_size, thread_group_size);
+        encoder.end_encoding();
 
         Ok(())
     }
@@ -564,15 +561,12 @@ impl GpuDevice for MetalDevice {
                 src.as_any().downcast_ref::<MetalBuffer>(),
                 dst.as_any().downcast_ref::<MetalBuffer>(),
             ) {
-                if let (Some(ref src_mtl), Some(ref dst_mtl)) =
-                    (&s_buf.mtl_buffer, &d_buf.mtl_buffer)
-                {
+                if let (Some(src_mtl), Some(dst_mtl)) = (&s_buf.mtl_buffer, &d_buf.mtl_buffer) {
                     // Use blit encoder for device-to-device copy
                     let cmd_buf = self.command_queue.new_command_buffer();
-                    if let Some(encoder) = cmd_buf.new_blit_command_encoder() {
-                        encoder.copy_from_buffer(src_mtl, 0, dst_mtl, 0, src.size() as u64);
-                        encoder.end_encoding();
-                    }
+                    let encoder = cmd_buf.new_blit_command_encoder();
+                    encoder.copy_from_buffer(src_mtl, 0, dst_mtl, 0, src.size() as u64);
+                    encoder.end_encoding();
                     cmd_buf.commit();
                     cmd_buf.wait_until_completed();
                 }

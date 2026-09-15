@@ -583,9 +583,6 @@ pub struct SNNConfig {
     pub neuron_model: NeuronModel,
     /// Neuron parameters
     pub neuron_params: NeuronParams,
-    /// Enable GPU acceleration (requires `gpu` feature)
-    #[cfg(feature = "gpu")]
-    pub use_gpu: bool,
 }
 
 impl Default for SNNConfig {
@@ -595,8 +592,6 @@ impl Default for SNNConfig {
             num_steps: 100,
             neuron_model: NeuronModel::LIF,
             neuron_params: NeuronParams::default(),
-            #[cfg(feature = "gpu")]
-            use_gpu: false,
         }
     }
 }

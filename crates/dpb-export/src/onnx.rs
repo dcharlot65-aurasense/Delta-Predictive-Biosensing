@@ -19,7 +19,7 @@ use crate::metadata::ModelMetadata;
 #[cfg(feature = "onnx")]
 use crate::encoder_export::{EncoderParams, ExportableEncoder};
 #[cfg(feature = "onnx")]
-use crate::error::{ExportError, Result};
+use crate::error::Result;
 #[cfg(feature = "onnx")]
 use crate::protobuf::Writer;
 #[cfg(feature = "onnx")]
@@ -413,7 +413,9 @@ impl OnnxExporter {
         _path: impl AsRef<Path>,
         _encoder: &E,
     ) -> Result<()> {
-        Err(ExportError::FeatureNotEnabled("onnx".to_string()))
+        Err(crate::error::ExportError::FeatureNotEnabled(
+            "onnx".to_string(),
+        ))
     }
 }
 

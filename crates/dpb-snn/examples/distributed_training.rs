@@ -176,7 +176,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 11. Demonstrate aggregation strategies
     println!("\n11. Aggregation Strategies:\n");
-    demonstrate_aggregation_strategies(&runtime)?;
+    demonstrate_aggregation_strategies()?;
 
     // 12. Cleanup
     println!("\n12. Cleaning up...");
@@ -219,9 +219,7 @@ fn demonstrate_partitioning_strategies(
 }
 
 #[cfg(feature = "distributed")]
-fn demonstrate_aggregation_strategies(
-    runtime: &DistributedRuntime,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn demonstrate_aggregation_strategies() -> Result<(), Box<dyn std::error::Error>> {
     let strategies = vec![
         AggregationStrategy::AllReduce,
         AggregationStrategy::AsyncSGD,

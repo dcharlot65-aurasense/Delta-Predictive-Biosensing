@@ -2,7 +2,7 @@
 //!
 //! Performance monitoring and profiling for distributed training.
 
-use super::{DistributedResult, DistributedRuntime};
+use super::DistributedRuntime;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -150,15 +150,15 @@ impl DistributedMetrics {
         }
     }
 
-    /// Get scaling efficiency
+    /// Fraction of each step spent on useful work rather than communication.
+    ///
+    /// 1.0 is perfect linear scaling; communication overhead is what takes it
+    /// below that. It deliberately does not divide by the world size -- doing
+    /// so would report 1/world_size for a perfectly scaling job, contradicting
+    /// the definition above. A stale comment here claimed the division, and
+    /// the unused `world_size` binding it left behind was the only trace.
     pub fn scaling_efficiency(&self) -> f64 {
-        // Ideal: efficiency = 1.0 (linear scaling)
-        // Reality: efficiency < 1.0 due to communication overhead
-        let world_size = self.runtime.world_size() as f64;
-        let overhead = self.communication_overhead();
-
-        // Simple model: efficiency = (1 - overhead) / world_size
-        (1.0 - overhead).clamp(0.0, 1.0)
+        (1.0 - self.communication_overhead()).clamp(0.0, 1.0)
     }
 
     /// Get load balance score (0.0 to 1.0, higher is better)
@@ -591,8 +591,15 @@ mod tests {
 
         metrics.record_step(100, Duration::from_millis(900), Duration::from_millis(100));
 
+        // 100 ms of 1000 ms is communication, so overhead is 0.1 and
+        // efficiency is 0.9. Pinned rather than range-checked: 0 < x <= 1
+        // also admits the (1 - overhead) / world_size reading, which would
+        // give 0.225 here, so a range check cannot tell the two apart.
         let efficiency = metrics.scaling_efficiency();
-        assert!(efficiency > 0.0 && efficiency <= 1.0);
+        assert!(
+            (efficiency - 0.9).abs() < 1e-9,
+            "expected 0.9, got {efficiency}"
+        );
     }
 
     #[test]
