@@ -274,8 +274,18 @@ impl SNNBaseline {
         let avg_fanout = self.num_synapses as f64 / self.num_neurons as f64;
         let total_ops = (total_spikes * avg_fanout) as usize;
 
-        // Neuromorphic energy per spike-synaptic operation
-        let energy_per_spike_op = 50e-12; // J (much lower than MAC)
+        // Neuromorphic energy per spike-synaptic operation: 50 pJ, a measured
+        // neuromorphic-chip figure (routing and memory access included).
+        //
+        // This used to be annotated "much lower than MAC". It is not: the ANN
+        // baseline above charges 4.6 pJ per MAC, so this is roughly 11x
+        // *higher* per operation. The two are also not like for like -- 4.6 pJ
+        // is a bare 45 nm gate figure, 50 pJ a whole-chip one. On a single
+        // basis (Horowitz, 45 nm) an accumulate costs 0.9 pJ against a MAC's
+        // 4.6 pJ. Which basis the comparison should use is a modelling
+        // decision, so the value is left as it was and the comment now says
+        // what it actually is.
+        let energy_per_spike_op = 50e-12; // J
         let energy_mj = total_ops as f64 * energy_per_spike_op * 1000.0;
 
         // Latency depends on timesteps

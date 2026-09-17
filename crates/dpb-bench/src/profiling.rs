@@ -399,7 +399,13 @@ impl EnergyEstimator {
         Self::new(
             name,
             EnergyModel::CMOS {
-                energy_per_mac_pj: 4600.0, // 4.6 pJ for 45nm CMOS
+                // 45 nm float32 multiply (3.7 pJ) plus add (0.9 pJ), after
+                // Horowitz's 45 nm energy table -- the same figure baselines.rs
+                // uses. This was written 4600.0: the field is in picojoules and
+                // the comment already said 4.6 pJ, so every CMOS estimate was
+                // 1000x too high, and any SNN-vs-CMOS efficiency ratio built on
+                // it was inflated by the same factor.
+                energy_per_mac_pj: 4.6,
             },
         )
     }
@@ -526,16 +532,32 @@ mod tests {
         assert_eq!(isis, vec![10]);
     }
 
+    /// Energy is pinned to exact values, not compared.
+    ///
+    /// This test used to assert that 100 000 CMOS MACs cost more than 100 000
+    /// neuromorphic spike-ops. That only held because the CMOS constant was
+    /// 1000x too large; with the correct 4.6 pJ it is false, and the test was
+    /// holding the unit error in place. The ordering was never a sound thing to
+    /// assert either: 4.6 pJ is a bare-gate figure and 50 pJ a measured
+    /// neuromorphic-chip one, so the two are not on the same basis. Exact
+    /// values check the arithmetic and units, which is what this can vouch for.
     #[test]
     fn test_energy_estimator() {
         let mut estimator = EnergyEstimator::neuromorphic("test");
-
-        estimator.record_spikes(1000, 100); // 1000 spikes, 100 fanout
-        assert!(estimator.total_energy_mj() > 0.0);
+        estimator.record_spikes(1000, 100); // 100 000 spike-ops at 50 pJ
+        assert!(
+            (estimator.total_energy_mj() - 5.0e-3).abs() < 1e-12,
+            "100 000 ops x 50 pJ is 5e-3 mJ, got {}",
+            estimator.total_energy_mj()
+        );
 
         let mut cmos = EnergyEstimator::cmos("cmos");
-        cmos.record_macs(100000);
-        assert!(cmos.total_energy_mj() > estimator.total_energy_mj());
+        cmos.record_macs(100_000); // 100 000 MACs at 4.6 pJ
+        assert!(
+            (cmos.total_energy_mj() - 4.6e-4).abs() < 1e-12,
+            "100 000 MACs x 4.6 pJ is 4.6e-4 mJ, got {}",
+            cmos.total_energy_mj()
+        );
     }
 
     #[test]
