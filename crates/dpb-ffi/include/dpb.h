@@ -286,8 +286,15 @@ int dpb_spike_train_get_event(
 /**
  * @brief Creates a new level-crossing encoder.
  *
- * @param threshold Threshold value for level crossing detection
- * @return Pointer to new Encoder, or NULL on error
+ * @param threshold Delta-mode quantum: how far the signal must move from the
+ *        last emitted level before another event fires, and so the bound on
+ *        reconstruction error. Must be finite and positive once narrowed to
+ *        float; zero, negative, NaN and values that overflow a float are
+ *        rejected, because each of them would otherwise encode to an empty
+ *        spike train with no error.
+ * @return Pointer to new Encoder, or NULL on error (see dpb_last_error()).
+ *
+ * Earlier builds ignored this argument and always encoded with 0.5.
  *
  * Must be freed with `dpb_encoder_free()`.
  */

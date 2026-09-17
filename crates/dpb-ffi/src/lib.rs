@@ -624,7 +624,9 @@ pub unsafe extern "C" fn dpb_spike_train_get_event(
 ///
 /// # Parameters
 ///
-/// - `threshold`: Threshold value for level crossing detection
+/// - `threshold`: Threshold value for level crossing detection. Must be
+///   finite and positive; anything else returns NULL with the reason in
+///   `dpb_last_error()`.
 ///
 /// # Returns
 ///
@@ -639,8 +641,13 @@ pub extern "C" fn dpb_encoder_level_crossing_new(threshold: c_double) -> *mut Dp
         || {
             clear_last_error();
 
-            let encoder = DpbEncoder::new_level_crossing(threshold);
-            Box::into_raw(Box::new(encoder))
+            match DpbEncoder::new_level_crossing(threshold) {
+                Ok(encoder) => Box::into_raw(Box::new(encoder)),
+                Err(message) => {
+                    set_last_error(message);
+                    ptr::null_mut()
+                }
+            }
         },
         ptr::null_mut(),
     )
@@ -704,9 +711,9 @@ pub unsafe extern "C" fn dpb_encoder_encode(
 
                 // Encode based on encoder type
                 let events = match &enc.encoder {
-                    types::EncoderType::LevelCrossing(encoder) => {
+                    types::EncoderType::LevelCrossing { encoder, threshold } => {
                         let config = LevelCrossingConfig {
-                            threshold: 0.5, // This should come from the encoder
+                            threshold: *threshold,
                             relative: false,
                             refractory_period: 0.001,
                             // Reference-tracking mode: the only one with a
@@ -743,6 +750,65 @@ pub unsafe extern "C" fn dpb_encoder_encode(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Encodes `data` through the public C API at `threshold`, returning the
+    /// number of events, or `None` if the encoder refused the threshold.
+    unsafe fn events_at(data: &[f32], threshold: f64) -> Option<usize> {
+        unsafe {
+            let ts = dpb_timeseries_new(data.as_ptr(), data.len(), 1, 1000.0);
+            assert!(!ts.is_null());
+            let enc = dpb_encoder_level_crossing_new(threshold);
+            if enc.is_null() {
+                dpb_timeseries_free(ts);
+                return None;
+            }
+            let train = dpb_encoder_encode(enc, ts);
+            assert!(!train.is_null(), "encoding a valid signal failed");
+            let n = dpb_spike_train_len(train);
+            dpb_spike_train_free(train);
+            dpb_encoder_free(enc);
+            dpb_timeseries_free(ts);
+            Some(n)
+        }
+    }
+
+    /// The threshold a C caller passes has to reach the encoder.
+    ///
+    /// It used to be dropped in the constructor and replaced by a hardcoded 0.5
+    /// at encode time. The bundled C example passes exactly 0.5, so it could
+    /// never have noticed; this test deliberately uses thresholds other than
+    /// 0.5 and checks the event counts they must produce.
+    #[test]
+    fn level_crossing_honours_the_callers_threshold() {
+        // A ramp from 0 to 3 in steps of 0.01: in delta mode an event fires each
+        // time the signal has moved one threshold from the last emitted level.
+        let ramp: Vec<f32> = (0..=300).map(|i| i as f32 * 0.01).collect();
+
+        let fine = unsafe { events_at(&ramp, 0.1) }.unwrap();
+        let coarse = unsafe { events_at(&ramp, 1.0) }.unwrap();
+
+        // 3.0 of travel is 30 quanta of 0.1 and 3 quanta of 1.0. The old code
+        // used 0.5 for both, giving 6 each.
+        assert!(
+            (29..=30).contains(&fine),
+            "threshold 0.1 gave {fine} events"
+        );
+        assert_eq!(coarse, 3, "threshold 1.0 gave {coarse} events");
+        assert_ne!(fine, coarse, "the threshold had no effect");
+    }
+
+    /// Thresholds that would silently produce an empty spike train are refused.
+    #[test]
+    fn level_crossing_rejects_thresholds_that_encode_nothing() {
+        let ramp: Vec<f32> = (0..=300).map(|i| i as f32 * 0.01).collect();
+        for bad in [0.0, -0.5, f64::NAN, f64::INFINITY, 1e300] {
+            assert_eq!(
+                unsafe { events_at(&ramp, bad) },
+                None,
+                "threshold {bad} was accepted"
+            );
+        }
+    }
 
     #[test]
     fn test_version() {

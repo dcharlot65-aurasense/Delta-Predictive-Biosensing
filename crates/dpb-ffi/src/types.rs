@@ -82,20 +82,40 @@ pub struct DpbEncoder {
 
 /// Internal enum to hold different encoder types.
 pub(crate) enum EncoderType {
-    LevelCrossing(Box<LevelCrossingEncoder>),
+    LevelCrossing {
+        encoder: Box<LevelCrossingEncoder>,
+        /// The detection threshold passed to the constructor. Before this was
+        /// stored, encoding used a hardcoded 0.5 regardless of the argument.
+        threshold: f32,
+    },
     // Add more encoder types as needed
 }
 
 #[allow(dead_code)] // mirrors the modelled surface; this file uses a subset
 impl DpbEncoder {
     /// Creates a new level-crossing encoder.
-    pub fn new_level_crossing(_threshold: f64) -> Self {
-        // Note: threshold is currently not used as LevelCrossingEncoder
-        // takes it in the encode() call via config, not in new()
-        let encoder = LevelCrossingEncoder::new("ffi_encoder");
-        Self {
-            encoder: EncoderType::LevelCrossing(Box::new(encoder)),
+    ///
+    /// `threshold` is the delta-mode quantum: how far the signal must move from
+    /// the last emitted level before another event fires, and so the bound on
+    /// reconstruction error. It must be finite and positive once narrowed to
+    /// the encoder's `f32`. Zero, negative and NaN all make the encoder emit
+    /// nothing at all, and a large `f64` overflows to infinity with the same
+    /// result -- a silent empty spike train is the worst answer a C caller can
+    /// get, so those are refused here instead.
+    pub fn new_level_crossing(threshold: f64) -> Result<Self, String> {
+        let narrowed = threshold as f32;
+        if !(narrowed.is_finite() && narrowed > 0.0) {
+            return Err(format!(
+                "level-crossing threshold must be finite and positive, got {threshold}"
+            ));
         }
+        let encoder = LevelCrossingEncoder::new("ffi_encoder");
+        Ok(Self {
+            encoder: EncoderType::LevelCrossing {
+                encoder: Box::new(encoder),
+                threshold: narrowed,
+            },
+        })
     }
 
     /// Gets the encoder type.
