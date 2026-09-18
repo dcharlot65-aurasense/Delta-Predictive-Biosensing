@@ -6,7 +6,7 @@ use super::observations::{ComponentObservation, VitalSignsObservation, WaveformO
 use super::resources::{
     CodeableConcept, Device, DiagnosticReport, Observation, Patient, Quantity, Reference,
 };
-use crate::types::{Context, SignalBuffer};
+use crate::types::Context;
 
 /// Converts DPB Context to FHIR Patient demographics
 pub struct PatientDemographics;
@@ -162,14 +162,20 @@ impl SignalToObservation {
 
     /// Creates an ECG waveform observation reference
     ///
-    /// Note: This creates a reference to waveform data, not the actual waveform.
-    /// In practice, waveform data would be stored separately (e.g., as Binary resource)
+    /// This is a reference to waveform data, not the waveform: the samples
+    /// belong in a separate resource (a `Binary`, or an `Observation`
+    /// carrying `valueSampledData`, which this model does not yet define).
+    ///
+    /// It used to take the `SignalBuffer` and discard it, which promised a
+    /// caller that the samples or their sampling metadata reached the
+    /// resource. Nothing did. The parameter is gone rather than left as a
+    /// misleading one; populating `valueSampledData` from a signal is the
+    /// feature that would need it back.
     pub fn ecg_waveform(
         obs_id: String,
         patient_id: String,
         time: String,
         device_id: Option<String>,
-        _signal: &SignalBuffer,
     ) -> Observation {
         let mut obs = WaveformObservation::ecg(obs_id, patient_id, time);
 
@@ -186,7 +192,6 @@ impl SignalToObservation {
         patient_id: String,
         time: String,
         device_id: Option<String>,
-        _signal: &SignalBuffer,
     ) -> Observation {
         let mut obs = WaveformObservation::eeg(obs_id, patient_id, time);
 
@@ -203,7 +208,6 @@ impl SignalToObservation {
         patient_id: String,
         time: String,
         device_id: Option<String>,
-        _signal: &SignalBuffer,
     ) -> Observation {
         let mut obs = WaveformObservation::emg(obs_id, patient_id, time);
 

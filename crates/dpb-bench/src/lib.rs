@@ -44,6 +44,7 @@
 
 pub mod baselines;
 pub mod datasets;
+pub mod energy;
 pub mod profiling;
 pub mod reports;
 pub mod scenarios;

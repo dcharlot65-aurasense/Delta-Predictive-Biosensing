@@ -145,8 +145,8 @@ impl ANNBaseline {
         total_ops += prev_dim * self.output_dim * 2;
         total_ops *= inputs.len();
 
-        // Estimate energy (based on MAC operations)
-        let energy_per_mac = 4.6e-12; // J (45nm CMOS)
+        // 45 nm multiply-accumulate; see crate::energy for the basis.
+        let energy_per_mac = crate::energy::cmos_45nm::FLOAT_MAC_PJ * crate::energy::PJ_TO_J;
         let energy_mj = total_ops as f64 * energy_per_mac * 1000.0;
 
         // Memory usage
@@ -228,8 +228,8 @@ impl ConventionalBaseline {
         let elapsed = start.elapsed();
         let latency_ms = elapsed.as_secs_f64() * 1000.0 / signals.len() as f64;
 
-        // Much lower energy for simple operations
-        let energy_per_op = 0.1e-12; // J
+        // Threshold comparisons and moving averages are integer adds.
+        let energy_per_op = crate::energy::cmos_45nm::INT_ADD_PJ * crate::energy::PJ_TO_J;
         let energy_mj = total_ops as f64 * energy_per_op * 1000.0;
 
         BaselineResult {
@@ -274,18 +274,18 @@ impl SNNBaseline {
         let avg_fanout = self.num_synapses as f64 / self.num_neurons as f64;
         let total_ops = (total_spikes * avg_fanout) as usize;
 
-        // Neuromorphic energy per spike-synaptic operation: 50 pJ, a measured
-        // neuromorphic-chip figure (routing and memory access included).
+        // A spike is binary, so a synaptic operation is an accumulate: the
+        // weight is added, with no multiply. On the same 45 nm basis as the
+        // ANN baseline above that is 0.9 pJ against a MAC's 4.6 pJ.
         //
-        // This used to be annotated "much lower than MAC". It is not: the ANN
-        // baseline above charges 4.6 pJ per MAC, so this is roughly 11x
-        // *higher* per operation. The two are also not like for like -- 4.6 pJ
-        // is a bare 45 nm gate figure, 50 pJ a whole-chip one. On a single
-        // basis (Horowitz, 45 nm) an accumulate costs 0.9 pJ against a MAC's
-        // 4.6 pJ. Which basis the comparison should use is a modelling
-        // decision, so the value is left as it was and the comment now says
-        // what it actually is.
-        let energy_per_spike_op = 50e-12; // J
+        // This was 50 pJ, annotated "much lower than MAC" when it was in fact
+        // about eleven times higher -- a whole-chip measurement set against
+        // the ANN's bare-arithmetic figure, which made the ratio meaningless
+        // in the direction that flatters neither model honestly. Comparing
+        // against measured silicon instead is legitimate, but then the ANN
+        // side has to be measured too; see crate::energy.
+        let energy_per_spike_op =
+            crate::energy::cmos_45nm::FLOAT_ACCUMULATE_PJ * crate::energy::PJ_TO_J;
         let energy_mj = total_ops as f64 * energy_per_spike_op * 1000.0;
 
         // Latency depends on timesteps

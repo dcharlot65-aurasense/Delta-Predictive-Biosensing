@@ -1,6 +1,6 @@
 //! Convolutional Neural Network (CNN) baseline architectures
 
-use super::{ANNBaseline, Tensor, count_params, xavier_init};
+use super::{ANNBaseline, Tensor, count_params, flops_of, xavier_init};
 
 /// 9. Small 1D CNN for signals
 // Stored from the constructor but not consulted yet. Kept so a caller's
@@ -91,6 +91,9 @@ impl ANNBaseline for CNN1DSmall {
 pub struct CNN1DMedium {
     conv_layers: Vec<Tensor>,
     fc_layers: Vec<(Tensor, Tensor)>,
+    /// Input shape this model was configured for, so that
+    /// `flops_per_inference` can report the work for one real pass.
+    input_shape: Vec<usize>,
 }
 
 impl CNN1DMedium {
@@ -119,6 +122,7 @@ impl CNN1DMedium {
         ];
 
         Self {
+            input_shape: vec![1, input_channels, input_length],
             conv_layers,
             fc_layers,
         }
@@ -169,7 +173,13 @@ impl ANNBaseline for CNN1DMedium {
     }
 
     fn flops_per_inference(&self) -> u64 {
-        1_000_000 // Rough estimate
+        // Counted, not estimated: the tensor operations tally the
+        // multiply-accumulates a real forward pass performs, at two FLOPs
+        // each. This used to be a constant, which cannot be right for a
+        // convolution -- it did not move when the input got longer.
+        flops_of(|| {
+            let _ = self.forward(&Tensor::zeros(self.input_shape.clone()));
+        })
     }
 
     fn architecture_summary(&self) -> String {
@@ -185,6 +195,9 @@ impl ANNBaseline for CNN1DMedium {
 pub struct CNN1DLarge {
     conv_blocks: Vec<Vec<Tensor>>,
     fc_layers: Vec<(Tensor, Tensor)>,
+    /// Input shape this model was configured for, so that
+    /// `flops_per_inference` can report the work for one real pass.
+    input_shape: Vec<usize>,
 }
 
 impl CNN1DLarge {
@@ -223,6 +236,7 @@ impl CNN1DLarge {
         ];
 
         Self {
+            input_shape: vec![1, input_channels, input_length],
             conv_blocks,
             fc_layers,
         }
@@ -285,7 +299,13 @@ impl ANNBaseline for CNN1DLarge {
     }
 
     fn flops_per_inference(&self) -> u64 {
-        2_000_000 // Rough estimate
+        // Counted, not estimated: the tensor operations tally the
+        // multiply-accumulates a real forward pass performs, at two FLOPs
+        // each. This used to be a constant, which cannot be right for a
+        // convolution -- it did not move when the input got longer.
+        flops_of(|| {
+            let _ = self.forward(&Tensor::zeros(self.input_shape.clone()));
+        })
     }
 
     fn architecture_summary(&self) -> String {
@@ -302,6 +322,9 @@ pub struct CNN1DResidual {
     layers: Vec<Tensor>,
     shortcuts: Vec<Option<Tensor>>,
     fc: (Tensor, Tensor),
+    /// Input shape this model was configured for, so that
+    /// `flops_per_inference` can report the work for one real pass.
+    input_shape: Vec<usize>,
 }
 
 impl CNN1DResidual {
@@ -335,6 +358,7 @@ impl CNN1DResidual {
         );
 
         Self {
+            input_shape: vec![1, input_channels, input_length],
             layers,
             shortcuts,
             fc,
@@ -397,7 +421,13 @@ impl ANNBaseline for CNN1DResidual {
     }
 
     fn flops_per_inference(&self) -> u64 {
-        1_500_000 // Rough estimate
+        // Counted, not estimated: the tensor operations tally the
+        // multiply-accumulates a real forward pass performs, at two FLOPs
+        // each. This used to be a constant, which cannot be right for a
+        // convolution -- it did not move when the input got longer.
+        flops_of(|| {
+            let _ = self.forward(&Tensor::zeros(self.input_shape.clone()));
+        })
     }
 
     fn architecture_summary(&self) -> String {
@@ -410,6 +440,9 @@ pub struct CNN1DDilated {
     dilated_convs: Vec<Tensor>,
     dilations: Vec<usize>,
     fc: (Tensor, Tensor),
+    /// Input shape this model was configured for, so that
+    /// `flops_per_inference` can report the work for one real pass.
+    input_shape: Vec<usize>,
 }
 
 impl CNN1DDilated {
@@ -429,6 +462,7 @@ impl CNN1DDilated {
         );
 
         Self {
+            input_shape: vec![1, input_channels, input_length],
             dilated_convs,
             dilations,
             fc,
@@ -473,7 +507,13 @@ impl ANNBaseline for CNN1DDilated {
     }
 
     fn flops_per_inference(&self) -> u64 {
-        800_000 // Rough estimate
+        // Counted, not estimated: the tensor operations tally the
+        // multiply-accumulates a real forward pass performs, at two FLOPs
+        // each. This used to be a constant, which cannot be right for a
+        // convolution -- it did not move when the input got longer.
+        flops_of(|| {
+            let _ = self.forward(&Tensor::zeros(self.input_shape.clone()));
+        })
     }
 
     fn architecture_summary(&self) -> String {
@@ -1152,6 +1192,9 @@ pub struct TCN {
     layers: Vec<Tensor>,
     residual_layers: Vec<Option<Tensor>>,
     fc: (Tensor, Tensor),
+    /// Input shape this model was configured for, so that
+    /// `flops_per_inference` can report the work for one real pass.
+    input_shape: Vec<usize>,
 }
 
 impl TCN {
@@ -1184,6 +1227,7 @@ impl TCN {
         );
 
         Self {
+            input_shape: vec![1, input_channels, input_length],
             layers,
             residual_layers,
             fc,
@@ -1239,7 +1283,13 @@ impl ANNBaseline for TCN {
     }
 
     fn flops_per_inference(&self) -> u64 {
-        1_200_000 // Rough estimate
+        // Counted, not estimated: the tensor operations tally the
+        // multiply-accumulates a real forward pass performs, at two FLOPs
+        // each. This used to be a constant, which cannot be right for a
+        // convolution -- it did not move when the input got longer.
+        flops_of(|| {
+            let _ = self.forward(&Tensor::zeros(self.input_shape.clone()));
+        })
     }
 
     fn architecture_summary(&self) -> String {

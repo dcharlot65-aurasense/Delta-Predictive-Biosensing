@@ -12,12 +12,24 @@
 //! | Firefox | Not supported | - |
 //! | Safari | Not supported | - |
 //!
-//! ## Features
+//! ## What is implemented
 //!
-//! - Hardware acceleration via GPU, NPU, or CPU backends
-//! - ONNX model loading
-//! - Efficient tensor operations
-//! - Async execution
+//! - Encoders that run on the CPU: [`WebNNEncoder::encode_level_crossing`] and
+//!   [`WebNNEncoder::encode_delta`] compute their result directly in WASM.
+//! - A graph description: [`WebNNGraphBuilder`] records the operands and
+//!   operations of a network so they can be inspected or handed to a backend.
+//!
+//! ## What is not
+//!
+//! No call reaches `navigator.ml`. There is no compiled graph and no execution
+//! on a GPU or NPU, so nothing here is hardware-accelerated;
+//! [`WebNNEncoder::is_available`] and the backend probes in [`WebNNFeatures`]
+//! return `false` rather than claiming otherwise. Wiring the W3C API needs
+//! `web-sys` bindings for `MLContext` and `MLGraphBuilder`, at which point the
+//! description the builder already produces is what would be submitted.
+//!
+//! This section previously advertised GPU, NPU, ONNX loading and async
+//! execution, none of which is present.
 //!
 //! ## Example
 //!
@@ -212,6 +224,8 @@ pub struct WebNNGraphBuilder {
     operands: Vec<WebNNOperand>,
     /// Operations (simplified representation).
     operations: Vec<String>,
+    /// Values of each declared constant, in declaration order.
+    constants: Vec<(String, Vec<f32>)>,
 }
 
 #[wasm_bindgen]
@@ -222,6 +236,7 @@ impl WebNNGraphBuilder {
         Self {
             operands: Vec::new(),
             operations: Vec::new(),
+            constants: Vec::new(),
         }
     }
 
@@ -232,17 +247,41 @@ impl WebNNGraphBuilder {
         operand
     }
 
-    /// Add a constant operand.
+    /// Add a constant operand, keeping its values.
+    ///
+    /// The values used to be dropped, which left the graph description unable
+    /// to describe its own constants -- and in a neural network the constants
+    /// are the weights. They are retained so a backend, or a test, can read
+    /// back what was declared.
     pub fn constant(
         &mut self,
         name: &str,
         desc: WebNNTensorDesc,
-        _data: Float32Array,
+        data: Float32Array,
     ) -> WebNNOperand {
+        let values = data.to_vec();
+        let expected = desc.element_count() as usize;
+        assert_eq!(
+            values.len(),
+            expected,
+            "constant '{name}' has {} values but its shape needs {expected}",
+            values.len()
+        );
         let operand = WebNNOperand::new(name, desc);
         self.operands.push(operand.clone());
+        self.constants.push((name.to_string(), values));
         self.operations.push(format!("constant:{}", name));
         operand
+    }
+
+    /// Number of constants declared.
+    pub fn constant_count(&self) -> usize {
+        self.constants.len()
+    }
+
+    /// Total number of constant values held, across every constant.
+    pub fn constant_values(&self) -> usize {
+        self.constants.iter().map(|(_, v)| v.len()).sum()
     }
 
     /// Add ReLU activation.
@@ -421,7 +460,9 @@ impl WebNNEncoder {
         self.initialized
     }
 
-    /// Encode signal using WebNN-accelerated level crossing detection.
+    /// Encode a signal by level crossing, on the CPU.
+    ///
+    /// Named for the module rather than the backend: no WebNN call is made.
     pub fn encode_level_crossing(&self, signal: Float32Array) -> Result<Vec<u32>, JsValue> {
         if !self.initialized {
             return Err(JsValue::from_str(
@@ -444,7 +485,7 @@ impl WebNNEncoder {
         Ok(spikes)
     }
 
-    /// Encode signal using WebNN-accelerated delta modulation.
+    /// Encode a signal by delta modulation, on the CPU.
     pub fn encode_delta(&self, signal: Float32Array) -> Result<Vec<i8>, JsValue> {
         if !self.initialized {
             return Err(JsValue::from_str(

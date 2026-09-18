@@ -218,15 +218,17 @@ impl ChangeStatus {
 /// # Arguments
 ///
 /// * `test_retest` - Pairs of (test, retest) measurements from same individuals
-/// * `confidence` - Confidence level (e.g., 0.90 or 0.95)
 ///
 /// # Returns
 ///
-/// MDC structure with SEM, ICC, and MDC values
-pub fn calculate_mdc(
-    test_retest: &[(f64, f64)],
-    _confidence: f64,
-) -> Option<MinimalDetectableChange> {
+/// MDC structure with SEM, ICC, and both the 90% and 95% MDC values.
+///
+/// There is no `confidence` argument: the returned
+/// [`MinimalDetectableChange`] carries `mdc_90` and `mdc_95` together, so the
+/// caller picks. One used to be accepted and discarded, which implied that
+/// asking for 0.90 returned an MDC at 0.90 -- it returned both regardless, so
+/// the parameter could only mislead.
+pub fn calculate_mdc(test_retest: &[(f64, f64)]) -> Option<MinimalDetectableChange> {
     MinimalDetectableChange::from_test_retest(test_retest)
 }
 

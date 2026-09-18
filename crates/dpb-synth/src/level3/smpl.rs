@@ -236,16 +236,43 @@ impl SmplPose {
         pose
     }
 
-    /// Create a finger tapping pose
-    pub fn finger_tapping(_thumb_angle: f64, _index_angle: f64) -> Self {
+    /// Index of the first parameter of a MANO hand joint.
+    ///
+    /// SMPL-H carries 45 numbers per hand: fifteen joints as axis-angle
+    /// triplets, ordered index, middle, pinky, ring, thumb, each finger
+    /// proximal to distal. The ordering is MANO's and is what the model
+    /// weights expect.
+    /// Index finger is MANO joint 0, thumb is joint 12; each joint occupies
+    /// three consecutive axis-angle parameters.
+    const MANO_JOINT_PARAMS: usize = 3;
+    const MANO_INDEX_PROXIMAL: usize = 0;
+    const MANO_THUMB_PROXIMAL: usize = 12 * Self::MANO_JOINT_PARAMS;
+
+    /// Create a finger tapping pose.
+    ///
+    /// `thumb_angle` and `index_angle` are flexion angles in radians, applied
+    /// to the proximal joint of each digit -- the joint a single flexion angle
+    /// describes. The remaining joints stay neutral: distributing one angle
+    /// across a finger needs a coupling ratio that is a modelling choice, not
+    /// something this signature supplies, so none is assumed here.
+    ///
+    /// Flexion is taken about the first axis of the triplet, which is the
+    /// convention the body poses in this file use (`body_pose[0]` is hip X).
+    ///
+    /// Both angles used to be discarded: the function returned a flat hand
+    /// whatever it was asked for, so a caller sweeping tap amplitude got the
+    /// same pose every time.
+    pub fn finger_tapping(thumb_angle: f64, index_angle: f64) -> Self {
         let mut pose = Self::neutral();
 
         // Position arm for tapping (seated position)
         pose.body_pose[48] = -0.5; // Shoulder forward
         pose.body_pose[54] = 1.2; // Elbow bent
 
-        // Hand poses would go here for SMPL-H/X
-        pose.left_hand_pose = Some(vec![0.0; 45]);
+        let mut hand = vec![0.0; 45];
+        hand[Self::MANO_INDEX_PROXIMAL] = index_angle;
+        hand[Self::MANO_THUMB_PROXIMAL] = thumb_angle;
+        pose.left_hand_pose = Some(hand);
 
         pose
     }
@@ -989,5 +1016,52 @@ mod tests {
         assert!(script.contains("pytorch3d"));
         assert!(script.contains("smplx"));
         assert!(script.contains("def render_smpl"));
+    }
+}
+
+#[cfg(test)]
+mod finger_tapping_tests {
+    use super::*;
+
+    /// The tap angles must reach the hand.
+    ///
+    /// They were discarded, so every call returned a flat hand and a caller
+    /// sweeping amplitude saw no change. A test checking only that the pose has
+    /// 45 hand parameters would have passed throughout.
+    #[test]
+    fn tap_angles_reach_the_proximal_joints() {
+        let pose = SmplPose::finger_tapping(0.7, 0.4);
+        let hand = pose.left_hand_pose.expect("SMPL-H hand pose");
+        assert_eq!(
+            hand.len(),
+            45,
+            "SMPL-H has 15 joints as axis-angle triplets"
+        );
+
+        assert!((hand[SmplPose::MANO_THUMB_PROXIMAL] - 0.7).abs() < 1e-12);
+        assert!((hand[SmplPose::MANO_INDEX_PROXIMAL] - 0.4).abs() < 1e-12);
+
+        // Thumb and index are distinct joints, 12 apart in MANO order.
+        assert_ne!(SmplPose::MANO_THUMB_PROXIMAL, SmplPose::MANO_INDEX_PROXIMAL);
+
+        // Nothing else moved.
+        let touched = [SmplPose::MANO_THUMB_PROXIMAL, SmplPose::MANO_INDEX_PROXIMAL];
+        for (i, v) in hand.iter().enumerate() {
+            if !touched.contains(&i) {
+                assert_eq!(*v, 0.0, "joint parameter {i} should be neutral");
+            }
+        }
+    }
+
+    /// Different amplitudes must give different poses.
+    #[test]
+    fn tap_amplitude_changes_the_pose() {
+        let small = SmplPose::finger_tapping(0.1, 0.1).left_hand_pose.unwrap();
+        let large = SmplPose::finger_tapping(1.2, 0.9).left_hand_pose.unwrap();
+        assert_ne!(small, large, "hand pose does not depend on the tap angles");
+
+        // And zero really is the neutral hand.
+        let zero = SmplPose::finger_tapping(0.0, 0.0).left_hand_pose.unwrap();
+        assert_eq!(zero, vec![0.0; 45]);
     }
 }

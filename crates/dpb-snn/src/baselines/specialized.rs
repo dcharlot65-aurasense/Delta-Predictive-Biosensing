@@ -1,7 +1,7 @@
 //! Domain-specific specialized architectures for biosensing
 
 use super::rnn::{last_step, lstm_sequence, reverse_time};
-use super::{ANNBaseline, Tensor, count_params, xavier_init};
+use super::{ANNBaseline, Tensor, count_params, flops_of, xavier_init};
 
 /// 37. ECGNet - ECG-specific architecture
 pub struct ECGNet {
@@ -14,10 +14,13 @@ pub struct ECGNet {
     lstm_w_hh: Tensor,
     // Classification head
     fc_layers: Vec<(Tensor, Tensor)>,
+    /// Input shape this model was configured for, so that
+    /// `flops_per_inference` can report the work for one real pass.
+    input_shape: Vec<usize>,
 }
 
 impl ECGNet {
-    pub fn new(input_channels: usize, _input_length: usize, num_classes: usize, seed: u64) -> Self {
+    pub fn new(input_channels: usize, input_length: usize, num_classes: usize, seed: u64) -> Self {
         // Conv layers for multi-scale feature extraction
         let conv_layers = vec![
             xavier_init(vec![64, input_channels, 7], seed),
@@ -55,6 +58,7 @@ impl ECGNet {
         ];
 
         Self {
+            input_shape: vec![1, input_channels, input_length],
             conv_layers,
             residual_blocks,
             lstm_w_ih,
@@ -127,7 +131,13 @@ impl ANNBaseline for ECGNet {
     }
 
     fn flops_per_inference(&self) -> u64 {
-        2_000_000 // Rough estimate
+        // Counted, not estimated: the tensor operations tally the
+        // multiply-accumulates a real forward pass performs, at two FLOPs
+        // each. This used to be a constant, which cannot be right for a
+        // convolution -- it did not move when the input got longer.
+        flops_of(|| {
+            let _ = self.forward(&Tensor::zeros(self.input_shape.clone()));
+        })
     }
 
     fn architecture_summary(&self) -> String {
@@ -147,10 +157,13 @@ pub struct DeepGait {
     attention_v: Tensor,
     // Output layers
     fc_layers: Vec<(Tensor, Tensor)>,
+    /// Input shape this model was configured for, so that
+    /// `flops_per_inference` can report the work for one real pass.
+    input_shape: Vec<usize>,
 }
 
 impl DeepGait {
-    pub fn new(num_sensors: usize, _input_length: usize, output_size: usize, seed: u64) -> Self {
+    pub fn new(num_sensors: usize, input_length: usize, output_size: usize, seed: u64) -> Self {
         // Spatial convolutions
         let spatial_conv = vec![
             xavier_init(vec![32, num_sensors, 5], seed),
@@ -187,6 +200,7 @@ impl DeepGait {
         ];
 
         Self {
+            input_shape: vec![1, num_sensors, input_length],
             spatial_conv,
             lstm_forward,
             lstm_backward,
@@ -291,7 +305,13 @@ impl ANNBaseline for DeepGait {
     }
 
     fn flops_per_inference(&self) -> u64 {
-        1_500_000
+        // Counted, not estimated: the tensor operations tally the
+        // multiply-accumulates a real forward pass performs, at two FLOPs
+        // each. This used to be a constant, which cannot be right for a
+        // convolution -- it did not move when the input got longer.
+        flops_of(|| {
+            let _ = self.forward(&Tensor::zeros(self.input_shape.clone()));
+        })
     }
 
     fn architecture_summary(&self) -> String {
@@ -307,10 +327,13 @@ pub struct TremorNet {
     temporal_conv: Tensor,
     // Classification head
     fc_layers: Vec<(Tensor, Tensor)>,
+    /// Input shape this model was configured for, so that
+    /// `flops_per_inference` can report the work for one real pass.
+    input_shape: Vec<usize>,
 }
 
 impl TremorNet {
-    pub fn new(input_channels: usize, output_size: usize, seed: u64) -> Self {
+    pub fn new(input_channels: usize, input_length: usize, output_size: usize, seed: u64) -> Self {
         // Multi-frequency parallel branches
         let freq_convs = vec![
             // Low frequency (3-5 Hz)
@@ -341,6 +364,7 @@ impl TremorNet {
         ];
 
         Self {
+            input_shape: vec![1, input_channels, input_length],
             freq_convs,
             temporal_conv,
             fc_layers,
@@ -426,7 +450,13 @@ impl ANNBaseline for TremorNet {
     }
 
     fn flops_per_inference(&self) -> u64 {
-        800_000
+        // Counted, not estimated: the tensor operations tally the
+        // multiply-accumulates a real forward pass performs, at two FLOPs
+        // each. This used to be a constant, which cannot be right for a
+        // convolution -- it did not move when the input got longer.
+        flops_of(|| {
+            let _ = self.forward(&Tensor::zeros(self.input_shape.clone()));
+        })
     }
 
     fn architecture_summary(&self) -> String {
@@ -444,10 +474,13 @@ pub struct VoiceNet {
     fusion_fc: (Tensor, Tensor),
     // Output
     output_fc: (Tensor, Tensor),
+    /// Input shape this model was configured for, so that
+    /// `flops_per_inference` can report the work for one real pass.
+    input_shape: Vec<usize>,
 }
 
 impl VoiceNet {
-    pub fn new(num_freq_bins: usize, output_size: usize, seed: u64) -> Self {
+    pub fn new(num_freq_bins: usize, input_length: usize, output_size: usize, seed: u64) -> Self {
         // 2D convolutions for spectrogram (approximated with 1D)
         let spec_conv = vec![
             xavier_init(vec![64, num_freq_bins, 3], seed),
@@ -472,6 +505,7 @@ impl VoiceNet {
         );
 
         Self {
+            input_shape: vec![1, num_freq_bins, input_length],
             spec_conv,
             prosody_lstm,
             fusion_fc,
@@ -536,7 +570,13 @@ impl ANNBaseline for VoiceNet {
     }
 
     fn flops_per_inference(&self) -> u64 {
-        1_200_000
+        // Counted, not estimated: the tensor operations tally the
+        // multiply-accumulates a real forward pass performs, at two FLOPs
+        // each. This used to be a constant, which cannot be right for a
+        // convolution -- it did not move when the input got longer.
+        flops_of(|| {
+            let _ = self.forward(&Tensor::zeros(self.input_shape.clone()));
+        })
     }
 
     fn architecture_summary(&self) -> String {
@@ -552,6 +592,9 @@ pub struct MultimodalFusion {
     fusion_fc: (Tensor, Tensor),
     // Output layer
     output_fc: (Tensor, Tensor),
+    /// Input shape this model was configured for, so that
+    /// `flops_per_inference` can report the work for one real pass.
+    input_shape: Vec<usize>,
 }
 
 impl MultimodalFusion {
@@ -589,6 +632,7 @@ impl MultimodalFusion {
         );
 
         Self {
+            input_shape: vec![1, modality_sizes.iter().sum::<usize>()],
             modality_encoders,
             fusion_fc,
             output_fc,
@@ -632,7 +676,13 @@ impl ANNBaseline for MultimodalFusion {
     }
 
     fn flops_per_inference(&self) -> u64 {
-        500_000
+        // Counted, not estimated: the tensor operations tally the
+        // multiply-accumulates a real forward pass performs, at two FLOPs
+        // each. This used to be a constant, which cannot be right for a
+        // convolution -- it did not move when the input got longer.
+        flops_of(|| {
+            let _ = self.forward(&Tensor::zeros(self.input_shape.clone()));
+        })
     }
 
     fn architecture_summary(&self) -> String {
@@ -650,6 +700,9 @@ pub struct AttentionFusion {
     attention_v: Tensor,
     fusion_fc: (Tensor, Tensor),
     output_fc: (Tensor, Tensor),
+    /// Input shape this model was configured for, so that
+    /// `flops_per_inference` can report the work for one real pass.
+    input_shape: Vec<usize>,
 }
 
 impl AttentionFusion {
@@ -683,6 +736,7 @@ impl AttentionFusion {
         );
 
         Self {
+            input_shape: vec![1, modality_sizes.iter().sum::<usize>()],
             modality_encoders,
             attention_w,
             attention_v,
@@ -755,7 +809,13 @@ impl ANNBaseline for AttentionFusion {
     }
 
     fn flops_per_inference(&self) -> u64 {
-        600_000
+        // Counted, not estimated: the tensor operations tally the
+        // multiply-accumulates a real forward pass performs, at two FLOPs
+        // each. This used to be a constant, which cannot be right for a
+        // convolution -- it did not move when the input got longer.
+        flops_of(|| {
+            let _ = self.forward(&Tensor::zeros(self.input_shape.clone()));
+        })
     }
 
     fn architecture_summary(&self) -> String {
@@ -774,11 +834,15 @@ pub struct GraphNN {
     graph_conv: Vec<Tensor>,
     // Global pooling and output
     output_fc: (Tensor, Tensor),
+    /// Input shape this model was configured for, so that
+    /// `flops_per_inference` can report the work for one real pass.
+    input_shape: Vec<usize>,
 }
 
 impl GraphNN {
     pub fn new(
         node_features: usize,
+        num_nodes: usize,
         hidden_size: usize,
         num_layers: usize,
         output_size: usize,
@@ -809,6 +873,7 @@ impl GraphNN {
         );
 
         Self {
+            input_shape: vec![1, num_nodes, node_features],
             node_fc,
             graph_conv,
             output_fc,
@@ -893,7 +958,13 @@ impl ANNBaseline for GraphNN {
     }
 
     fn flops_per_inference(&self) -> u64 {
-        400_000
+        // Counted, not estimated: the tensor operations tally the
+        // multiply-accumulates a real forward pass performs, at two FLOPs
+        // each. This used to be a constant, which cannot be right for a
+        // convolution -- it did not move when the input got longer.
+        flops_of(|| {
+            let _ = self.forward(&Tensor::zeros(self.input_shape.clone()));
+        })
     }
 
     fn architecture_summary(&self) -> String {
@@ -913,10 +984,13 @@ pub struct HybridCNNRNN {
     lstm_w_hh: Tensor,
     // Output layer
     fc_layers: Vec<(Tensor, Tensor)>,
+    /// Input shape this model was configured for, so that
+    /// `flops_per_inference` can report the work for one real pass.
+    input_shape: Vec<usize>,
 }
 
 impl HybridCNNRNN {
-    pub fn new(input_channels: usize, _input_length: usize, output_size: usize, seed: u64) -> Self {
+    pub fn new(input_channels: usize, input_length: usize, output_size: usize, seed: u64) -> Self {
         let cnn_layers = vec![
             xavier_init(vec![64, input_channels, 7], seed),
             xavier_init(vec![128, 64, 5], seed + 1),
@@ -939,6 +1013,7 @@ impl HybridCNNRNN {
         ];
 
         Self {
+            input_shape: vec![1, input_channels, input_length],
             cnn_layers,
             lstm_w_ih,
             lstm_w_hh,
@@ -991,7 +1066,13 @@ impl ANNBaseline for HybridCNNRNN {
     }
 
     fn flops_per_inference(&self) -> u64 {
-        1_800_000
+        // Counted, not estimated: the tensor operations tally the
+        // multiply-accumulates a real forward pass performs, at two FLOPs
+        // each. This used to be a constant, which cannot be right for a
+        // convolution -- it did not move when the input got longer.
+        flops_of(|| {
+            let _ = self.forward(&Tensor::zeros(self.input_shape.clone()));
+        })
     }
 
     fn architecture_summary(&self) -> String {
@@ -1065,14 +1146,14 @@ mod tests {
 
     #[test]
     fn test_tremornet() {
-        let net = TremorNet::new(3, 4, 42);
+        let net = TremorNet::new(3, 256, 4, 42);
         assert_eq!(net.name(), "TremorNet");
         assert!(net.num_parameters() > 1000);
     }
 
     #[test]
     fn test_voicenet() {
-        let net = VoiceNet::new(80, 10, 42);
+        let net = VoiceNet::new(80, 128, 10, 42);
         assert_eq!(net.name(), "VoiceNet");
         assert!(net.num_parameters() > 10000);
     }
@@ -1093,7 +1174,7 @@ mod tests {
 
     #[test]
     fn test_graphnn() {
-        let net = GraphNN::new(64, 128, 3, 10, 42);
+        let net = GraphNN::new(64, 16, 128, 3, 10, 42);
         assert_eq!(net.name(), "GraphNN");
         assert!(net.num_parameters() > 10000);
     }

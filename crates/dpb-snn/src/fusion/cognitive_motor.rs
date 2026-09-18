@@ -288,12 +288,13 @@ impl MotorProfile {
     }
 
     /// Create from gait analysis results
-    pub fn from_gait(
-        velocity_ms: f64,
-        stride_time_cv: f64,
-        double_support_percent: f64,
-        _cadence: f64,
-    ) -> Self {
+    ///
+    /// Cadence is not among the inputs: this model's motor axes are velocity,
+    /// variability and balance, and there is no slot for it. It used to be
+    /// accepted and discarded, so a caller varying cadence saw no change;
+    /// adding a cadence axis, rather than restoring the argument, is what
+    /// would let it matter.
+    pub fn from_gait(velocity_ms: f64, stride_time_cv: f64, double_support_percent: f64) -> Self {
         // Normalize velocity (assume 0.8-1.4 m/s is normal)
         let gait_velocity = ((velocity_ms - 0.4) / 1.0).clamp(0.0, 1.0);
 

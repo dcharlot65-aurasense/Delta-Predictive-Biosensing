@@ -183,8 +183,8 @@ fn every_baseline_computes_a_function_of_its_input() {
     // Specialised
     check!("ECGNet", ECGNet::new(c, l, out, sd), vec![1, c, l]);
     check!("DeepGait", DeepGait::new(c, l, out, sd), vec![1, c, l]);
-    check!("TremorNet", TremorNet::new(c, out, sd), vec![1, c, l]);
-    check!("VoiceNet", VoiceNet::new(d, out, sd), vec![1, d, l]);
+    check!("TremorNet", TremorNet::new(c, l, out, sd), vec![1, c, l]);
+    check!("VoiceNet", VoiceNet::new(d, l, out, sd), vec![1, d, l]);
     check!(
         "MultimodalFusion",
         MultimodalFusion::new(&[16, 16], 32, out, sd),
@@ -195,7 +195,11 @@ fn every_baseline_computes_a_function_of_its_input() {
         AttentionFusion::new(&[16, 16], 32, out, sd),
         vec![1, 32]
     );
-    check!("GraphNN", GraphNN::new(16, 32, 2, out, sd), vec![1, 8, 16]);
+    check!(
+        "GraphNN",
+        GraphNN::new(16, 8, 32, 2, out, sd),
+        vec![1, 8, 16]
+    );
     check!(
         "HybridCNNRNN",
         HybridCNNRNN::new(c, l, out, sd),
@@ -206,5 +210,76 @@ fn every_baseline_computes_a_function_of_its_input() {
         "{} of 44 baselines do not compute a function of their input:\n  {}",
         failures.len(),
         failures.join("\n  ")
+    );
+}
+
+/// Reported work must depend on the size of the input.
+///
+/// Most of these returned a constant -- 1_000_000, 800_000, and so on -- which
+/// cannot describe a convolution: it did not change when the signal got
+/// longer, so any efficiency comparison drawn from it was meaningless.
+#[test]
+fn reported_flops_grow_with_the_input() {
+    let (c, out, sd) = (3usize, 5usize, 7u64);
+    let cases: Vec<(&str, u64, u64)> = vec![
+        (
+            "CNN1DMedium",
+            CNN1DMedium::new(c, 64, out, sd).flops_per_inference(),
+            CNN1DMedium::new(c, 256, out, sd).flops_per_inference(),
+        ),
+        (
+            "CNN1DDilated",
+            CNN1DDilated::new(c, 64, out, sd).flops_per_inference(),
+            CNN1DDilated::new(c, 256, out, sd).flops_per_inference(),
+        ),
+        (
+            "TCN",
+            TCN::new(c, 64, out, sd).flops_per_inference(),
+            TCN::new(c, 256, out, sd).flops_per_inference(),
+        ),
+        (
+            "ECGNet",
+            ECGNet::new(c, 64, out, sd).flops_per_inference(),
+            ECGNet::new(c, 256, out, sd).flops_per_inference(),
+        ),
+        (
+            "HybridCNNRNN",
+            HybridCNNRNN::new(c, 64, out, sd).flops_per_inference(),
+            HybridCNNRNN::new(c, 256, out, sd).flops_per_inference(),
+        ),
+    ];
+    for (name, small, large) in cases {
+        assert!(small > 0, "{name} reported no work at all");
+        assert!(
+            large > small * 2,
+            "{name}: quadrupling the input length moved FLOPs only {small} -> {large}"
+        );
+    }
+}
+
+/// The 2-D networks derive FLOPs from their layer table instead of counting a
+/// forward pass, because counting one would mean running VGG-16 inside an
+/// accessor. The two must agree, or the cheap path is wrong.
+#[test]
+fn analytic_and_counted_flops_agree_for_the_2d_networks() {
+    let hw = (32, 32);
+    let lenet = CNN2DLeNet::new(1, hw, 10, 7);
+    let counted = flops_of(|| {
+        let _ = lenet.forward(&Tensor::zeros(vec![1, 1, hw.0, hw.1]));
+    });
+    assert_eq!(
+        lenet.flops_per_inference(),
+        counted,
+        "LeNet-5's layer-table FLOPs disagree with the operations it performs"
+    );
+
+    let mobile = CNN2DMobileNet::new(3, hw, 10, 7);
+    let counted = flops_of(|| {
+        let _ = mobile.forward(&Tensor::zeros(vec![1, 3, hw.0, hw.1]));
+    });
+    assert_eq!(
+        mobile.flops_per_inference(),
+        counted,
+        "MobileNetV2's layer-table FLOPs disagree with the operations it performs"
     );
 }

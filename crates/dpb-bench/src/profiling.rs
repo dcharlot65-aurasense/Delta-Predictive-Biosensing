@@ -373,8 +373,12 @@ pub enum EnergyModel {
 
 impl Default for EnergyModel {
     fn default() -> Self {
+        // Whole-chip, above both Loihi and TrueNorth. Comparing this against
+        // EnergyModel::CMOS mixes a measured figure with a bare-arithmetic
+        // one; for an architectural comparison give both sides the 45 nm
+        // basis, via EnergyEstimator::spiking_45nm. See crate::energy.
         EnergyModel::Neuromorphic {
-            energy_per_spike_op_pj: 50.0, // 50 pJ per spike-synaptic operation
+            energy_per_spike_op_pj: crate::energy::neuromorphic_silicon::CONSERVATIVE_PJ,
         }
     }
 }
@@ -394,18 +398,30 @@ impl EnergyEstimator {
         Self::new(name, EnergyModel::default())
     }
 
+    /// Estimator for a spiking network on the same 45 nm basis as
+    /// [`Self::cmos`], so the two can be compared directly.
+    ///
+    /// A spike contributes its weight with an add and no multiply, which is
+    /// 0.9 pJ against a multiply-accumulate's 4.6 pJ.
+    pub fn spiking_45nm(name: &str) -> Self {
+        Self::new(
+            name,
+            EnergyModel::Neuromorphic {
+                energy_per_spike_op_pj: crate::energy::cmos_45nm::FLOAT_ACCUMULATE_PJ,
+            },
+        )
+    }
+
     /// Create CMOS estimator
     pub fn cmos(name: &str) -> Self {
         Self::new(
             name,
             EnergyModel::CMOS {
-                // 45 nm float32 multiply (3.7 pJ) plus add (0.9 pJ), after
-                // Horowitz's 45 nm energy table -- the same figure baselines.rs
-                // uses. This was written 4600.0: the field is in picojoules and
-                // the comment already said 4.6 pJ, so every CMOS estimate was
-                // 1000x too high, and any SNN-vs-CMOS efficiency ratio built on
-                // it was inflated by the same factor.
-                energy_per_mac_pj: 4.6,
+                // This was written 4600.0: the field is in picojoules and the
+                // comment already said 4.6 pJ, so every CMOS estimate was
+                // 1000x too high and any efficiency ratio built on one was
+                // inflated by the same factor.
+                energy_per_mac_pj: crate::energy::cmos_45nm::FLOAT_MAC_PJ,
             },
         )
     }

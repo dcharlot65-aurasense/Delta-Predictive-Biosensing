@@ -48,6 +48,12 @@ pub struct OpenSimConfig {
     pub output_dir: PathBuf,
 }
 
+/// Stature of the unscaled OpenSim gait models, in metres.
+///
+/// Used only when no static trial is supplied; the value was previously
+/// inline with the comment "Assuming 1.8m reference".
+const REFERENCE_MODEL_HEIGHT_M: f64 = 1.8;
+
 impl Default for OpenSimConfig {
     fn default() -> Self {
         Self {
@@ -276,13 +282,56 @@ impl OpenSimBridge {
     }
 
     /// Scale model to subject-specific dimensions
+    /// Scale a model to a subject.
+    ///
+    /// `marker_data`, when given, is a `.trc` of static-trial markers, and
+    /// OpenSim's ScaleTool measures segment lengths from it -- that is what
+    /// marker-based scaling means. It used to be accepted and discarded, so a
+    /// caller supplying a static trial silently got the same uniform scaling
+    /// as one who supplied nothing. `subject_height` was also computed into a
+    /// `height_scale` that the generated script never applied, so only mass
+    /// was ever scaled.
     pub fn scale_model(
         &self,
         base_model: GaitModel,
         subject_mass: f64,
         subject_height: f64,
-        _marker_data: Option<&Path>,
+        marker_data: Option<&Path>,
     ) -> Result<PathBuf> {
+        // Marker-based scaling supersedes the height heuristic: measured
+        // segment lengths are the point of collecting a static trial.
+        let geometry_scaling = match marker_data {
+            Some(markers) => format!(
+                r#"
+# Measured scaling from a static trial: ScaleTool derives each segment's
+# scale factors from marker distances.
+marker_file = '{markers}'
+scale_tool.setSubjectMass({mass})
+model_scaler = scale_tool.getModelScaler()
+model_scaler.setApply(True)
+model_scaler.setMarkerFileName(marker_file)
+model_scaler.setScalingOrder(osim.ArrayStr('measurements', 1))
+model_scaler.processModel(model, '', {mass})
+"#,
+                markers = markers.display(),
+                mass = subject_mass,
+            ),
+            None => format!(
+                r#"
+# No static trial, so geometry is scaled uniformly by stature against the
+# model's reference height. Marker-based scaling is preferred when available.
+height_scale = {height} / {reference_height}
+scale_factors = osim.Vec3(height_scale, height_scale, height_scale)
+for i in range(model.getBodySet().getSize()):
+    body = model.getBodySet().get(i)
+    for g in range(body.getNumAttachedGeometries()):
+        body.upd_attached_geometry(g).set_scale_factors(scale_factors)
+"#,
+                height = subject_height,
+                reference_height = REFERENCE_MODEL_HEIGHT_M,
+            ),
+        };
+
         let script = format!(
             r#"
 import opensim as osim
@@ -294,14 +343,11 @@ model = osim.Model(model_path)
 # Create scale tool
 scale_tool = osim.ScaleTool()
 
-# Set mass and height
+# Mass scaling applies either way.
 mass_scale = {mass} / model.getTotalMass(osim.SimTK_Vec3(0))
-height_scale = {height} / 1.8  # Assuming 1.8m reference
-
-# Apply uniform scaling (simplified)
 for body in model.getBodySet():
     body.setMass(body.getMass() * mass_scale)
-
+{geometry_scaling}
 # Save scaled model
 output_path = '{output_path}'
 model.printToXML(output_path)
@@ -309,7 +355,7 @@ print(output_path)
 "#,
             model_path = self.get_model_path(base_model).display(),
             mass = subject_mass,
-            height = subject_height,
+            geometry_scaling = geometry_scaling,
             output_path = self.config.output_dir.join("scaled_model.osim").display(),
         );
 
