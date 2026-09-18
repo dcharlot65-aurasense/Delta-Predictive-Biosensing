@@ -873,10 +873,10 @@ impl CognitiveMotorFusion {
         let mut total = 0;
 
         for layer in &self.cognitive_encoder {
-            total += layer.parameters().iter().map(|p| p.len()).sum::<usize>();
+            total += layer.num_parameters();
         }
         for layer in &self.motor_encoder {
-            total += layer.parameters().iter().map(|p| p.len()).sum::<usize>();
+            total += layer.num_parameters();
         }
         total += self
             .cross_attention
@@ -885,7 +885,7 @@ impl CognitiveMotorFusion {
             .map(|p| p.len())
             .sum::<usize>();
         for layer in &self.fusion_layers {
-            total += layer.parameters().iter().map(|p| p.len()).sum::<usize>();
+            total += layer.num_parameters();
         }
         total += self
             .output_layer

@@ -108,10 +108,7 @@ impl FusionNetwork for EarlyFusionSNN {
     }
 
     fn num_parameters(&self) -> usize {
-        self.layers
-            .iter()
-            .map(|layer| layer.parameters().iter().map(|p| p.len()).sum::<usize>())
-            .sum()
+        self.layers.iter().map(|layer| layer.num_parameters()).sum()
     }
 
     fn reset_state(&mut self) {

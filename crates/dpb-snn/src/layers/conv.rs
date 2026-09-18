@@ -537,6 +537,10 @@ impl SpikingLayer for SpikingConv2d {
         self.kernel_grad = None;
         self.bias_grad = None;
     }
+
+    fn num_parameters(&self) -> usize {
+        self.kernel.len() + self.bias.as_ref().map_or(0, |b| b.len())
+    }
 }
 
 /// 1D Convolutional spiking layer for time series
@@ -1005,6 +1009,10 @@ impl SpikingLayer for SpikingConv1d {
     fn zero_grad(&mut self) {
         self.kernel_grad = None;
         self.bias_grad = None;
+    }
+
+    fn num_parameters(&self) -> usize {
+        self.kernel.len() + self.bias.as_ref().map_or(0, |b| b.len())
     }
 }
 

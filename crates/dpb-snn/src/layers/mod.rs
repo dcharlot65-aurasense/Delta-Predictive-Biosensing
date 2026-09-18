@@ -35,6 +35,22 @@ pub trait SpikingLayer: Send + Sync {
 
     /// Zero gradients
     fn zero_grad(&mut self);
+
+    /// Total number of trainable parameters in this layer.
+    ///
+    /// The default sums [`Self::parameters`], which is right only for a layer
+    /// whose parameters are all rank 2. That signature yields `Array2`, so it
+    /// cannot carry a bias (rank 1) or a convolution kernel (rank 3 or 4):
+    /// counting a `SpikingLinear` through it drops the bias, and counting a
+    /// convolution through it returns zero for the whole layer. Every layer
+    /// holding either overrides this.
+    ///
+    /// Six `num_parameters` implementations in the fusion module summed
+    /// `parameters()` directly and therefore under-reported, a convolution
+    /// contributing nothing at all.
+    fn num_parameters(&self) -> usize {
+        self.parameters().iter().map(|p| p.len()).sum()
+    }
 }
 
 /// Computes `w^T . v` by accumulating over the rows of `w`.
@@ -190,6 +206,74 @@ impl NeuronState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Parameter counts must include everything the layer actually holds.
+    ///
+    /// `parameters()` yields `Array2`, so summing it drops every bias and
+    /// returns zero for a convolution -- whose kernel is rank 3 or 4 -- and
+    /// the fusion module's `num_parameters` did exactly that. A convolution
+    /// contributed nothing to the total.
+    #[test]
+    fn parameter_counts_include_biases_and_kernels() {
+        let params = NeuronParams::default();
+
+        let linear = SpikingLinear::new(16, 8, true, params.clone(), 1.0, false);
+        assert_eq!(linear.num_parameters(), 16 * 8 + 8, "weights plus bias");
+        assert_eq!(
+            linear.parameters().iter().map(|p| p.len()).sum::<usize>(),
+            16 * 8,
+            "the rank-2 view still cannot see the bias"
+        );
+
+        let conv = SpikingConv2d::new(
+            3,
+            16,
+            (3, 3),
+            (1, 1),
+            (1, 1),
+            true,
+            params.clone(),
+            1.0,
+            false,
+        );
+        assert_eq!(
+            conv.num_parameters(),
+            16 * 3 * 3 * 3 + 16,
+            "kernel plus bias"
+        );
+        assert_eq!(
+            conv.parameters().iter().map(|p| p.len()).sum::<usize>(),
+            0,
+            "a convolution is invisible to the rank-2 view, which is the point"
+        );
+
+        let conv1 = SpikingConv1d::new(4, 8, 5, 1, 2, true, params.clone(), 1.0, false);
+        assert_eq!(conv1.num_parameters(), 8 * 4 * 5 + 8);
+
+        let rnn = SpikingRNN::new(16, 12, true, params.clone(), 1.0, false);
+        assert_eq!(rnn.num_parameters(), 16 * 12 + 12 * 12 + 12);
+
+        // Multi-head attention must count its heads, not just the output
+        // projection it happens to expose.
+        let heads = 4;
+        let d_model = 16;
+        let multi =
+            attention::MultiHeadSpikingAttention::new(d_model, heads, params.clone(), 1.0, false);
+        let one_head = SpikingAttention::new(d_model, 1, params, 1.0, false).num_parameters();
+        assert_eq!(
+            multi.num_parameters(),
+            heads * one_head + d_model * d_model,
+            "heads plus the output projection"
+        );
+        assert!(
+            multi.num_parameters() > multi.parameters().iter().map(|p| p.len()).sum::<usize>(),
+            "the rank-2 view sees only the output projection"
+        );
+
+        // A layer with no parameters reports none rather than guessing.
+        let pool = SpikingMaxPool2d::new((2, 2), (2, 2));
+        assert_eq!(pool.num_parameters(), 0);
+    }
 
     #[test]
     fn test_neuron_state_creation() {

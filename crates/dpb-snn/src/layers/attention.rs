@@ -367,6 +367,12 @@ impl SpikingLayer for MultiHeadSpikingAttention {
             head.zero_grad();
         }
     }
+
+    fn num_parameters(&self) -> usize {
+        // `parameters` exposes only the output projection, so counting through
+        // it reports a multi-head attention as though it had no heads.
+        self.heads.iter().map(|h| h.num_parameters()).sum::<usize>() + self.w_output.len()
+    }
 }
 
 impl Default for SpikingAttention {

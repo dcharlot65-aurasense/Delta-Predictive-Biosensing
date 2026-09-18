@@ -445,6 +445,10 @@ impl SpikingLayer for SpikingRNN {
         self.w_recurrent_grad = None;
         self.bias_grad = None;
     }
+
+    fn num_parameters(&self) -> usize {
+        self.w_input.len() + self.w_recurrent.len() + self.bias.as_ref().map_or(0, |b| b.len())
+    }
 }
 
 /// Spiking LSTM-like layer (simplified)
@@ -987,6 +991,10 @@ impl SpikingLayer for SpikingLSTM {
         self.w_rec_forget_grad = None;
         self.w_rec_output_grad = None;
         self.w_rec_cell_grad = None;
+    }
+
+    fn num_parameters(&self) -> usize {
+        self.gate_weights().iter().map(|w| w.len()).sum()
     }
 }
 

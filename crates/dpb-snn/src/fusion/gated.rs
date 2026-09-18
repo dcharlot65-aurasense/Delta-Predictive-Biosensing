@@ -227,7 +227,7 @@ impl FusionNetwork for GatedFusionSNN {
 
         // Fusion layer parameters
         for layer in &self.fusion_layers {
-            total += layer.parameters().iter().map(|p| p.len()).sum::<usize>();
+            total += layer.num_parameters();
         }
 
         total

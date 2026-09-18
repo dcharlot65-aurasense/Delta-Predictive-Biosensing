@@ -267,6 +267,10 @@ impl SpikingLayer for SpikingLinear {
         self.weight_grad = None;
         self.bias_grad = None;
     }
+
+    fn num_parameters(&self) -> usize {
+        self.weights.len() + self.bias.as_ref().map_or(0, |b| b.len())
+    }
 }
 
 impl Default for SpikingLinear {

@@ -214,12 +214,12 @@ impl FusionNetwork for LateFusionSNN {
         for layers in self.modality_networks.values() {
             total += layers
                 .iter()
-                .map(|layer| layer.parameters().iter().map(|p| p.len()).sum::<usize>())
+                .map(|layer| layer.num_parameters())
                 .sum::<usize>();
         }
 
         if let Some(fusion) = &self.fusion_layer {
-            total += fusion.parameters().iter().map(|p| p.len()).sum::<usize>();
+            total += fusion.num_parameters();
         }
 
         total

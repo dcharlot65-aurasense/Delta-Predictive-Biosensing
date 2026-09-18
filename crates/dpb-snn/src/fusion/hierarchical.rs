@@ -178,7 +178,7 @@ impl FusionNetwork for HierarchicalFusionSNN {
 
         // High-level parameters
         for layer in &self.high_level {
-            total += layer.parameters().iter().map(|p| p.len()).sum::<usize>();
+            total += layer.num_parameters();
         }
 
         total

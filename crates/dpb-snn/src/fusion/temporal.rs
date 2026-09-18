@@ -225,7 +225,7 @@ impl FusionNetwork for TemporalAlignmentSNN {
 
         // Alignment layer parameters
         for layer in &self.alignment_layers {
-            total += layer.parameters().iter().map(|p| p.len()).sum::<usize>();
+            total += layer.num_parameters();
         }
 
         // Fusion layer parameters

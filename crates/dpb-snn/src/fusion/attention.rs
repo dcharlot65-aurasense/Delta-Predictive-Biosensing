@@ -160,7 +160,7 @@ impl FusionNetwork for CrossModalAttentionSNN {
 
         // Encoder parameters
         for encoder in self.encoders.values() {
-            total += encoder.parameters().iter().map(|p| p.len()).sum::<usize>();
+            total += encoder.num_parameters();
         }
 
         // Attention parameters

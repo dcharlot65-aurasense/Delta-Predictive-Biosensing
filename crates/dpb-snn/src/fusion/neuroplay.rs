@@ -389,13 +389,13 @@ impl FusionNetwork for NeuroPlaySNN {
         // Modality encoder parameters
         for layers in self.modality_encoders.values() {
             for layer in layers {
-                total += layer.parameters().iter().map(|p| p.len()).sum::<usize>();
+                total += layer.num_parameters();
             }
         }
 
         // Temporal processor parameters
         for rnn in self.temporal_processors.values() {
-            total += rnn.parameters().iter().map(|p| p.len()).sum::<usize>();
+            total += rnn.num_parameters();
         }
 
         // Attention parameters
@@ -428,7 +428,7 @@ impl FusionNetwork for NeuroPlaySNN {
 
         // Final fusion parameters
         for layer in &self.final_fusion {
-            total += layer.parameters().iter().map(|p| p.len()).sum::<usize>();
+            total += layer.num_parameters();
         }
 
         // UPDRS head parameters
