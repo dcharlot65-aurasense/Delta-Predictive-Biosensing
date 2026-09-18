@@ -2,6 +2,239 @@
 
 use super::{ANNBaseline, Tensor, count_params, xavier_init};
 
+// ============================================================================
+// Recurrent cores
+//
+// Every model in this file previously built a zero hidden state and projected
+// it straight to the output, so the recurrent weights were allocated, counted
+// and never multiplied by anything: the output was a constant, identical for
+// any input. These are the standard recurrences, with the gate layouts and
+// orderings PyTorch uses, so the stored weight shapes keep their usual
+// meaning.
+// ============================================================================
+
+fn sigmoid_scalar(x: f32) -> f32 {
+    1.0 / (1.0 + (-x).exp())
+}
+
+/// Time step `t` of `[batch, steps, features]`, as `[batch, features]`.
+fn time_step(input: &Tensor, t: usize) -> Tensor {
+    let (batch, steps, feat) = (input.shape[0], input.shape[1], input.shape[2]);
+    let mut data = vec![0.0; batch * feat];
+    for b in 0..batch {
+        let src = (b * steps + t) * feat;
+        data[b * feat..(b + 1) * feat].copy_from_slice(&input.data[src..src + feat]);
+    }
+    Tensor {
+        data,
+        shape: vec![batch, feat],
+    }
+}
+
+/// Views a `[batch, features]` input as a one-step sequence so the cells below
+/// accept either rank.
+fn as_sequence(input: &Tensor) -> Tensor {
+    match input.shape.len() {
+        3 => input.clone(),
+        2 => Tensor {
+            data: input.data.clone(),
+            shape: vec![input.shape[0], 1, input.shape[1]],
+        },
+        other => panic!("recurrent layers need rank 2 or 3 input, got rank {other}"),
+    }
+}
+
+/// Last time step of `[batch, steps, hidden]`.
+fn last_step(seq: &Tensor) -> Tensor {
+    time_step(seq, seq.shape[1] - 1)
+}
+
+/// Reverses the time axis of `[batch, steps, features]`.
+fn reverse_time(seq: &Tensor) -> Tensor {
+    let (batch, steps, feat) = (seq.shape[0], seq.shape[1], seq.shape[2]);
+    let mut data = vec![0.0; seq.data.len()];
+    for b in 0..batch {
+        for t in 0..steps {
+            let src = (b * steps + t) * feat;
+            let dst = (b * steps + (steps - 1 - t)) * feat;
+            data[dst..dst + feat].copy_from_slice(&seq.data[src..src + feat]);
+        }
+    }
+    Tensor {
+        data,
+        shape: vec![batch, steps, feat],
+    }
+}
+
+impl SimpleRNN {
+    /// Hidden state at every step: `h_t = tanh(x_t W_ih + h_{t-1} W_hh + b)`.
+    fn hidden_states(&self, input: &Tensor) -> Tensor {
+        let seq = as_sequence(input);
+        let (batch, steps) = (seq.shape[0], seq.shape[1]);
+        let hidden = self.hidden_size;
+        let mut h = Tensor::zeros(vec![batch, hidden]);
+        let mut out = vec![0.0; batch * steps * hidden];
+        for t in 0..steps {
+            let x = time_step(&seq, t);
+            let pre = x
+                .matmul(&self.w_ih)
+                .add(&h.matmul(&self.w_hh))
+                .add(&self.b_h);
+            h = pre.tanh();
+            for b in 0..batch {
+                let dst = (b * steps + t) * hidden;
+                out[dst..dst + hidden].copy_from_slice(&h.data[b * hidden..(b + 1) * hidden]);
+            }
+        }
+        Tensor {
+            data: out,
+            shape: vec![batch, steps, hidden],
+        }
+    }
+}
+
+impl LSTM {
+    /// Hidden state at every step. Gates are laid out `[i, f, g, o]` along the
+    /// concatenated axis, matching the stored `[input, 4 * hidden]` weights.
+    fn hidden_states(&self, input: &Tensor) -> Tensor {
+        let seq = as_sequence(input);
+        let (batch, steps) = (seq.shape[0], seq.shape[1]);
+        let hidden = self.hidden_size;
+        let mut h = Tensor::zeros(vec![batch, hidden]);
+        let mut c = vec![0.0; batch * hidden];
+        let mut out = vec![0.0; batch * steps * hidden];
+
+        for t in 0..steps {
+            let x = time_step(&seq, t);
+            let gates = x
+                .matmul(&self.w_ih)
+                .add(&self.b_ih)
+                .add(&h.matmul(&self.w_hh).add(&self.b_hh));
+            for b in 0..batch {
+                for j in 0..hidden {
+                    let g = |k: usize| gates.data[b * 4 * hidden + k * hidden + j];
+                    let i_t = sigmoid_scalar(g(0));
+                    let f_t = sigmoid_scalar(g(1));
+                    let g_t = g(2).tanh();
+                    let o_t = sigmoid_scalar(g(3));
+                    let cell = f_t * c[b * hidden + j] + i_t * g_t;
+                    let hid = o_t * cell.tanh();
+                    c[b * hidden + j] = cell;
+                    h.data[b * hidden + j] = hid;
+                    out[(b * steps + t) * hidden + j] = hid;
+                }
+            }
+        }
+        Tensor {
+            data: out,
+            shape: vec![batch, steps, hidden],
+        }
+    }
+
+    /// Hidden and cell state at every step, for the peephole variant.
+    fn hidden_and_cell(&self, input: &Tensor) -> (Tensor, Tensor) {
+        let seq = as_sequence(input);
+        let (batch, steps) = (seq.shape[0], seq.shape[1]);
+        let hidden = self.hidden_size;
+        let states = self.hidden_states(&seq);
+        // Recompute the cell trace alongside; cheap relative to the matmuls.
+        let mut c = vec![0.0; batch * hidden];
+        let mut cells = vec![0.0; batch * steps * hidden];
+        let mut h = Tensor::zeros(vec![batch, hidden]);
+        for t in 0..steps {
+            let x = time_step(&seq, t);
+            let gates = x
+                .matmul(&self.w_ih)
+                .add(&self.b_ih)
+                .add(&h.matmul(&self.w_hh).add(&self.b_hh));
+            for b in 0..batch {
+                for j in 0..hidden {
+                    let g = |k: usize| gates.data[b * 4 * hidden + k * hidden + j];
+                    let cell = sigmoid_scalar(g(1)) * c[b * hidden + j]
+                        + sigmoid_scalar(g(0)) * g(2).tanh();
+                    c[b * hidden + j] = cell;
+                    cells[(b * steps + t) * hidden + j] = cell;
+                    h.data[b * hidden + j] = sigmoid_scalar(g(3)) * cell.tanh();
+                }
+            }
+        }
+        (
+            states,
+            Tensor {
+                data: cells,
+                shape: vec![batch, steps, hidden],
+            },
+        )
+    }
+}
+
+impl GRU {
+    /// Hidden state at every step. Gates are `[r, z, n]`, and the reset gate
+    /// multiplies only the recurrent half of the candidate, as in PyTorch.
+    fn hidden_states(&self, input: &Tensor) -> Tensor {
+        let seq = as_sequence(input);
+        let (batch, steps) = (seq.shape[0], seq.shape[1]);
+        let hidden = self.hidden_size;
+        let mut h = Tensor::zeros(vec![batch, hidden]);
+        let mut out = vec![0.0; batch * steps * hidden];
+
+        for t in 0..steps {
+            let x = time_step(&seq, t);
+            let gi = x.matmul(&self.w_ih).add(&self.b_ih);
+            let gh = h.matmul(&self.w_hh).add(&self.b_hh);
+            for b in 0..batch {
+                for j in 0..hidden {
+                    let i_at = |k: usize| gi.data[b * 3 * hidden + k * hidden + j];
+                    let h_at = |k: usize| gh.data[b * 3 * hidden + k * hidden + j];
+                    let r = sigmoid_scalar(i_at(0) + h_at(0));
+                    let z = sigmoid_scalar(i_at(1) + h_at(1));
+                    let n = (i_at(2) + r * h_at(2)).tanh();
+                    let prev = h.data[b * hidden + j];
+                    let hid = (1.0 - z) * n + z * prev;
+                    out[(b * steps + t) * hidden + j] = hid;
+                }
+            }
+            for b in 0..batch {
+                for j in 0..hidden {
+                    h.data[b * hidden + j] = out[(b * steps + t) * hidden + j];
+                }
+            }
+        }
+        Tensor {
+            data: out,
+            shape: vec![batch, steps, hidden],
+        }
+    }
+}
+
+impl IndRNN {
+    /// `h_t = relu(x_t W + u * h_{t-1} + b)`, with a per-neuron recurrent
+    /// weight rather than a full matrix -- the point of IndRNN.
+    fn hidden_states(&self, input: &Tensor) -> Tensor {
+        let seq = as_sequence(input);
+        let (batch, steps) = (seq.shape[0], seq.shape[1]);
+        let hidden = self.hidden_size;
+        let mut h = vec![0.0; batch * hidden];
+        let mut out = vec![0.0; batch * steps * hidden];
+        for t in 0..steps {
+            let x = time_step(&seq, t);
+            let pre = x.matmul(&self.w_ih).add(&self.b_h);
+            for b in 0..batch {
+                for j in 0..hidden {
+                    let v = pre.data[b * hidden + j] + self.u.data[j] * h[b * hidden + j];
+                    let act = v.max(0.0);
+                    h[b * hidden + j] = act;
+                    out[(b * steps + t) * hidden + j] = act;
+                }
+            }
+        }
+        Tensor {
+            data: out,
+            shape: vec![batch, steps, hidden],
+        }
+    }
+}
+
 /// 19. Simple RNN
 pub struct SimpleRNN {
     w_ih: Tensor, // Input to hidden
@@ -31,27 +264,7 @@ impl ANNBaseline for SimpleRNN {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        // Assume input shape: [batch, seq_len, input_size]
-        // For simplicity, process last time step
-        let batch_size = if input.shape.len() == 3 {
-            input.shape[0]
-        } else {
-            1
-        };
-        let seq_len = if input.shape.len() == 3 {
-            input.shape[1]
-        } else {
-            input.shape[0]
-        };
-
-        let mut h = Tensor::zeros(vec![batch_size, self.hidden_size]);
-
-        // Simple RNN: h_t = tanh(W_ih * x_t + W_hh * h_{t-1} + b_h)
-        for _t in 0..seq_len {
-            // Simplified: just use final computation
-            h = h.matmul(&self.w_hh).add(&self.b_h).tanh();
-        }
-
+        let h = last_step(&self.hidden_states(input));
         h.matmul(&self.w_ho).add(&self.b_o)
     }
 
@@ -117,14 +330,7 @@ impl ANNBaseline for LSTM {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let batch_size = if input.shape.len() == 3 {
-            input.shape[0]
-        } else {
-            1
-        };
-        let h = Tensor::zeros(vec![batch_size, self.hidden_size]);
-
-        // Simplified LSTM forward (just return output from hidden state)
+        let h = last_step(&self.hidden_states(input));
         h.matmul(&self.w_ho).add(&self.b_o)
     }
 
@@ -179,12 +385,24 @@ impl ANNBaseline for BiLSTM {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let h_forward = self.lstm_forward.forward(input);
-        let _h_backward = self.lstm_backward.forward(input);
-
-        // Concatenate forward and backward hidden states
-        // Simplified: just use forward output
-        h_forward.matmul(&self.w_out).add(&self.b_out)
+        // Both directions read the whole sequence; the summary is the final
+        // hidden state of each, concatenated.
+        let seq = as_sequence(input);
+        let forward = last_step(&self.lstm_forward.hidden_states(&seq));
+        let backward = last_step(&self.lstm_backward.hidden_states(&reverse_time(&seq)));
+        let (batch, hidden) = (forward.shape[0], forward.shape[1]);
+        let mut joined = vec![0.0; batch * hidden * 2];
+        for b in 0..batch {
+            let dst = b * hidden * 2;
+            joined[dst..dst + hidden].copy_from_slice(&forward.data[b * hidden..(b + 1) * hidden]);
+            joined[dst + hidden..dst + 2 * hidden]
+                .copy_from_slice(&backward.data[b * hidden..(b + 1) * hidden]);
+        }
+        let joined = Tensor {
+            data: joined,
+            shape: vec![batch, hidden * 2],
+        };
+        joined.matmul(&self.w_out).add(&self.b_out)
     }
 
     fn num_parameters(&self) -> usize {
@@ -243,13 +461,13 @@ impl ANNBaseline for StackedLSTM {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let mut x = input.clone();
-
+        // Each layer consumes the hidden sequence of the one below, which is
+        // what makes the stack deeper rather than merely wider.
+        let mut seq = as_sequence(input);
         for lstm in &self.lstm_layers {
-            x = lstm.forward(&x);
+            seq = lstm.hidden_states(&seq);
         }
-
-        x.matmul(&self.w_out).add(&self.b_out)
+        last_step(&seq).matmul(&self.w_out).add(&self.b_out)
     }
 
     fn num_parameters(&self) -> usize {
@@ -312,13 +530,7 @@ impl ANNBaseline for GRU {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let batch_size = if input.shape.len() == 3 {
-            input.shape[0]
-        } else {
-            1
-        };
-        let h = Tensor::zeros(vec![batch_size, self.hidden_size]);
-
+        let h = last_step(&self.hidden_states(input));
         h.matmul(&self.w_ho).add(&self.b_o)
     }
 
@@ -375,11 +587,22 @@ impl ANNBaseline for BiGRU {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let h_forward = self.gru_forward.forward(input);
-        let _h_backward = self.gru_backward.forward(input);
-
-        // Simplified: just use forward output
-        h_forward.matmul(&self.w_out).add(&self.b_out)
+        let seq = as_sequence(input);
+        let forward = last_step(&self.gru_forward.hidden_states(&seq));
+        let backward = last_step(&self.gru_backward.hidden_states(&reverse_time(&seq)));
+        let (batch, hidden) = (forward.shape[0], forward.shape[1]);
+        let mut joined = vec![0.0; batch * hidden * 2];
+        for b in 0..batch {
+            let dst = b * hidden * 2;
+            joined[dst..dst + hidden].copy_from_slice(&forward.data[b * hidden..(b + 1) * hidden]);
+            joined[dst + hidden..dst + 2 * hidden]
+                .copy_from_slice(&backward.data[b * hidden..(b + 1) * hidden]);
+        }
+        let joined = Tensor {
+            data: joined,
+            shape: vec![batch, hidden * 2],
+        };
+        joined.matmul(&self.w_out).add(&self.b_out)
     }
 
     fn num_parameters(&self) -> usize {
@@ -433,13 +656,11 @@ impl ANNBaseline for StackedGRU {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let mut x = input.clone();
-
+        let mut seq = as_sequence(input);
         for gru in &self.gru_layers {
-            x = gru.forward(&x);
+            seq = gru.hidden_states(&seq);
         }
-
-        x.matmul(&self.w_out).add(&self.b_out)
+        last_step(&seq).matmul(&self.w_out).add(&self.b_out)
     }
 
     fn num_parameters(&self) -> usize {
@@ -486,7 +707,24 @@ impl ANNBaseline for PeepholeLSTM {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        self.lstm.forward(input)
+        // Peepholes let the gates see the cell state directly. The three
+        // stored matrices are the input, forget and output peepholes.
+        let seq = as_sequence(input);
+        let (states, cells) = self.lstm.hidden_and_cell(&seq);
+        let hidden = self.lstm.hidden_size;
+        let (batch, steps) = (states.shape[0], states.shape[1]);
+
+        let last_cell = last_step(&cells);
+        let peeped = last_cell.matmul(&self.peephole_weights[2]);
+        let mut summary = last_step(&states);
+        for b in 0..batch {
+            for j in 0..hidden {
+                summary.data[b * hidden + j] +=
+                    sigmoid_scalar(peeped.data[b * hidden + j]) * last_cell.data[b * hidden + j];
+            }
+        }
+        let _ = steps;
+        summary.matmul(&self.lstm.w_ho).add(&self.lstm.b_o)
     }
 
     fn num_parameters(&self) -> usize {
@@ -530,7 +768,36 @@ impl ANNBaseline for AttentionLSTM {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        self.lstm.forward(input)
+        // Attention over every hidden state rather than only the last, which
+        // is the entire reason this variant exists.
+        let seq = as_sequence(input);
+        let states = self.lstm.hidden_states(&seq);
+        let (batch, steps, hidden) = (states.shape[0], states.shape[1], states.shape[2]);
+
+        let flat = states.reshape(vec![batch * steps, hidden]);
+        let scores = flat
+            .matmul(&self.attention_w)
+            .tanh()
+            .matmul(&self.attention_v);
+
+        let mut context = vec![0.0; batch * hidden];
+        for b in 0..batch {
+            let row = |t: usize| scores.data[b * steps + t];
+            let max = (0..steps).map(row).fold(f32::NEG_INFINITY, f32::max);
+            let weights: Vec<f32> = (0..steps).map(|t| (row(t) - max).exp()).collect();
+            let total: f32 = weights.iter().sum();
+            for (t, w) in weights.iter().enumerate() {
+                let alpha = w / total;
+                for j in 0..hidden {
+                    context[b * hidden + j] += alpha * states.data[(b * steps + t) * hidden + j];
+                }
+            }
+        }
+        let context = Tensor {
+            data: context,
+            shape: vec![batch, hidden],
+        };
+        context.matmul(&self.lstm.w_ho).add(&self.lstm.b_o)
     }
 
     fn num_parameters(&self) -> usize {
@@ -577,13 +844,7 @@ impl ANNBaseline for IndRNN {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let batch_size = if input.shape.len() == 3 {
-            input.shape[0]
-        } else {
-            1
-        };
-        let h = Tensor::zeros(vec![batch_size, self.hidden_size]);
-
+        let h = last_step(&self.hidden_states(input));
         h.matmul(&self.w_ho).add(&self.b_o)
     }
 
@@ -689,5 +950,190 @@ mod tests {
         let indrnn = IndRNN::new(10, 20, 5, 42);
         assert_eq!(indrnn.name(), "IndRNN");
         assert!(indrnn.num_parameters() > 100);
+    }
+}
+
+#[cfg(test)]
+mod recurrence_tests {
+    // Reference values as numpy produced them; kept at source precision so
+    // they can be regenerated and compared verbatim.
+    #![allow(clippy::excessive_precision)]
+
+    use super::*;
+
+    const W_IH: &[f32] = &[
+        -0.4, -0.34, -0.28, -0.22, -0.16, -0.1, -0.04, 0.02, 0.08, 0.14, 0.2, 0.26, 0.32, 0.38,
+        0.44, 0.5,
+    ];
+    const W_HH: &[f32] = &[
+        -0.3,
+        -0.25666667,
+        -0.21333333,
+        -0.17,
+        -0.12666667,
+        -0.083333333,
+        -0.04,
+        0.0033333333,
+        0.046666667,
+        0.09,
+        0.13333333,
+        0.17666667,
+        0.22,
+        0.26333333,
+        0.30666667,
+        0.35,
+    ];
+    const B_IH: &[f32] = &[
+        -0.2,
+        -0.14285714,
+        -0.085714286,
+        -0.028571429,
+        0.028571429,
+        0.085714286,
+        0.14285714,
+        0.2,
+    ];
+    const B_HH: &[f32] = &[
+        0.05,
+        0.035714286,
+        0.021428571,
+        0.0071428571,
+        -0.0071428571,
+        -0.021428571,
+        -0.035714286,
+        -0.05,
+    ];
+    const X: &[f32] = &[-0.6, -0.3, 0.0, 0.3, 0.6, 0.9];
+
+    const W_IH3: &[f32] = &[
+        -0.35,
+        -0.27727273,
+        -0.20454545,
+        -0.13181818,
+        -0.059090909,
+        0.013636364,
+        0.086363636,
+        0.15909091,
+        0.23181818,
+        0.30454545,
+        0.37727273,
+        0.45,
+    ];
+    const W_HH3: &[f32] = &[
+        -0.25, -0.2, -0.15, -0.1, -0.05, 0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3,
+    ];
+    const B_IH3: &[f32] = &[-0.15, -0.09, -0.03, 0.03, 0.09, 0.15];
+    const B_HH3: &[f32] = &[0.04, 0.024, 0.008, -0.008, -0.024, -0.04];
+
+    /// The LSTM recurrence, against an independent numpy implementation.
+    ///
+    /// Every model in this file used to project a zero hidden state, so a test
+    /// that only checked the output shape, or that two inputs gave different
+    /// answers, would not have pinned the gate equations. These values come
+    /// from numpy running the standard formulation with the same weights and
+    /// the `[i, f, g, o]` gate order.
+    #[test]
+    fn lstm_hidden_state_matches_numpy() {
+        let mut lstm = LSTM::new(2, 2, 2, 0);
+        lstm.w_ih = Tensor::from_vec(W_IH.to_vec(), vec![2, 8]);
+        lstm.w_hh = Tensor::from_vec(W_HH.to_vec(), vec![2, 8]);
+        lstm.b_ih = Tensor::from_vec(B_IH.to_vec(), vec![8]);
+        lstm.b_hh = Tensor::from_vec(B_HH.to_vec(), vec![8]);
+
+        let x = Tensor::from_vec(X.to_vec(), vec![1, 3, 2]);
+        let states = lstm.hidden_states(&x);
+        assert_eq!(states.shape, vec![1, 3, 2]);
+
+        let final_h = last_step(&states);
+        let expect = [0.074_267_714_f32, 0.129_364_01];
+        for (i, want) in expect.iter().enumerate() {
+            assert!(
+                (final_h.data[i] - want).abs() < 1e-5,
+                "h[{i}] was {}, numpy says {want}",
+                final_h.data[i]
+            );
+        }
+    }
+
+    /// The GRU recurrence, likewise. The reset gate must multiply only the
+    /// recurrent half of the candidate; applying it to the whole sum is the
+    /// classic way to get a GRU subtly wrong, and would fail here.
+    #[test]
+    fn gru_hidden_state_matches_numpy() {
+        let mut gru = GRU::new(2, 2, 2, 0);
+        gru.w_ih = Tensor::from_vec(W_IH3.to_vec(), vec![2, 6]);
+        gru.w_hh = Tensor::from_vec(W_HH3.to_vec(), vec![2, 6]);
+        gru.b_ih = Tensor::from_vec(B_IH3.to_vec(), vec![6]);
+        gru.b_hh = Tensor::from_vec(B_HH3.to_vec(), vec![6]);
+
+        let x = Tensor::from_vec(X.to_vec(), vec![1, 3, 2]);
+        let final_h = last_step(&gru.hidden_states(&x));
+        let expect = [0.228_849_21_f32, 0.291_015_69];
+        for (i, want) in expect.iter().enumerate() {
+            assert!(
+                (final_h.data[i] - want).abs() < 1e-5,
+                "h[{i}] was {}, numpy says {want}",
+                final_h.data[i]
+            );
+        }
+    }
+
+    /// Order along the time axis has to matter.
+    ///
+    /// A cell that ignored its previous hidden state, or that summed the steps,
+    /// would still vary with the input and still produce the right shape. It
+    /// would not notice the sequence being played backwards.
+    #[test]
+    fn recurrent_models_are_sensitive_to_time_order() {
+        let x = Tensor::from_shape_fn(vec![1, 8, 4], |i| ((i % 5) as f32 - 2.0) * 0.3);
+        let reversed = reverse_time(&x);
+
+        let lstm = LSTM::new(4, 6, 3, 11);
+        assert_ne!(
+            lstm.forward(&x).data,
+            lstm.forward(&reversed).data,
+            "LSTM output does not depend on the order of the sequence"
+        );
+
+        let gru = GRU::new(4, 6, 3, 12);
+        assert_ne!(
+            gru.forward(&x).data,
+            gru.forward(&reversed).data,
+            "GRU output does not depend on the order of the sequence"
+        );
+
+        let rnn = SimpleRNN::new(4, 6, 3, 13);
+        assert_ne!(rnn.forward(&x).data, rnn.forward(&reversed).data);
+
+        let ind = IndRNN::new(4, 6, 3, 14);
+        assert_ne!(ind.forward(&x).data, ind.forward(&reversed).data);
+    }
+
+    /// A stack must be deeper than its first layer.
+    ///
+    /// Stacked variants used to delegate to cells that ignored their input, so
+    /// every layer produced the same constant. Feeding the stack and its first
+    /// layer the same sequence must give different answers.
+    #[test]
+    fn stacked_layers_each_contribute() {
+        let x = Tensor::from_shape_fn(vec![1, 6, 4], |i| ((i % 7) as f32 - 3.0) * 0.2);
+
+        let stacked = StackedLSTM::new(4, &[5, 5], 3, 21);
+        let first_only = stacked.lstm_layers[0].hidden_states(&x);
+        assert_eq!(first_only.shape, vec![1, 6, 5]);
+        let second = stacked.lstm_layers[1].hidden_states(&first_only);
+        assert_ne!(
+            first_only.data, second.data,
+            "the second layer reproduced the first"
+        );
+
+        let bi = BiLSTM::new(4, 5, 3, 22);
+        // A bidirectional model must differ from one direction alone.
+        let forward_only = last_step(&bi.lstm_forward.hidden_states(&x));
+        let backward_only = last_step(&bi.lstm_backward.hidden_states(&reverse_time(&x)));
+        assert_ne!(
+            forward_only.data, backward_only.data,
+            "both directions produced the same summary"
+        );
     }
 }

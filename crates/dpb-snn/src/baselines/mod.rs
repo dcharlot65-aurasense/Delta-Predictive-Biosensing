@@ -72,6 +72,15 @@ impl Tensor {
     }
 
     /// Get the total number of elements
+    /// Build a tensor from a function of the flat index.
+    pub fn from_shape_fn(shape: Vec<usize>, f: impl Fn(usize) -> f32) -> Self {
+        let n = shape.iter().product();
+        Self {
+            data: (0..n).map(f).collect(),
+            shape,
+        }
+    }
+
     pub fn size(&self) -> usize {
         self.data.len()
     }
@@ -88,6 +97,7 @@ impl Tensor {
         let m = self.shape[0];
         let n = self.shape[1];
         let p = other.shape[1];
+        record_macs((m * n * p) as u64);
 
         let mut result = vec![0.0; m * p];
 
@@ -301,6 +311,7 @@ impl Tensor {
         let kernel_size = kernel.shape[2];
 
         let out_length = (in_length + 2 * padding - kernel_size) / stride + 1;
+        record_macs((batch * out_channels * out_length * in_channels * kernel_size) as u64);
         let mut result = vec![0.0; batch * out_channels * out_length];
 
         // Simplified conv1d implementation
@@ -363,21 +374,230 @@ impl Tensor {
         }
     }
 
-    /// Batch normalization (inference mode)
+    /// 2-D convolution over `[batch, in_channels, height, width]`.
+    ///
+    /// `kernel` is `[out_channels, in_channels, kh, kw]`; padding is zero
+    /// padding applied symmetrically. Output spatial size follows the usual
+    /// `(n + 2p - k) / s + 1`.
+    pub fn conv2d(
+        &self,
+        kernel: &Tensor,
+        stride: (usize, usize),
+        padding: (usize, usize),
+    ) -> Tensor {
+        assert_eq!(
+            self.shape.len(),
+            4,
+            "conv2d requires 4D input [batch, channels, height, width]"
+        );
+        assert_eq!(
+            kernel.shape.len(),
+            4,
+            "conv2d requires 4D kernel [out_ch, in_ch, kh, kw]"
+        );
+        assert_eq!(
+            self.shape[1], kernel.shape[1],
+            "conv2d input channels {} do not match kernel {}",
+            self.shape[1], kernel.shape[1]
+        );
+
+        let (batch, in_ch, in_h, in_w) =
+            (self.shape[0], self.shape[1], self.shape[2], self.shape[3]);
+        let (out_ch, kh, kw) = (kernel.shape[0], kernel.shape[2], kernel.shape[3]);
+        let (sh, sw) = stride;
+        let (ph, pw) = padding;
+        let out_h = (in_h + 2 * ph).saturating_sub(kh) / sh.max(1) + 1;
+        let out_w = (in_w + 2 * pw).saturating_sub(kw) / sw.max(1) + 1;
+
+        record_macs((batch * out_ch * out_h * out_w * in_ch * kh * kw) as u64);
+        let mut result = vec![0.0; batch * out_ch * out_h * out_w];
+        for b in 0..batch {
+            for oc in 0..out_ch {
+                for oy in 0..out_h {
+                    for ox in 0..out_w {
+                        let mut sum = 0.0;
+                        for ic in 0..in_ch {
+                            for ky in 0..kh {
+                                let iy = oy * sh + ky;
+                                if iy < ph || iy >= in_h + ph {
+                                    continue;
+                                }
+                                let iy = iy - ph;
+                                for kx in 0..kw {
+                                    let ix = ox * sw + kx;
+                                    if ix < pw || ix >= in_w + pw {
+                                        continue;
+                                    }
+                                    let ix = ix - pw;
+                                    let in_idx = ((b * in_ch + ic) * in_h + iy) * in_w + ix;
+                                    let k_idx = ((oc * in_ch + ic) * kh + ky) * kw + kx;
+                                    sum += self.data[in_idx] * kernel.data[k_idx];
+                                }
+                            }
+                        }
+                        result[((b * out_ch + oc) * out_h + oy) * out_w + ox] = sum;
+                    }
+                }
+            }
+        }
+
+        Tensor {
+            data: result,
+            shape: vec![batch, out_ch, out_h, out_w],
+        }
+    }
+
+    /// Depthwise 2-D convolution: one `[1, kh, kw]` filter per input channel.
+    ///
+    /// `kernel` is `[channels, 1, kh, kw]`. This is the first half of a
+    /// depthwise-separable convolution; the pointwise half is [`Self::conv2d`]
+    /// with a 1x1 kernel.
+    pub fn depthwise_conv2d(
+        &self,
+        kernel: &Tensor,
+        stride: (usize, usize),
+        padding: (usize, usize),
+    ) -> Tensor {
+        assert_eq!(self.shape.len(), 4, "depthwise_conv2d requires 4D input");
+        assert_eq!(kernel.shape.len(), 4, "depthwise_conv2d requires 4D kernel");
+        assert_eq!(
+            kernel.shape[0], self.shape[1],
+            "depthwise_conv2d needs one filter per channel"
+        );
+        assert_eq!(
+            kernel.shape[1], 1,
+            "depthwise_conv2d kernel must be [C, 1, kh, kw]"
+        );
+
+        let (batch, ch, in_h, in_w) = (self.shape[0], self.shape[1], self.shape[2], self.shape[3]);
+        let (kh, kw) = (kernel.shape[2], kernel.shape[3]);
+        let (sh, sw) = stride;
+        let (ph, pw) = padding;
+        let out_h = (in_h + 2 * ph).saturating_sub(kh) / sh.max(1) + 1;
+        let out_w = (in_w + 2 * pw).saturating_sub(kw) / sw.max(1) + 1;
+
+        record_macs((batch * ch * out_h * out_w * kh * kw) as u64);
+        let mut result = vec![0.0; batch * ch * out_h * out_w];
+        for b in 0..batch {
+            for c in 0..ch {
+                for oy in 0..out_h {
+                    for ox in 0..out_w {
+                        let mut sum = 0.0;
+                        for ky in 0..kh {
+                            let iy = oy * sh + ky;
+                            if iy < ph || iy >= in_h + ph {
+                                continue;
+                            }
+                            let iy = iy - ph;
+                            for kx in 0..kw {
+                                let ix = ox * sw + kx;
+                                if ix < pw || ix >= in_w + pw {
+                                    continue;
+                                }
+                                let ix = ix - pw;
+                                let in_idx = ((b * ch + c) * in_h + iy) * in_w + ix;
+                                let k_idx = (c * kh + ky) * kw + kx;
+                                sum += self.data[in_idx] * kernel.data[k_idx];
+                            }
+                        }
+                        result[((b * ch + c) * out_h + oy) * out_w + ox] = sum;
+                    }
+                }
+            }
+        }
+
+        Tensor {
+            data: result,
+            shape: vec![batch, ch, out_h, out_w],
+        }
+    }
+
+    /// Max pooling over `[batch, channels, height, width]`.
+    pub fn max_pool2d(&self, kernel_size: usize, stride: usize) -> Tensor {
+        assert_eq!(self.shape.len(), 4, "max_pool2d requires 4D input");
+        let (batch, ch, in_h, in_w) = (self.shape[0], self.shape[1], self.shape[2], self.shape[3]);
+        let stride = stride.max(1);
+        let out_h = in_h.saturating_sub(kernel_size) / stride + 1;
+        let out_w = in_w.saturating_sub(kernel_size) / stride + 1;
+
+        let mut result = vec![f32::NEG_INFINITY; batch * ch * out_h * out_w];
+        for b in 0..batch {
+            for c in 0..ch {
+                for oy in 0..out_h {
+                    for ox in 0..out_w {
+                        let mut best = f32::NEG_INFINITY;
+                        for ky in 0..kernel_size {
+                            for kx in 0..kernel_size {
+                                let iy = oy * stride + ky;
+                                let ix = ox * stride + kx;
+                                if iy < in_h && ix < in_w {
+                                    best =
+                                        best.max(self.data[((b * ch + c) * in_h + iy) * in_w + ix]);
+                                }
+                            }
+                        }
+                        result[((b * ch + c) * out_h + oy) * out_w + ox] = best;
+                    }
+                }
+            }
+        }
+
+        Tensor {
+            data: result,
+            shape: vec![batch, ch, out_h, out_w],
+        }
+    }
+
+    /// Global average pooling: `[batch, channels, height, width]` -> `[batch, channels]`.
+    pub fn global_avg_pool2d(&self) -> Tensor {
+        assert_eq!(self.shape.len(), 4, "global_avg_pool2d requires 4D input");
+        let (batch, ch, h, w) = (self.shape[0], self.shape[1], self.shape[2], self.shape[3]);
+        let area = (h * w) as f32;
+        let mut result = vec![0.0; batch * ch];
+        for b in 0..batch {
+            for c in 0..ch {
+                let base = (b * ch + c) * h * w;
+                let sum: f32 = self.data[base..base + h * w].iter().sum();
+                result[b * ch + c] = sum / area;
+            }
+        }
+        Tensor {
+            data: result,
+            shape: vec![batch, ch],
+        }
+    }
+
+    /// Batch normalization (inference mode), per feature or per channel.
+    ///
+    /// Handles `[n, features]`, `[n, channels, length]` and
+    /// `[n, channels, height, width]`. It previously normalised only rank 2 and
+    /// returned every other rank unchanged, so convolutional activations passed
+    /// through untouched and a network with batch norm silently had none.
+    /// Unsupported ranks now panic rather than quietly doing nothing.
     pub fn batch_norm(&self, mean: &Tensor, var: &Tensor, gamma: &Tensor, beta: &Tensor) -> Tensor {
         let eps = 1e-5;
         let mut result = self.data.clone();
 
-        // Simplified batch norm for 2D input
-        if self.shape.len() == 2 {
-            let features = self.shape[1];
-            for i in 0..self.shape[0] {
-                for j in 0..features {
-                    let idx = i * features + j;
-                    result[idx] = (result[idx] - mean.data[j]) / (var.data[j] + eps).sqrt();
-                    result[idx] = result[idx] * gamma.data[j] + beta.data[j];
-                }
-            }
+        // Elements sharing a normalisation statistic are contiguous in every
+        // supported layout, so one stride pair covers all three ranks.
+        let (channels, inner) = match self.shape.len() {
+            2 => (self.shape[1], 1),
+            3 => (self.shape[1], self.shape[2]),
+            4 => (self.shape[1], self.shape[2] * self.shape[3]),
+            other => panic!("batch_norm does not support rank {other}"),
+        };
+        assert!(
+            mean.data.len() >= channels
+                && var.data.len() >= channels
+                && gamma.data.len() >= channels
+                && beta.data.len() >= channels,
+            "batch_norm statistics must cover {channels} channels"
+        );
+
+        for (idx, value) in result.iter_mut().enumerate() {
+            let c = (idx / inner) % channels;
+            let normalised = (*value - mean.data[c]) / (var.data[c] + eps).sqrt();
+            *value = normalised * gamma.data[c] + beta.data[c];
         }
 
         Tensor {
@@ -395,9 +615,16 @@ impl Tensor {
     pub fn layer_norm(&self, eps: f32) -> Tensor {
         let mut result = self.data.clone();
 
-        if self.shape.len() == 2 {
-            let features = self.shape[1];
-            for i in 0..self.shape[0] {
+        // Normalises over the last axis. Ranks other than 2 and 3 used to fall
+        // through and return the input unchanged.
+        assert!(
+            matches!(self.shape.len(), 2 | 3),
+            "layer_norm does not support rank {}",
+            self.shape.len()
+        );
+        {
+            let features = self.shape[self.shape.len() - 1];
+            for i in 0..(self.size() / features) {
                 let start = i * features;
                 let end = start + features;
                 let slice = &self.data[start..end];
@@ -420,6 +647,130 @@ impl Tensor {
     }
 }
 
+#[cfg(test)]
+mod conv2d_tests {
+    use super::*;
+
+    // Reference values produced independently with numpy (see the generator in
+    // the commit message): an asymmetric case throughout -- rectangular 5x6
+    // input, non-square 3x2 kernel, stride (2, 1), padding (1, 0) -- so that a
+    // transposed axis, a swapped stride or a dropped pad cannot agree by
+    // symmetry. Pinned to values rather than shapes: a wrong read window still
+    // produces a correctly shaped output.
+    const X: &[f32] = &[
+        -1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5,
+        0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3,
+        2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0, 4.1,
+        4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9,
+    ];
+    const K: &[f32] = &[
+        -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0, -0.5,
+        -0.25, 0.0, 0.25, 0.5, 0.75, 1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0, -0.5, -0.25, 0.0,
+        0.25, 0.5, 0.75, 1.0, -0.5,
+    ];
+    const DK: &[f32] = &[
+        -0.4, -0.1, 0.2, 0.5, 0.8, -0.4, -0.1, 0.2, 0.5, 0.8, -0.4, -0.1,
+    ];
+    const EXPECT_CONV2D: &[f32] = &[
+        0.85, 1.05, 1.25, 1.45, 1.65, 4.775, 4.95, 5.125, 5.3, 5.475, 0.5, 0.475, 0.45, 0.425, 0.4,
+        0.95, 0.925, 0.9, 0.875, 0.85, 3.375, 3.65, 3.925, 4.2, 4.475, 7.4, 7.675, 7.95, 8.225,
+        8.5, 2.45, 2.725, 3.0, 3.275, 3.55, 6.175, 6.55, 6.925, 7.3, 7.675, 9.75, 10.15, 10.55,
+        10.95, 11.35,
+    ];
+    const EXPECT_DW: &[f32] = &[
+        -0.85, -0.74, -0.63, -0.52, -0.41, 0.66, 0.72, 0.78, 0.84, 0.9, 0.62, 0.64, 0.66, 0.68,
+        0.7, 1.37, 1.45, 1.53, 1.61, 1.69, 2.61, 2.7, 2.79, 2.88, 2.97, 6.2, 6.34, 6.48, 6.62,
+        6.76,
+    ];
+
+    fn close(got: &[f32], want: &[f32], what: &str) {
+        assert_eq!(got.len(), want.len(), "{what}: length");
+        for (i, (g, w)) in got.iter().zip(want).enumerate() {
+            assert!(
+                (g - w).abs() < 1e-4,
+                "{what}: element {i} was {g}, numpy says {w}"
+            );
+        }
+    }
+
+    #[test]
+    fn conv2d_matches_numpy() {
+        let x = Tensor::from_vec(X.to_vec(), vec![1, 2, 5, 6]);
+        let k = Tensor::from_vec(K.to_vec(), vec![3, 2, 3, 2]);
+        let out = x.conv2d(&k, (2, 1), (1, 0));
+        assert_eq!(out.shape, vec![1, 3, 3, 5]);
+        close(&out.data, EXPECT_CONV2D, "conv2d");
+    }
+
+    #[test]
+    fn depthwise_conv2d_matches_numpy() {
+        let x = Tensor::from_vec(X.to_vec(), vec![1, 2, 5, 6]);
+        let k = Tensor::from_vec(DK.to_vec(), vec![2, 1, 3, 2]);
+        let out = x.depthwise_conv2d(&k, (2, 1), (1, 0));
+        assert_eq!(out.shape, vec![1, 2, 3, 5]);
+        close(&out.data, EXPECT_DW, "depthwise_conv2d");
+    }
+
+    /// A 1x1 convolution is a per-pixel channel mix, so it must equal a matmul
+    /// over the channel axis -- an identity that holds independently of how
+    /// conv2d indexes, and therefore a second opinion on it.
+    #[test]
+    fn pointwise_conv2d_is_a_channel_matmul() {
+        let (ic, oc, h, w) = (3usize, 4usize, 2usize, 3usize);
+        let x = Tensor::from_shape_fn(vec![1, ic, h, w], |i| (i % 5) as f32 * 0.3 - 0.6);
+        let k = Tensor::from_shape_fn(vec![oc, ic, 1, 1], |i| (i % 7) as f32 * 0.2 - 0.5);
+        let got = x.conv2d(&k, (1, 1), (0, 0));
+
+        for o in 0..oc {
+            for y in 0..h {
+                for xx in 0..w {
+                    let mut want = 0.0;
+                    for c in 0..ic {
+                        want += x.data[(c * h + y) * w + xx] * k.data[o * ic + c];
+                    }
+                    let got_v = got.data[(o * h + y) * w + xx];
+                    assert!(
+                        (got_v - want).abs() < 1e-5,
+                        "1x1 conv at ({o},{y},{xx}) was {got_v}, channel matmul says {want}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn max_pool2d_and_global_avg_pool_are_exact() {
+        // 1 x 1 x 4 x 4 counting up: pooling 2x2 stride 2 takes the
+        // bottom-right of each quadrant.
+        let x = Tensor::from_shape_fn(vec![1, 1, 4, 4], |i| i as f32);
+        let pooled = x.max_pool2d(2, 2);
+        assert_eq!(pooled.shape, vec![1, 1, 2, 2]);
+        assert_eq!(pooled.data, vec![5.0, 7.0, 13.0, 15.0]);
+
+        // Mean of 0..16 is 7.5.
+        let avg = x.global_avg_pool2d();
+        assert_eq!(avg.shape, vec![1, 1]);
+        assert!((avg.data[0] - 7.5).abs() < 1e-6);
+    }
+
+    /// batch_norm used to return anything that was not rank 2 unchanged.
+    #[test]
+    fn batch_norm_normalises_convolutional_activations() {
+        let x = Tensor::from_shape_fn(vec![1, 2, 2, 2], |i| i as f32);
+        let mean = Tensor::from_vec(vec![1.0, 5.0], vec![2]);
+        let var = Tensor::from_vec(vec![4.0, 4.0], vec![2]);
+        let gamma = Tensor::from_vec(vec![2.0, 1.0], vec![2]);
+        let beta = Tensor::from_vec(vec![0.5, -1.0], vec![2]);
+
+        let out = x.batch_norm(&mean, &var, &gamma, &beta);
+        assert_ne!(out.data, x.data, "rank-4 batch_norm was an identity");
+        // Channel 0: (0 - 1)/sqrt(4 + 1e-5) * 2 + 0.5 = -0.5 (to tolerance).
+        assert!((out.data[0] - -0.5).abs() < 1e-3, "got {}", out.data[0]);
+        // Channel 1 starts at element 4: (4 - 5)/2 * 1 - 1 = -1.5.
+        assert!((out.data[4] - -1.5).abs() < 1e-3, "got {}", out.data[4]);
+    }
+}
+
 /// Trait for ANN baseline architectures
 pub trait ANNBaseline: Send + Sync {
     /// Get the architecture name
@@ -436,6 +787,49 @@ pub trait ANNBaseline: Send + Sync {
 
     /// Get architecture summary
     fn architecture_summary(&self) -> String;
+}
+
+// ============================================================================
+// Multiply-accumulate counting
+//
+// `flops_per_inference` used to return a constant for most architectures --
+// one number regardless of input size, which cannot be right for a
+// convolution. Rather than re-derive a formula per architecture and let it
+// drift from the code, the tensor operations tally the multiply-accumulates
+// they actually perform, and a model reports the total for one real forward
+// pass. Each operation records once, with a count it already computed, so the
+// tally costs nothing when it is switched off.
+// ============================================================================
+
+thread_local! {
+    static MAC_TALLY: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
+}
+
+/// Records multiply-accumulates, when counting is active.
+fn record_macs(count: u64) {
+    MAC_TALLY.with(|tally| {
+        if let Some(total) = tally.get() {
+            tally.set(Some(total + count));
+        }
+    });
+}
+
+/// Counts the multiply-accumulates performed by tensor operations in `body`.
+///
+/// Counting is thread-local and does not nest: an inner call would restart the
+/// tally, so do not call this from inside a counted region.
+pub fn count_macs(body: impl FnOnce()) -> u64 {
+    MAC_TALLY.with(|tally| tally.set(Some(0)));
+    body();
+    MAC_TALLY.with(|tally| tally.replace(None)).unwrap_or(0)
+}
+
+/// FLOPs for a counted forward pass, at two per multiply-accumulate.
+///
+/// One multiply and one add, which is the convention `CNN1D_Small` already
+/// used for its fully connected layers.
+pub fn flops_of(body: impl FnOnce()) -> u64 {
+    2 * count_macs(body)
 }
 
 /// Helper function to count parameters in a weight matrix
