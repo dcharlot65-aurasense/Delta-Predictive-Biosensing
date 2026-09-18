@@ -240,7 +240,13 @@ impl ANNBaseline for CNN1DLarge {
         // Convolutional blocks
         for block in &self.conv_blocks {
             for conv in block {
-                x = x.conv1d(conv, 1, 0).relu();
+                // 'Same' padding: the constructor sizes the classifier as
+                // input_length / 8, meaning the three poolings alone set the
+                // length. With zero padding each convolution also shrank it,
+                // so the flattened activation never matched the layer and the
+                // forward pass panicked on any input.
+                let pad = conv.shape[2] / 2;
+                x = x.conv1d(conv, 1, pad).relu();
             }
             x = x.max_pool1d(2, 2);
         }
@@ -318,7 +324,11 @@ impl CNN1DResidual {
         layers.push(xavier_init(vec![256, 256, 3], seed + 5));
         shortcuts.push(Some(xavier_init(vec![256, 128, 1], seed + 12)));
 
-        let fc_input = 256 * (input_length / 4);
+        // Global pooling in the forward pass reduces every channel to one
+        // value, so the classifier sees 256 features regardless of input
+        // length. It used to be sized 256 * (input_length / 4).
+        let _ = input_length;
+        let fc_input = 256;
         let fc = (
             xavier_init(vec![fc_input, output_size], seed + 6),
             Tensor::zeros(vec![output_size]),
@@ -350,8 +360,12 @@ impl ANNBaseline for CNN1DResidual {
                     x.clone()
                 };
 
-                x = x.conv1d(layer, 1, 0).relu();
-                x = x.conv1d(&self.layers[i + 1], 1, 0);
+                // Both convolutions keep the length so the 1x1 shortcut can
+                // be added back; with zero padding the two branches differed by
+                // four samples and the addition panicked.
+                x = x.conv1d(layer, 1, layer.shape[2] / 2).relu();
+                let second = &self.layers[i + 1];
+                x = x.conv1d(second, 1, second.shape[2] / 2);
                 x = x.add(&shortcut).relu();
 
                 shortcut_idx += 1;
@@ -430,10 +444,15 @@ impl ANNBaseline for CNN1DDilated {
     fn forward(&self, input: &Tensor) -> Tensor {
         let mut x = input.clone();
 
-        // Apply dilated convolutions (simplified - treating as regular conv)
-        for conv in &self.dilated_convs {
-            x = x.conv1d(conv, 1, 0).relu();
+        // Dilations 1, 2, 4, 8, 16 give the exponentially growing receptive
+        // field this architecture exists for. They used to be stored and
+        // ignored, with the comment "treating as regular conv", which also
+        // left the length inconsistent with the classifier.
+        for (conv, &dilation) in self.dilated_convs.iter().zip(&self.dilations) {
+            x = x.conv1d_causal(conv, dilation).relu();
         }
+        // One pooling, which is what the classifier is sized for.
+        x = x.max_pool1d(2, 2);
 
         // Flatten and FC
         let batch_size = x.shape[0];
@@ -1187,8 +1206,16 @@ impl ANNBaseline for TCN {
                 x.clone()
             };
 
-            x = x.conv1d(layer, 1, 0).relu().add(&residual);
+            // Causal and dilated, which is what distinguishes a temporal
+            // convolutional network: level i sees 2^i samples back and never
+            // reads the future. Previously these were plain convolutions with
+            // zero padding, so the residual branch was two samples longer than
+            // the main one and the addition panicked.
+            let dilation = 1usize << i;
+            x = x.conv1d_causal(layer, dilation).relu().add(&residual);
         }
+        // Two poolings: the classifier is sized for input_length / 4.
+        x = x.max_pool1d(2, 2).max_pool1d(2, 2);
 
         // Flatten and FC
         let batch_size = x.shape[0];

@@ -343,6 +343,100 @@ impl Tensor {
         }
     }
 
+    /// 1-D convolution with dilation and a choice of how many outputs to keep.
+    ///
+    /// A dilation of `d` spaces the taps `d` apart, so a stack with dilations
+    /// 1, 2, 4, ... sees an exponentially growing window at linear cost. This
+    /// is what makes a WaveNet or a TCN what it is; without it those stacks are
+    /// ordinary convolutions with a longer name.
+    pub fn conv1d_dilated(
+        &self,
+        kernel: &Tensor,
+        stride: usize,
+        padding: usize,
+        dilation: usize,
+    ) -> Tensor {
+        assert_eq!(self.shape.len(), 3, "conv1d requires 3D input");
+        assert_eq!(kernel.shape.len(), 3, "conv1d requires 3D kernel");
+        assert_eq!(
+            self.shape[1], kernel.shape[1],
+            "conv1d input channels {} do not match kernel {}",
+            self.shape[1], kernel.shape[1]
+        );
+
+        let (batch, in_channels, in_length) = (self.shape[0], self.shape[1], self.shape[2]);
+        let out_channels = kernel.shape[0];
+        let kernel_size = kernel.shape[2];
+        let stride = stride.max(1);
+        let dilation = dilation.max(1);
+        let span = dilation * (kernel_size - 1);
+        let out_length = (in_length + 2 * padding).saturating_sub(span) / stride;
+        let out_length = if in_length + 2 * padding > span {
+            out_length
+        } else {
+            0
+        };
+
+        record_macs((batch * out_channels * out_length * in_channels * kernel_size) as u64);
+        let mut result = vec![0.0; batch * out_channels * out_length];
+        for b in 0..batch {
+            for oc in 0..out_channels {
+                for ol in 0..out_length {
+                    let mut sum = 0.0;
+                    for ic in 0..in_channels {
+                        for k in 0..kernel_size {
+                            let pos = ol * stride + k * dilation;
+                            if pos >= padding && pos < in_length + padding {
+                                let idx =
+                                    b * in_channels * in_length + ic * in_length + (pos - padding);
+                                let kidx = oc * in_channels * kernel_size + ic * kernel_size + k;
+                                sum += self.data[idx] * kernel.data[kidx];
+                            }
+                        }
+                    }
+                    result[b * out_channels * out_length + oc * out_length + ol] = sum;
+                }
+            }
+        }
+
+        Tensor {
+            data: result,
+            shape: vec![batch, out_channels, out_length],
+        }
+    }
+
+    /// Causal dilated convolution: every output reads only the present and the
+    /// past, and the length is preserved.
+    ///
+    /// Padding both sides by `dilation * (k - 1)` and then keeping the first
+    /// `length` outputs leaves output `t` reading inputs `t - dilation*(k-1)`
+    /// through `t`, which is the standard construction.
+    pub fn conv1d_causal(&self, kernel: &Tensor, dilation: usize) -> Tensor {
+        let in_length = self.shape[2];
+        let span = dilation.max(1) * (kernel.shape[2] - 1);
+        let wide = self.conv1d_dilated(kernel, 1, span, dilation);
+        wide.truncate_time(in_length)
+    }
+
+    /// Keeps the first `length` positions of a `[batch, channels, length]`
+    /// tensor.
+    pub fn truncate_time(&self, length: usize) -> Tensor {
+        let (batch, channels, in_length) = (self.shape[0], self.shape[1], self.shape[2]);
+        let length = length.min(in_length);
+        let mut data = vec![0.0; batch * channels * length];
+        for b in 0..batch {
+            for c in 0..channels {
+                let src = (b * channels + c) * in_length;
+                let dst = (b * channels + c) * length;
+                data[dst..dst + length].copy_from_slice(&self.data[src..src + length]);
+            }
+        }
+        Tensor {
+            data,
+            shape: vec![batch, channels, length],
+        }
+    }
+
     /// Max pooling 1D
     pub fn max_pool1d(&self, kernel_size: usize, stride: usize) -> Tensor {
         assert_eq!(self.shape.len(), 3, "max_pool1d requires 3D input");
@@ -830,6 +924,74 @@ pub fn count_macs(body: impl FnOnce()) -> u64 {
 /// used for its fully connected layers.
 pub fn flops_of(body: impl FnOnce()) -> u64 {
     2 * count_macs(body)
+}
+
+/// Reorders `[batch, channels, length]` to `[batch, length, channels]`.
+///
+/// Convolutions here produce channel-major activations while the recurrent
+/// helpers consume time-major sequences, so a model that feeds one into the
+/// other has to transpose between them.
+pub fn channels_to_time(x: &Tensor) -> Tensor {
+    assert_eq!(x.shape.len(), 3, "channels_to_time requires 3D input");
+    let (batch, channels, length) = (x.shape[0], x.shape[1], x.shape[2]);
+    let mut data = vec![0.0; x.data.len()];
+    for b in 0..batch {
+        for c in 0..channels {
+            for t in 0..length {
+                data[(b * length + t) * channels + c] = x.data[(b * channels + c) * length + t];
+            }
+        }
+    }
+    Tensor {
+        data,
+        shape: vec![batch, length, channels],
+    }
+}
+
+/// Average pooling to an exact output length, for classifiers whose input
+/// width is fixed regardless of how long the signal is.
+pub fn adaptive_avg_pool1d(x: &Tensor, out_length: usize) -> Tensor {
+    assert_eq!(x.shape.len(), 3, "adaptive_avg_pool1d requires 3D input");
+    let (batch, channels, length) = (x.shape[0], x.shape[1], x.shape[2]);
+    let out_length = out_length.max(1);
+    let mut data = vec![0.0; batch * channels * out_length];
+    for b in 0..batch {
+        for c in 0..channels {
+            for o in 0..out_length {
+                let start = o * length / out_length;
+                let end = (((o + 1) * length).div_ceil(out_length))
+                    .max(start + 1)
+                    .min(length);
+                let mut acc = 0.0;
+                for t in start..end {
+                    acc += x.data[(b * channels + c) * length + t];
+                }
+                data[(b * channels + c) * out_length + o] = acc / (end - start).max(1) as f32;
+            }
+        }
+    }
+    Tensor {
+        data,
+        shape: vec![batch, channels, out_length],
+    }
+}
+
+/// Mean over the length axis: `[batch, channels, length]` -> `[batch, channels]`.
+pub fn global_avg_pool1d(x: &Tensor) -> Tensor {
+    assert_eq!(x.shape.len(), 3, "global_avg_pool1d requires 3D input");
+    let (batch, channels, length) = (x.shape[0], x.shape[1], x.shape[2]);
+    let mut data = vec![0.0; batch * channels];
+    for b in 0..batch {
+        for c in 0..channels {
+            let base = (b * channels + c) * length;
+            data[b * channels + c] =
+                x.data[base..base + length].iter().sum::<f32>() / length as f32;
+        }
+    }
+    Tensor {
+        data,
+        shape: vec![batch, channels],
+    }
 }
 
 /// Helper function to count parameters in a weight matrix

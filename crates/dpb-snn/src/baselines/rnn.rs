@@ -13,12 +13,12 @@ use super::{ANNBaseline, Tensor, count_params, xavier_init};
 // meaning.
 // ============================================================================
 
-fn sigmoid_scalar(x: f32) -> f32 {
+pub(crate) fn sigmoid_scalar(x: f32) -> f32 {
     1.0 / (1.0 + (-x).exp())
 }
 
 /// Time step `t` of `[batch, steps, features]`, as `[batch, features]`.
-fn time_step(input: &Tensor, t: usize) -> Tensor {
+pub(crate) fn time_step(input: &Tensor, t: usize) -> Tensor {
     let (batch, steps, feat) = (input.shape[0], input.shape[1], input.shape[2]);
     let mut data = vec![0.0; batch * feat];
     for b in 0..batch {
@@ -33,7 +33,7 @@ fn time_step(input: &Tensor, t: usize) -> Tensor {
 
 /// Views a `[batch, features]` input as a one-step sequence so the cells below
 /// accept either rank.
-fn as_sequence(input: &Tensor) -> Tensor {
+pub(crate) fn as_sequence(input: &Tensor) -> Tensor {
     match input.shape.len() {
         3 => input.clone(),
         2 => Tensor {
@@ -45,12 +45,12 @@ fn as_sequence(input: &Tensor) -> Tensor {
 }
 
 /// Last time step of `[batch, steps, hidden]`.
-fn last_step(seq: &Tensor) -> Tensor {
+pub(crate) fn last_step(seq: &Tensor) -> Tensor {
     time_step(seq, seq.shape[1] - 1)
 }
 
 /// Reverses the time axis of `[batch, steps, features]`.
-fn reverse_time(seq: &Tensor) -> Tensor {
+pub(crate) fn reverse_time(seq: &Tensor) -> Tensor {
     let (batch, steps, feat) = (seq.shape[0], seq.shape[1], seq.shape[2]);
     let mut data = vec![0.0; seq.data.len()];
     for b in 0..batch {
@@ -63,6 +63,41 @@ fn reverse_time(seq: &Tensor) -> Tensor {
     Tensor {
         data,
         shape: vec![batch, steps, feat],
+    }
+}
+
+/// The LSTM recurrence over raw gate weights, for models that store `w_ih` and
+/// `w_hh` directly rather than as an [`LSTM`].
+///
+/// Same gate layout as [`LSTM::hidden_states`] -- `[i, f, g, o]` along the
+/// concatenated axis -- so both share one validated implementation rather than
+/// two that can drift apart.
+pub(crate) fn lstm_sequence(seq: &Tensor, w_ih: &Tensor, w_hh: &Tensor) -> Tensor {
+    let seq = as_sequence(seq);
+    let (batch, steps) = (seq.shape[0], seq.shape[1]);
+    let hidden = w_hh.shape[0];
+    let mut h = Tensor::zeros(vec![batch, hidden]);
+    let mut c = vec![0.0; batch * hidden];
+    let mut out = vec![0.0; batch * steps * hidden];
+
+    for t in 0..steps {
+        let x = time_step(&seq, t);
+        let gates = x.matmul(w_ih).add(&h.matmul(w_hh));
+        for b in 0..batch {
+            for j in 0..hidden {
+                let g = |k: usize| gates.data[b * 4 * hidden + k * hidden + j];
+                let cell =
+                    sigmoid_scalar(g(1)) * c[b * hidden + j] + sigmoid_scalar(g(0)) * g(2).tanh();
+                let hid = sigmoid_scalar(g(3)) * cell.tanh();
+                c[b * hidden + j] = cell;
+                h.data[b * hidden + j] = hid;
+                out[(b * steps + t) * hidden + j] = hid;
+            }
+        }
+    }
+    Tensor {
+        data: out,
+        shape: vec![batch, steps, hidden],
     }
 }
 

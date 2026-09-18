@@ -1,46 +1,46 @@
-//! Which ANN baselines actually read their input?
+//! Every ANN baseline must compute a function of its input.
 //!
-//! Runs every baseline twice on different inputs of the same shape. A forward
-//! pass whose output does not move is not computing a function of its input.
+//! Running a model twice on different inputs of the same shape and getting the
+//! same answer means the forward pass is not reading its input. That was true
+//! of 30 of the 44 models here: some returned `input.clone()`, most built a
+//! zero hidden state and projected it, and several panicked on valid input.
+//! Weights were allocated, reported in `num_parameters`, and never multiplied
+//! by anything -- so an accuracy or energy comparison against them measured
+//! nothing. Shape assertions cannot see this, which is why it survived.
 
 use dpb_snn::baselines::*;
 
-fn probe<M: ANNBaseline>(name: &str, build: impl Fn() -> M, shape: Vec<usize>) -> bool {
+fn probe<M: ANNBaseline>(name: &str, build: impl Fn() -> M, shape: Vec<usize>) -> Option<String> {
     let a = Tensor::from_shape_fn(shape.clone(), |i| ((i % 13) as f32 - 6.0) * 0.1);
     let b = Tensor::from_shape_fn(shape.clone(), |i| ((i % 7) as f32 - 3.0) * 0.37 + 0.11);
-    // Construction is inside the guard too: a constructor assertion would
-    // otherwise kill the whole sweep.
     let run = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let model = build();
         let ya = model.forward(&a);
         let yb = model.forward(&b);
-        (ya.data != yb.data, ya.shape.clone())
+        (ya.data != yb.data, ya.data.iter().all(|v| v.is_finite()))
     }));
     match run {
-        Ok((true, _)) => true,
-        Ok((false, out)) => {
-            println!("  IGNORES INPUT  {name:22} in={shape:?} out={out:?}");
-            false
-        }
-        Err(_) => {
-            println!("  PANICS         {name:22} in={shape:?}");
-            false
-        }
+        Ok((true, true)) => None,
+        Ok((true, false)) => Some(format!("{name}: produced a non-finite output")),
+        Ok((false, _)) => Some(format!("{name}: output does not depend on its input")),
+        Err(_) => Some(format!(
+            "{name}: panicked on a valid input of shape {shape:?}"
+        )),
     }
 }
 
-fn main() {
+#[test]
+fn every_baseline_computes_a_function_of_its_input() {
+    let mut failures: Vec<String> = Vec::new();
+
     let (c, l, out, sd) = (3usize, 64usize, 5usize, 7u64);
     let seq = 16usize;
     let d = 32usize;
-    let mut bad = 0;
-    let mut total = 0;
 
     macro_rules! check {
         ($name:expr, $model:expr, $shape:expr) => {
-            total += 1;
-            if !probe($name, || $model, $shape) {
-                bad += 1;
+            if let Some(failure) = probe($name, || $model, $shape) {
+                failures.push(failure);
             }
         };
     }
@@ -201,6 +201,10 @@ fn main() {
         HybridCNNRNN::new(c, l, out, sd),
         vec![1, c, l]
     );
-
-    println!("\n{bad} of {total} baselines ignore their input");
+    assert!(
+        failures.is_empty(),
+        "{} of 44 baselines do not compute a function of their input:\n  {}",
+        failures.len(),
+        failures.join("\n  ")
+    );
 }

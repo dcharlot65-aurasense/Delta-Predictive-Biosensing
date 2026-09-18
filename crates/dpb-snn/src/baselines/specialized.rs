@@ -1,5 +1,6 @@
 //! Domain-specific specialized architectures for biosensing
 
+use super::rnn::{last_step, lstm_sequence, reverse_time};
 use super::{ANNBaseline, Tensor, count_params, xavier_init};
 
 /// 37. ECGNet - ECG-specific architecture
@@ -71,22 +72,27 @@ impl ANNBaseline for ECGNet {
     fn forward(&self, input: &Tensor) -> Tensor {
         let mut x = input.clone();
 
-        // Convolutional feature extraction
+        // Convolutions keep their length so the residual blocks below can add
+        // their input back; with zero padding the two branches differed and the
+        // addition panicked on any input.
         for conv in &self.conv_layers {
-            x = x.conv1d(conv, 1, 0).relu().max_pool1d(2, 2);
+            let pad = conv.shape[2] / 2;
+            x = x.conv1d(conv, 1, pad).relu().max_pool1d(2, 2);
         }
 
-        // Residual blocks
         for (conv1, conv2) in &self.residual_blocks {
             let residual = x.clone();
-            x = x.conv1d(conv1, 1, 0).relu();
-            x = x.conv1d(conv2, 1, 0).add(&residual).relu();
+            x = x.conv1d(conv1, 1, conv1.shape[2] / 2).relu();
+            x = x.conv1d(conv2, 1, conv2.shape[2] / 2).add(&residual).relu();
         }
 
-        // Global average pooling
-        let batch_size = x.shape[0];
-        let channels = x.shape[1];
-        x = x.reshape(vec![batch_size, channels]);
+        // Temporal modelling over the convolutional features. The LSTM weights
+        // were allocated and counted but never used: the old code reshaped
+        // straight to [batch, channels] and called it global average pooling,
+        // which is only valid when the sequence is already one sample long.
+        let sequence = super::channels_to_time(&x);
+        let states = lstm_sequence(&sequence, &self.lstm_w_ih, &self.lstm_w_hh);
+        let mut x = last_step(&states);
 
         // FC layers
         for (i, (w, b)) in self.fc_layers.iter().enumerate() {
@@ -199,15 +205,58 @@ impl ANNBaseline for DeepGait {
     fn forward(&self, input: &Tensor) -> Tensor {
         let mut x = input.clone();
 
-        // Spatial feature extraction
         for conv in &self.spatial_conv {
-            x = x.conv1d(conv, 1, 0).relu().max_pool1d(2, 2);
+            let pad = conv.shape[2] / 2;
+            x = x.conv1d(conv, 1, pad).relu().max_pool1d(2, 2);
         }
 
-        // Flatten and FC
-        let batch_size = x.shape[0];
-        let flattened = x.shape[1] * x.shape[2];
-        x = x.reshape(vec![batch_size, flattened]);
+        // Bidirectional recurrence over the spatial features, then attention
+        // across time. Both the backward LSTM and the attention weights used to
+        // be stored, counted, and never read: the old path flattened the
+        // convolution output straight into the classifier.
+        let sequence = super::channels_to_time(&x);
+        let forward = lstm_sequence(&sequence, &self.lstm_forward.0, &self.lstm_forward.1);
+        let backward = lstm_sequence(
+            &reverse_time(&sequence),
+            &self.lstm_backward.0,
+            &self.lstm_backward.1,
+        );
+        let backward = reverse_time(&backward);
+
+        let (batch_size, steps, hidden) = (forward.shape[0], forward.shape[1], forward.shape[2]);
+        let mut joined = vec![0.0; batch_size * steps * hidden * 2];
+        for b in 0..batch_size {
+            for t in 0..steps {
+                let dst = (b * steps + t) * hidden * 2;
+                let src = (b * steps + t) * hidden;
+                joined[dst..dst + hidden].copy_from_slice(&forward.data[src..src + hidden]);
+                joined[dst + hidden..dst + 2 * hidden]
+                    .copy_from_slice(&backward.data[src..src + hidden]);
+            }
+        }
+        let joined = Tensor::from_vec(joined, vec![batch_size, steps, hidden * 2]);
+
+        // Additive attention over time steps.
+        let flat = joined.reshape(vec![batch_size * steps, hidden * 2]);
+        let scores = flat
+            .matmul(&self.attention_w)
+            .tanh()
+            .matmul(&self.attention_v);
+        let mut context = vec![0.0; batch_size * hidden * 2];
+        for b in 0..batch_size {
+            let at = |t: usize| scores.data[b * steps + t];
+            let max = (0..steps).map(at).fold(f32::NEG_INFINITY, f32::max);
+            let weights: Vec<f32> = (0..steps).map(|t| (at(t) - max).exp()).collect();
+            let total: f32 = weights.iter().sum();
+            for (t, w) in weights.iter().enumerate() {
+                let alpha = w / total;
+                for j in 0..hidden * 2 {
+                    context[b * hidden * 2 + j] +=
+                        alpha * joined.data[(b * steps + t) * hidden * 2 + j];
+                }
+            }
+        }
+        let mut x = Tensor::from_vec(context, vec![batch_size, hidden * 2]);
 
         // Output
         for (i, (w, b)) in self.fc_layers.iter().enumerate() {
@@ -305,13 +354,48 @@ impl ANNBaseline for TremorNet {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        // Simplified forward
-        let batch_size = if input.shape.len() == 3 {
-            input.shape[0]
-        } else {
-            1
-        };
-        let mut x = Tensor::zeros(vec![batch_size, 64 * 10]);
+        // Three parallel branches with different kernel widths, which is how
+        // this model separates tremor bands; their outputs are concatenated
+        // along channels and aggregated in time. All of it used to be skipped:
+        // the forward pass started from a zero vector, so the branch and
+        // aggregation weights never multiplied anything.
+        let branch_outputs: Vec<Tensor> = self
+            .freq_convs
+            .iter()
+            .map(|branch| {
+                let mut y = input.clone();
+                for conv in branch {
+                    y = y.conv1d(conv, 1, conv.shape[2] / 2).relu();
+                }
+                y
+            })
+            .collect();
+
+        let batch_size = branch_outputs[0].shape[0];
+        let length = branch_outputs[0].shape[2];
+        let total_channels: usize = branch_outputs.iter().map(|b| b.shape[1]).sum();
+        let mut merged = vec![0.0; batch_size * total_channels * length];
+        let mut offset = 0;
+        for branch in &branch_outputs {
+            let channels = branch.shape[1];
+            for b in 0..batch_size {
+                for c in 0..channels {
+                    let src = (b * channels + c) * length;
+                    let dst = (b * total_channels + offset + c) * length;
+                    merged[dst..dst + length].copy_from_slice(&branch.data[src..src + length]);
+                }
+            }
+            offset += channels;
+        }
+        let merged = Tensor::from_vec(merged, vec![batch_size, total_channels, length]);
+
+        let aggregated = merged
+            .conv1d(&self.temporal_conv, 1, self.temporal_conv.shape[2] / 2)
+            .relu();
+        // The classifier expects ten positions per channel however long the
+        // recording is.
+        let pooled = super::adaptive_avg_pool1d(&aggregated, 10);
+        let mut x = pooled.reshape(vec![batch_size, pooled.shape[1] * 10]);
 
         // FC layers
         for (i, (w, b)) in self.fc_layers.iter().enumerate() {
@@ -402,14 +486,40 @@ impl ANNBaseline for VoiceNet {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let batch_size = if input.shape.len() == 3 {
-            input.shape[0]
-        } else {
-            1
-        };
-        let x = Tensor::zeros(vec![batch_size, self.fusion_fc.0.shape[0]]);
+        // Two branches over the same spectrogram: pooled spectral features,
+        // and a recurrent prosody summary. The fusion layer is sized for both
+        // concatenated, which is why it is 256 + hidden wide. Neither branch
+        // used to run -- the forward pass began at a zero vector.
+        let mut spectral = input.clone();
+        for conv in &self.spec_conv {
+            let pad = conv.shape[2] / 2;
+            spectral = spectral.conv1d(conv, 1, pad).relu().max_pool1d(2, 2);
+        }
 
-        let x = x.matmul(&self.fusion_fc.0).add(&self.fusion_fc.1).relu();
+        let sequence = super::channels_to_time(&spectral);
+        let prosody = last_step(&lstm_sequence(
+            &sequence,
+            &self.prosody_lstm.0,
+            &self.prosody_lstm.1,
+        ));
+        let pooled = super::global_avg_pool1d(&spectral);
+
+        let batch_size = pooled.shape[0];
+        let (spec_dim, prosody_dim) = (pooled.shape[1], prosody.shape[1]);
+        let mut fused = vec![0.0; batch_size * (spec_dim + prosody_dim)];
+        for b in 0..batch_size {
+            let dst = b * (spec_dim + prosody_dim);
+            fused[dst..dst + spec_dim]
+                .copy_from_slice(&pooled.data[b * spec_dim..(b + 1) * spec_dim]);
+            fused[dst + spec_dim..dst + spec_dim + prosody_dim]
+                .copy_from_slice(&prosody.data[b * prosody_dim..(b + 1) * prosody_dim]);
+        }
+        let fused = Tensor::from_vec(fused, vec![batch_size, spec_dim + prosody_dim]);
+
+        let x = fused
+            .matmul(&self.fusion_fc.0)
+            .add(&self.fusion_fc.1)
+            .relu();
         x.matmul(&self.output_fc.0).add(&self.output_fc.1)
     }
 
@@ -492,13 +602,14 @@ impl ANNBaseline for MultimodalFusion {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        // Simplified: assume input is already concatenated features
-        let batch_size = if input.shape.len() == 2 {
-            input.shape[0]
-        } else {
-            1
-        };
-        let x = Tensor::zeros(vec![batch_size, self.fusion_fc.0.shape[0]]);
+        // The input is the modalities concatenated along the feature axis, in
+        // the order the encoders were built. Each is sliced out, encoded, and
+        // the results concatenated again for fusion. None of this used to
+        // happen: the forward pass started from a zero vector, so every
+        // encoder was stored, counted, and never applied.
+        let batch_size = input.shape[0];
+        let encoded = encode_modalities(input, &self.modality_encoders);
+        let x = concat_features(&encoded, batch_size);
 
         let x = x.matmul(&self.fusion_fc.0).add(&self.fusion_fc.1).relu();
         x.matmul(&self.output_fc.0).add(&self.output_fc.1)
@@ -587,12 +698,39 @@ impl ANNBaseline for AttentionFusion {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let batch_size = if input.shape.len() == 2 {
-            input.shape[0]
-        } else {
-            1
-        };
-        let x = Tensor::zeros(vec![batch_size, self.fusion_fc.0.shape[0]]);
+        // Attention decides how much each modality contributes, which is the
+        // whole difference from plain concatenation fusion. The encoders and
+        // both attention matrices used to be unreachable.
+        let batch_size = input.shape[0];
+        let encoded = encode_modalities(input, &self.modality_encoders);
+        let hidden = encoded[0].shape[1];
+
+        let mut context = vec![0.0; batch_size * hidden];
+        for b in 0..batch_size {
+            let scores: Vec<f32> = encoded
+                .iter()
+                .map(|e| {
+                    let row = Tensor::from_vec(
+                        e.data[b * hidden..(b + 1) * hidden].to_vec(),
+                        vec![1, hidden],
+                    );
+                    row.matmul(&self.attention_w)
+                        .tanh()
+                        .matmul(&self.attention_v)
+                        .data[0]
+                })
+                .collect();
+            let max = scores.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+            let weights: Vec<f32> = scores.iter().map(|s| (s - max).exp()).collect();
+            let total: f32 = weights.iter().sum();
+            for (m, w) in weights.iter().enumerate() {
+                let alpha = w / total;
+                for j in 0..hidden {
+                    context[b * hidden + j] += alpha * encoded[m].data[b * hidden + j];
+                }
+            }
+        }
+        let x = Tensor::from_vec(context, vec![batch_size, hidden]);
 
         let x = x.matmul(&self.fusion_fc.0).add(&self.fusion_fc.1).relu();
         x.matmul(&self.output_fc.0).add(&self.output_fc.1)
@@ -684,20 +822,59 @@ impl ANNBaseline for GraphNN {
     }
 
     fn forward(&self, input: &Tensor) -> Tensor {
-        let mut x = input.clone();
+        // Input is [batch, nodes, features]. Node-wise layers act on each node
+        // independently, so the node axis is folded into the batch for them;
+        // `matmul` is rank-2 only, and passing a rank-3 tensor used to panic.
+        let (batch_size, nodes, features) = match input.shape.len() {
+            3 => (input.shape[0], input.shape[1], input.shape[2]),
+            2 => (input.shape[0], 1, input.shape[1]),
+            other => panic!("GraphNN needs rank 2 or 3 input, got rank {other}"),
+        };
+        let mut x = input.reshape(vec![batch_size * nodes, features]);
 
-        // Node feature transformation
         for (w, b) in &self.node_fc {
             x = x.matmul(w).add(b).relu();
         }
 
-        // Graph convolutions (simplified)
+        // Graph convolution proper: transform, then average over each node's
+        // neighbourhood. No adjacency reaches this interface, so the graph is
+        // taken to be complete, which makes the aggregation a mean over all
+        // nodes -- the standard reading when structure is unknown. Without the
+        // aggregation step these were plain per-node matmuls and nothing about
+        // them was graph-like.
+        let hidden = x.shape[1];
         for conv in &self.graph_conv {
-            x = x.matmul(conv).relu();
+            let transformed = x.matmul(conv);
+            let mut aggregated = vec![0.0; batch_size * nodes * hidden];
+            for b in 0..batch_size {
+                for j in 0..hidden {
+                    let mut sum = 0.0;
+                    for n in 0..nodes {
+                        sum += transformed.data[(b * nodes + n) * hidden + j];
+                    }
+                    let mean = sum / nodes as f32;
+                    for n in 0..nodes {
+                        aggregated[(b * nodes + n) * hidden + j] = mean;
+                    }
+                }
+            }
+            x = Tensor::from_vec(aggregated, vec![batch_size * nodes, hidden]).relu();
         }
 
-        // Output
-        x.matmul(&self.output_fc.0).add(&self.output_fc.1)
+        // Readout: mean over nodes gives one vector per graph.
+        let mut pooled = vec![0.0; batch_size * hidden];
+        for b in 0..batch_size {
+            for j in 0..hidden {
+                let mut sum = 0.0;
+                for n in 0..nodes {
+                    sum += x.data[(b * nodes + n) * hidden + j];
+                }
+                pooled[b * hidden + j] = sum / nodes as f32;
+            }
+        }
+        let pooled = Tensor::from_vec(pooled, vec![batch_size, hidden]);
+
+        pooled.matmul(&self.output_fc.0).add(&self.output_fc.1)
     }
 
     fn num_parameters(&self) -> usize {
@@ -778,15 +955,17 @@ impl ANNBaseline for HybridCNNRNN {
     fn forward(&self, input: &Tensor) -> Tensor {
         let mut x = input.clone();
 
-        // CNN layers
         for conv in &self.cnn_layers {
-            x = x.conv1d(conv, 1, 0).relu().max_pool1d(2, 2);
+            let pad = conv.shape[2] / 2;
+            x = x.conv1d(conv, 1, pad).relu().max_pool1d(2, 2);
         }
 
-        // Flatten
-        let batch_size = x.shape[0];
-        let flattened = x.shape[1] * x.shape[2];
-        x = x.reshape(vec![batch_size, flattened]);
+        // The recurrent half of a model called Hybrid CNN-RNN. Its weights were
+        // allocated and counted, and the old forward pass flattened the
+        // convolution output straight into a classifier sized for the LSTM,
+        // which is why it panicked.
+        let sequence = super::channels_to_time(&x);
+        let mut x = last_step(&lstm_sequence(&sequence, &self.lstm_w_ih, &self.lstm_w_hh));
 
         // FC layers
         for (i, (w, b)) in self.fc_layers.iter().enumerate() {
@@ -818,6 +997,52 @@ impl ANNBaseline for HybridCNNRNN {
     fn architecture_summary(&self) -> String {
         "HybridCNNRNN: CNN spatial features + LSTM temporal modeling".to_string()
     }
+}
+
+/// Splits a concatenated feature vector into per-modality slices and runs each
+/// modality's encoder stack over its own slice.
+fn encode_modalities(input: &Tensor, encoders: &[Vec<(Tensor, Tensor)>]) -> Vec<Tensor> {
+    let batch_size = input.shape[0];
+    let features = input.shape[1];
+    let expected: usize = encoders.iter().map(|e| e[0].0.shape[0]).sum();
+    assert_eq!(
+        features, expected,
+        "input has {features} features but the modalities need {expected}"
+    );
+
+    let mut offset = 0;
+    let mut out = Vec::with_capacity(encoders.len());
+    for encoder in encoders {
+        let width = encoder[0].0.shape[0];
+        let mut slice = vec![0.0; batch_size * width];
+        for b in 0..batch_size {
+            let src = b * features + offset;
+            slice[b * width..(b + 1) * width].copy_from_slice(&input.data[src..src + width]);
+        }
+        let mut x = Tensor::from_vec(slice, vec![batch_size, width]);
+        for (w, bias) in encoder {
+            x = x.matmul(w).add(bias).relu();
+        }
+        out.push(x);
+        offset += width;
+    }
+    out
+}
+
+/// Concatenates per-modality encodings along the feature axis.
+fn concat_features(parts: &[Tensor], batch_size: usize) -> Tensor {
+    let total: usize = parts.iter().map(|p| p.shape[1]).sum();
+    let mut data = vec![0.0; batch_size * total];
+    let mut offset = 0;
+    for part in parts {
+        let width = part.shape[1];
+        for b in 0..batch_size {
+            let dst = b * total + offset;
+            data[dst..dst + width].copy_from_slice(&part.data[b * width..(b + 1) * width]);
+        }
+        offset += width;
+    }
+    Tensor::from_vec(data, vec![batch_size, total])
 }
 
 #[cfg(test)]
