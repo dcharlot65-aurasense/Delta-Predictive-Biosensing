@@ -36,6 +36,36 @@ pub trait SpikingLayer: Send + Sync {
     /// Zero gradients
     fn zero_grad(&mut self);
 
+    /// Every trainable parameter, at any rank, as a mutable view.
+    ///
+    /// [`Self::parameters_mut`] yields `Array2`, so it cannot carry a bias
+    /// (rank 1) or a convolution kernel (rank 3 or 4). A generic optimiser
+    /// walking it therefore trains every layer except the convolutions, and
+    /// does so silently -- the loop runs, the loss moves, and the kernels never
+    /// change. This yields dynamic views instead, so a caller can reach
+    /// everything the layer holds.
+    ///
+    /// The default adapts `parameters_mut`, which is correct only for a layer
+    /// whose parameters really are all rank 2 and unbiased; every layer holding
+    /// anything else overrides it.
+    ///
+    /// Order matches [`Self::gradient_views`].
+    fn parameter_views_mut(&mut self) -> Vec<ndarray::ArrayViewMutD<'_, f32>> {
+        self.parameters_mut()
+            .into_iter()
+            .map(|p| p.view_mut().into_dyn())
+            .collect()
+    }
+
+    /// Gradients corresponding to [`Self::parameter_views_mut`], in the same
+    /// order. `None` where a parameter has no gradient yet.
+    fn gradient_views(&self) -> Vec<Option<ndarray::ArrayViewD<'_, f32>>> {
+        self.gradients()
+            .into_iter()
+            .map(|g| g.map(|g| g.view().into_dyn()))
+            .collect()
+    }
+
     /// Total number of trainable parameters in this layer.
     ///
     /// The default sums [`Self::parameters`], which is right only for a layer
@@ -361,6 +391,69 @@ mod tests {
         assert_eq!(k1.kernel, k2.kernel);
         let k3 = SpikingConv1d::with_seed(2, 3, 3, 1, 1, true, params, 1.0, false, 12);
         assert_ne!(k1.kernel, k3.kernel);
+    }
+
+    /// A generic optimiser must be able to reach a convolution's weights.
+    ///
+    /// `parameters_mut` yields `Array2` and a kernel is rank 4, so a
+    /// convolution returns nothing through it: a hand-written training loop
+    /// would run, report a falling loss from the layers it could reach, and
+    /// never change a kernel. Nothing about that is visible at the call site,
+    /// which is what makes it worth a test rather than a comment.
+    #[test]
+    fn parameter_views_reach_what_the_rank_2_view_cannot() {
+        let params = NeuronParams::default();
+        let mut conv = SpikingConv2d::new(
+            2,
+            3,
+            (3, 3),
+            (1, 1),
+            (1, 1),
+            true,
+            params.clone(),
+            1.0,
+            false,
+        );
+
+        assert!(
+            conv.parameters_mut().is_empty(),
+            "the rank-2 view still cannot express a kernel; that is the premise"
+        );
+
+        let covered: usize = conv.parameter_views_mut().iter().map(|v| v.len()).sum();
+        assert_eq!(
+            covered,
+            conv.num_parameters(),
+            "the dynamic view must cover every parameter the layer holds"
+        );
+
+        // Views must be live, not copies: writing through them changes the
+        // layer. This is what an optimiser step does.
+        let before = conv.kernel.clone();
+        for mut view in conv.parameter_views_mut() {
+            view.iter_mut().for_each(|w| *w += 1.0);
+        }
+        assert!(
+            conv.kernel
+                .iter()
+                .zip(before.iter())
+                .all(|(a, b)| (a - b - 1.0).abs() < 1e-6),
+            "writing through the view did not reach the kernel"
+        );
+        assert!(
+            conv.bias
+                .as_ref()
+                .is_some_and(|b| b.iter().all(|v| (*v - 1.0).abs() < 1e-6)),
+            "writing through the view did not reach the bias"
+        );
+
+        // Multi-head attention: every head, not just the output projection.
+        let multi = {
+            let mut m = attention::MultiHeadSpikingAttention::new(8, 2, params, 1.0, false);
+            let covered: usize = m.parameter_views_mut().iter().map(|v| v.len()).sum();
+            (covered, m.num_parameters())
+        };
+        assert_eq!(multi.0, multi.1, "the heads must be reachable too");
     }
 
     #[test]

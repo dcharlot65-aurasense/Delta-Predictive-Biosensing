@@ -607,6 +607,25 @@ impl SpikingLayer for SpikingConv2d {
     fn num_parameters(&self) -> usize {
         self.kernel.len() + self.bias.as_ref().map_or(0, |b| b.len())
     }
+
+    fn parameter_views_mut(&mut self) -> Vec<ndarray::ArrayViewMutD<'_, f32>> {
+        // The kernel is rank 4, so `parameters_mut` cannot yield it at all and
+        // returns an empty vector: without this a generic optimiser would skip
+        // every convolution in the network.
+        let mut views = vec![self.kernel.view_mut().into_dyn()];
+        if let Some(bias) = self.bias.as_mut() {
+            views.push(bias.view_mut().into_dyn());
+        }
+        views
+    }
+
+    fn gradient_views(&self) -> Vec<Option<ndarray::ArrayViewD<'_, f32>>> {
+        let mut views = vec![self.kernel_grad.as_ref().map(|g| g.view().into_dyn())];
+        if self.bias.is_some() {
+            views.push(self.bias_grad.as_ref().map(|g| g.view().into_dyn()));
+        }
+        views
+    }
 }
 
 /// 1D Convolutional spiking layer for time series
@@ -1146,6 +1165,22 @@ impl SpikingLayer for SpikingConv1d {
 
     fn num_parameters(&self) -> usize {
         self.kernel.len() + self.bias.as_ref().map_or(0, |b| b.len())
+    }
+
+    fn parameter_views_mut(&mut self) -> Vec<ndarray::ArrayViewMutD<'_, f32>> {
+        let mut views = vec![self.kernel.view_mut().into_dyn()];
+        if let Some(bias) = self.bias.as_mut() {
+            views.push(bias.view_mut().into_dyn());
+        }
+        views
+    }
+
+    fn gradient_views(&self) -> Vec<Option<ndarray::ArrayViewD<'_, f32>>> {
+        let mut views = vec![self.kernel_grad.as_ref().map(|g| g.view().into_dyn())];
+        if self.bias.is_some() {
+            views.push(self.bias_grad.as_ref().map(|g| g.view().into_dyn()));
+        }
+        views
     }
 }
 

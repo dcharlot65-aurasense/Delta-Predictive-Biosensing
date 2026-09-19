@@ -422,6 +422,18 @@ impl SpikingLayer for MultiHeadSpikingAttention {
         // it reports a multi-head attention as though it had no heads.
         self.heads.iter().map(|h| h.num_parameters()).sum::<usize>() + self.w_output.len()
     }
+
+    fn parameter_views_mut(&mut self) -> Vec<ndarray::ArrayViewMutD<'_, f32>> {
+        // `parameters_mut` exposes only the output projection, so a generic
+        // optimiser would leave every head untrained.
+        let mut views: Vec<ndarray::ArrayViewMutD<'_, f32>> = self
+            .heads
+            .iter_mut()
+            .flat_map(|h| h.parameter_views_mut())
+            .collect();
+        views.push(self.w_output.view_mut().into_dyn());
+        views
+    }
 }
 
 impl Default for SpikingAttention {

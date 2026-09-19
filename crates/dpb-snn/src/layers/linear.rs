@@ -323,6 +323,22 @@ impl SpikingLayer for SpikingLinear {
     fn num_parameters(&self) -> usize {
         self.weights.len() + self.bias.as_ref().map_or(0, |b| b.len())
     }
+
+    fn parameter_views_mut(&mut self) -> Vec<ndarray::ArrayViewMutD<'_, f32>> {
+        let mut views = vec![self.weights.view_mut().into_dyn()];
+        if let Some(bias) = self.bias.as_mut() {
+            views.push(bias.view_mut().into_dyn());
+        }
+        views
+    }
+
+    fn gradient_views(&self) -> Vec<Option<ndarray::ArrayViewD<'_, f32>>> {
+        let mut views = vec![self.weight_grad.as_ref().map(|g| g.view().into_dyn())];
+        if self.bias.is_some() {
+            views.push(self.bias_grad.as_ref().map(|g| g.view().into_dyn()));
+        }
+        views
+    }
 }
 
 impl Default for SpikingLinear {

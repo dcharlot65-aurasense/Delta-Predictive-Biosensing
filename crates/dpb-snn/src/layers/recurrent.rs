@@ -501,6 +501,17 @@ impl SpikingLayer for SpikingRNN {
     fn num_parameters(&self) -> usize {
         self.w_input.len() + self.w_recurrent.len() + self.bias.as_ref().map_or(0, |b| b.len())
     }
+
+    fn parameter_views_mut(&mut self) -> Vec<ndarray::ArrayViewMutD<'_, f32>> {
+        let mut views = vec![
+            self.w_input.view_mut().into_dyn(),
+            self.w_recurrent.view_mut().into_dyn(),
+        ];
+        if let Some(bias) = self.bias.as_mut() {
+            views.push(bias.view_mut().into_dyn());
+        }
+        views
+    }
 }
 
 /// Spiking LSTM-like layer (simplified)
