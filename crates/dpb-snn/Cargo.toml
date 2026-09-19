@@ -26,6 +26,9 @@ serde_json.workspace = true
 thiserror.workspace = true
 rand.workspace = true
 rand_distr.workspace = true
+# Deterministic seeding for the `with_seed` constructors: ChaCha8 gives the
+# same stream on every platform and across rand releases.
+rand_chacha.workspace = true
 
 # GPU backend dependencies (optional)
 cudarc = { workspace = true, optional = true }

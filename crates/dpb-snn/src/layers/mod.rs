@@ -53,6 +53,74 @@ pub trait SpikingLayer: Send + Sync {
     }
 }
 
+// ============================================================================
+// Deterministic initialisation
+//
+// Layer constructors drew their weights from system entropy and offered no way
+// to fix them, so two runs of the same experiment started from different
+// networks and neither could be repeated. Every ANN baseline in this crate
+// already takes a seed; the spiking side, which is the side the library exists
+// for, did not.
+//
+// Two ways in. `manual_seed` makes every subsequent construction on this
+// thread deterministic, which is how `torch.manual_seed` and
+// `numpy.random.seed` are used and therefore what a reader of an experiment
+// script expects -- and it reaches architectures, which build their layers
+// internally and would otherwise need a seed threaded through every
+// constructor. Where a single layer needs pinning without touching thread
+// state, each has a `with_seed`.
+//
+// The state is thread-local, so tests running in parallel cannot seed each
+// other, and ChaCha8 is used because it yields the same stream on every
+// platform and across `rand` releases.
+// ============================================================================
+
+thread_local! {
+    static INIT_RNG: std::cell::RefCell<Option<rand_chacha::ChaCha8Rng>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Make layer initialisation on this thread deterministic.
+///
+/// Every layer constructed afterwards draws from a generator derived from
+/// `seed`, so the same sequence of constructions yields the same network.
+///
+/// ```
+/// use dpb_snn::layers::{manual_seed, SpikingLinear};
+/// use dpb_snn::NeuronParams;
+///
+/// manual_seed(42);
+/// let a = SpikingLinear::new(4, 2, true, NeuronParams::default(), 1.0, false);
+/// manual_seed(42);
+/// let b = SpikingLinear::new(4, 2, true, NeuronParams::default(), 1.0, false);
+/// assert_eq!(a.weights, b.weights);
+/// ```
+pub fn manual_seed(seed: u64) {
+    use rand::SeedableRng;
+    INIT_RNG.with(|cell| {
+        *cell.borrow_mut() = Some(rand_chacha::ChaCha8Rng::seed_from_u64(seed));
+    });
+}
+
+/// Return to drawing initialisation from system entropy.
+pub fn clear_manual_seed() {
+    INIT_RNG.with(|cell| {
+        *cell.borrow_mut() = None;
+    });
+}
+
+/// The generator a layer constructor should initialise from.
+///
+/// Derives a fresh child generator from the thread's seeded one, advancing it,
+/// so successive layers differ while the whole sequence stays reproducible.
+pub(crate) fn init_rng() -> rand_chacha::ChaCha8Rng {
+    use rand::SeedableRng;
+    INIT_RNG.with(|cell| match cell.borrow_mut().as_mut() {
+        Some(master) => rand_chacha::ChaCha8Rng::from_rng(master),
+        None => rand_chacha::ChaCha8Rng::from_rng(&mut rand::rng()),
+    })
+}
+
 /// Computes `w^T . v` by accumulating over the rows of `w`.
 ///
 /// Mathematically identical to `w.t().dot(v)`, and measurably faster: `w.t()`
@@ -213,6 +281,88 @@ mod tests {
     /// returns zero for a convolution -- whose kernel is rank 3 or 4 -- and
     /// the fusion module's `num_parameters` did exactly that. A convolution
     /// contributed nothing to the total.
+    /// A seed has to determine the network.
+    ///
+    /// These layers drew from system entropy and exposed no seed, so two runs
+    /// of the same experiment began from different weights and neither could
+    /// be repeated -- while every ANN baseline in this crate already took one.
+    /// The check that all the spiking models compute a function of their input
+    /// was itself flaky for exactly this reason, failing ten times in
+    /// twenty-five on a different model each time.
+    /// `manual_seed` must reach whole architectures, not just single layers.
+    ///
+    /// That is why it exists: an architecture builds its layers internally, so
+    /// without a thread-level seed every one of them would need a seed
+    /// threaded through its constructor. Two networks built under the same
+    /// seed must be identical weight for weight.
+    #[test]
+    fn manual_seed_reaches_every_constructor() {
+        manual_seed(1234);
+        let a = SpikingLinear::new(6, 4, true, NeuronParams::default(), 1.0, false);
+        let a2 = SpikingRNN::new(6, 4, true, NeuronParams::default(), 1.0, false);
+
+        manual_seed(1234);
+        let b = SpikingLinear::new(6, 4, true, NeuronParams::default(), 1.0, false);
+        let b2 = SpikingRNN::new(6, 4, true, NeuronParams::default(), 1.0, false);
+
+        assert_eq!(a.weights, b.weights, "same seed, same first layer");
+        assert_eq!(
+            a2.w_input, b2.w_input,
+            "the seed must carry across successive constructions, not just the first"
+        );
+        assert_ne!(
+            a.weights.as_slice().unwrap()[0],
+            a2.w_input.as_slice().unwrap()[0],
+            "successive layers must differ, or every layer shares one draw"
+        );
+
+        manual_seed(5678);
+        let c = SpikingLinear::new(6, 4, true, NeuronParams::default(), 1.0, false);
+        assert_ne!(
+            a.weights, c.weights,
+            "a different seed must give a different network"
+        );
+
+        clear_manual_seed();
+    }
+
+    #[test]
+    fn seeded_constructors_are_reproducible() {
+        let params = NeuronParams::default();
+
+        let a = SpikingLinear::with_seed(8, 4, true, params.clone(), 1.0, false, 42);
+        let b = SpikingLinear::with_seed(8, 4, true, params.clone(), 1.0, false, 42);
+        assert_eq!(
+            a.weights, b.weights,
+            "the same seed must give the same weights"
+        );
+
+        let c = SpikingLinear::with_seed(8, 4, true, params.clone(), 1.0, false, 43);
+        assert_ne!(
+            a.weights, c.weights,
+            "a different seed must give different weights, or the seed is ignored"
+        );
+
+        // Not all zeros, and not a constant: a seeded initialiser that returned
+        // the same value everywhere would satisfy both checks above.
+        let first = a.weights[[0, 0]];
+        assert!(
+            a.weights.iter().any(|w| (*w - first).abs() > 1e-9),
+            "seeded weights are constant"
+        );
+
+        let r1 = SpikingRNN::with_seed(6, 5, true, params.clone(), 1.0, false, 7);
+        let r2 = SpikingRNN::with_seed(6, 5, true, params.clone(), 1.0, false, 7);
+        assert_eq!(r1.w_input, r2.w_input);
+        assert_eq!(r1.w_recurrent, r2.w_recurrent);
+
+        let k1 = SpikingConv1d::with_seed(2, 3, 3, 1, 1, true, params.clone(), 1.0, false, 11);
+        let k2 = SpikingConv1d::with_seed(2, 3, 3, 1, 1, true, params.clone(), 1.0, false, 11);
+        assert_eq!(k1.kernel, k2.kernel);
+        let k3 = SpikingConv1d::with_seed(2, 3, 3, 1, 1, true, params, 1.0, false, 12);
+        assert_ne!(k1.kernel, k3.kernel);
+    }
+
     #[test]
     fn parameter_counts_include_biases_and_kernels() {
         let params = NeuronParams::default();

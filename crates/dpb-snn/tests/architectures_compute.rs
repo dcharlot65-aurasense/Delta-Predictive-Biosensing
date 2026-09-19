@@ -367,3 +367,39 @@ fn every_layer_computes_a_function_of_its_input() {
         failures.join("\n  ")
     );
 }
+
+/// A seeded run of a whole architecture must be reproducible.
+///
+/// This is what `manual_seed` is for. An architecture builds its layers
+/// internally, so without a thread-level seed each one would need a seed
+/// threaded through its constructor, and until now none of them could be
+/// repeated at all -- while every ANN baseline in the crate already took one.
+/// Comparing the output of a forward pass, rather than the weights, checks the
+/// property a user actually depends on.
+#[test]
+fn seeded_architectures_reproduce_their_output() {
+    let steps = 16;
+    let (drive, _) = drives((2, steps, 16));
+
+    let run = |seed: u64| {
+        manual_seed(seed);
+        let mut net = FeedforwardSNN::mlp(16, vec![24, 24], 5, config(steps)).expect("valid MLP");
+        net.reset();
+        net.forward(&drive).expect("forward").to_dense()
+    };
+
+    let first = run(2024);
+    let again = run(2024);
+    assert_eq!(
+        first, again,
+        "the same seed produced a different network, so a run cannot be repeated"
+    );
+
+    let other = run(2025);
+    assert_ne!(
+        first, other,
+        "a different seed produced the same network, so the seed is ignored"
+    );
+
+    clear_manual_seed();
+}

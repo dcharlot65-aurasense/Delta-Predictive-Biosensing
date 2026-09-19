@@ -3,7 +3,6 @@
 use super::{NeuronState, SpikingLayer};
 use crate::{NeuronParams, SNNError, SNNResult, SpikeTensor};
 use ndarray::{Array1, Array2, Array3, s};
-use rand::rng;
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
 
@@ -47,12 +46,65 @@ impl SpikingRNN {
         dt: f32,
         adaptive: bool,
     ) -> Self {
+        Self::new_with_rng(
+            input_size,
+            hidden_size,
+            use_bias,
+            neuron_params,
+            dt,
+            adaptive,
+            &mut super::init_rng(),
+        )
+    }
+
+    /// Create the layer with a deterministic initialisation.
+    ///
+    /// [`Self::new`] draws its weights from system entropy, so two runs of the
+    /// same experiment start from different networks and neither can be
+    /// reproduced. Every ANN baseline in this crate already takes a seed; the
+    /// spiking layers did not, which left the side the library exists for the
+    /// only one whose results could not be repeated.
+    ///
+    /// The generator is ChaCha8, chosen because it produces the same stream on
+    /// every platform and does not change between `rand` releases -- which is
+    /// the entire point of recording a seed alongside a result.
+    pub fn with_seed(
+        input_size: usize,
+        hidden_size: usize,
+        use_bias: bool,
+        neuron_params: NeuronParams,
+        dt: f32,
+        adaptive: bool,
+        seed: u64,
+    ) -> Self {
+        use rand::SeedableRng;
+        Self::new_with_rng(
+            input_size,
+            hidden_size,
+            use_bias,
+            neuron_params,
+            dt,
+            adaptive,
+            &mut rand_chacha::ChaCha8Rng::seed_from_u64(seed),
+        )
+    }
+
+    /// Shared construction; `new` and `with_seed` differ only in the
+    /// generator they hand in.
+    fn new_with_rng<R: rand::Rng>(
+        input_size: usize,
+        hidden_size: usize,
+        use_bias: bool,
+        neuron_params: NeuronParams,
+        dt: f32,
+        adaptive: bool,
+        mut rng: &mut R,
+    ) -> Self {
         let std_input = (2.0 / (input_size + hidden_size) as f32).sqrt();
         let std_recurrent = (1.0 / hidden_size as f32).sqrt();
 
         let normal_input = Normal::new(0.0, std_input).unwrap();
         let normal_recurrent = Normal::new(0.0, std_recurrent).unwrap();
-        let mut rng = rng();
 
         let w_input =
             Array2::from_shape_fn((hidden_size, input_size), |_| normal_input.sample(&mut rng));
@@ -510,9 +562,58 @@ impl SpikingLSTM {
         dt: f32,
         adaptive: bool,
     ) -> Self {
+        Self::new_with_rng(
+            input_size,
+            hidden_size,
+            neuron_params,
+            dt,
+            adaptive,
+            &mut super::init_rng(),
+        )
+    }
+
+    /// Create the layer with a deterministic initialisation.
+    ///
+    /// [`Self::new`] draws its weights from system entropy, so two runs of the
+    /// same experiment start from different networks and neither can be
+    /// reproduced. Every ANN baseline in this crate already takes a seed; the
+    /// spiking layers did not, which left the side the library exists for the
+    /// only one whose results could not be repeated.
+    ///
+    /// The generator is ChaCha8, chosen because it produces the same stream on
+    /// every platform and does not change between `rand` releases -- which is
+    /// the entire point of recording a seed alongside a result.
+    pub fn with_seed(
+        input_size: usize,
+        hidden_size: usize,
+        neuron_params: NeuronParams,
+        dt: f32,
+        adaptive: bool,
+        seed: u64,
+    ) -> Self {
+        use rand::SeedableRng;
+        Self::new_with_rng(
+            input_size,
+            hidden_size,
+            neuron_params,
+            dt,
+            adaptive,
+            &mut rand_chacha::ChaCha8Rng::seed_from_u64(seed),
+        )
+    }
+
+    /// Shared construction; `new` and `with_seed` differ only in the
+    /// generator they hand in.
+    fn new_with_rng<R: rand::Rng>(
+        input_size: usize,
+        hidden_size: usize,
+        neuron_params: NeuronParams,
+        dt: f32,
+        adaptive: bool,
+        mut rng: &mut R,
+    ) -> Self {
         let std = (1.0 / hidden_size as f32).sqrt();
         let normal = Normal::new(0.0, std).unwrap();
-        let mut rng = rng();
 
         let mut init_weights =
             |shape: (usize, usize)| Array2::from_shape_fn(shape, |_| normal.sample(&mut rng));
