@@ -94,14 +94,14 @@ Counted from the source tree, not quoted from documentation:
 | | Count |
 |---|---|
 | Workspace crates | **17** |
-| Lines of Rust | **~243,000** |
+| Lines of Rust | **~265,000** |
 | Event encoders (`impl EventEncoder`) | **75** |
 | Population templates (`impl PopulationTemplate`) | **62** (36 exposed through the default registry) |
-| Neuron models (`impl MembraneDynamics`) | **19** |
+| Neuron models (`impl MembraneDynamics`) | **20** |
 | Decoders (`impl Decoder`) | **71** |
 | Synthetic generators (`impl SyntheticGenerator`) | **163** |
 | ANN baselines (`impl ANNBaseline`) | **44** |
-| `#[test]` functions in `crates/` | **2,870** |
+| `#[test]` functions in `crates/` | **3,022** |
 
 Signal domains with dedicated encoder modules: EEG, cardiopulmonary, voice, eye,
 pose, hand, force, balance, vestibular, cognitive, pain, and contact sensors.
@@ -115,7 +115,7 @@ Note the template figure: 62 are implemented, but only 36 are reachable through
 |---|---|
 | `dpb-core` | Signal types, traits, clinical file I/O, BIDS and FHIR adapters, GPU backends |
 | `dpb-encoders` | The 75 event encoders and the population-template registry |
-| `dpb-neurons` | 19 membrane-dynamics models, integrate-and-fire through Hodgkin-Huxley, plus surrogate gradients |
+| `dpb-neurons` | 20 membrane-dynamics models, integrate-and-fire through Hodgkin-Huxley, plus surrogate gradients |
 | `dpb-snn` | Spiking networks, decoders, ANN baselines, distillation, quantization, hardware export |
 | `dpb-synth` | 163 synthetic generators — the encoders' inverses, emitting event-level ground truth |
 | `dpb-clinical` | Treatment response, comorbidity, practice effects, HIPAA Safe Harbor de-identification |
@@ -185,7 +185,7 @@ Being specific about maturity, because the distinction matters:
   this code.
 - **No benchmark results are committed.** Harnesses exist; measured numbers do
   not.
-- **The test suites pass.** 2,887 tests across every crate -- unit, integration
+- **The test suites pass.** 3,052 tests across every crate -- unit, integration
   and documentation examples -- with nothing failing and nothing ignored on
   account of known-broken code. `dpb-python` is excluded; it needs Python
   development headers to build.
