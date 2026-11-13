@@ -251,9 +251,7 @@ impl MobileRuntime {
         if !layer_sizes.is_empty() {
             let layer_size = layer_sizes[0];
             let avg = self.input_buffer.iter().sum::<f32>() / self.input_buffer.len() as f32;
-            for i in 0..layer_size {
-                self.intermediate_buffers[0][i] = avg;
-            }
+            self.intermediate_buffers[0][..layer_size].fill(avg);
         }
 
         // Subsequent layers: read from previous layer's buffer

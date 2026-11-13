@@ -52,7 +52,6 @@ impl SpikingConv2d {
     // rather than a simplification.
     #[allow(clippy::too_many_arguments)]
     /// Create a new 2D convolutional spiking layer
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         in_channels: usize,
         out_channels: usize,

@@ -288,11 +288,8 @@ mod tests {
         }
 
         // Instantaneous frequency should be near the carrier frequency
-        for i in 20..n - 20 {
-            assert!(
-                analytic_sig.instantaneous_frequency[i] > freq - 2.0
-                    && analytic_sig.instantaneous_frequency[i] < freq + 2.0
-            );
+        for &f in &analytic_sig.instantaneous_frequency[20..n - 20] {
+            assert!(f > freq - 2.0 && f < freq + 2.0);
         }
     }
 

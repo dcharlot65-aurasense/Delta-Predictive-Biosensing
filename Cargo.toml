@@ -34,17 +34,17 @@ rust-version = "1.92.0"
 wgpu = "30.0"
 # wgpu 30 made adapter enumeration async; pollster blocks on it from the
 # synchronous Python binding without pulling in a full async runtime.
-pollster = "0.4"
-bytemuck = { version = "1.24", features = ["derive"] }
-glam = "0.33"
-nalgebra = "0.33"
+pollster = "1.0"
+bytemuck = { version = "1.25", features = ["derive"] }
+glam = "0.34"
+nalgebra = "0.35"
 ndarray = "0.17"
 num-complex = "0.4"
-rustfft = "6.2"
+rustfft = "6.4"
 
 # Async/parallel
-tokio = { version = "1.42", features = ["full"] }
-rayon = "1.10"
+tokio = { version = "1.54", features = ["full"] }
+rayon = "1.12"
 crossbeam = "0.8"
 
 # Serialization
@@ -59,7 +59,7 @@ bincode = { version = "2.0", features = ["serde"] }
 rand = "0.10"
 rand_distr = "0.6"
 rand_chacha = "0.10"
-statrs = "0.18"
+statrs = "0.19"
 
 # Error handling
 thiserror = "2.0"
@@ -75,23 +75,23 @@ tracing-subscriber = "0.3"
 # is right for a wheel but leaves a plain `cargo build` unable to link and
 # `cargo test` without an interpreter. dpb-python exposes it as an optional
 # feature that maturin turns on; see crates/dpb-python/pyproject.toml.
-pyo3 = { version = "0.29" }
-numpy = "0.29"  # must track the pyo3 major version
+pyo3 = { version = "0.30" }
+numpy = "0.30"  # must track the pyo3 major version
 
 # Testing
 approx = "0.5"
 criterion = { version = "0.8", features = ["html_reports"] }
-tempfile = "3.14"
-iai-callgrind = "0.14"
-proptest = "1.5"
+tempfile = "3.27"
+iai-callgrind = "0.16"
+proptest = "1.12"
 
 # GPU Backends (optional in individual crates)
-cudarc = { version = "0.12", features = ["cublas"] }
-metal = { version = "0.29" }
-vulkano = { version = "0.34" }
+cudarc = { version = "0.19", features = ["cublas"] }
+metal = { version = "0.33" }
+vulkano = { version = "0.35" }
 
 # Additional compute
-faer = "0.20"
+faer = "0.24"
 
 # Internal crates
 dpb-core = { path = "crates/dpb-core" }

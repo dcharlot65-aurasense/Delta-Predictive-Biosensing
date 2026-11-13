@@ -2186,9 +2186,7 @@ impl FrameStreamingGenerator for StreamingHand {
             HandMotionType::OpenClose => {
                 // All fingers open/close together
                 let phase = (2.0 * PI * 0.5 * t).sin();
-                for i in 0..5 {
-                    state.finger_states[i] = 0.5 + 0.5 * phase;
-                }
+                state.finger_states.fill(0.5 + 0.5 * phase);
             }
             HandMotionType::Stationary => {}
         }
@@ -3964,9 +3962,7 @@ impl FrameStreamingGenerator for StreamingClinicalHand {
 
                     // All fingers open/close together
                     let extension = (PI * state.task_phase).sin();
-                    for i in 0..5 {
-                        state.finger_states[i] = 0.2 + 0.8 * extension.abs();
-                    }
+                    state.finger_states.fill(0.2 + 0.8 * extension.abs());
                 }
                 ClinicalHandTask::PronationSupination => {
                     if state.current_frequency > 0.0 {

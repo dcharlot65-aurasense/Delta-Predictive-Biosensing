@@ -547,9 +547,7 @@ impl Level3AudioGenerator {
         let num_frames = ground_truth.f0_contour.len();
         let mut formants = Vec::with_capacity(num_frames);
 
-        for i in 0..num_frames {
-            let time = ground_truth.f0_times[i];
-
+        for &time in ground_truth.f0_times.iter().take(num_frames) {
             // Simulate formants based on typical vowel values
             // F1: 300-900 Hz, F2: 800-2500 Hz, F3: 2000-3500 Hz
             let f1 = 500.0 + 200.0 * (2.0 * std::f64::consts::PI * 2.0 * time).sin();

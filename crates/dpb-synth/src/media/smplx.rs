@@ -306,8 +306,8 @@ impl SMPLXPosePresets {
     pub fn tremor_hand(tremor_offset: f32) -> BodyPose {
         let mut pose = BodyPose::default();
         // Add tremor to right hand joints
-        for i in 0..12 {
-            pose.right_hand_pose[i] = tremor_offset * (i as f32 * 0.1).sin();
+        for (i, joint) in pose.right_hand_pose.iter_mut().enumerate().take(12) {
+            *joint = tremor_offset * (i as f32 * 0.1).sin();
         }
         pose
     }

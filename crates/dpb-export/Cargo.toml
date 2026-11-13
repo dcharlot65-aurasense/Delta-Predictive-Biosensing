@@ -27,7 +27,7 @@ pytorch = []
 full = ["onnx", "tensorflow", "pytorch"]
 
 [dependencies]
-zstd = { version = "0.13", optional = true }
+zstd = { version = "0.14", optional = true }
 # Error handling
 thiserror.workspace = true
 
@@ -43,13 +43,13 @@ serde_json = "1.0"
 # Numeric operations
 
 # UUID for model identification
-uuid = { version = "1.0", features = ["v4"] }
+uuid = { version = "1.29", features = ["v4"] }
 
 # Timestamps
 chrono = { version = "0.4", features = ["serde"] }
 
 [dev-dependencies]
-tempfile = "3.10"
+tempfile = "3.27"
 tracing-subscriber = "0.3"
 
 [[example]]
